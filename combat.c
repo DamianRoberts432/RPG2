@@ -1,0 +1,213 @@
+#include "game.h"
+
+void TriggerMonsterRespawn(void) {
+    enemy_hearts = (fabs(sin(day_night_cycle_accumulator)) < 0.35f) ? 3.5f : 3.0f;
+    int spawn_side = rand() % 4;
+    if (spawn_side == 0) { enemy_x = 2.0f; enemy_y = (float)(rand() % 24 + 4); }
+    else if (spawn_side == 1) { enemy_x = 29.0f; enemy_y = (float)(rand() % 24 + 4); }
+    else if (spawn_side == 2) { enemy_x = (float)(rand() % 24 + 4); enemy_y = 2.0f; }
+    else { enemy_x = (float)(rand() % 24 + 4); enemy_y = 29.0f; }
+    active_monster = (MonsterType)(rand() % 2);
+}
+
+void SpawnBloodMist(float x, float y) {
+    // Tight, compact speck burst: small velocities/lifetimes so blood reads as
+    // mostly one-pixel specks instead of an oversized expanding splatter.
+    // Velocity is drawn from roughly [-0.0078, +0.0078] world units/frame
+    // (rand()%100 spread over a 6400.0f divisor, re-centered by subtracting
+    // the midpoint) and lifetime from 8-16 frames, both deliberately short
+    // so specks fade before they can travel far or grow large on screen.
+    for (int i = 0; i < MAX_BLOOD_MIST; i++) {
+        blood_mist[i].x = x; blood_mist[i].y = y;
+        blood_mist[i].vx = ((rand() % 100) / 6400.0f - 0.0078f);
+        blood_mist[i].vy = ((rand() % 100) / 6400.0f - 0.0078f);
+        blood_mist[i].life = 8 + rand() % 9;
+        blood_mist[i].max_life = blood_mist[i].life;
+        blood_mist[i].active = 1;
+    }
+}
+
+void PerformMeleeAttack(void) {
+    WeaponStats *weapon = GetEquippedWeaponStats();
+    float damage = weapon ? (float)weapon->damage : 1.0f;
+    float stamina_cost = weapon ? weapon->stamina_cost : 0.0f;
+    if (player_stamina < stamina_cost) { strcpy(arpg_action_log, "Exhausted! Too tired to swing that weapon."); return; }
+    player_stamina -= (float)stamina_cost;
+    sword_swipe_frame = (weapon && weapon->attack_speed_mult < 1.0f) ? 14 : 10;
+    float m_dist = DistanceToEnemy();
+    if (m_dist < 1.8f && IsFacingEnemy()) {
+        int broke = WearEquippedWeapon();
+        HandleEnemyDamage(damage);
+        if (broke) strcpy(arpg_action_log, "Your weapon broke!");
+    }
+}
+
+void SpawnTreeDebris(float cx, float cy) {
+    for (int i = 0; i < 5; i++) {
+        twigs[i].x = cx; twigs[i].y = cy; twigs[i].vx = (float)((rand()%100)/500.0f - 0.1f); twigs[i].vy = (float)((rand()%100)/500.0f - 0.1f);
+        twigs[i].life = 40; twigs[i].screen_id = current_screen_index; twigs[i].active = 1;
+    }
+}
+
+// Twigs/chips drift briefly outward from the chopped tree or mined rock, then
+// vanish shortly after - debris is no longer left permanently on the ground.
+void UpdateDebrisTwigs(void) {
+    for (int i = 0; i < DEBRIS_MAX; i++) {
+        if (!twigs[i].active) continue;
+        twigs[i].x += twigs[i].vx; twigs[i].y += twigs[i].vy;
+        if (--twigs[i].life <= 0) twigs[i].active = 0;
+    }
+}
+
+void HandleEnemyDamage(float dmg) {
+    if (fabs(sin(day_night_cycle_accumulator)) < 0.35f) dmg *= 0.9f;
+    enemy_hearts -= dmg;
+    float k_dx = enemy_x - player_x; float k_dy = enemy_y - player_y; float k_dist = (float)sqrt(k_dx * k_dx + k_dy * k_dy);
+    if (k_dist > 0.01f) { enemy_x += (k_dx / k_dist) * 0.25f; enemy_y += (k_dy / k_dist) * 0.25f; }
+    
+    if (enemy_hearts <= 0.0f) {
+        SpawnBloodMist(enemy_x, enemy_y);
+        int is_night = fabs(sin(day_night_cycle_accumulator)) < 0.35f;
+        int gained_xp = (int)(((25 + rand() % 15 + (is_night ? 5 : 0)) * opt_xp_mult) * ((is_night && night_bonus_active) ? 1.25f : 1.0f));
+        float loot_multiplier = opt_loot_mult * (is_night ? 1.5f : 1.0f);
+        int loot_chance = (int)(70.0f * loot_multiplier);
+        if (loot_chance > 100) loot_chance = 100;
+        if (rand() % 100 < loot_chance) {
+            int loot_id = LOOT_SHORT_SWORD + rand() % 5;
+            int loot_quantity = (int)loot_multiplier;
+            if (loot_quantity < 1) loot_quantity = 1;
+            if (rand() % 100 < (int)((loot_multiplier - (int)loot_multiplier) * 100.0f)) loot_quantity++;
+            DropGroundLoot(enemy_x, enemy_y, loot_id, loot_quantity);
+        }
+        player_xp += gained_xp;
+        if (player_xp >= player_next_level_xp) {
+            player_level++;
+            player_xp -= player_next_level_xp;
+            player_next_level_xp = (int)(player_next_level_xp * 1.5f);
+            sprintf(arpg_action_log, "LEVEL UP! Reached Level %d!", player_level);
+        } else {
+            sprintf(arpg_action_log, "VICTORY: Enemy Slain! +%d XP", gained_xp);
+        }
+        TriggerMonsterRespawn();
+    } else {
+        sprintf(arpg_action_log, "STRIKE: Hit for %.1f DMG! Remainder: %.1f", dmg, enemy_hearts);
+    }
+}
+
+// Straight-line tile distance from the player to the active enemy. Shared
+// helper for the melee range checks (gamepad/keyboard attack and the
+// Knight/Warrior backstep counter-strike) to avoid duplicating the formula.
+float DistanceToEnemy(void) {
+    return (float)sqrt((player_x - enemy_x) * (player_x - enemy_x) + (player_y - enemy_y) * (player_y - enemy_y));
+}
+
+// Appropriate facing/range check for melee strikes: the enemy must be roughly
+// in front of the player (within ~75.5 degrees of the facing axis, i.e. a
+// ~151 degree total cone), not merely within radius, so axes/swords can't
+// hit targets directly behind the hero.
+// dot > 0.25 corresponds to an angle below ~75.5 degrees from the facing axis.
+int IsFacingEnemy(void) {
+    if (enemy_hearts <= 0.0f) return 0;
+    float ex = enemy_x - player_x, ey = enemy_y - player_y;
+    float dist = (float)sqrt(ex * ex + ey * ey);
+    if (dist < 0.001f) return 1;
+    ex /= dist; ey /= dist;
+    float fx = 0.0f, fy = 0.0f;
+    if (player_facing == FACE_UP) fy = -1.0f;
+    else if (player_facing == FACE_DOWN) fy = 1.0f;
+    else if (player_facing == FACE_LEFT) fx = -1.0f;
+    else fx = 1.0f;
+    float dot = ex * fx + ey * fy;
+    return dot > FACING_CONE_DOT_THRESHOLD;
+}
+
+// Debounced/cooldown-bound class special ability bound to the "Y" button
+// (gamepad and keyboard). Callers must only invoke this on the rising edge of
+// the button press so it fires once per press rather than every held frame.
+// See the FACING_CONE_DOT_THRESHOLD / *_COOLDOWN_MS / *_SUPPRESS_MS /
+// *_FLASH_FRAMES constants defined near the top of the file for tuning.
+void FireClassAbility(void) {
+    DWORD now = GetTickCount();
+    // Signed-subtraction comparison (rather than `now < y_ability_cooldown_until`)
+    // stays correct across the ~49.7 day GetTickCount() wraparound boundary,
+    // matching the (GetTickCount() - last_x > threshold) pattern used elsewhere
+    // in this file for other input-debounce timers.
+    long cooldown_remaining_ms = (long)(y_ability_cooldown_until - now);
+    if (cooldown_remaining_ms > 0) {
+        sprintf(arpg_action_log, "ABILITY: On cooldown (%.1fs left)", cooldown_remaining_ms / 1000.0f);
+        return;
+    }
+
+    if (selected_class == CLASS_NECROMANCER || selected_class == CLASS_WIZARD) {
+        if (selected_class == CLASS_NECROMANCER) {
+            if (summoned_zombie.active) { strcpy(arpg_action_log, "NECROMANCY: Your summoned dead still fight."); return; }
+            summoned_zombie.x = player_x; summoned_zombie.y = player_y;
+            if (player_facing == FACE_UP) summoned_zombie.y -= 1.0f;
+            else if (player_facing == FACE_DOWN) summoned_zombie.y += 1.0f;
+            else if (player_facing == FACE_LEFT) summoned_zombie.x -= 1.0f;
+            else summoned_zombie.x += 1.0f;
+            summoned_zombie.hp = 3.0f; summoned_zombie.timer = 900;
+            summoned_zombie.raise_frame = 0; summoned_zombie.attack_cooldown = 0;
+            summoned_zombie.active = 1;
+            ability_visual_frame = SPELL_FLASH_FRAMES;
+            y_ability_cooldown_until = now + SPELL_COOLDOWN_MS;
+            strcpy(arpg_action_log, "NECROMANCY: A zombie claws its way from the earth!");
+            return;
+        }
+        if (player_spell.active) {
+            strcpy(arpg_action_log, "ABILITY: Bolt still in flight!");
+            return;
+        }
+        player_spell.x = player_x; player_spell.y = player_y; player_spell.z = 10.0f;
+        float track_dx = 0.0f, track_dy = 0.0f;
+        if (enemy_hearts > 0.0f) {
+            track_dx = enemy_x - player_x; track_dy = enemy_y - player_y;
+        } else if (player_facing == FACE_UP) track_dy = -1.0f;
+        else if (player_facing == FACE_DOWN) track_dy = 1.0f;
+        else if (player_facing == FACE_LEFT) track_dx = -1.0f;
+        else track_dx = 1.0f;
+
+        float distance = (float)sqrt(track_dx * track_dx + track_dy * track_dy);
+        if (distance < 0.001f) { track_dx = 1.0f; distance = 1.0f; }
+        float spd = 0.32f;
+        player_spell.vx = (track_dx / distance) * spd;
+        player_spell.vy = (track_dy / distance) * spd;
+        player_spell.vz = 0.0f;
+        player_spell.damage = 1.5f;
+        player_spell.active = 1;
+        ability_visual_frame = SPELL_FLASH_FRAMES;
+        y_ability_cooldown_until = now + SPELL_COOLDOWN_MS;
+        strcpy(arpg_action_log, "ARCANE: Magic bolt unleashed!");
+    } else if (selected_class == CLASS_KNIGHT || selected_class == CLASS_WARRIOR) {
+        float ndx = 0.0f, ndy = 0.0f;
+        if (player_facing == FACE_UP) ndy = 1.0f;
+        else if (player_facing == FACE_DOWN) ndy = -1.0f;
+        else if (player_facing == FACE_LEFT) ndx = 1.0f;
+        else ndx = -1.0f;
+
+        float tx = player_x + ndx, ty = player_y + ndy;
+        if (tx >= 0 && tx < MAP_SIZE && ty >= 0 && ty < MAP_SIZE &&
+            VISUAL_MAP[(int)ty][(int)tx] != 1 && VISUAL_MAP[(int)ty][(int)tx] != 12) {
+            player_x = tx; player_y = ty;
+        }
+
+        monster_pursuit_suppressed_until = now + BACKSTEP_SUPPRESS_MS;
+        ability_visual_frame = ABILITY_FLASH_FRAMES;
+        y_ability_cooldown_until = now + BACKSTEP_COOLDOWN_MS;
+
+        float m_dist = DistanceToEnemy();
+        if (enemy_hearts > 0.0f && m_dist < 2.0f && IsFacingEnemy()) {
+            sword_swipe_frame = 10;
+            HandleEnemyDamage(2.0f);
+            strcpy(arpg_action_log, "DEFENSIVE BACKSTEP: Countered with a heavy strike!");
+        } else {
+            strcpy(arpg_action_log, "DEFENSIVE BACKSTEP: Repositioned, enemies briefly wary!");
+        }
+    } else { // Rogue
+        is_sneaking = 1;
+        monster_pursuit_suppressed_until = now + SNEAK_SUPPRESS_MS;
+        ability_visual_frame = ABILITY_FLASH_FRAMES;
+        y_ability_cooldown_until = now + SNEAK_COOLDOWN_MS;
+        strcpy(arpg_action_log, "SNEAK: Breaking monster detection for 4s!");
+    }
+}
