@@ -410,6 +410,22 @@ int RainHash(int value) {
     return (int)((hash ^ (hash >> 16)) & 0x7fffffffu);
 }
 
+// Blends a solid colour over the entire window (alpha 0..255).
+static void FillWindowAlpha(HDC hdc, COLORREF color, int alpha) {
+    if (alpha <= 0) return;
+    RECT all = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
+    HBRUSH b = CreateSolidBrush(color);
+    if (alpha >= 255) { FillRect(hdc, &all, b); DeleteObject(b); return; }
+    HDC src = CreateCompatibleDC(hdc);
+    HBITMAP bmp = CreateCompatibleBitmap(hdc, 1, 1);
+    HGDIOBJ old = SelectObject(src, bmp);
+    RECT px = { 0, 0, 1, 1 };
+    FillRect(src, &px, b);
+    BLENDFUNCTION blend = { AC_SRC_OVER, 0, (BYTE)alpha, 0 };
+    AlphaBlend(hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, src, 0, 0, 1, 1, blend);
+    SelectObject(src, old); DeleteObject(bmp); DeleteDC(src); DeleteObject(b);
+}
+
 void DrawRainZones(HDC hdc) {
     if (current_weather != WEATHER_RAIN || weather_intensity < 0.02f) return;
     HPEN rain = CreatePen(PS_SOLID, 1, RGB(155, 190, 220)); HGDIOBJ old = SelectObject(hdc, rain);
@@ -420,8 +436,11 @@ void DrawRainZones(HDC hdc) {
     // the storm stays fixed over the ground and scrolls past as the camera
     // moves, rather than following the character around like a filter glued
     // to the screen.
-    int base_cell_x = (int)floor((double)cam_x / PERIOD_X) - 1;
-    int base_cell_y = (int)floor((double)cam_y / PERIOD_Y) - 1;
+    FillWindowAlpha(hdc, RGB(70, 85, 105), (int)(45.0f * weather_intensity));
+    // Start one cell past the window's top-left corner (cam_x/cam_y is the
+    // window centre) so the drops cover the whole view.
+    int base_cell_x = (int)floor((double)(cam_x - WINDOW_WIDTH / 2) / PERIOD_X) - 1;
+    int base_cell_y = (int)floor((double)(cam_y - WINDOW_HEIGHT / 2) / PERIOD_Y) - 1;
     int cols = WINDOW_WIDTH / PERIOD_X + 3;
     int rows = WINDOW_HEIGHT / PERIOD_Y + 3;
     // Weather is world-wide: rain covers the whole view, its density set by
@@ -444,12 +463,5 @@ void DrawRainZones(HDC hdc) {
 void DrawSleepFade(HDC hdc) {
     if (sleep_fade_frame <= 0) return;
     int coverage = sleep_fade_frame <= 30 ? sleep_fade_frame * 100 / 30 : (60 - sleep_fade_frame) * 100 / 30;
-    HBRUSH black = CreateSolidBrush(RGB(0, 0, 0));
-    for (int y = 0; y < 8; y++) for (int x = 0; x < 8; x++) {
-        if (RainHash(x * 31 + y * 67) % 100 < coverage) {
-            RECT cell = { x * 100, y * 75, (x + 1) * 100, (y + 1) * 75 };
-            FillRect(hdc, &cell, black);
-        }
-    }
-    DeleteObject(black);
+    FillWindowAlpha(hdc, RGB(0, 0, 0), coverage * 255 / 100);
 }
