@@ -105,21 +105,13 @@ static void DrawLegendSwatch(HDC hdc, int x, int y, COLORREF c, const char *labe
 }
 
 void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
-    int min_x = screen_grid_x, max_x = screen_grid_x, min_y = screen_grid_y, max_y = screen_grid_y;
-    for (int y = 0; y < META_GRID_SIZE; y++) for (int x = 0; x < META_GRID_SIZE; x++) {
-        if (!visited_biomes[y][x] && !(map_poi[y][x] & POI_CASTLE)) continue;
-        if (x < min_x) min_x = x;
-        if (x > max_x) max_x = x;
-        if (y < min_y) min_y = y;
-        if (y > max_y) max_y = y;
-    }
-    min_x = min_x - 2 < 0 ? 0 : min_x - 2; min_y = min_y - 2 < 0 ? 0 : min_y - 2;
-    max_x = max_x + 2 >= META_GRID_SIZE ? META_GRID_SIZE - 1 : max_x + 2;
-    max_y = max_y + 2 >= META_GRID_SIZE ? META_GRID_SIZE - 1 : max_y + 2;
-    int cols = max_x - min_x + 1, rows = max_y - min_y + 1;
+    // The whole 64x64 world is always shown at a fixed scale; unexplored
+    // cells stay dark until visited.
+    int min_x = 0, min_y = 0, max_x = META_GRID_SIZE - 1, max_y = META_GRID_SIZE - 1;
+    int cols = META_GRID_SIZE, rows = META_GRID_SIZE;
 
     // Cells are drawn as a 4x4 grid of small squares so landmarks read as
-    // "a few squares" at any zoom; the zoom grows as more world is explored.
+    // "a few squares".
     int q = max_w / (cols * 4);
     if (max_h / (rows * 4) < q) q = max_h / (rows * 4);
     if (q > 10) q = 10;
@@ -129,6 +121,9 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
     HBRUSH bg = CreateSolidBrush(RGB(28, 32, 40));
     RECT panel = { left - 4, top - 4, left + cols * cs + 4, top + rows * cs + 4 };
     FillRect(hdc, &panel, bg); DeleteObject(bg);
+    HBRUSH fog = CreateSolidBrush(RGB(40, 45, 55));
+    RECT world = { left, top, left + cols * cs, top + rows * cs };
+    FillRect(hdc, &world, fog); DeleteObject(fog);
 
     HBRUSH water = CreateSolidBrush(RGB(45, 120, 220));
     HBRUSH home = CreateSolidBrush(RGB(140, 85, 40));
@@ -184,7 +179,7 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
         int cx = left + (screen_grid_x - min_x) * cs, cy = top + (screen_grid_y - min_y) * cs;
         HPEN you = CreatePen(PS_SOLID, 2, RGB(255, 255, 255));
         HGDIOBJ old_p = SelectObject(hdc, you), old_b = SelectObject(hdc, GetStockObject(NULL_BRUSH));
-        Rectangle(hdc, cx, cy, cx + cs + 1, cy + cs + 1);
+        Rectangle(hdc, cx - 3, cy - 3, cx + cs + 4, cy + cs + 4);
         SelectObject(hdc, old_b); SelectObject(hdc, old_p); DeleteObject(you);
     }
 
