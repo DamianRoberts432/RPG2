@@ -8,6 +8,7 @@ void ToggleEquipSelectedItem(void);
 void HandleInventoryPrimaryAction(void);
 WeaponStats *GetEquippedWeaponStats(void);
 int WearEquippedWeapon(void);
+int WearEquippedBow(void);
 float GetNamedItemWeight(const char *name);
 void RecalculateCarriedWeight(void);
 int AddInventoryItem(const char *name, const char *slot, int quantity);

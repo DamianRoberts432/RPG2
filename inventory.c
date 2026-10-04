@@ -1,13 +1,24 @@
 #include "game.h"
 
+static int IsBowItem(const InventoryItem *item) {
+    return strcmp(item->slot, "Weapon") == 0 && strstr(item->name, "Bow") != NULL;
+}
+
+// A Bow is a secondary weapon: it can be equipped alongside a sword/axe and is
+// fired with RT / F, while the melee weapon stays in hand for A / Space.
 void SyncActiveWeapon(void) {
     active_weapon = WEAPON_SWORD;
+    bow_equipped = 0;
+    int has_melee = 0;
     for (int i = 0; i < player_item_count; i++) {
         if (!player_inventory[i].is_equipped || strcmp(player_inventory[i].slot, "Weapon") != 0) continue;
-        active_weapon = strstr(player_inventory[i].name, "Bow") != NULL ? WEAPON_BOW :
-            strcmp(player_inventory[i].name, "Axe") == 0 ? WEAPON_AXE : WEAPON_SWORD;
-        return;
+        if (IsBowItem(&player_inventory[i])) { bow_equipped = 1; continue; }
+        if (!has_melee) {
+            active_weapon = strcmp(player_inventory[i].name, "Axe") == 0 ? WEAPON_AXE : WEAPON_SWORD;
+            has_melee = 1;
+        }
     }
+    if (!has_melee && bow_equipped) active_weapon = WEAPON_BOW;
 }
 
 void ToggleEquipSelectedItem(void) {
@@ -26,14 +37,16 @@ void ToggleEquipSelectedItem(void) {
         SyncActiveWeapon();
         sprintf(arpg_action_log, "INVENTORY: Unequipped %s", item->name);
     } else {
+        int item_is_bow = IsBowItem(item);
         for (int i = 0; i < player_item_count; i++) {
-            if (strcmp(player_inventory[i].slot, item->slot) == 0) {
+            if (strcmp(player_inventory[i].slot, item->slot) == 0 && IsBowItem(&player_inventory[i]) == item_is_bow) {
                 player_inventory[i].is_equipped = 0;
             }
         }
         item->is_equipped = 1;
         SyncActiveWeapon();
-        sprintf(arpg_action_log, "INVENTORY: Equipped %s", item->name);
+        if (item_is_bow) sprintf(arpg_action_log, "INVENTORY: Equipped %s as secondary (RT / F to shoot)", item->name);
+        else sprintf(arpg_action_log, "INVENTORY: Equipped %s", item->name);
     }
     RecalculateCarriedWeight();
 }
@@ -65,6 +78,7 @@ void HandleInventoryPrimaryAction(void) {
 WeaponStats *GetEquippedWeaponStats(void) {
     for (int i = 0; i < player_item_count; i++) {
         if (!player_inventory[i].is_equipped || strcmp(player_inventory[i].slot, "Weapon") != 0) continue;
+        if (IsBowItem(&player_inventory[i])) continue;
         for (int j = 0; j < WEAPON_CATALOG_COUNT; j++) if (strcmp(player_inventory[i].name, weapon_catalog[j].name) == 0) return &weapon_catalog[j];
         if (strcmp(player_inventory[i].name, "Iron Sword") == 0) return &weapon_catalog[0];
         if (strcmp(player_inventory[i].name, "Axe") == 0) return &weapon_catalog[2];
@@ -72,10 +86,11 @@ WeaponStats *GetEquippedWeaponStats(void) {
     return NULL;
 }
 
-int WearEquippedWeapon(void) {
+static int WearEquipped(int want_bow) {
     for (int i = 0; i < player_item_count; i++) {
         InventoryItem *item = &player_inventory[i];
         if (!item->is_equipped || strcmp(item->slot, "Weapon") != 0 || item->durability_max <= 0) continue;
+        if (IsBowItem(item) != want_bow) continue;
         if (--item->durability_current <= 0) {
             sprintf(arpg_action_log, "%s broke!", item->name);
             for (int j = i; j < player_item_count - 1; j++) player_inventory[j] = player_inventory[j + 1];
@@ -88,6 +103,9 @@ int WearEquippedWeapon(void) {
     }
     return 0;
 }
+
+int WearEquippedWeapon(void) { return WearEquipped(0); }
+int WearEquippedBow(void) { return WearEquipped(1); }
 
 // Canonical weight-per-item lookup used across the inventory system. Matches
 // the player-specified reference scale (Wood 1, Stone 1, Matches 1, Dagger 1,

@@ -173,6 +173,7 @@ void GenerateProceduralScreen(int index) {
         }
     }
     current_screen_index = index;
+    player_arrow.active = 0; // arrows never carry over into the next screen
     for (int i = 0; i < MAX_CAMPFIRES; i++) {
         if (campfires[i].active && campfires[i].screen_id != index) campfires[i].active = 0;
     }

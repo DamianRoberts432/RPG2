@@ -106,7 +106,7 @@ float DistanceToEnemy(void) {
 // ~151 degree total cone), not merely within radius, so axes/swords can't
 // hit targets directly behind the hero.
 // dot > 0.25 corresponds to an angle below ~75.5 degrees from the facing axis.
-int IsFacingEnemy(void) {
+int IsFacingEnemyWithin(float dot_threshold) {
     if (enemy_hearts <= 0.0f) return 0;
     float ex = enemy_x - player_x, ey = enemy_y - player_y;
     float dist = (float)sqrt(ex * ex + ey * ey);
@@ -118,7 +118,67 @@ int IsFacingEnemy(void) {
     else if (player_facing == FACE_LEFT) fx = -1.0f;
     else fx = 1.0f;
     float dot = ex * fx + ey * fy;
-    return dot > FACING_CONE_DOT_THRESHOLD;
+    return dot > dot_threshold;
+}
+
+int IsFacingEnemy(void) { return IsFacingEnemyWithin(FACING_CONE_DOT_THRESHOLD); }
+
+// Arrows fly straight along the hero's facing; they only curve toward the
+// monster when the hero is actually facing it (within BOW_AIM_CONE_DOT).
+#define BOW_AIM_CONE_DOT 0.5f
+void FirePlayerArrow(int is_tap) {
+    player_arrow.x = player_x; player_arrow.y = player_y; player_arrow.z = 12.0f;
+    player_arrow.origin_tx = (int)player_x; player_arrow.origin_ty = (int)player_y;
+    float track_dx = 0.0f, track_dy = 0.0f;
+    if (IsFacingEnemyWithin(BOW_AIM_CONE_DOT)) {
+        track_dx = enemy_x - player_x; track_dy = enemy_y - player_y;
+    } else {
+        if (player_facing == FACE_UP) track_dy = -1.0f;
+        else if (player_facing == FACE_DOWN) track_dy = 1.0f;
+        else if (player_facing == FACE_LEFT) track_dx = -1.0f;
+        else track_dx = 1.0f;
+    }
+    float distance = (float)sqrt(track_dx * track_dx + track_dy * track_dy);
+    if (distance < 0.001f) { track_dx = 1.0f; distance = 1.0f; }
+    float distance_mult = is_tap ? 0.5f : 0.5f + (bow_charge_time * 1.5f);
+    float spd = 0.35f * distance_mult;
+    player_stamina -= bow_charge_time * 10.0f; if (player_stamina < 0.0f) player_stamina = 0.0f;
+    player_arrow.vx = (track_dx / distance) * spd;
+    player_arrow.vy = (track_dy / distance) * spd;
+    player_arrow.vz = is_tap ? 0.25f : 0.5f;
+    player_arrow.damage = is_tap ? 0.4f : (0.5f + (bow_charge_time * 1.5f));
+    player_arrow.active = 1; // Projectile active only upon release
+    if (is_tap) {
+        sprintf(arpg_action_log, "BOW: Quick-shot tap fired! (Light dmg: %.1f)", player_arrow.damage);
+    } else {
+        sprintf(arpg_action_log, "BOW: Charged shot unleashed! (Dmg: %.1f, Charge: %d%%)", player_arrow.damage, (int)(bow_charge_time * 100));
+    }
+}
+
+// Trees and rocks stop an arrow, and it vanishes at the edge of the screen.
+static int ArrowBlockedAt(float x, float y) {
+    if (x < 0.5f || y < 0.5f || x >= MAP_SIZE - 0.5f || y >= MAP_SIZE - 0.5f) return 1;
+    int tx = (int)x, ty = (int)y;
+    if (tx == player_arrow.origin_tx && ty == player_arrow.origin_ty) return 0;
+    uint8_t t = VISUAL_MAP[ty][tx];
+    return t == 11 || t == 1 || t == 3;
+}
+
+void UpdatePlayerArrow(void) {
+    if (!player_arrow.active) return;
+    for (int step = 0; step < 2; step++) {
+        player_arrow.x += player_arrow.vx * 0.5f; player_arrow.y += player_arrow.vy * 0.5f;
+        if (ArrowBlockedAt(player_arrow.x, player_arrow.y)) { player_arrow.active = 0; return; }
+    }
+    player_arrow.z += player_arrow.vz; player_arrow.vz -= 0.02f;
+    float arrow_radius = 0.5f + fabs(player_arrow.vx) + fabs(player_arrow.vy);
+    if (enemy_hearts > 0.0f && fabs(player_arrow.x - enemy_x) < arrow_radius && fabs(player_arrow.y - enemy_y) < arrow_radius) {
+        player_arrow.active = 0;
+        int broke = WearEquippedBow();
+        HandleEnemyDamage(player_arrow.damage);
+        if (broke) strcpy(arpg_action_log, "Your bow broke!");
+    }
+    if (player_arrow.z <= 0.0f) player_arrow.active = 0;
 }
 
 // Debounced/cooldown-bound class special ability bound to the "Y" button

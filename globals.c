@@ -51,6 +51,7 @@ uint8_t visited_biomes[META_GRID_SIZE][META_GRID_SIZE] = {0};
 float player_x = 15.0f; float player_y = 15.0f;
 FacingDirection player_facing = FACE_DOWN;
 WeaponType active_weapon = WEAPON_AXE;
+int bow_equipped = 0;
 
 int is_running = 0; float run_bob = 0.0f; float world_tick = 0.0f;
 int world_frame = 0;

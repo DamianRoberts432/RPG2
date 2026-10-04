@@ -50,7 +50,9 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         SelectObject(hdc, prev_ear_p); DeleteObject(ear_p);
     }
 
-    if (active_weapon == WEAPON_SWORD) {
+    // The secondary bow is shown in hand only while it is being drawn.
+    WeaponType shown_weapon = (is_charging_bow && bow_equipped) ? WEAPON_BOW : active_weapon;
+    if (shown_weapon == WEAPON_SWORD) {
         HPEN p = CreatePen(PS_SOLID, 2, RGB(200, 210, 220)); HGDIOBJ prev_p = SelectObject(hdc, p);
         if (sword_swipe_frame > 0) {
             Arc(hdc, sx - 16, sy - 16, sx + 16, sy + 16, sx - 16, sy, sx + 16, sy);
@@ -59,7 +61,7 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
             else { MoveToEx(hdc, sx + 6, sy + 12, NULL); LineTo(hdc, sx + 16, sy + 20); }
         }
         SelectObject(hdc, prev_p); DeleteObject(p);
-    } else if (active_weapon == WEAPON_AXE) {
+    } else if (shown_weapon == WEAPON_AXE) {
         HPEN p = CreatePen(PS_SOLID, 2, RGB(135, 95, 60)); HGDIOBJ prev_p = SelectObject(hdc, p);
         if (sword_swipe_frame > 0) {
             Arc(hdc, sx - 16, sy - 16, sx + 16, sy + 16, sx - 16, sy, sx + 16, sy);

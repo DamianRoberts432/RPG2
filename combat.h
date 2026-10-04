@@ -10,7 +10,10 @@ void SpawnTreeDebris(float cx, float cy);
 void UpdateDebrisTwigs(void);
 void HandleEnemyDamage(float dmg);
 float DistanceToEnemy(void);
+int IsFacingEnemyWithin(float dot_threshold);
 int IsFacingEnemy(void);
+void FirePlayerArrow(int is_tap);
+void UpdatePlayerArrow(void);
 void FireClassAbility(void);
 
 #endif // COMBAT_H
