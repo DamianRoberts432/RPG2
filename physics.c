@@ -57,6 +57,7 @@ void UpdateGamePhysics(void) {
     UpdateCritters();
     TryPickupGroundLoot();
     TryPickupDroppedItems();
+    ExpireDroppedItems();
     UpdateDebrisTwigs();
     if (is_running) {
         stamina_rest_timer = 0;

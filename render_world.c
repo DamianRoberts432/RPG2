@@ -4,6 +4,8 @@ void DrawDroppedItems(HDC hdc) {
     for (int i = 0; i < MAX_DROPPED_ITEMS; i++) {
         DroppedInventoryItem *drop = &dropped_items[i];
         if (!drop->active || drop->screen_id != current_screen_index) continue;
+        DWORD age = GetTickCount() - drop->dropped_at;
+        if (!drop->legendary && age > DROPPED_ITEM_LIFETIME_MS - 30000 && (world_frame / 8) % 2) continue;
         int sx, sy; GetIsoCoords(drop->x, drop->y, &sx, &sy);
         HBRUSH b = CreateSolidBrush(RGB(170, 150, 110)); HGDIOBJ old = SelectObject(hdc, b);
         POINT pack[] = { {sx - 6, sy - 4}, {sx + 6, sy - 4}, {sx + 7, sy + 5}, {sx - 7, sy + 5} };

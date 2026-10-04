@@ -1,6 +1,7 @@
 #include "game.h"
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    if (uMsg == WM_CLOSE && !is_character_creation) { ClearLegendaryDrops(); SaveSaveFileToDisk(); }
     if (uMsg == WM_DESTROY) { PostQuitMessage(0); return 0; } return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 

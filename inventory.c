@@ -272,6 +272,25 @@ void TryPickupGroundLoot(void) {
     }
 }
 
+int IsLegendaryItemName(const char *name) {
+    for (int i = 0; i < MERCH_ITEMS; i++) {
+        if (merchant_catalog[i].rarity == RARITY_LEGENDARY && strcmp(merchant_catalog[i].name, name) == 0) return 1;
+    }
+    return strcmp(name, "Musashi's Blade") == 0;
+}
+
+void ExpireDroppedItems(void) {
+    DWORD now = GetTickCount();
+    for (int i = 0; i < MAX_DROPPED_ITEMS; i++) {
+        DroppedInventoryItem *drop = &dropped_items[i];
+        if (drop->active && !drop->legendary && (DWORD)(now - drop->dropped_at) >= DROPPED_ITEM_LIFETIME_MS) drop->active = 0;
+    }
+}
+
+void ClearLegendaryDrops(void) {
+    for (int i = 0; i < MAX_DROPPED_ITEMS; i++) if (dropped_items[i].legendary) dropped_items[i].active = 0;
+}
+
 // Removes the currently-selected inventory item (its whole stack) and places
 // it on the ground just in front of the hero, where it can be walked back
 // over and picked up again later. This is the new "drop item" action.
@@ -297,6 +316,8 @@ void DropSelectedItem(void) {
     dropped_items[slot].screen_id = current_screen_index;
     dropped_items[slot].item = *item;
     dropped_items[slot].active = 1;
+    dropped_items[slot].dropped_at = GetTickCount();
+    dropped_items[slot].legendary = IsLegendaryItemName(item->name);
 
     int was_equipped = item->is_equipped;
     char dropped_name[32]; strcpy(dropped_name, item->name);
