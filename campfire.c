@@ -10,7 +10,7 @@ int FindFreeCampfireSlot(void) {
 void PlaceCampfireAt(int slot) {
     campfires[slot].x = player_x;
     campfires[slot].y = player_y;
-    campfires[slot].timer = 1800.0f;
+    campfires[slot].timer = CAMPFIRE_START_WOOD * CAMPFIRE_FRAMES_PER_WOOD;
     campfires[slot].active = 1;
     campfires[slot].screen_id = current_screen_index;
     bedroll_x = player_x + 1.0f;
@@ -18,34 +18,53 @@ void PlaceCampfireAt(int slot) {
     bedroll_screen_id = current_screen_index;
 }
 
-#define CAMPFIRE_MAX_TIMER 3600.0f
-
-// Adding Wood to an already-burning campfire extends how long it lasts
-// (up to a hard cap), instead of letting it slowly die out unattended.
-int AddWoodToNearbyFire(void) {
-    for (int i = 0; i < MAX_CAMPFIRES; i++) {
-        if (!campfires[i].active || campfires[i].screen_id != current_screen_index) continue;
-        if (!IsNearPoint(campfires[i].x, campfires[i].y, 2.0f)) continue;
-        if (GetMaterialCount("Wood") < 1) {
-            strcpy(arpg_action_log, "FIRE: Need Wood to feed this campfire.");
-            return 1;
-        }
-        ConsumeMaterialFromInventory("Wood", 1);
-        campfires[i].timer += 400.0f;
-        if (campfires[i].timer > CAMPFIRE_MAX_TIMER) campfires[i].timer = CAMPFIRE_MAX_TIMER;
-        RecalculateCarriedWeight();
-        strcpy(arpg_action_log, "FIRE: Added Wood; the campfire burns longer.");
-        return 1;
-    }
-    return 0;
+// A fire's fuel is its remaining burn time; each log adds
+// CAMPFIRE_FRAMES_PER_WOOD frames, and the fire holds CAMPFIRE_MAX_WOOD logs.
+int CampfireWoodCount(int i) {
+    int wood = (int)(campfires[i].timer / CAMPFIRE_FRAMES_PER_WOOD);
+    if (campfires[i].timer > wood * CAMPFIRE_FRAMES_PER_WOOD) wood++;
+    return wood;
 }
 
-// Campfires may only be ignited from the inventory menu (controller X on the
-// inventory tab / keyboard '3'). All required resources (wood, a free campfire
+int FindNearbyCampfire(float radius) {
+    for (int i = 0; i < MAX_CAMPFIRES; i++) {
+        if (!campfires[i].active || campfires[i].screen_id != current_screen_index) continue;
+        if (IsNearPoint(campfires[i].x, campfires[i].y, radius)) return i;
+    }
+    return -1;
+}
+
+void AddWoodToFire(int i) {
+    int wood = CampfireWoodCount(i);
+    if (wood >= CAMPFIRE_MAX_WOOD) {
+        sprintf(arpg_action_log, "FIRE: The campfire is full (%d/%d wood).", CAMPFIRE_MAX_WOOD, CAMPFIRE_MAX_WOOD);
+        return;
+    }
+    if (GetMaterialCount("Wood") < 1) {
+        strcpy(arpg_action_log, "FIRE: Need Wood to feed this campfire.");
+        return;
+    }
+    ConsumeMaterialFromInventory("Wood", 1);
+    campfires[i].timer += CAMPFIRE_FRAMES_PER_WOOD;
+    if (campfires[i].timer > CAMPFIRE_MAX_WOOD * CAMPFIRE_FRAMES_PER_WOOD)
+        campfires[i].timer = CAMPFIRE_MAX_WOOD * CAMPFIRE_FRAMES_PER_WOOD;
+    RecalculateCarriedWeight();
+    sprintf(arpg_action_log, "FIRE: Added Wood (%d/%d).", CampfireWoodCount(i), CAMPFIRE_MAX_WOOD);
+}
+
+int AddWoodToNearbyFire(void) {
+    int i = FindNearbyCampfire(2.0f);
+    if (i < 0) return 0;
+    AddWoodToFire(i);
+    return 1;
+}
+
+// New campfires are lit from the inventory menu (controller X on the
+// inventory tab / keyboard '3'); X in the world only feeds an existing fire. All required resources (wood, a free campfire
 // slot, and a match) are validated up-front; nothing is consumed unless every
 // check succeeds, so a failed placement never costs the player a match or wood.
 void HandleMenuLightFire(void) {
-    if (GetMaterialCount("Wood") < 2) {
+    if (GetMaterialCount("Wood") < CAMPFIRE_START_WOOD) {
         strcpy(arpg_action_log, "CAMPFIRE: Insufficient Wood! Need at least 2 logs.");
         return;
     }
@@ -83,7 +102,7 @@ void HandleMenuLightFire(void) {
             selected_inv_index = player_item_count - 1;
         }
     }
-    ConsumeMaterialFromInventory("Wood", 2);
+    ConsumeMaterialFromInventory("Wood", CAMPFIRE_START_WOOD);
 
     PlaceCampfireAt(slot);
     strcpy(arpg_action_log, "MENU FIRE: Struck a match from Menu & ignited campfire!");

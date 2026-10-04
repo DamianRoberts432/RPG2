@@ -80,6 +80,12 @@ void DrawCampfires(HDC hdc) {
         SelectObject(hdc, prev_fire); DeleteObject(fire_b);
 
         InjectDynamicGlowPass(hdc, csx, csy, 50 + flick * 2, RGB(255, 180, 50));
+        if (IsNearPoint(campfires[i].x, campfires[i].y, 2.0f)) {
+            char label[40];
+            sprintf(label, "Wood %d/%d  [X] add", CampfireWoodCount(i), CAMPFIRE_MAX_WOOD);
+            SetTextColor(hdc, RGB(255, 225, 150)); SetBkMode(hdc, TRANSPARENT);
+            TextOut(hdc, csx - 55, csy - 36, label, (int)strlen(label));
+        }
     }
 }
 

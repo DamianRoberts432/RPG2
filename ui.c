@@ -78,7 +78,8 @@ void DrawPlayerStatusHUD(HDC hdc) {
     for (int i = 0; i < MAX_CAMPFIRES; i++) {
         if (!campfires[i].active || campfires[i].screen_id != current_screen_index) continue;
         SetTextColor(hdc, campfires[i].timer > 400.0f ? RGB(255, 150, 60) : RGB(255, 230, 120));
-        const char *status = campfires[i].timer > 400.0f ? "Fire: BURNING" : "Fire: LOW";
+        char status[48];
+        sprintf(status, "Fire: %s (%d/%d wood)", campfires[i].timer > 400.0f ? "BURNING" : "LOW", CampfireWoodCount(i), CAMPFIRE_MAX_WOOD);
         TextOut(hdc, bar_x, sta_y + bar_h + 16, status, (int)strlen(status));
         break;
     }
