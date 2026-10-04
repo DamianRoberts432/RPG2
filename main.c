@@ -142,6 +142,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                         if (sx >= -TILE_WIDTH && sx <= WINDOW_WIDTH + TILE_WIDTH) DrawFlowingRiver(memHDC, sx, sy, r * MAP_SIZE + c);
                     }
                 }
+                DrawSeasonalGroundCover(memHDC);
                 for (int r = 0; r < MAP_SIZE; r++) {
                     for (int c = 0; c < MAP_SIZE; c++) {
                         int sx, sy; GetIsoCoords((float)c, (float)r, &sx, &sy); if (sx < -TILE_WIDTH * 2 || sx > WINDOW_WIDTH + TILE_WIDTH * 2) continue;

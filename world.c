@@ -364,7 +364,9 @@ void UpdateCritters(void) {
     for (int i = 0; i < MAX_CRITTERS; i++) {
         CritterEntity *critter = &critters[i];
         if (!critter->active) continue;
-        if (current_weather == WEATHER_RAIN) {
+        // Rain or snow sends nature to the nearest tree (or into a burrow if
+        // there are none); it comes back out once the weather turns fair.
+        if (IsAdverseWeather()) {
             float best = 1000.0f, tx = critter->x, ty = critter->y;
             for (int y = 1; y < MAP_SIZE - 1; y++) for (int x = 1; x < MAP_SIZE - 1; x++) {
                 if (VISUAL_MAP[y][x] != 11) continue;
@@ -379,6 +381,8 @@ void UpdateCritters(void) {
                 }
                 continue;
             }
+            critter->hidden = 1;
+            continue;
         }
         critter->hidden = 0;
         critter->x += (float)(rand() % 3 - 1) * 0.08f;
