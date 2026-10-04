@@ -126,7 +126,7 @@ void ProcessGamepadInput(void) {
 
         static DWORD bow_charge_start_gp = 0;
         BYTE rt = state.Gamepad.bRightTrigger;
-        if (active_weapon == WEAPON_BOW && rt > XINPUT_GAMEPAD_TRIGGER_THRESHOLD) {
+        if (bow_equipped && rt > XINPUT_GAMEPAD_TRIGGER_THRESHOLD) {
             if (!is_charging_bow) {
                 is_charging_bow = 1;
                 bow_charge_start_gp = GetTickCount();
@@ -138,33 +138,7 @@ void ProcessGamepadInput(void) {
         } else if (is_charging_bow && bow_charge_start_gp != 0) {
             DWORD hold_duration = GetTickCount() - bow_charge_start_gp;
             int is_tap = (hold_duration < 150 || bow_charge_time < 0.1f);
-            if (!player_arrow.active) {
-                player_arrow.x = player_x; player_arrow.y = player_y; player_arrow.z = 12.0f;
-                float track_dx = 0.0f, track_dy = 0.0f;
-                if (enemy_hearts > 0.0f) {
-                    track_dx = enemy_x - player_x; track_dy = enemy_y - player_y;
-                } else {
-                    if (player_facing == FACE_UP) track_dy = -1.0f;
-                    else if (player_facing == FACE_DOWN) track_dy = 1.0f;
-                    else if (player_facing == FACE_LEFT) track_dx = -1.0f;
-                    else track_dx = 1.0f;
-                }
-                float distance = (float)sqrt(track_dx * track_dx + track_dy * track_dy);
-                if (distance < 0.001f) { track_dx = 1.0f; distance = 1.0f; }
-                float distance_mult = is_tap ? 0.5f : 0.5f + (bow_charge_time * 1.5f);
-                float spd = 0.35f * distance_mult;
-                player_stamina -= bow_charge_time * 10.0f; if (player_stamina < 0.0f) player_stamina = 0.0f;
-                player_arrow.vx = (track_dx / distance) * spd;
-                player_arrow.vy = (track_dy / distance) * spd;
-                player_arrow.vz = is_tap ? 0.25f : 0.5f;
-                player_arrow.damage = is_tap ? 0.4f : (0.5f + (bow_charge_time * 1.5f));
-                player_arrow.active = 1; // Projectile active only upon release
-                if (is_tap) {
-                    sprintf(arpg_action_log, "BOW: Quick-shot tap fired! (Light dmg: %.1f)", player_arrow.damage);
-                } else {
-                    sprintf(arpg_action_log, "BOW: Charged shot unleashed! (Dmg: %.1f, Charge: %d%%)", player_arrow.damage, (int)(bow_charge_time * 100));
-                }
-            }
+            if (!player_arrow.active) FirePlayerArrow(is_tap);
             is_charging_bow = 0; bow_charge_time = 0.0f; bow_charge_start_gp = 0;
         }
     }
@@ -312,7 +286,7 @@ void ProcessGamepadInput(void) {
 
         static DWORD bow_charge_start_kb = 0;
         int bow_key_down = ((GetAsyncKeyState('F') | GetAsyncKeyState('R')) & 0x8000) != 0;
-        if (active_weapon == WEAPON_BOW && bow_key_down) {
+        if (bow_equipped && bow_key_down) {
             if (!is_charging_bow) {
                 is_charging_bow = 1;
                 bow_charge_start_kb = GetTickCount();
@@ -324,33 +298,7 @@ void ProcessGamepadInput(void) {
         } else if (is_charging_bow && bow_charge_start_kb != 0) {
             DWORD hold_duration = GetTickCount() - bow_charge_start_kb;
             int is_tap = (hold_duration < 150 || bow_charge_time < 0.1f);
-            if (!player_arrow.active) {
-                player_arrow.x = player_x; player_arrow.y = player_y; player_arrow.z = 12.0f;
-                float track_dx = 0.0f, track_dy = 0.0f;
-                if (enemy_hearts > 0.0f) {
-                    track_dx = enemy_x - player_x; track_dy = enemy_y - player_y;
-                } else {
-                    if (player_facing == FACE_UP) track_dy = -1.0f;
-                    else if (player_facing == FACE_DOWN) track_dy = 1.0f;
-                    else if (player_facing == FACE_LEFT) track_dx = -1.0f;
-                    else track_dx = 1.0f;
-                }
-                float distance = (float)sqrt(track_dx * track_dx + track_dy * track_dy);
-                if (distance < 0.001f) { track_dx = 1.0f; distance = 1.0f; }
-                float distance_mult = is_tap ? 0.5f : 0.5f + (bow_charge_time * 1.5f);
-                float spd = 0.35f * distance_mult;
-                player_stamina -= bow_charge_time * 10.0f; if (player_stamina < 0.0f) player_stamina = 0.0f;
-                player_arrow.vx = (track_dx / distance) * spd;
-                player_arrow.vy = (track_dy / distance) * spd;
-                player_arrow.vz = is_tap ? 0.25f : 0.5f;
-                player_arrow.damage = is_tap ? 0.4f : (0.5f + (bow_charge_time * 1.5f));
-                player_arrow.active = 1; // Projectile active only upon release
-                if (is_tap) {
-                    sprintf(arpg_action_log, "BOW: Quick-shot tap fired! (Light dmg: %.1f)", player_arrow.damage);
-                } else {
-                    sprintf(arpg_action_log, "BOW: Charged shot unleashed! (Dmg: %.1f, Charge: %d%%)", player_arrow.damage, (int)(bow_charge_time * 100));
-                }
-            }
+            if (!player_arrow.active) FirePlayerArrow(is_tap);
             is_charging_bow = 0; bow_charge_time = 0.0f; bow_charge_start_kb = 0;
         }
 

@@ -69,7 +69,7 @@ typedef enum { WEATHER_CLEAR, WEATHER_RAIN, WEATHER_SNOW } WeatherType;
 typedef enum { RACE_ELF, RACE_HUMAN, RACE_DWARF, RACE_HALFLING, RACE_GNOME } RaceType;
 typedef enum { CLASS_NECROMANCER, CLASS_WIZARD, CLASS_KNIGHT, CLASS_WARRIOR, CLASS_ROGUE } ClassType;
 
-typedef struct { float x, y, z; float vx, vy, vz; int active; float damage; } ArrowProjectile;
+typedef struct { float x, y, z; float vx, vy, vz; int active; float damage; int origin_tx, origin_ty; } ArrowProjectile;
 typedef struct { float x, y, z; float timer; int active; int color_profile; } ButterflyParticle;
 typedef struct { float x, y; float vx, vy; int life; int screen_id; int active; } DebrisParticle;
 typedef struct { float x, y; float vx, vy; int life; int max_life; int active; } BloodParticle;
@@ -131,10 +131,12 @@ extern float opt_xp_mult;
 extern float opt_loot_mult;
 extern float opt_day_night_speed;
 extern uint8_t visited_biomes[META_GRID_SIZE][META_GRID_SIZE];
+extern uint8_t map_poi[META_GRID_SIZE][META_GRID_SIZE];
 extern float player_x;
 extern float player_y;
 extern FacingDirection player_facing;
 extern WeaponType active_weapon;
+extern int bow_equipped; // a Bow equipped as secondary weapon (RT / F fires it)
 extern int is_running;
 extern float run_bob;
 extern float world_tick;
@@ -260,5 +262,7 @@ extern int cam_y;
 #include "ui.h"
 #include "physics.h"
 #include "input.h"
+#include "worldmap.h"
+#include "weather.h"
 
 #endif // GAME_H

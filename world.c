@@ -40,7 +40,7 @@ CaveRecord *FindOrCreateCaveRecord(int origin_cell) {
     if (free_slot == -1) free_slot = 0; // extremely unlikely to ever fill up; reuse slot 0 defensively
     cave_records[free_slot].valid = 1;
     cave_records[free_slot].origin_cell = origin_cell;
-    cave_records[free_slot].treasure_claimed = 0;
+    cave_records[free_slot].treasure_claimed = IsMapTreasureFound(origin_cell); // remembered across saves
     return &cave_records[free_slot];
 }
 
@@ -73,6 +73,7 @@ void ClaimCaveTreasureAndExit(void) {
     CaveRecord *rec = FindOrCreateCaveRecord(current_cave_origin_cell);
     if (!rec->treasure_claimed) {
         rec->treasure_claimed = 1;
+        MarkMapTreasureFound(current_cave_origin_cell);
         cave_treasure_hunts_found++;
         DropGroundLoot(cave_treasure_x, cave_treasure_y, LOOT_RUSTY_SWORD, 1);
         strcpy(arpg_action_log, "TREASURE: Found cave treasure! The way out opens behind you.");
@@ -173,6 +174,7 @@ void GenerateProceduralScreen(int index) {
         }
     }
     current_screen_index = index;
+    player_arrow.active = 0; // arrows never carry over into the next screen
     for (int i = 0; i < MAX_CAMPFIRES; i++) {
         if (campfires[i].active && campfires[i].screen_id != index) campfires[i].active = 0;
     }
@@ -324,6 +326,7 @@ void GenerateProceduralScreen(int index) {
     GenerateVillageNPCs();
     if (current_biome == BIOME_SWAMP) { gator_x = 12.0f; gator_y = 12.0f; gator_active = 1; } else { gator_active = 0; }
     TriggerMonsterRespawn();
+    RecordCurrentScreenOnMap();
     SaveSaveFileToDisk();
 }
 

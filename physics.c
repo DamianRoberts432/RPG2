@@ -45,11 +45,7 @@ void UpdateGamePhysics(void) {
             RestockMerchant();
         } else if (sleep_fade_frame >= 60) sleep_fade_frame = 0;
     }
-    wind_dir = (int)(sin(world_tick * 0.01f + current_screen_index) * 3.0f);
-    if (world_tick >= weather_next_change) {
-        current_weather = (WeatherType)(rand() % 3);
-        weather_next_change = world_tick + 200.0f;
-    }
+    UpdateSeasonAndWeather();
     for (int i = 0; i < MAX_CAMPFIRES; i++) if (campfires[i].active) {
         if (campfires[i].screen_id != current_screen_index || --campfires[i].timer <= 0.0f) {
             campfires[i].active = 0;

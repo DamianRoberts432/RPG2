@@ -80,7 +80,51 @@ void DrawCampfires(HDC hdc) {
         SelectObject(hdc, prev_fire); DeleteObject(fire_b);
 
         InjectDynamicGlowPass(hdc, csx, csy, 50 + flick * 2, RGB(255, 180, 50));
+        if (IsNearPoint(campfires[i].x, campfires[i].y, 2.0f)) {
+            char label[40];
+            sprintf(label, "Wood %d/%d  [X] add", CampfireWoodCount(i), CAMPFIRE_MAX_WOOD);
+            SetTextColor(hdc, RGB(255, 225, 150)); SetBkMode(hdc, TRANSPARENT);
+            TextOut(hdc, csx - 55, csy - 36, label, (int)strlen(label));
+        }
     }
+}
+
+static void DrawCanopyBlob(HDC hdc, int cx, int cy, int r, COLORREF color) {
+    int h = r * 4 / 5;
+    POINT blob[] = {{cx - r, cy}, {cx - r / 2, cy - h}, {cx + r / 2, cy - h}, {cx + r, cy}, {cx + r / 2, cy + h}, {cx - r / 2, cy + h}};
+    HBRUSH b = CreateSolidBrush(color); HGDIOBJ old = SelectObject(hdc, b);
+    Polygon(hdc, blob, 6); SelectObject(hdc, old); DeleteObject(b);
+}
+
+// Broadleaf trees follow the seasons: green in spring/summer, orange, red or
+// gold in fall, and bare branches in winter. Apple trees are among these.
+static void DrawDeciduousCanopy(HDC hdc, int sx, int sy, int tile_seed) {
+    static const COLORREF spring[3] = { RGB(85, 160, 60), RGB(110, 185, 75), RGB(140, 205, 95) };
+    static const COLORREF summer[3] = { RGB(55, 125, 45), RGB(75, 150, 60), RGB(95, 180, 75) };
+    static const COLORREF fall[3][3] = {
+        { RGB(190, 95, 30), RGB(215, 125, 40), RGB(240, 160, 60) },
+        { RGB(150, 45, 30), RGB(180, 65, 40), RGB(210, 95, 50) },
+        { RGB(190, 150, 35), RGB(215, 180, 55), RGB(235, 205, 85) } };
+    if (current_season == SEASON_WINTER) {
+        HPEN branch = CreatePen(PS_SOLID, 2, RGB(110, 80, 60)); HGDIOBJ old_p = SelectObject(hdc, branch);
+        MoveToEx(hdc, sx, sy + 10, NULL); LineTo(hdc, sx, sy - 12);
+        MoveToEx(hdc, sx, sy + 2, NULL); LineTo(hdc, sx - 11, sy - 8);
+        MoveToEx(hdc, sx, sy - 2, NULL); LineTo(hdc, sx + 11, sy - 12);
+        MoveToEx(hdc, sx, sy - 6, NULL); LineTo(hdc, sx - 5, sy - 17);
+        SelectObject(hdc, old_p); DeleteObject(branch);
+        if (snow_cover > 0.25f) {
+            HPEN snow = CreatePen(PS_SOLID, 2, RGB(240, 244, 250)); old_p = SelectObject(hdc, snow);
+            MoveToEx(hdc, sx - 9, sy - 8, NULL); LineTo(hdc, sx - 4, sy - 4);
+            MoveToEx(hdc, sx + 4, sy - 7, NULL); LineTo(hdc, sx + 10, sy - 12);
+            SelectObject(hdc, old_p); DeleteObject(snow);
+        }
+        return;
+    }
+    const COLORREF *c = current_season == SEASON_SPRING ? spring : current_season == SEASON_SUMMER ? summer : fall[(tile_seed / 3) % 3];
+    DrawCanopyBlob(hdc, sx, sy - 12, 12, c[0]);
+    DrawCanopyBlob(hdc, sx - 9, sy - 2, 11, c[1]);
+    DrawCanopyBlob(hdc, sx + 9, sy - 1, 11, c[1]);
+    DrawCanopyBlob(hdc, sx + 1, sy - 8, 9, c[2]);
 }
 
 void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
@@ -95,7 +139,10 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
     POINT trunk[] = {{sx - 4, sy + 10}, {sx + 4, sy + 10}, {sx + 4, sy + 24}, {sx - 4, sy + 24}};
     HBRUSH b = CreateSolidBrush(RGB(130, 95, 70)); HGDIOBJ old = SelectObject(hdc, b); Polygon(hdc, trunk, 4); SelectObject(hdc, old); DeleteObject(b);
     
-    if (tile_seed % 2 == 0) {
+    int deciduous = IsDeciduousTree(tile_seed);
+    if (deciduous) {
+        DrawDeciduousCanopy(hdc, sx, sy, tile_seed);
+    } else if (tile_seed % 2 == 0) {
         int heights[] = {12, 4, -4}, widths[] = {20, 16, 12};
         COLORREF shades[] = {RGB(55, 125, 45), RGB(75, 150, 60), RGB(95, 180, 75)};
         for (int i = 0; i < 3; i++) {
@@ -132,7 +179,12 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
             Polygon(hdc, right_facet, 3); SelectObject(hdc, prev2); DeleteObject(f2);
         }
     }
-    if (((tile_seed + current_screen_index * 31) % 150 + 150) % 150 == 0) {
+    if (!deciduous && snow_cover > 0.25f && (tile_seed % 2 == 0 || world_tick >= 180.0f + (float)(tile_seed % 90))) {
+        HBRUSH snow_b = CreateSolidBrush(RGB(240, 244, 250)); HGDIOBJ prev_snow = SelectObject(hdc, snow_b);
+        POINT cap[] = {{sx, sy - 16}, {sx + 8, sy - 5}, {sx, sy - 2}, {sx - 8, sy - 5}};
+        Polygon(hdc, cap, 4); SelectObject(hdc, prev_snow); DeleteObject(snow_b);
+    }
+    if (TreeHasApples(tile_seed)) {
         HBRUSH apple = CreateSolidBrush(RGB(210, 45, 35)); HGDIOBJ old_apple = SelectObject(hdc, apple);
         Ellipse(hdc, sx - 10, sy - 8, sx - 5, sy - 3); Ellipse(hdc, sx + 5, sy - 4, sx + 10, sy + 1);
         SelectObject(hdc, old_apple); DeleteObject(apple);
@@ -140,15 +192,31 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
     SelectObject(hdc, old);
 }
 
+static void DrawRockCone(HDC hdc, int bx, int by, int w, int h) {
+    int base_h = w / 2 > 2 ? w / 2 : 2;
+    HBRUSH dark = CreateSolidBrush(RGB(70, 72, 80)), light = CreateSolidBrush(RGB(110, 114, 125));
+    HGDIOBJ old = SelectObject(hdc, dark);
+    Ellipse(hdc, bx - w, by - base_h, bx + w, by + base_h);
+    SelectObject(hdc, light);
+    Pie(hdc, bx - w, by - base_h, bx + w, by + base_h, bx, by + base_h, bx, by - base_h);
+    SelectObject(hdc, dark);
+    POINT left[] = {{bx, by - h}, {bx - w, by}, {bx, by + base_h}};
+    Polygon(hdc, left, 3);
+    SelectObject(hdc, light);
+    POINT right[] = {{bx, by - h}, {bx, by + base_h}, {bx + w, by}};
+    Polygon(hdc, right, 3);
+    SelectObject(hdc, old); DeleteObject(dark); DeleteObject(light);
+    HPEN shine = CreatePen(PS_SOLID, 1, RGB(160, 165, 178)); HGDIOBJ old_p = SelectObject(hdc, shine);
+    MoveToEx(hdc, bx + 1, by - h + 3, NULL); LineTo(hdc, bx + w / 2, by - 1);
+    SelectObject(hdc, old_p); DeleteObject(shine);
+}
+
+// Cave formations: clusters of tall, tapering stalagmite cones.
 void DrawSubterraneanGeology(HDC hdc, int sx, int sy, int tile_seed) {
-    int height_offset = 15 + (tile_seed % 20);
-    HBRUSH left_shade = CreateSolidBrush(RGB(75, 78, 85)); HGDIOBJ old = SelectObject(hdc, left_shade);
-    POINT left_facet[] = {{sx, sy - height_offset}, {sx - 20, sy + 10}, {sx, sy + 16}};
-    Polygon(hdc, left_facet, 3); SelectObject(hdc, old); DeleteObject(left_shade);
-    
-    HBRUSH right_shade = CreateSolidBrush(RGB(95, 100, 110)); HGDIOBJ prev = SelectObject(hdc, right_shade);
-    POINT right_facet[] = {{sx, sy - height_offset}, {sx, sy + 16}, {sx + 20, sy + 10}};
-    Polygon(hdc, right_facet, 3); SelectObject(hdc, prev); DeleteObject(right_shade);
+    int h = 28 + (tile_seed % 22), w = 8 + (tile_seed % 5);
+    if (tile_seed % 4 == 0) DrawRockCone(hdc, sx - 12, sy + 2, w / 2 + 2, h / 2);
+    DrawRockCone(hdc, sx, sy + 6, w, h);
+    if (tile_seed % 3 != 0) DrawRockCone(hdc, sx + 11, sy + 11, w / 2 + 2, h * 11 / 20);
 }
 
 void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed) {
@@ -306,7 +374,7 @@ int RainHash(int value) {
 }
 
 void DrawRainZones(HDC hdc) {
-    if (current_weather != WEATHER_RAIN) return;
+    if (current_weather != WEATHER_RAIN || weather_intensity < 0.02f) return;
     HPEN rain = CreatePen(PS_SOLID, 1, RGB(155, 190, 220)); HGDIOBJ old = SelectObject(hdc, rain);
     int phase = (int)(world_tick / 8.0f);
     const int PERIOD_X = 200, PERIOD_Y = 150;
@@ -319,13 +387,15 @@ void DrawRainZones(HDC hdc) {
     int base_cell_y = (int)floor((double)cam_y / PERIOD_Y) - 1;
     int cols = WINDOW_WIDTH / PERIOD_X + 3;
     int rows = WINDOW_HEIGHT / PERIOD_Y + 3;
+    // Weather is world-wide: rain covers the whole view, its density set by
+    // the global weather_intensity rather than by which screen you are on.
+    int drops = 3 + (int)(11.0f * weather_intensity);
     for (int zy = 0; zy < rows; zy++) for (int zx = 0; zx < cols; zx++) {
         int cell_x = base_cell_x + zx, cell_y = base_cell_y + zy;
-        int seed = current_screen_index * 197 + phase + cell_x * 31 + cell_y * 67;
-        if (RainHash(seed) % 100 >= 62) continue;
+        int seed = phase + cell_x * 31 + cell_y * 67;
         int screen_ox = cell_x * PERIOD_X - cam_x + (WINDOW_WIDTH / 2) + wind_dir * 12;
         int screen_oy = cell_y * PERIOD_Y - cam_y + (WINDOW_HEIGHT / 2);
-        for (int n = 0; n < 10; n++) {
+        for (int n = 0; n < drops; n++) {
             int h = RainHash(seed + n * 17);
             int x = screen_ox + h % 190, y = screen_oy + (h / 191) % 140;
             MoveToEx(hdc, x, y, NULL); LineTo(hdc, x - wind_dir, y + 9);

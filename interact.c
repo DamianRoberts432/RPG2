@@ -14,8 +14,7 @@ int IsNearBedroll(void) {
 }
 
 int IsAppleTree(int x, int y) {
-    int seed = y * MAP_SIZE + x + current_screen_index * 31;
-    return (seed % 150 + 150) % 150 == 0;
+    return TreeHasApples(y * MAP_SIZE + x);
 }
 
 void RememberChoppedAppleTree(int x, int y) {
@@ -37,6 +36,17 @@ void HandleContextInteract(void) {
     if (!in_cave && current_biome == BIOME_MOUNTAIN && IsNearPoint((float)torch_gate_x, (float)torch_gate_y, 1.3f)) {
         EnterCave();
         return;
+    }
+    // The bedroll sits one tile from its campfire, so X goes to whichever of
+    // the two the hero is standing closer to.
+    int fire = FindNearbyCampfire(1.6f);
+    if (fire >= 0) {
+        float fdx = player_x - campfires[fire].x, fdy = player_y - campfires[fire].y;
+        float bdx = player_x - bedroll_x, bdy = player_y - bedroll_y;
+        if (!IsNearBedroll() || fdx * fdx + fdy * fdy <= bdx * bdx + bdy * bdy) {
+            AddWoodToFire(fire);
+            return;
+        }
     }
     if (IsNearBedroll()) {
         sleep_fade_frame = 1;
@@ -141,9 +151,8 @@ void HandleContextInteract(void) {
         return;
     }
 
-    // X/C is strictly a contextual harvest interaction (chop trees / mine rocks).
-    // Campfires are intentionally NOT placed here; they can only be ignited from
-    // the inventory menu via HandleMenuLightFire() to avoid accidental wood loss.
+    // X/C never lights a new campfire (that is done from the inventory menu via
+    // HandleMenuLightFire() to avoid accidental wood loss); it only feeds one.
     strcpy(arpg_action_log, "INTERACT: Nothing to chop or mine here.");
 }
 

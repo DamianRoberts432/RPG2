@@ -13,6 +13,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
     
     grass_brush = CreateSolidBrush(RGB(105, 185, 85)); creation_bg = CreateSolidBrush(RGB(15, 18, 24)); clean_null_pen = CreatePen(PS_NULL, 0, RGB(0,0,0));
     RecalculateCarriedWeight();
+    LoadWorldMapState();
+    InitSeasonAndWeather();
     ApplyClassAndRaceStats(); GenerateProceduralScreen(screen_grid_y * META_GRID_SIZE + screen_grid_x);
 
     while (msg.message != WM_QUIT) {
@@ -20,17 +22,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
         else {
             ProcessGamepadInput(); UpdateGamePhysics();
             
-            if (player_arrow.active) {
-                player_arrow.x += player_arrow.vx; player_arrow.y += player_arrow.vy; player_arrow.z += player_arrow.vz; player_arrow.vz -= 0.02f;
-                float arrow_radius = 0.5f + fabs(player_arrow.vx) + fabs(player_arrow.vy);
-                if (enemy_hearts > 0.0f && fabs(player_arrow.x - enemy_x) < arrow_radius && fabs(player_arrow.y - enemy_y) < arrow_radius) {
-                    player_arrow.active = 0;
-                    int broke = WearEquippedWeapon();
-                    HandleEnemyDamage(player_arrow.damage);
-                    if (broke) strcpy(arpg_action_log, "Your bow broke!");
-                }
-                if (player_arrow.z <= 0.0f) player_arrow.active = 0;
-            }
+            UpdatePlayerArrow();
             
             if (!in_cave && (player_x <= 0.5f || player_x >= (MAP_SIZE - 1.5f) || player_y <= 0.5f || player_y >= (MAP_SIZE - 1.5f))) {
                 if (screens_until_town == 0) {
@@ -139,6 +131,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 int b_tone = (int)(40.0f + ambient_intensity * 45.0f);
                 
                 COLORREF meadow_color = RGB(r_tone, g_tone, b_tone);
+                if (current_biome != BIOME_CAVE) meadow_color = ApplySeasonToGround(meadow_color);
                 HBRUSH live_ground = CreateSolidBrush(meadow_color); HGDIOBJ old_bg = SelectObject(memHDC, live_ground); PatBlt(memHDC, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, PATCOPY); SelectObject(memHDC, old_bg); DeleteObject(live_ground);
                 SelectObject(memHDC, clean_null_pen);
 
@@ -192,7 +185,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 DrawCampfires(memHDC); DrawBedroll(memHDC); DrawGroundLoot(memHDC); DrawDroppedItems(memHDC); DrawDebrisTwigs(memHDC); DrawSummonedZombie(memHDC);
                 DrawFlyingArrow(memHDC); DrawFlyingSpell(memHDC); DrawClassAbilityFX(memHDC); DrawButterflies(memHDC); DrawBloodMistFX(memHDC);
                 DrawEnvironmentalCritters(memHDC); DrawMerchantStoreFront(memHDC); DrawVillage(memHDC);
-                DrawRainZones(memHDC); DrawSolitaireSunMoonBeam(memHDC);
+                DrawWeatherEffects(memHDC); DrawSolitaireSunMoonBeam(memHDC);
                 DrawPlayerStatusHUD(memHDC);
 
                 if (is_menu_open) DrawTabbedMenuOverlay(memHDC);
