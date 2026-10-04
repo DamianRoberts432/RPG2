@@ -19,5 +19,7 @@ int IsDeciduousTree(int tile_seed);
 int TreeHasApples(int tile_seed);
 COLORREF ApplySeasonToGround(COLORREF base);
 void DrawWeatherEffects(HDC hdc);
+int IsAdverseWeather(void);
+void DrawSeasonalGroundCover(HDC hdc);
 
 #endif // WEATHER_H

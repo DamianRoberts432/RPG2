@@ -185,6 +185,7 @@ void DrawClassAbilityFX(HDC hdc) {
 }
 
 void DrawButterflies(HDC hdc) {
+    if (IsAdverseWeather()) return;
     if (current_biome == BIOME_CAVE) return;
     for (int i = 0; i < MAX_BUTTERFLIES; i++) {
         if (!butterflies[i].active) continue;

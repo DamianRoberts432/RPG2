@@ -111,7 +111,10 @@ typedef struct {
 // enum-based GroundLoot spawned by chopping/mining/fishing. Stores a full
 // copy of the InventoryItem so arbitrary owned items (weapons, armor, tools)
 // can be dropped and later picked back up with their original stats intact.
-typedef struct { float x, y; InventoryItem item; int screen_id, active; } DroppedInventoryItem;
+// Ordinary drops vanish DROPPED_ITEM_LIFETIME_MS after landing; Legendary
+// drops never time out but are cleared when the game is saved on exit.
+#define DROPPED_ITEM_LIFETIME_MS (5 * 60 * 1000)
+typedef struct { float x, y; InventoryItem item; int screen_id, active; DWORD dropped_at; int legendary; } DroppedInventoryItem;
 extern char player_name[32];
 extern RaceType selected_race;
 extern ClassType selected_class;

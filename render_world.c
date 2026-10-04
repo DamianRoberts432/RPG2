@@ -4,6 +4,8 @@ void DrawDroppedItems(HDC hdc) {
     for (int i = 0; i < MAX_DROPPED_ITEMS; i++) {
         DroppedInventoryItem *drop = &dropped_items[i];
         if (!drop->active || drop->screen_id != current_screen_index) continue;
+        DWORD age = GetTickCount() - drop->dropped_at;
+        if (!drop->legendary && age > DROPPED_ITEM_LIFETIME_MS - 30000 && (world_frame / 8) % 2) continue;
         int sx, sy; GetIsoCoords(drop->x, drop->y, &sx, &sy);
         HBRUSH b = CreateSolidBrush(RGB(170, 150, 110)); HGDIOBJ old = SelectObject(hdc, b);
         POINT pack[] = { {sx - 6, sy - 4}, {sx + 6, sy - 4}, {sx + 7, sy + 5}, {sx - 7, sy + 5} };
@@ -339,16 +341,51 @@ void DrawSolitaireSunMoonBeam(HDC hdc) {
     DeleteObject(beam_rgn);
 }
 
+// Loot reads as a treasure pile: three stacks of gold coins with a few
+// jewels scattered at the base and an occasional glint.
+static void DrawTreasurePile(HDC hdc, int sx, int sy, int seed) {
+    HGDIOBJ old_p = SelectObject(hdc, GetStockObject(NULL_PEN));
+    HBRUSH shadow = CreateSolidBrush(RGB(25, 30, 25));
+    HGDIOBJ old_b = SelectObject(hdc, shadow);
+    Ellipse(hdc, sx - 22, sy - 3, sx + 22, sy + 10);
+    HBRUSH rim = CreateSolidBrush(RGB(165, 115, 20)), face = CreateSolidBrush(RGB(250, 205, 60));
+    static const int stack_x[3] = { -11, 2, 13 }, stack_h[3] = { 5, 8, 3 };
+    for (int s = 0; s < 3; s++) for (int k = 0; k < stack_h[s]; k++) {
+        int cx = sx + stack_x[s], cy = sy + 3 - k * 3;
+        SelectObject(hdc, rim);  Ellipse(hdc, cx - 7, cy - 2, cx + 7, cy + 5);
+        SelectObject(hdc, face); Ellipse(hdc, cx - 7, cy - 4, cx + 7, cy + 3);
+    }
+    static const COLORREF jewel_colors[3] = { RGB(225, 40, 65), RGB(60, 125, 245), RGB(50, 205, 115) };
+    static const int jewel_x[3] = { -4, 10, -17 }, jewel_y[3] = { 6, 5, 4 };
+    for (int j = 0; j < 3; j++) {
+        HBRUSH gem_b = CreateSolidBrush(jewel_colors[j]);
+        SelectObject(hdc, gem_b);
+        int x = sx + jewel_x[j], y = sy + jewel_y[j];
+        POINT gem[] = { {x, y - 5}, {x + 4, y}, {x, y + 4}, {x - 4, y} };
+        Polygon(hdc, gem, 4);
+        SelectObject(hdc, rim); DeleteObject(gem_b);
+    }
+    SelectObject(hdc, old_b); SelectObject(hdc, old_p);
+    DeleteObject(shadow); DeleteObject(rim); DeleteObject(face);
+    if (((world_frame / 10) + seed) % 6 == 0) {
+        HPEN glint = CreatePen(PS_SOLID, 1, RGB(255, 255, 225));
+        HGDIOBJ old_g = SelectObject(hdc, glint);
+        int gx = sx + 4, gy = sy - 22;
+        MoveToEx(hdc, gx - 4, gy, NULL); LineTo(hdc, gx + 5, gy);
+        MoveToEx(hdc, gx, gy - 4, NULL); LineTo(hdc, gx, gy + 5);
+        SelectObject(hdc, old_g); DeleteObject(glint);
+    }
+}
+
 void DrawGroundLoot(HDC hdc) {
     for (int i = 0; i < MAX_GROUND_LOOT; i++) {
         GroundLoot *loot = &ground_loot[i];
         if (!loot->active || loot->screen_id != current_screen_index) continue;
         int sx, sy; GetIsoCoords(loot->x, loot->y, &sx, &sy);
-        HBRUSH b = CreateSolidBrush(loot->item_id == LOOT_APPLE ? RGB(210, 45, 35) :
-            loot->item_id == LOOT_FISH ? RGB(80, 175, 220) : RGB(205, 205, 215));
+        if (loot->item_id != LOOT_APPLE && loot->item_id != LOOT_FISH) { DrawTreasurePile(hdc, sx, sy, i); continue; }
+        HBRUSH b = CreateSolidBrush(loot->item_id == LOOT_APPLE ? RGB(210, 45, 35) : RGB(80, 175, 220));
         HGDIOBJ old = SelectObject(hdc, b);
-        if (loot->item_id == LOOT_APPLE || loot->item_id == LOOT_FISH) Ellipse(hdc, sx - 4, sy - 7, sx + 4, sy + 1);
-        else { MoveToEx(hdc, sx - 7, sy + 2, NULL); LineTo(hdc, sx + 7, sy - 5); Rectangle(hdc, sx - 9, sy - 1, sx - 4, sy + 5); }
+        Ellipse(hdc, sx - 6, sy - 10, sx + 6, sy + 2);
         SelectObject(hdc, old); DeleteObject(b);
     }
 }
@@ -373,6 +410,22 @@ int RainHash(int value) {
     return (int)((hash ^ (hash >> 16)) & 0x7fffffffu);
 }
 
+// Blends a solid colour over the entire window (alpha 0..255).
+static void FillWindowAlpha(HDC hdc, COLORREF color, int alpha) {
+    if (alpha <= 0) return;
+    RECT all = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
+    HBRUSH b = CreateSolidBrush(color);
+    if (alpha >= 255) { FillRect(hdc, &all, b); DeleteObject(b); return; }
+    HDC src = CreateCompatibleDC(hdc);
+    HBITMAP bmp = CreateCompatibleBitmap(hdc, 1, 1);
+    HGDIOBJ old = SelectObject(src, bmp);
+    RECT px = { 0, 0, 1, 1 };
+    FillRect(src, &px, b);
+    BLENDFUNCTION blend = { AC_SRC_OVER, 0, (BYTE)alpha, 0 };
+    AlphaBlend(hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, src, 0, 0, 1, 1, blend);
+    SelectObject(src, old); DeleteObject(bmp); DeleteDC(src); DeleteObject(b);
+}
+
 void DrawRainZones(HDC hdc) {
     if (current_weather != WEATHER_RAIN || weather_intensity < 0.02f) return;
     HPEN rain = CreatePen(PS_SOLID, 1, RGB(155, 190, 220)); HGDIOBJ old = SelectObject(hdc, rain);
@@ -383,8 +436,11 @@ void DrawRainZones(HDC hdc) {
     // the storm stays fixed over the ground and scrolls past as the camera
     // moves, rather than following the character around like a filter glued
     // to the screen.
-    int base_cell_x = (int)floor((double)cam_x / PERIOD_X) - 1;
-    int base_cell_y = (int)floor((double)cam_y / PERIOD_Y) - 1;
+    FillWindowAlpha(hdc, RGB(70, 85, 105), (int)(45.0f * weather_intensity));
+    // Start one cell past the window's top-left corner (cam_x/cam_y is the
+    // window centre) so the drops cover the whole view.
+    int base_cell_x = (int)floor((double)(cam_x - WINDOW_WIDTH / 2) / PERIOD_X) - 1;
+    int base_cell_y = (int)floor((double)(cam_y - WINDOW_HEIGHT / 2) / PERIOD_Y) - 1;
     int cols = WINDOW_WIDTH / PERIOD_X + 3;
     int rows = WINDOW_HEIGHT / PERIOD_Y + 3;
     // Weather is world-wide: rain covers the whole view, its density set by
@@ -407,12 +463,5 @@ void DrawRainZones(HDC hdc) {
 void DrawSleepFade(HDC hdc) {
     if (sleep_fade_frame <= 0) return;
     int coverage = sleep_fade_frame <= 30 ? sleep_fade_frame * 100 / 30 : (60 - sleep_fade_frame) * 100 / 30;
-    HBRUSH black = CreateSolidBrush(RGB(0, 0, 0));
-    for (int y = 0; y < 8; y++) for (int x = 0; x < 8; x++) {
-        if (RainHash(x * 31 + y * 67) % 100 < coverage) {
-            RECT cell = { x * 100, y * 75, (x + 1) * 100, (y + 1) * 75 };
-            FillRect(hdc, &cell, black);
-        }
-    }
-    DeleteObject(black);
+    FillWindowAlpha(hdc, RGB(0, 0, 0), coverage * 255 / 100);
 }

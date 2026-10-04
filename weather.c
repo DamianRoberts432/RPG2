@@ -335,6 +335,57 @@ static void DrawFallingLeaves(HDC hdc) {
     }
 }
 
+int IsAdverseWeather(void) {
+    return (current_weather == WEATHER_RAIN || current_weather == WEATHER_SNOW) && weather_intensity > 0.15f;
+}
+
+// Ground cover is stateless like the falling leaves: which tiles carry a snow
+// drift or a leaf pile is a hash of the tile, and how many do follows
+// snow_cover / how far into Fall it is, so it builds up and melts away.
+void DrawSeasonalGroundCover(HDC hdc) {
+    if (current_biome == BIOME_CAVE) return;
+    float leaf_cover = 0.0f;
+    if (current_season == SEASON_FALL) leaf_cover = 0.25f + 0.6f * (season_elapsed / SEASON_LENGTH_SECONDS);
+    else if (current_season == SEASON_WINTER && season_elapsed < SEASON_LENGTH_SECONDS * 0.2f)
+        leaf_cover = 0.3f * (1.0f - season_elapsed / (SEASON_LENGTH_SECONDS * 0.2f));
+    leaf_cover *= 1.0f - snow_cover;
+    if (snow_cover < 0.02f && leaf_cover < 0.02f) return;
+
+    static const COLORREF leaf_colors[] = { RGB(200, 105, 35), RGB(170, 60, 35), RGB(210, 165, 55), RGB(140, 85, 40) };
+    int white = 140 + (int)((float)fabs(sin(day_night_cycle_accumulator)) * 110.0f);
+    HBRUSH snow_b = CreateSolidBrush(RGB(white, white, white + 5 > 255 ? 255 : white + 5));
+    HBRUSH leaf_b[4];
+    for (int i = 0; i < 4; i++) leaf_b[i] = CreateSolidBrush(leaf_colors[i]);
+    HGDIOBJ old_b = SelectObject(hdc, snow_b), old_p = SelectObject(hdc, GetStockObject(NULL_PEN));
+    int snow_pct = (int)(snow_cover * 100.0f), leaf_pct = (int)(leaf_cover * 100.0f);
+
+    for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) {
+        uint8_t t = VISUAL_MAP[r][c];
+        if (t == 1 || t == 10 || t == 12) continue;
+        int sx, sy; GetIsoCoords((float)c, (float)r, &sx, &sy);
+        if (sx < -TILE_WIDTH || sx > WINDOW_WIDTH + TILE_WIDTH || sy < -TILE_HEIGHT || sy > WINDOW_HEIGHT + TILE_HEIGHT) continue;
+        int cy = sy + TILE_HEIGHT / 2;
+        int h = RainHash(current_screen_index * 4099 + r * MAP_SIZE + c) & 0x7fffffff;
+        if (h % 100 < snow_pct) {
+            int w = 10 + h % 12 + snow_pct / 8, hh = w / 2;
+            int ox = (h >> 4) % 17 - 8, oy = (h >> 9) % 7 - 3;
+            SelectObject(hdc, snow_b);
+            Ellipse(hdc, sx + ox - w, cy + oy - hh, sx + ox + w, cy + oy + hh);
+        } else if ((h >> 3) % 100 < leaf_pct) {
+            for (int k = 0; k < 3; k++) {
+                int hk = RainHash(h + k * 131) & 0x7fffffff;
+                int lx = sx + hk % 33 - 16, ly = cy + (hk >> 6) % 13 - 6;
+                SelectObject(hdc, leaf_b[hk % 4]);
+                POINT leaf[] = { {lx - 4, ly}, {lx, ly - 2}, {lx + 4, ly}, {lx, ly + 2} };
+                Polygon(hdc, leaf, 4);
+            }
+        }
+    }
+    SelectObject(hdc, old_b); SelectObject(hdc, old_p);
+    DeleteObject(snow_b);
+    for (int i = 0; i < 4; i++) DeleteObject(leaf_b[i]);
+}
+
 void DrawWeatherEffects(HDC hdc) {
     if (current_biome == BIOME_CAVE) return;
     DrawRainZones(hdc);

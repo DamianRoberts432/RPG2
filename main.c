@@ -1,6 +1,7 @@
 #include "game.h"
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    if (uMsg == WM_CLOSE && !is_character_creation) { ClearLegendaryDrops(); SaveSaveFileToDisk(); }
     if (uMsg == WM_DESTROY) { PostQuitMessage(0); return 0; } return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
@@ -25,13 +26,10 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
             UpdatePlayerArrow();
             
             if (!in_cave && (player_x <= 0.5f || player_x >= (MAP_SIZE - 1.5f) || player_y <= 0.5f || player_y >= (MAP_SIZE - 1.5f))) {
-                if (screens_until_town == 0) {
-                    // Just left the Castle; start a fresh stretch of the world.
-                    screens_until_town = 3 + (rand() % 8);
-                    screen_grid_x = META_GRID_SIZE / 2; screen_grid_y = META_GRID_SIZE / 2;
-                    GenerateProceduralScreen(screen_grid_y * META_GRID_SIZE + screen_grid_x);
-                    player_x = 15.0f; player_y = 15.0f;
-                } else {
+                // Leaving the Castle steps to its real neighbouring cell like any
+                // other screen instead of snapping back to the world centre.
+                int leaving_castle = (screens_until_town == 0);
+                {
                     // Direction-aware screen stepping: whichever edge the hero
                     // crossed determines which neighboring grid cell (and thus
                     // which remembered/rolled biome) comes next, so left/right/
@@ -52,9 +50,12 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                         if (player_y <= 0.5f) player_y = 2.0f;
                         else if (player_y >= (MAP_SIZE - 1.5f)) player_y = (float)(MAP_SIZE - 3);
                     } else {
-                        screens_until_town--;
+                        if (leaving_castle) screens_until_town = 3 + (rand() % 8);
+                        else screens_until_town--;
                         screen_grid_x = new_gx; screen_grid_y = new_gy;
-                        if (screens_until_town == 0) GenerateProceduralScreen(999);
+                        // Castle screens get their own id range (caves use 20000+)
+                        // so they never share loot/campfires with an overworld cell.
+                        if (screens_until_town == 0) GenerateProceduralScreen(30000 + screen_grid_y * META_GRID_SIZE + screen_grid_x);
                         else GenerateProceduralScreen(screen_grid_y * META_GRID_SIZE + screen_grid_x);
                         {
                             // Make sure the reentry tile is walkable (not water/rock); else find the nearest one that is.
@@ -141,6 +142,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                         if (sx >= -TILE_WIDTH && sx <= WINDOW_WIDTH + TILE_WIDTH) DrawFlowingRiver(memHDC, sx, sy, r * MAP_SIZE + c);
                     }
                 }
+                DrawSeasonalGroundCover(memHDC);
                 for (int r = 0; r < MAP_SIZE; r++) {
                     for (int c = 0; c < MAP_SIZE; c++) {
                         int sx, sy; GetIsoCoords((float)c, (float)r, &sx, &sy); if (sx < -TILE_WIDTH * 2 || sx > WINDOW_WIDTH + TILE_WIDTH * 2) continue;

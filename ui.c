@@ -146,6 +146,9 @@ void DrawVendorShopOverlay(HDC hdc) {
             TextOut(hdc, box.left + 20, row_y, row, (int)strlen(row));
             row_y += 20;
         }
+        SetTextColor(hdc, RGB(150, 160, 170));
+        if (start > 0) TextOut(hdc, box.right - 70, box.top + 46, "^ more", 6);
+        if (end < MERCH_ITEMS) TextOut(hdc, box.right - 70, box.top + 46 + (visible_rows - 1) * 20, "v more", 6);
         SetTextColor(hdc, RGB(150, 220, 255));
         TextOut(hdc, box.left + 20, box.bottom - 30, "[ SPACE/A ] Buy selected item", 30);
     } else {
@@ -153,7 +156,13 @@ void DrawVendorShopOverlay(HDC hdc) {
             SetTextColor(hdc, RGB(200, 200, 200));
             TextOut(hdc, box.left + 20, row_y, "(Your inventory is empty.)", 27);
         }
-        for (int i = 0; i < player_item_count && i < 12; i++) {
+        if (selected_inv_index >= player_item_count) selected_inv_index = player_item_count > 0 ? player_item_count - 1 : 0;
+        int visible_rows = 10;
+        int start = selected_inv_index - visible_rows / 2;
+        if (start > player_item_count - visible_rows) start = player_item_count - visible_rows;
+        if (start < 0) start = 0;
+        int end = start + visible_rows; if (end > player_item_count) end = player_item_count;
+        for (int i = start; i < end; i++) {
             InventoryItem *item = &player_inventory[i];
             int price = 2;
             if (strcmp(item->name, "Wood") == 0) price = 1;
@@ -172,11 +181,16 @@ void DrawVendorShopOverlay(HDC hdc) {
             TextOut(hdc, box.left + 20, row_y, row, (int)strlen(row));
             row_y += 20;
         }
+        SetTextColor(hdc, RGB(150, 160, 170));
+        if (start > 0) TextOut(hdc, box.right - 70, box.top + 46, "^ more", 6);
+        if (end < player_item_count) TextOut(hdc, box.right - 70, box.top + 46 + (visible_rows - 1) * 20, "v more", 6);
         SetTextColor(hdc, RGB(150, 220, 255));
         TextOut(hdc, box.left + 20, box.bottom - 30, "[ SPACE/A ] Sell selected item", 31);
     }
     SetTextColor(hdc, RGB(150, 220, 255));
     TextOut(hdc, box.left + 320, box.bottom - 30, "[ ESC/B ] Close shop", 20);
+    SetTextColor(hdc, RGB(150, 160, 170));
+    TextOut(hdc, box.left + 20, box.bottom - 52, "UP/DOWN or [ ] / D-PAD: scroll", 30);
 }
 
 void DrawTabbedMenuOverlay(HDC hdc) {

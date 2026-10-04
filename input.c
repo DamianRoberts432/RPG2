@@ -244,11 +244,11 @@ void ProcessGamepadInput(void) {
             if (GetAsyncKeyState('Q') & 0x8000) { vendor_tab = 0; last_vendor_kb = GetTickCount(); }
             if (GetAsyncKeyState('E') & 0x8000) { vendor_tab = 1; last_vendor_kb = GetTickCount(); }
             if (vendor_tab == 0) {
-                if (GetAsyncKeyState(VK_OEM_4) & 0x8000) { merchant_selection = (merchant_selection + MERCH_ITEMS - 1) % MERCH_ITEMS; last_vendor_kb = GetTickCount(); }
-                if (GetAsyncKeyState(VK_OEM_6) & 0x8000) { merchant_selection = (merchant_selection + 1) % MERCH_ITEMS; last_vendor_kb = GetTickCount(); }
+                if ((GetAsyncKeyState(VK_OEM_4) | GetAsyncKeyState(VK_UP)) & 0x8000) { merchant_selection = (merchant_selection + MERCH_ITEMS - 1) % MERCH_ITEMS; last_vendor_kb = GetTickCount(); }
+                if ((GetAsyncKeyState(VK_OEM_6) | GetAsyncKeyState(VK_DOWN)) & 0x8000) { merchant_selection = (merchant_selection + 1) % MERCH_ITEMS; last_vendor_kb = GetTickCount(); }
             } else if (player_item_count > 0) {
-                if (GetAsyncKeyState(VK_OEM_4) & 0x8000) { selected_inv_index = (selected_inv_index + player_item_count - 1) % player_item_count; last_vendor_kb = GetTickCount(); }
-                if (GetAsyncKeyState(VK_OEM_6) & 0x8000) { selected_inv_index = (selected_inv_index + 1) % player_item_count; last_vendor_kb = GetTickCount(); }
+                if ((GetAsyncKeyState(VK_OEM_4) | GetAsyncKeyState(VK_UP)) & 0x8000) { selected_inv_index = (selected_inv_index + player_item_count - 1) % player_item_count; last_vendor_kb = GetTickCount(); }
+                if ((GetAsyncKeyState(VK_OEM_6) | GetAsyncKeyState(VK_DOWN)) & 0x8000) { selected_inv_index = (selected_inv_index + 1) % player_item_count; last_vendor_kb = GetTickCount(); }
             }
             if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) { vendor_menu_open = 0; last_vendor_kb = GetTickCount(); }
         }
@@ -340,20 +340,15 @@ void ProcessGamepadInput(void) {
                 player_stamina -= 0.15f; // running slowly drains stamina
                 if (player_stamina < 0.0f) player_stamina = 0.0f;
             }
-            float tx = player_x + dx * speed, ty = player_y + dy * speed;
-            {
+            if (IsOnSlipperyGround()) {
+                // On ice the hero speeds up and turns gradually; UpdateIceSlide
+                // carries the momentum every frame, so they glide to a stop.
+                ice_vx += (dx * speed - ice_vx) * 0.08f;
+                ice_vy += (dy * speed - ice_vy) * 0.08f;
+            } else {
+                float tx = player_x + dx * speed, ty = player_y + dy * speed;
                 float nx, ny;
-                if (PlayerTryMove(tx, ty, &nx, &ny)) {
-                    player_x = nx; player_y = ny;
-                    // Tundra slip mechanic: an occasional extra tile of
-                    // involuntary movement continuing in the travel direction.
-                    if (current_biome == BIOME_TUNDRA && (rand() % 100) < 15) {
-                        float slip_x = player_x + dx, slip_y = player_y + dy;
-                        if (PlayerCanStandAt(slip_x, slip_y)) {
-                            player_x = slip_x; player_y = slip_y;
-                        }
-                    }
-                }
+                if (PlayerTryMove(tx, ty, &nx, &ny)) { player_x = nx; player_y = ny; }
             }
         } else is_running = 0;
     }

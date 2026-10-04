@@ -23,6 +23,9 @@ void DropGroundLoot(float x, float y, int item_id, int quantity);
 void TryPickupGroundLoot(void);
 void DropSelectedItem(void);
 void TryPickupDroppedItems(void);
+int IsLegendaryItemName(const char *name);
+void ExpireDroppedItems(void);
+void ClearLegendaryDrops(void);
 int HasInventoryItem(const char *name);
 void ConsumeSelectedFood(void);
 
