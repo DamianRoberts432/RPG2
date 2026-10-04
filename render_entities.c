@@ -281,7 +281,8 @@ void DrawMerchantStoreFront(HDC hdc) {
 // townsfolk: a simple tunic, belt, bare arms, round head and a cap/hair style
 // that varies per NPC so each villager in the settlement reads as a distinct
 // little character instead of an identical color-swapped blob.
-void DrawZeldaStyleVillager(HDC hdc, int sx, int sy, int npc_index) {
+void DrawZeldaStyleVillager(HDC hdc, int sx, int sy, int npc_index, float scale) {
+#define VS(v) ((int)((v) * scale))
     static const COLORREF tunic_palette[] = { RGB(60, 150, 70), RGB(190, 90, 60), RGB(90, 110, 170), RGB(200, 170, 70) };
     static const COLORREF hair_palette[] = { RGB(80, 55, 35), RGB(230, 210, 120), RGB(40, 40, 45), RGB(150, 70, 40) };
     COLORREF tunic = tunic_palette[npc_index % 4];
@@ -289,40 +290,41 @@ void DrawZeldaStyleVillager(HDC hdc, int sx, int sy, int npc_index) {
     COLORREF skin = RGB(235, 195, 160);
 
     HBRUSH boot_b = CreateSolidBrush(RGB(90, 65, 45));
-    RECT boots = { sx - 4, sy + 6, sx + 4, sy + 10 };
+    RECT boots = { sx - VS(4), sy + VS(6), sx + VS(4), sy + VS(10) };
     FillRect(hdc, &boots, boot_b); DeleteObject(boot_b);
 
     // Simple tunic-shaped torso, slightly tapered like a classic adventure outfit.
     HBRUSH tunic_b = CreateSolidBrush(tunic); HGDIOBJ old = SelectObject(hdc, tunic_b);
-    POINT body[] = { {sx - 6, sy + 6}, {sx - 4, sy - 6}, {sx + 4, sy - 6}, {sx + 6, sy + 6} };
+    POINT body[] = { {sx - VS(6), sy + VS(6)}, {sx - VS(4), sy - VS(6)}, {sx + VS(4), sy - VS(6)}, {sx + VS(6), sy + VS(6)} };
     Polygon(hdc, body, 4);
     SelectObject(hdc, old); DeleteObject(tunic_b);
 
     HBRUSH belt_b = CreateSolidBrush(RGB(90, 65, 40));
-    RECT belt = { sx - 5, sy + 1, sx + 5, sy + 3 };
+    RECT belt = { sx - VS(5), sy + VS(1), sx + VS(5), sy + VS(3) };
     FillRect(hdc, &belt, belt_b); DeleteObject(belt_b);
 
     // Bare arms held at the sides.
     HBRUSH skin_b = CreateSolidBrush(skin);
-    RECT arm_l = { sx - 8, sy - 4, sx - 5, sy + 3 };
-    RECT arm_r = { sx + 5, sy - 4, sx + 8, sy + 3 };
+    RECT arm_l = { sx - VS(8), sy - VS(4), sx - VS(5), sy + VS(3) };
+    RECT arm_r = { sx + VS(5), sy - VS(4), sx + VS(8), sy + VS(3) };
     FillRect(hdc, &arm_l, skin_b); FillRect(hdc, &arm_r, skin_b);
 
     // Round, friendly head.
     HGDIOBJ old_head = SelectObject(hdc, skin_b);
-    Ellipse(hdc, sx - 4, sy - 14, sx + 4, sy - 6);
+    Ellipse(hdc, sx - VS(4), sy - VS(14), sx + VS(4), sy - VS(6));
     SelectObject(hdc, old_head); DeleteObject(skin_b);
 
     // Hair for half the villagers, a simple pointed cap for the other half -
     // a cheap but effective way to give every NPC its own silhouette.
     HBRUSH hair_b = CreateSolidBrush(hair); old = SelectObject(hdc, hair_b);
     if (npc_index % 2 == 0) {
-        POINT cap[] = { {sx - 5, sy - 11}, {sx, sy - 19}, {sx + 5, sy - 11} };
+        POINT cap[] = { {sx - VS(5), sy - VS(11)}, {sx, sy - VS(19)}, {sx + VS(5), sy - VS(11)} };
         Polygon(hdc, cap, 3);
     } else {
-        Ellipse(hdc, sx - 5, sy - 15, sx + 5, sy - 10);
+        Ellipse(hdc, sx - VS(5), sy - VS(15), sx + VS(5), sy - VS(10));
     }
     SelectObject(hdc, old); DeleteObject(hair_b);
+#undef VS
 }
 
 void DrawVillage(HDC hdc) {
@@ -389,23 +391,25 @@ void DrawVillage(HDC hdc) {
         POINT roof[] = { {sx - 22, sy - 8}, {sx - 17, sy - 20}, {sx + 17, sy - 20}, {sx + 22, sy - 8} };
         Polygon(hdc, roof, 4); SelectObject(hdc, old); DeleteObject(canopy);
     }
+    // Every NPC (village and castle) uses the detailed villager figure at the
+    // hero's scale. Their lines go to the action log in the upper left; only a
+    // "..." bubble is drawn over the head of an NPC close enough to talk to.
+    const float NPC_SCALE = 1.2f;
     for (int i = 0; i < village_npc_count; i++) {
         int sx, sy; GetIsoCoords(village_npcs[i].x, village_npcs[i].y, &sx, &sy);
-        if (village_npcs[i].type == 0) {
-            DrawZeldaStyleVillager(hdc, sx, sy, i);
-        } else {
-            COLORREF c = village_npcs[i].type == 1 ? RGB(215, 180, 45) : RGB(80, 135, 190);
-            HBRUSH body = CreateSolidBrush(c); HGDIOBJ old = SelectObject(hdc, body);
-            RECT torso = { sx - 5, sy - 5, sx + 5, sy + 9 }; FillRect(hdc, &torso, body);
-            Ellipse(hdc, sx - 4, sy - 13, sx + 4, sy - 5);
-            SelectObject(hdc, old); DeleteObject(body);
-        }
-        if (IsNearPoint(village_npcs[i].x, village_npcs[i].y, 2.0f) && world_frame % 30 < 18) {
-            RECT bubble = { sx - 47, sy - 34, sx + 48, sy - 17 };
-            HBRUSH white = CreateSolidBrush(RGB(245, 240, 215)); FillRect(hdc, &bubble, white); DeleteObject(white);
+        int look = i;
+        if (village_npcs[i].type == 1) look = 3;          // merchant: gold tunic
+        else if (village_npcs[i].type == 2) look = 2 + 4 * i; // guards: blue tunic
+        DrawZeldaStyleVillager(hdc, sx, sy, look, NPC_SCALE);
+        if (IsNearPoint(village_npcs[i].x, village_npcs[i].y, 2.0f)) {
+            int top = sy - (int)(19 * NPC_SCALE) - 20;
+            HBRUSH white = CreateSolidBrush(RGB(245, 240, 215)); HGDIOBJ old_b = SelectObject(hdc, white);
+            HPEN edge = CreatePen(PS_SOLID, 1, RGB(60, 55, 45)); HGDIOBJ old_p = SelectObject(hdc, edge);
+            RoundRect(hdc, sx - 14, top, sx + 14, top + 14, 6, 6);
+            SelectObject(hdc, old_p); DeleteObject(edge); SelectObject(hdc, old_b); DeleteObject(white);
+            RECT bubble = { sx - 14, top - 3, sx + 14, top + 14 };
             SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(25, 25, 25));
-            const char *line = village_npcs[i].dialogue;
-            DrawText(hdc, line, -1, &bubble, DT_CENTER | DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
+            DrawText(hdc, "...", 3, &bubble, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
         }
     }
 }

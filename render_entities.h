@@ -15,7 +15,7 @@ void DrawDynamicEnemy(HDC hdc);
 void DrawDebrisTwigs(HDC hdc);
 void DrawSummonedZombie(HDC hdc);
 void DrawMerchantStoreFront(HDC hdc);
-void DrawZeldaStyleVillager(HDC hdc, int sx, int sy, int npc_index);
+void DrawZeldaStyleVillager(HDC hdc, int sx, int sy, int npc_index, float scale);
 void DrawVillage(HDC hdc);
 
 #endif // RENDER_ENTITIES_H
