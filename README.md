@@ -103,7 +103,7 @@ game.exe
 | **'4' Key / (Y) in Inventory Tab** | — | Drop the selected inventory item on the ground in front of the hero. Walk back over it to pick it up again. |
 | **LB / 'Q' Key (speaking to a merchant)** | — | Switch the shop UI to the **Buy** tab (merchant's items for sale) |
 | **RB / 'E' Key (speaking to a merchant)** | — | Switch the shop UI to the **Sell** tab (your inventory items available to sell) |
-| **'[' / ']' Keys / DPAD Up-Down (shop open)** | — | Cycle the highlighted row within the active Buy/Sell tab |
+| **Up/Down Arrows / '[' / ']' Keys / DPAD Up-Down (shop open)** | — | Cycle the highlighted row within the active Buy/Sell tab |
 | **Space Bar / (A) Button (shop open)** | — | Confirm the buy or sell on the highlighted row |
 | **Escape / (B) Button (shop open)** | — | Close the shop menu |
 
