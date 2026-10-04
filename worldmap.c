@@ -46,6 +46,8 @@ int SaveWorldMapState(void) {
     int ok = fwrite(&hdr, sizeof(hdr), 1, f) == 1 &&
              fwrite(visited_biomes, sizeof(visited_biomes), 1, f) == 1 &&
              fwrite(map_poi, sizeof(map_poi), 1, f) == 1;
+    int32_t pos[2] = { screen_grid_x, screen_grid_y };
+    ok = ok && fwrite(pos, sizeof(pos), 1, f) == 1;
     ok = (fclose(f) == 0) && ok;
     if (!ok) { remove(SAVE_TEMP_NAME); return 0; }
     return MoveFileExA(SAVE_TEMP_NAME, SAVE_FILE_NAME, MOVEFILE_REPLACE_EXISTING) != 0;
@@ -59,10 +61,14 @@ int LoadWorldMapState(void) {
     int ok = fread(&hdr, sizeof(hdr), 1, f) == 1 && hdr.magic == SAVE_MAGIC &&
              hdr.version == SAVE_VERSION && hdr.grid_size == META_GRID_SIZE &&
              fread(biomes, sizeof(biomes), 1, f) == 1 && fread(pois, sizeof(pois), 1, f) == 1;
+    // The hero's grid cell was appended later; older saves simply lack it.
+    int32_t pos[2];
+    int has_pos = ok && fread(pos, sizeof(pos), 1, f) == 1;
     fclose(f);
     if (!ok) return 0;
     memcpy(visited_biomes, biomes, sizeof(biomes));
     memcpy(map_poi, pois, sizeof(pois));
+    if (has_pos && CellInWorld(pos[0], pos[1])) { screen_grid_x = pos[0]; screen_grid_y = pos[1]; }
     return 1;
 }
 
