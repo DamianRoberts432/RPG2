@@ -13,6 +13,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
     
     grass_brush = CreateSolidBrush(RGB(105, 185, 85)); creation_bg = CreateSolidBrush(RGB(15, 18, 24)); clean_null_pen = CreatePen(PS_NULL, 0, RGB(0,0,0));
     RecalculateCarriedWeight();
+    LoadWorldMapState();
+    InitSeasonAndWeather();
     ApplyClassAndRaceStats(); GenerateProceduralScreen(screen_grid_y * META_GRID_SIZE + screen_grid_x);
 
     while (msg.message != WM_QUIT) {

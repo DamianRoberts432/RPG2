@@ -294,30 +294,16 @@ void DrawTabbedMenuOverlay(HDC hdc) {
         TextOut(hdc, 80, 531, "Use UP/DOWN ARROWS or D-PAD to select inventory items.", 54);
 
     } else if (current_menu_tab == 1) { 
-        TextOut(hdc, 90, 100, "TRAVERSED BIOME MAP LOG (32x32 Grid Progression):", 49);
-        for (int r = 0; r < 8; r++) {
-            for (int c = 0; c < 8; c++) {
-                RECT cell = { 100 + c * 35, 140 + r * 35, 130 + c * 35, 170 + r * 35 };
-                uint8_t b_id = visited_biomes[r][c];
-                COLORREF cell_c = RGB(40, 45, 55);
-                if (b_id == 1) cell_c = RGB(85, 155, 70);       
-                else if (b_id == 2) cell_c = RGB(45, 135, 215); 
-                else if (b_id == 3) cell_c = RGB(235, 200, 90); 
-                else if (b_id == 4) cell_c = RGB(110, 115, 125);
-                else if (b_id == 5) cell_c = RGB(50, 50, 60);   
-                else if (b_id == 6) cell_c = RGB(180, 50, 50);  
-                HBRUSH cell_b = CreateSolidBrush(cell_c); FillRect(hdc, &cell, cell_b); DeleteObject(cell_b);
-                if (r == screen_grid_y && c == screen_grid_x && (world_frame % 40) < 20) {
-                    HBRUSH mark_b = CreateSolidBrush(RGB(255, 255, 255));
-                    RECT mark = { cell.left + 10, cell.top + 10, cell.right - 10, cell.bottom - 10 };
-                    FillRect(hdc, &mark, mark_b); DeleteObject(mark_b);
-                }
-            }
-        }
-        sprintf(buf, "Location: (%d, %d)  Biome: %s", screen_grid_x, screen_grid_y, biome_names[current_biome]);
-        TextOut(hdc, 400, 140, buf, (int)strlen(buf));
-        sprintf(buf, "%d screens to town", screens_until_town);
-        TextOut(hdc, 400, 160, buf, (int)strlen(buf));
+        const char *title = "WORLD MAP - every screen you have explored (saved automatically)";
+        TextOut(hdc, 90, 100, title, (int)strlen(title));
+        sprintf(buf, "Location: (%d, %d)   Biome: %s   |   %d screens to town", screen_grid_x, screen_grid_y, biome_names[current_biome], screens_until_town);
+        TextOut(hdc, 90, 122, buf, (int)strlen(buf));
+        DrawWorldMapPanel(hdc, 100, 160, 1200, WINDOW_HEIGHT - 280);
+        SetTextColor(hdc, RGB(200, 210, 220));
+        sprintf(buf, "Season: %s (%d min left)   Weather: %s%s   Start: %s", season_names[current_season],
+                (int)(SeasonSecondsRemaining() / 60.0f) + 1, weather_names[current_weather],
+                fabs(wind_gust) > 0.3f ? ", windy" : "", weather_source_label);
+        TextOut(hdc, 90, WINDOW_HEIGHT - 95, buf, (int)strlen(buf));
     } else { 
         TextOut(hdc, 90, 100, "GAME VARIABLE OPTIONS:", 22);
         sprintf(buf, "[1] XP Multiplier: %.1fx   (Modify with Left/Right Arrow)", opt_xp_mult); TextOut(hdc, 100, 140, buf, (int)strlen(buf));

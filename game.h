@@ -131,6 +131,7 @@ extern float opt_xp_mult;
 extern float opt_loot_mult;
 extern float opt_day_night_speed;
 extern uint8_t visited_biomes[META_GRID_SIZE][META_GRID_SIZE];
+extern uint8_t map_poi[META_GRID_SIZE][META_GRID_SIZE];
 extern float player_x;
 extern float player_y;
 extern FacingDirection player_facing;
@@ -261,6 +262,7 @@ extern int cam_y;
 #include "ui.h"
 #include "physics.h"
 #include "input.h"
+#include "worldmap.h"
 #include "weather.h"
 
 #endif // GAME_H

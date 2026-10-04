@@ -45,4 +45,5 @@ void SaveSaveFileToDisk(void) {
     saturn_save_lumber = GetMaterialCount("Wood");
     saturn_save_gold = gold_count;
     saturn_save_stone = GetMaterialCount("Stone");
+    SaveWorldMapState();
 }
