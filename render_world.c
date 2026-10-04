@@ -341,16 +341,51 @@ void DrawSolitaireSunMoonBeam(HDC hdc) {
     DeleteObject(beam_rgn);
 }
 
+// Loot reads as a treasure pile: three stacks of gold coins with a few
+// jewels scattered at the base and an occasional glint.
+static void DrawTreasurePile(HDC hdc, int sx, int sy, int seed) {
+    HGDIOBJ old_p = SelectObject(hdc, GetStockObject(NULL_PEN));
+    HBRUSH shadow = CreateSolidBrush(RGB(25, 30, 25));
+    HGDIOBJ old_b = SelectObject(hdc, shadow);
+    Ellipse(hdc, sx - 22, sy - 3, sx + 22, sy + 10);
+    HBRUSH rim = CreateSolidBrush(RGB(165, 115, 20)), face = CreateSolidBrush(RGB(250, 205, 60));
+    static const int stack_x[3] = { -11, 2, 13 }, stack_h[3] = { 5, 8, 3 };
+    for (int s = 0; s < 3; s++) for (int k = 0; k < stack_h[s]; k++) {
+        int cx = sx + stack_x[s], cy = sy + 3 - k * 3;
+        SelectObject(hdc, rim);  Ellipse(hdc, cx - 7, cy - 2, cx + 7, cy + 5);
+        SelectObject(hdc, face); Ellipse(hdc, cx - 7, cy - 4, cx + 7, cy + 3);
+    }
+    static const COLORREF jewel_colors[3] = { RGB(225, 40, 65), RGB(60, 125, 245), RGB(50, 205, 115) };
+    static const int jewel_x[3] = { -4, 10, -17 }, jewel_y[3] = { 6, 5, 4 };
+    for (int j = 0; j < 3; j++) {
+        HBRUSH gem_b = CreateSolidBrush(jewel_colors[j]);
+        SelectObject(hdc, gem_b);
+        int x = sx + jewel_x[j], y = sy + jewel_y[j];
+        POINT gem[] = { {x, y - 5}, {x + 4, y}, {x, y + 4}, {x - 4, y} };
+        Polygon(hdc, gem, 4);
+        SelectObject(hdc, rim); DeleteObject(gem_b);
+    }
+    SelectObject(hdc, old_b); SelectObject(hdc, old_p);
+    DeleteObject(shadow); DeleteObject(rim); DeleteObject(face);
+    if (((world_frame / 10) + seed) % 6 == 0) {
+        HPEN glint = CreatePen(PS_SOLID, 1, RGB(255, 255, 225));
+        HGDIOBJ old_g = SelectObject(hdc, glint);
+        int gx = sx + 4, gy = sy - 22;
+        MoveToEx(hdc, gx - 4, gy, NULL); LineTo(hdc, gx + 5, gy);
+        MoveToEx(hdc, gx, gy - 4, NULL); LineTo(hdc, gx, gy + 5);
+        SelectObject(hdc, old_g); DeleteObject(glint);
+    }
+}
+
 void DrawGroundLoot(HDC hdc) {
     for (int i = 0; i < MAX_GROUND_LOOT; i++) {
         GroundLoot *loot = &ground_loot[i];
         if (!loot->active || loot->screen_id != current_screen_index) continue;
         int sx, sy; GetIsoCoords(loot->x, loot->y, &sx, &sy);
-        HBRUSH b = CreateSolidBrush(loot->item_id == LOOT_APPLE ? RGB(210, 45, 35) :
-            loot->item_id == LOOT_FISH ? RGB(80, 175, 220) : RGB(205, 205, 215));
+        if (loot->item_id != LOOT_APPLE && loot->item_id != LOOT_FISH) { DrawTreasurePile(hdc, sx, sy, i); continue; }
+        HBRUSH b = CreateSolidBrush(loot->item_id == LOOT_APPLE ? RGB(210, 45, 35) : RGB(80, 175, 220));
         HGDIOBJ old = SelectObject(hdc, b);
-        if (loot->item_id == LOOT_APPLE || loot->item_id == LOOT_FISH) Ellipse(hdc, sx - 4, sy - 7, sx + 4, sy + 1);
-        else { MoveToEx(hdc, sx - 7, sy + 2, NULL); LineTo(hdc, sx + 7, sy - 5); Rectangle(hdc, sx - 9, sy - 1, sx - 4, sy + 5); }
+        Ellipse(hdc, sx - 6, sy - 10, sx + 6, sy + 2);
         SelectObject(hdc, old); DeleteObject(b);
     }
 }
