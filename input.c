@@ -244,11 +244,11 @@ void ProcessGamepadInput(void) {
             if (GetAsyncKeyState('Q') & 0x8000) { vendor_tab = 0; last_vendor_kb = GetTickCount(); }
             if (GetAsyncKeyState('E') & 0x8000) { vendor_tab = 1; last_vendor_kb = GetTickCount(); }
             if (vendor_tab == 0) {
-                if (GetAsyncKeyState(VK_OEM_4) & 0x8000) { merchant_selection = (merchant_selection + MERCH_ITEMS - 1) % MERCH_ITEMS; last_vendor_kb = GetTickCount(); }
-                if (GetAsyncKeyState(VK_OEM_6) & 0x8000) { merchant_selection = (merchant_selection + 1) % MERCH_ITEMS; last_vendor_kb = GetTickCount(); }
+                if ((GetAsyncKeyState(VK_OEM_4) | GetAsyncKeyState(VK_UP)) & 0x8000) { merchant_selection = (merchant_selection + MERCH_ITEMS - 1) % MERCH_ITEMS; last_vendor_kb = GetTickCount(); }
+                if ((GetAsyncKeyState(VK_OEM_6) | GetAsyncKeyState(VK_DOWN)) & 0x8000) { merchant_selection = (merchant_selection + 1) % MERCH_ITEMS; last_vendor_kb = GetTickCount(); }
             } else if (player_item_count > 0) {
-                if (GetAsyncKeyState(VK_OEM_4) & 0x8000) { selected_inv_index = (selected_inv_index + player_item_count - 1) % player_item_count; last_vendor_kb = GetTickCount(); }
-                if (GetAsyncKeyState(VK_OEM_6) & 0x8000) { selected_inv_index = (selected_inv_index + 1) % player_item_count; last_vendor_kb = GetTickCount(); }
+                if ((GetAsyncKeyState(VK_OEM_4) | GetAsyncKeyState(VK_UP)) & 0x8000) { selected_inv_index = (selected_inv_index + player_item_count - 1) % player_item_count; last_vendor_kb = GetTickCount(); }
+                if ((GetAsyncKeyState(VK_OEM_6) | GetAsyncKeyState(VK_DOWN)) & 0x8000) { selected_inv_index = (selected_inv_index + 1) % player_item_count; last_vendor_kb = GetTickCount(); }
             }
             if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) { vendor_menu_open = 0; last_vendor_kb = GetTickCount(); }
         }
