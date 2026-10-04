@@ -21,16 +21,9 @@ where /r "%LOCALAPPDATA%\Microsoft\WinGet\Packages" gcc.exe
 ```
 
 On this PC it is:
+& "C:\Users\livid\Desktop\mingw64\bin\gcc.exe" *.c -o game.exe -lgdi32 -lxinput -lmsimg32
+.\game.exe
 
-```
-C:\Users\D\AppData\Local\Microsoft\WinGet\Packages\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\mingw64\bin\gcc.exe
-```
-
-Optional - make plain `gcc` work in every new Command Prompt window (run once, then **close and reopen** Command Prompt):
-
-```
-powershell -NoProfile -Command "[Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path','User') + ';C:\Users\D\AppData\Local\Microsoft\WinGet\Packages\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\mingw64\bin', 'User')"
-```
 
 ## 2. Get the code (one time)
 
