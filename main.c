@@ -129,6 +129,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 int b_tone = (int)(40.0f + ambient_intensity * 45.0f);
                 
                 COLORREF meadow_color = RGB(r_tone, g_tone, b_tone);
+                if (current_biome != BIOME_CAVE) meadow_color = ApplySeasonToGround(meadow_color);
                 HBRUSH live_ground = CreateSolidBrush(meadow_color); HGDIOBJ old_bg = SelectObject(memHDC, live_ground); PatBlt(memHDC, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, PATCOPY); SelectObject(memHDC, old_bg); DeleteObject(live_ground);
                 SelectObject(memHDC, clean_null_pen);
 
@@ -182,7 +183,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 DrawCampfires(memHDC); DrawBedroll(memHDC); DrawGroundLoot(memHDC); DrawDroppedItems(memHDC); DrawDebrisTwigs(memHDC); DrawSummonedZombie(memHDC);
                 DrawFlyingArrow(memHDC); DrawFlyingSpell(memHDC); DrawClassAbilityFX(memHDC); DrawButterflies(memHDC); DrawBloodMistFX(memHDC);
                 DrawEnvironmentalCritters(memHDC); DrawMerchantStoreFront(memHDC); DrawVillage(memHDC);
-                DrawRainZones(memHDC); DrawSolitaireSunMoonBeam(memHDC);
+                DrawWeatherEffects(memHDC); DrawSolitaireSunMoonBeam(memHDC);
                 DrawPlayerStatusHUD(memHDC);
 
                 if (is_menu_open) DrawTabbedMenuOverlay(memHDC);

@@ -14,8 +14,7 @@ int IsNearBedroll(void) {
 }
 
 int IsAppleTree(int x, int y) {
-    int seed = y * MAP_SIZE + x + current_screen_index * 31;
-    return (seed % 150 + 150) % 150 == 0;
+    return TreeHasApples(y * MAP_SIZE + x);
 }
 
 void RememberChoppedAppleTree(int x, int y) {

@@ -1,0 +1,9 @@
+; Optional: start the game with your real-world weather (Open-Meteo, free, no API key).
+; Copy this file to weather.ini (next to game.exe) and fill in ONE of the options below.
+; Without weather.ini the game still starts in the season and time of day from your PC clock.
+
+city=Denver
+
+; or use coordinates instead of a city name:
+; latitude=39.74
+; longitude=-104.99

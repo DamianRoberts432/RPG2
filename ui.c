@@ -83,6 +83,13 @@ void DrawPlayerStatusHUD(HDC hdc) {
         TextOut(hdc, bar_x, sta_y + bar_h + 16, status, (int)strlen(status));
         break;
     }
+
+    char sky[96];
+    int underground = current_biome == BIOME_CAVE;
+    sprintf(sky, "%s  |  %s%s", season_names[current_season], underground ? "Underground" : weather_names[current_weather],
+            (!underground && fabs(wind_gust) > 0.3f) ? "  |  Windy" : "");
+    SetTextColor(hdc, RGB(230, 235, 240));
+    TextOut(hdc, 20, 62, sky, (int)strlen(sky));
 }
 
 // Clear Buy/Sell shop UI: a boxed panel with an underlined tab header (shown

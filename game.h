@@ -261,5 +261,6 @@ extern int cam_y;
 #include "ui.h"
 #include "physics.h"
 #include "input.h"
+#include "weather.h"
 
 #endif // GAME_H
