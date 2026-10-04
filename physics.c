@@ -21,6 +21,13 @@ int PlayerCanStandAt(float x, float y) {
 
 // Full move, else slide along one axis; if already wedged, accept any move
 // whose centre is free so the hero can always work loose.
+float ice_vx = 0.0f, ice_vy = 0.0f;
+
+int IsOnSlipperyGround(void) {
+    if (in_cave || current_biome == BIOME_CAVE) return 0;
+    return current_biome == BIOME_TUNDRA || snow_cover > 0.6f;
+}
+
 int PlayerTryMove(float tx, float ty, float* ox, float* oy) {
     int stuck = !PlayerCanStandAt(player_x, player_y);
     if (PlayerCanStandAt(tx, ty) || (stuck && !TileBlocksPlayer(tx, ty))) { *ox = tx; *oy = ty; return 1; }
@@ -58,6 +65,7 @@ void UpdateGamePhysics(void) {
     TryPickupGroundLoot();
     TryPickupDroppedItems();
     ExpireDroppedItems();
+    UpdateIceSlide();
     UpdateDebrisTwigs();
     if (is_running) {
         stamina_rest_timer = 0;
@@ -179,4 +187,15 @@ void UpdateGamePhysics(void) {
             }
         }
     }
+}
+
+void UpdateIceSlide(void) {
+    if (!IsOnSlipperyGround() || (fabsf(ice_vx) < 0.002f && fabsf(ice_vy) < 0.002f)) { ice_vx = ice_vy = 0.0f; return; }
+    float nx, ny;
+    if (PlayerTryMove(player_x + ice_vx, player_y + ice_vy, &nx, &ny)) {
+        if (nx == player_x) ice_vx = 0.0f; // bumped into something on that axis
+        if (ny == player_y) ice_vy = 0.0f;
+        player_x = nx; player_y = ny;
+    } else ice_vx = ice_vy = 0.0f;
+    ice_vx *= 0.99f; ice_vy *= 0.99f;
 }
