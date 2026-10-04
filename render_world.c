@@ -146,15 +146,31 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
     SelectObject(hdc, old);
 }
 
+static void DrawRockCone(HDC hdc, int bx, int by, int w, int h) {
+    int base_h = w / 2 > 2 ? w / 2 : 2;
+    HBRUSH dark = CreateSolidBrush(RGB(70, 72, 80)), light = CreateSolidBrush(RGB(110, 114, 125));
+    HGDIOBJ old = SelectObject(hdc, dark);
+    Ellipse(hdc, bx - w, by - base_h, bx + w, by + base_h);
+    SelectObject(hdc, light);
+    Pie(hdc, bx - w, by - base_h, bx + w, by + base_h, bx, by + base_h, bx, by - base_h);
+    SelectObject(hdc, dark);
+    POINT left[] = {{bx, by - h}, {bx - w, by}, {bx, by + base_h}};
+    Polygon(hdc, left, 3);
+    SelectObject(hdc, light);
+    POINT right[] = {{bx, by - h}, {bx, by + base_h}, {bx + w, by}};
+    Polygon(hdc, right, 3);
+    SelectObject(hdc, old); DeleteObject(dark); DeleteObject(light);
+    HPEN shine = CreatePen(PS_SOLID, 1, RGB(160, 165, 178)); HGDIOBJ old_p = SelectObject(hdc, shine);
+    MoveToEx(hdc, bx + 1, by - h + 3, NULL); LineTo(hdc, bx + w / 2, by - 1);
+    SelectObject(hdc, old_p); DeleteObject(shine);
+}
+
+// Cave formations: clusters of tall, tapering stalagmite cones.
 void DrawSubterraneanGeology(HDC hdc, int sx, int sy, int tile_seed) {
-    int height_offset = 15 + (tile_seed % 20);
-    HBRUSH left_shade = CreateSolidBrush(RGB(75, 78, 85)); HGDIOBJ old = SelectObject(hdc, left_shade);
-    POINT left_facet[] = {{sx, sy - height_offset}, {sx - 20, sy + 10}, {sx, sy + 16}};
-    Polygon(hdc, left_facet, 3); SelectObject(hdc, old); DeleteObject(left_shade);
-    
-    HBRUSH right_shade = CreateSolidBrush(RGB(95, 100, 110)); HGDIOBJ prev = SelectObject(hdc, right_shade);
-    POINT right_facet[] = {{sx, sy - height_offset}, {sx, sy + 16}, {sx + 20, sy + 10}};
-    Polygon(hdc, right_facet, 3); SelectObject(hdc, prev); DeleteObject(right_shade);
+    int h = 28 + (tile_seed % 22), w = 8 + (tile_seed % 5);
+    if (tile_seed % 4 == 0) DrawRockCone(hdc, sx - 12, sy + 2, w / 2 + 2, h / 2);
+    DrawRockCone(hdc, sx, sy + 6, w, h);
+    if (tile_seed % 3 != 0) DrawRockCone(hdc, sx + 11, sy + 11, w / 2 + 2, h * 11 / 20);
 }
 
 void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed) {
