@@ -10,7 +10,7 @@ void DrawFlyingSpell(HDC hdc);
 void DrawClassAbilityFX(HDC hdc);
 void DrawButterflies(HDC hdc);
 void DrawBloodMistFX(HDC hdc);
-void DrawZombieBody(HDC hdc, int sx, int sy, int seed);
+void DrawZombieBody(HDC hdc, int sx, int sy, int seed, int face_dir, int arms_out, COLORREF head_color);
 void DrawDynamicEnemy(HDC hdc);
 void DrawDebrisTwigs(HDC hdc);
 void DrawSummonedZombie(HDC hdc);

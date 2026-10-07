@@ -209,54 +209,87 @@ void DrawBloodMistFX(HDC hdc) {
     SelectObject(hdc, old); DeleteObject(blood_b);
 }
 
-// Shared zombie body renderer used by both the roaming hostile zombie and the
-// necromancer's summoned zombie minion: a tattered white shirt, tattered
-// brownish pants over shambling legs (with an occasional hashed interval
-// where one foot visibly drags instead of lifting), and both arms reaching
-// straight out in front toward the viewer rather than out to the sides.
-void DrawZombieBody(HDC hdc, int sx, int sy, int seed) {
-    int shamble_phase = ((int)(world_tick * 1.5f) + seed) & 63;
-    int sway = (int)(sin(shamble_phase * 6.2831853f / 64.0f) * 3.0f);
-    int drag_cycle = ((int)(world_tick * 0.5f) + seed) % 50;
-    int dragging_left = (drag_cycle < 6);
-    int dragging_right = (drag_cycle >= 25 && drag_cycle < 31);
+// Shared zombie renderer (hostile zombie + necromancer's summoned minion).
+// Parts stack without gaps (legs, pants, shirt, head) so the figure never
+// reads as two halves. face_dir (-1/1) is the way the arms reach when
+// arms_out is set; otherwise they hang. Every so often one foot drags behind.
+void DrawZombieBody(HDC hdc, int sx, int sy, int seed, int face_dir, int arms_out, COLORREF head_color) {
+    int phase = ((int)(world_tick * 1.5f) + seed) & 63;
+    int step = (int)(sin(phase * 6.2831853f / 64.0f) * 3.0f);
+    int dragging = (((int)(world_tick * 0.5f) + seed) % 50) < 14;
 
-    HPEN leg_pen = CreatePen(PS_SOLID, 4, RGB(90, 70, 45)); HGDIOBJ prev_leg = SelectObject(hdc, leg_pen);
-    int left_leg_len = dragging_left ? 14 : 10;
-    int right_leg_len = dragging_right ? 14 : 10;
-    MoveToEx(hdc, sx - 4, sy + 9, NULL); LineTo(hdc, sx - 4 + sway + (dragging_left ? -4 : 0), sy + 9 + left_leg_len);
-    MoveToEx(hdc, sx + 4, sy + 9, NULL); LineTo(hdc, sx + 4 - sway + (dragging_right ? 4 : 0), sy + 9 + right_leg_len);
-    SelectObject(hdc, prev_leg); DeleteObject(leg_pen);
+    int lfx = sx - 3 + (dragging ? 0 : step), lfy = sy + 18;
+    int rfx = dragging ? sx + 3 - face_dir * 7 : sx + 3 - step, rfy = dragging ? sy + 19 : sy + 18;
+    HPEN leg_pen = CreatePen(PS_SOLID, 3, RGB(90, 70, 45)); HGDIOBJ prev = SelectObject(hdc, leg_pen);
+    MoveToEx(hdc, sx - 3, sy + 7, NULL); LineTo(hdc, lfx, lfy);
+    MoveToEx(hdc, sx + 3, sy + 7, NULL); LineTo(hdc, rfx, rfy);
+    SelectObject(hdc, prev); DeleteObject(leg_pen);
+    HBRUSH foot_b = CreateSolidBrush(RGB(60, 50, 40)); prev = SelectObject(hdc, foot_b);
+    Ellipse(hdc, lfx - 3, lfy - 2, lfx + 3, lfy + 2);
+    Ellipse(hdc, rfx - 3, rfy - 2, rfx + 3, rfy + 2);
+    SelectObject(hdc, prev); DeleteObject(foot_b);
 
-    HBRUSH pants_b = CreateSolidBrush(RGB(110, 85, 55)); HGDIOBJ prev_pants = SelectObject(hdc, pants_b);
-    POINT pants[] = { {sx - 6, sy}, {sx + 6, sy}, {sx + 5, sy + 11}, {sx + 1, sy + 8}, {sx - 1, sy + 11}, {sx - 5, sy + 8} };
-    Polygon(hdc, pants, 6); SelectObject(hdc, prev_pants); DeleteObject(pants_b);
+    HBRUSH pants_b = CreateSolidBrush(RGB(110, 85, 55)); prev = SelectObject(hdc, pants_b);
+    POINT pants[] = { {sx - 6, sy}, {sx + 6, sy}, {sx + 5, sy + 10}, {sx + 2, sy + 8}, {sx, sy + 10}, {sx - 2, sy + 8}, {sx - 5, sy + 10} };
+    Polygon(hdc, pants, 7); SelectObject(hdc, prev); DeleteObject(pants_b);
 
-    HBRUSH shirt_b = CreateSolidBrush(RGB(225, 225, 215)); HGDIOBJ prev_shirt = SelectObject(hdc, shirt_b);
-    POINT shirt[] = { {sx - 6, sy - 10}, {sx + 6, sy - 10}, {sx + 6, sy - 2}, {sx + 2, sy + 2}, {sx - 2, sy - 2}, {sx - 6, sy + 2} };
-    Polygon(hdc, shirt, 6); SelectObject(hdc, prev_shirt); DeleteObject(shirt_b);
+    HBRUSH shirt_b = CreateSolidBrush(RGB(225, 225, 215)); prev = SelectObject(hdc, shirt_b);
+    POINT shirt[] = { {sx - 6, sy - 11}, {sx + 6, sy - 11}, {sx + 6, sy + 1}, {sx + 3, sy + 3}, {sx, sy + 1}, {sx - 3, sy + 3}, {sx - 6, sy + 1} };
+    Polygon(hdc, shirt, 7); SelectObject(hdc, prev); DeleteObject(shirt_b);
 
-    HPEN arm_pen = CreatePen(PS_SOLID, 3, RGB(200, 200, 190)); HGDIOBJ prev_arm = SelectObject(hdc, arm_pen);
-    MoveToEx(hdc, sx - 4, sy - 6, NULL); LineTo(hdc, sx - 6, sy + 8);
-    MoveToEx(hdc, sx + 4, sy - 6, NULL); LineTo(hdc, sx + 6, sy + 8);
-    SelectObject(hdc, prev_arm); DeleteObject(arm_pen);
+    HBRUSH head_b = CreateSolidBrush(head_color); prev = SelectObject(hdc, head_b);
+    Ellipse(hdc, sx - 5, sy - 21, sx + 5, sy - 11);
+    SelectObject(hdc, prev);
+    HBRUSH eye_b = CreateSolidBrush(RGB(30, 25, 25));
+    RECT eye_l = { sx - 3 + face_dir, sy - 17, sx - 1 + face_dir, sy - 15 };
+    RECT eye_r = { sx + 1 + face_dir, sy - 17, sx + 3 + face_dir, sy - 15 };
+    FillRect(hdc, &eye_l, eye_b); FillRect(hdc, &eye_r, eye_b); DeleteObject(eye_b);
+
+    HPEN arm_pen = CreatePen(PS_SOLID, 3, RGB(200, 200, 190)); prev = SelectObject(hdc, arm_pen);
+    int hx1, hy1, hx2, hy2;
+    if (arms_out) {
+        int bob = (int)(sin(world_tick * 3.0f + seed) * 1.5f);
+        hx1 = sx - 4 + face_dir * 14; hy1 = sy - 7 + bob;
+        hx2 = sx + 4 + face_dir * 14; hy2 = sy - 5 + bob;
+        MoveToEx(hdc, sx - 4, sy - 8, NULL); LineTo(hdc, hx1, hy1);
+        MoveToEx(hdc, sx + 4, sy - 6, NULL); LineTo(hdc, hx2, hy2);
+    } else {
+        hx1 = sx - 8; hy1 = sy + 3; hx2 = sx + 8; hy2 = sy + 3;
+        MoveToEx(hdc, sx - 6, sy - 9, NULL); LineTo(hdc, hx1, hy1);
+        MoveToEx(hdc, sx + 6, sy - 9, NULL); LineTo(hdc, hx2, hy2);
+    }
+    SelectObject(hdc, prev); DeleteObject(arm_pen);
+    prev = SelectObject(hdc, head_b);
+    Ellipse(hdc, hx1 - 2, hy1 - 2, hx1 + 2, hy1 + 2);
+    Ellipse(hdc, hx2 - 2, hy2 - 2, hx2 + 2, hy2 + 2);
+    SelectObject(hdc, prev); DeleteObject(head_b);
 }
 
 void DrawDynamicEnemy(HDC hdc) {
     if (enemy_hearts <= 0.0f) return;
     int sx, sy; GetIsoCoords(enemy_x, enemy_y, &sx, &sy);
-    HBRUSH b1 = CreateSolidBrush(RGB(15, 20, 26)); HGDIOBJ old = SelectObject(hdc, b1); Ellipse(hdc, sx - 8, sy + 12, sx + 8, sy + 18); SelectObject(hdc, old); DeleteObject(b1);
+    int px, py; GetIsoCoords(player_x, player_y, &px, &py);
+    int face_dir = (px >= sx) ? 1 : -1;
+    HBRUSH b1 = CreateSolidBrush(RGB(15, 20, 26)); HGDIOBJ old = SelectObject(hdc, b1); Ellipse(hdc, sx - 9, sy + 16, sx + 9, sy + 22); SelectObject(hdc, old); DeleteObject(b1);
     if (active_monster == MONSTER_ZOMBIE) {
-        DrawZombieBody(hdc, sx, sy, (int)(enemy_x * 13.0f + enemy_y * 7.0f));
+        int seed = (int)(enemy_x * 13.0f + enemy_y * 7.0f);
+        int arms_out = (((int)(world_tick * 0.3f) + seed) % 40) < 22; // reaches out some of the time
+        DrawZombieBody(hdc, sx, sy, seed, face_dir, arms_out, RGB(165, 185, 150));
     } else {
-        COLORREF robe_color = RGB(130, 60, 160);
-        HBRUSH robe_b = CreateSolidBrush(robe_color); HGDIOBJ prev_robe = SelectObject(hdc, robe_b);
-        POINT robe[] = {{sx - 5, sy}, {sx + 5, sy}, {sx + 6, sy + 15}, {sx - 6, sy + 15}}; Polygon(hdc, robe, 4); SelectObject(hdc, prev_robe); DeleteObject(robe_b);
+        // Legs stride under the robe, then the robe and skull on top.
+        int step = (int)(sin(world_tick * 6.0f) * 2.0f);
+        HPEN leg_pen = CreatePen(PS_SOLID, 3, active_monster == MONSTER_SKELLY ? RGB(225, 225, 215) : RGB(35, 30, 40));
+        HGDIOBJ prev_leg = SelectObject(hdc, leg_pen);
+        MoveToEx(hdc, sx - 3, sy + 12, NULL); LineTo(hdc, sx - 3 + step, sy + 19);
+        MoveToEx(hdc, sx + 3, sy + 12, NULL); LineTo(hdc, sx + 3 - step, sy + 19);
+        SelectObject(hdc, prev_leg); DeleteObject(leg_pen);
+        HBRUSH robe_b = CreateSolidBrush(RGB(130, 60, 160)); HGDIOBJ prev_robe = SelectObject(hdc, robe_b);
+        POINT robe[] = {{sx - 5, sy}, {sx + 5, sy}, {sx + 6, sy + 14}, {sx - 6, sy + 14}}; Polygon(hdc, robe, 4); SelectObject(hdc, prev_robe); DeleteObject(robe_b);
+        HBRUSH skull_b = CreateSolidBrush(RGB(220, 220, 230)); HGDIOBJ prev_skull = SelectObject(hdc, skull_b); Ellipse(hdc, sx - 5, sy - 9, sx + 5, sy + 1); SelectObject(hdc, prev_skull); DeleteObject(skull_b);
     }
-    HBRUSH skull_b = CreateSolidBrush(RGB(220, 220, 230)); HGDIOBJ prev_skull = SelectObject(hdc, skull_b); Ellipse(hdc, sx - 5, sy - 9, sx + 5, sy + 1); SelectObject(hdc, prev_skull); DeleteObject(skull_b);
     int total_bars = (int)ceil(enemy_hearts);
     for (int i = 0; i < total_bars; i++) {
-        RECT r = {sx - 15 + (i * 10), sy - 20, sx - 7 + (i * 10), sy - 13};
+        RECT r = {sx - 15 + (i * 10), sy - 30, sx - 7 + (i * 10), sy - 23};
         HBRUSH red_b = CreateSolidBrush(RGB(255, 40, 40)); FillRect(hdc, &r, red_b); DeleteObject(red_b);
     }
     SelectObject(hdc, old);
@@ -276,6 +309,9 @@ void DrawMerchantStoreFront(HDC hdc) {
     int sx, sy; GetIsoCoords(merchant_x, merchant_y, &sx, &sy);
     HBRUSH tent_b = CreateSolidBrush(RGB(220, 50, 40)); HGDIOBJ old = SelectObject(hdc, tent_b);
     POINT tent[] = {{sx - 24, sy - 12}, {sx, sy - 36}, {sx + 24, sy - 12}, {sx, sy}}; Polygon(hdc, tent, 4); SelectObject(hdc, old); DeleteObject(tent_b);
+    HBRUSH merchant_legs = CreateSolidBrush(RGB(80, 60, 45));
+    RECT ml = { sx - 4, sy - 6, sx - 1, sy + 3 }, mr = { sx + 1, sy - 6, sx + 4, sy + 3 };
+    FillRect(hdc, &ml, merchant_legs); FillRect(hdc, &mr, merchant_legs); DeleteObject(merchant_legs);
     HBRUSH merchant_body = CreateSolidBrush(RGB(215, 180, 45)); HGDIOBJ prev = SelectObject(hdc, merchant_body);
     Ellipse(hdc, sx - 6, sy - 18, sx + 6, sy - 6); SelectObject(hdc, prev); DeleteObject(merchant_body);
 }
@@ -292,9 +328,15 @@ void DrawZeldaStyleVillager(HDC hdc, int sx, int sy, int npc_index, float scale)
     COLORREF hair = hair_palette[(npc_index + 1) % 4];
     COLORREF skin = RGB(235, 195, 160);
 
+    // Two legs in dark trousers with little boots under the tunic.
+    HBRUSH leg_b = CreateSolidBrush(RGB(70, 60, 55));
+    RECT leg_l = { sx - VS(4), sy + VS(5), sx - VS(1), sy + VS(12) };
+    RECT leg_r = { sx + VS(1), sy + VS(5), sx + VS(4), sy + VS(12) };
+    FillRect(hdc, &leg_l, leg_b); FillRect(hdc, &leg_r, leg_b); DeleteObject(leg_b);
     HBRUSH boot_b = CreateSolidBrush(RGB(90, 65, 45));
-    RECT boots = { sx - VS(4), sy + VS(6), sx + VS(4), sy + VS(10) };
-    FillRect(hdc, &boots, boot_b); DeleteObject(boot_b);
+    RECT boot_l = { sx - VS(5), sy + VS(11), sx - VS(1), sy + VS(14) };
+    RECT boot_r = { sx + VS(1), sy + VS(11), sx + VS(5), sy + VS(14) };
+    FillRect(hdc, &boot_l, boot_b); FillRect(hdc, &boot_r, boot_b); DeleteObject(boot_b);
 
     // Simple tunic-shaped torso, slightly tapered like a classic adventure outfit.
     HBRUSH tunic_b = CreateSolidBrush(tunic); HGDIOBJ old = SelectObject(hdc, tunic_b);
@@ -422,8 +464,9 @@ void DrawSummonedZombie(HDC hdc) {
     int sx, sy; GetIsoCoords(summoned_zombie.x, summoned_zombie.y, &sx, &sy);
     int rise = (summoned_zombie.raise_frame < 6) ? 12 - summoned_zombie.raise_frame * 2 : 0;
     sy += rise;
-    DrawZombieBody(hdc, sx, sy, (int)(summoned_zombie.x * 11.0f + summoned_zombie.y * 5.0f));
-    HBRUSH head_b = CreateSolidBrush(RGB(150, 170, 130)); HGDIOBJ old = SelectObject(hdc, head_b);
-    Ellipse(hdc, sx - 5, sy - 16, sx + 5, sy - 6);
-    SelectObject(hdc, old); DeleteObject(head_b);
+    // The summoned minion always walks with its arms held straight out,
+    // reaching toward the enemy it is hunting (or ahead, if there is none).
+    int face_dir = 1;
+    if (enemy_hearts > 0.0f) { int ex, ey; GetIsoCoords(enemy_x, enemy_y, &ex, &ey); face_dir = (ex >= sx) ? 1 : -1; }
+    DrawZombieBody(hdc, sx, sy, (int)(summoned_zombie.x * 11.0f + summoned_zombie.y * 5.0f), face_dir, 1, RGB(150, 170, 130));
 }
