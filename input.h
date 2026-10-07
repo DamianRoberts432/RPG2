@@ -4,5 +4,6 @@
 // Keyboard and XInput gamepad handling
 
 void ProcessGamepadInput(void);
+int AnyPlayerInput(void);
 
 #endif // INPUT_H

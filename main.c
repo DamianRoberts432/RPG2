@@ -77,6 +77,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
             }
             
             cam_x = (int)((player_x - player_y) * (TILE_WIDTH / 2)); cam_y = (int)((player_x + player_y) * (TILE_HEIGHT / 2));
+            float view_zoom = UpdateAfkCamera(AnyPlayerInput() || is_menu_open || vendor_menu_open ||
+                                              is_character_creation || sleep_fade_frame > 0);
             HDC hdc = GetDC(hwnd); HDC memHDC = CreateCompatibleDC(hdc); HBITMAP memBitmap = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT); SelectObject(memHDC, memBitmap);
             
             if (is_character_creation) {
@@ -189,7 +191,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 DrawFlyingArrow(memHDC); DrawFlyingSpell(memHDC); DrawClassAbilityFX(memHDC); DrawButterflies(memHDC); DrawBloodMistFX(memHDC);
                 DrawEnvironmentalCritters(memHDC); DrawMerchantStoreFront(memHDC); DrawVillage(memHDC); DrawNightEyes(memHDC);
                 DrawWeatherEffects(memHDC); DrawSolitaireSunMoonBeam(memHDC);
-                ApplyCameraZoom(memHDC);
+                ApplyCameraZoom(memHDC, view_zoom);
                 DrawPlayerStatusHUD(memHDC);
 
                 if (is_menu_open) DrawTabbedMenuOverlay(memHDC);
