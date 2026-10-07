@@ -159,8 +159,8 @@ WeaponStats weapon_catalog[] = {
     { LOOT_AXE, "Axe", 3, 100, 4.0f, 2.0f, 30, 0.75f },
     { LOOT_SHORT_BOW, "Short Bow", 1, 100, 1.5f, 0.0f, 25, 1.0f },
     { LOOT_RUSTY_SWORD, "Rusty Sword", 1, 25, 2.0f, 0.0f, 8, 1.0f },
-    // Legendary treasure-hunt reward: only ever obtainable from a cave's
-    // treasure chest (see ClaimCaveTreasure). Durability is set absurdly high
+    // Legendary: only ever dropped by bosses and mythic beasts (see
+    // HandleEnemyDamage). Durability is set absurdly high
     // to stand in for "infinite", and it is specifically excluded from
     // selling/dropping (see HandleVendorSell/DropSelectedItem).
     { LOOT_MUSASHI_BLADE, "Musashi's Blade", 10, 99999, 1.0f, 1.0f, 5000, 1.0f }
@@ -186,8 +186,8 @@ MerchantItem merchant_catalog[MERCH_ITEMS] = {
     { "Apple",         "Food",     0,                  3, -1, 0, RARITY_COMMON, 0 },
     { "Long Sword",    "Weapon",   LOOT_LONG_SWORD,   35, 2,  2, RARITY_UNCOMMON, 0 },
     { "Short Bow",     "Weapon",   LOOT_SHORT_BOW,    25, 2,  2, RARITY_UNCOMMON, 0 },
-    { "Dragon Scale Armor", "Armor", 0,                40, 1,  1, RARITY_RARE, 0 },
-    { "Musashi's Blade", "Weapon", LOOT_MUSASHI_BLADE, 500, 0, 1, RARITY_LEGENDARY, 1 }
+    { "Dragon Scale Armor", "Armor", 0,                40, 1,  1, RARITY_RARE, 0 }
+    // Legendary items are never sold; they only drop from bosses (see HandleEnemyDamage).
 };
 const char *villager_greetings[] = {
     "Good day, traveler!", "The road treats you kindly?", "Welcome to our village.",

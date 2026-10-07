@@ -167,7 +167,8 @@ void UpdateGamePhysics(void) {
             float s_dx = target_x - enemy_x, s_dy = target_y - enemy_y;
             float dist = (float)sqrt(s_dx * s_dx + s_dy * s_dy);
             if (dist <= 8.0f && dist > 0.2f) {
-                float speed = active_monster == MONSTER_ZOMBIE ? 0.014f : 0.0275f;
+                static const float speeds[] = { 0.0275f, 0.014f, 0.03f, 0.034f, 0.03f, 0.022f, 0.02f, 0.024f, 0.018f };
+                float speed = speeds[active_monster];
                 if (fabs(sin(day_night_cycle_accumulator)) < 0.35f) speed *= 1.2f;
                 if (VISUAL_MAP[(int)enemy_y][(int)enemy_x] == 12) speed *= 0.25f;
                 enemy_x += (s_dx / dist) * speed;
