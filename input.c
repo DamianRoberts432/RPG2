@@ -1,5 +1,19 @@
 #include "game.h"
 
+// 1 while any key, mouse button, gamepad button, trigger or stick is in use.
+int AnyPlayerInput(void) {
+    for (int vk = 0x01; vk <= 0xFE; vk++) if (GetAsyncKeyState(vk) & 0x8000) return 1;
+    XINPUT_STATE s; SecureZeroMemory(&s, sizeof(s));
+    if (XInputGetState(0, &s) == ERROR_SUCCESS) {
+        XINPUT_GAMEPAD *g = &s.Gamepad;
+        if (g->wButtons || g->bLeftTrigger > 30 || g->bRightTrigger > 30) return 1;
+        int dl = XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE, dr = XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE;
+        if (g->sThumbLX > dl || g->sThumbLX < -dl || g->sThumbLY > dl || g->sThumbLY < -dl) return 1;
+        if (g->sThumbRX > dr || g->sThumbRX < -dr || g->sThumbRY > dr || g->sThumbRY < -dr) return 1;
+    }
+    return 0;
+}
+
 void ProcessGamepadInput(void) {
     if (sleep_fade_frame > 0) return;
     XINPUT_STATE state; SecureZeroMemory(&state, sizeof(XINPUT_STATE));

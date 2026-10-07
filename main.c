@@ -45,6 +45,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                     int new_gy = screen_grid_y + dgy;
                     if (new_gx < 0 || new_gx >= META_GRID_SIZE || new_gy < 0 || new_gy >= META_GRID_SIZE) {
                         // Edge of the known world: a hard dead end, bounce back in bounds.
+                        strcpy(arpg_action_log, "WORLD EDGE: Nothing lies beyond here... yet. Turn back.");
                         if (player_x <= 0.5f) player_x = 2.0f;
                         else if (player_x >= (MAP_SIZE - 1.5f)) player_x = (float)(MAP_SIZE - 3);
                         if (player_y <= 0.5f) player_y = 2.0f;
@@ -76,6 +77,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
             }
             
             cam_x = (int)((player_x - player_y) * (TILE_WIDTH / 2)); cam_y = (int)((player_x + player_y) * (TILE_HEIGHT / 2));
+            float view_zoom = UpdateAfkCamera(AnyPlayerInput() || is_menu_open || vendor_menu_open ||
+                                              is_character_creation || sleep_fade_frame > 0);
             HDC hdc = GetDC(hwnd); HDC memHDC = CreateCompatibleDC(hdc); HBITMAP memBitmap = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT); SelectObject(memHDC, memBitmap);
             
             if (is_character_creation) {
@@ -186,9 +189,9 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 }
                 DrawCampfires(memHDC); DrawBedroll(memHDC); DrawGroundLoot(memHDC); DrawDroppedItems(memHDC); DrawDebrisTwigs(memHDC); DrawSummonedZombie(memHDC);
                 DrawFlyingArrow(memHDC); DrawFlyingSpell(memHDC); DrawClassAbilityFX(memHDC); DrawButterflies(memHDC); DrawBloodMistFX(memHDC);
-                DrawEnvironmentalCritters(memHDC); DrawMerchantStoreFront(memHDC); DrawVillage(memHDC);
+                DrawEnvironmentalCritters(memHDC); DrawMerchantStoreFront(memHDC); DrawVillage(memHDC); DrawNightEyes(memHDC);
                 DrawWeatherEffects(memHDC); DrawSolitaireSunMoonBeam(memHDC);
-                ApplyCameraZoom(memHDC);
+                ApplyCameraZoom(memHDC, view_zoom);
                 DrawPlayerStatusHUD(memHDC);
 
                 if (is_menu_open) DrawTabbedMenuOverlay(memHDC);

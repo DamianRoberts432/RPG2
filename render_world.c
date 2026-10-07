@@ -283,6 +283,37 @@ void DrawEnvironmentalCritters(HDC hdc) {
     }
 }
 
+// Night eyes peering out of the tree line: at most a couple of yellow pairs.
+// Red pairs foreshadow what comes after level 25 and are rare before it.
+// Pairs stay put for ~9 seconds, blink now and then, and never sit right
+// next to the hero.
+void DrawNightEyes(HDC hdc) {
+    if (current_biome == BIOME_CAVE || current_biome == BIOME_CASTLE) return;
+    if ((float)fabs(sin(day_night_cycle_accumulator)) >= 0.35f) return;
+    int trees[256], n = 0;
+    for (int r = 0; r < MAP_SIZE && n < 256; r++) for (int c = 0; c < MAP_SIZE && n < 256; c++) {
+        if (VISUAL_MAP[r][c] != 11) continue;
+        if (fabs(c - player_x) + fabs(r - player_y) < 5.0f) continue;
+        trees[n++] = r * MAP_SIZE + c;
+    }
+    if (n == 0) return;
+    DWORD now = GetTickCount();
+    unsigned int h0 = (unsigned int)RainHash(current_screen_index * 977 + (int)(now / 9000));
+    int yellow = (int)(h0 % 3);
+    int red_chance = (player_level >= 25) ? 30 : 3;
+    int red = (int)((h0 >> 8) % 100) < red_chance;
+    for (int k = 0; k < yellow + red; k++) {
+        unsigned int h = (unsigned int)RainHash((int)h0 + k * 131);
+        if (((now / 120) + h) % 30 == 0) continue; // brief blink
+        int t = trees[h % (unsigned int)n];
+        int sx, sy; GetIsoCoords((float)(t % MAP_SIZE), (float)(t / MAP_SIZE), &sx, &sy);
+        int ex = sx - 6 + (int)(h % 13), ey = sy - 4 - (int)((h >> 5) % 6);
+        HBRUSH b = CreateSolidBrush((red && k == yellow) ? RGB(235, 30, 25) : RGB(240, 215, 60));
+        RECT left = { ex - 4, ey, ex - 1, ey + 2 }, right = { ex + 1, ey, ex + 4, ey + 2 };
+        FillRect(hdc, &left, b); FillRect(hdc, &right, b); DeleteObject(b);
+    }
+}
+
 void DrawSolitaireSunMoonBeam(HDC hdc) {
     if (current_biome == BIOME_CAVE) return;
 
@@ -406,16 +437,36 @@ void DrawBedroll(HDC hdc) {
 
 // Very slight zoom-in of the gameplay view (HUD is drawn afterwards, unscaled).
 #define CAMERA_ZOOM 1.08f
-void ApplyCameraZoom(HDC hdc) {
+void ApplyCameraZoom(HDC hdc, float zoom) {
     HDC copy_dc = CreateCompatibleDC(hdc);
     HBITMAP copy_bmp = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT);
     HGDIOBJ old_bmp = SelectObject(copy_dc, copy_bmp);
     BitBlt(copy_dc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, hdc, 0, 0, SRCCOPY);
-    int src_w = (int)(WINDOW_WIDTH / CAMERA_ZOOM), src_h = (int)(WINDOW_HEIGHT / CAMERA_ZOOM);
+    int src_w = (int)(WINDOW_WIDTH / zoom), src_h = (int)(WINDOW_HEIGHT / zoom);
     SetStretchBltMode(hdc, COLORONCOLOR);
     StretchBlt(hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, copy_dc,
                (WINDOW_WIDTH - src_w) / 2, (WINDOW_HEIGHT - src_h) / 2, src_w, src_h, SRCCOPY);
     SelectObject(copy_dc, old_bmp); DeleteObject(copy_bmp); DeleteDC(copy_dc);
+}
+
+// AFK camera: after AFK_DELAY_MS with no input the view eases into a closer
+// zoom and slowly drifts around the hero; any input snaps it straight back.
+// Shifts cam_x/cam_y for this frame and returns the zoom to draw with.
+#define AFK_DELAY_MS 45000
+#define AFK_EASE_MS 10000
+float UpdateAfkCamera(int input_active) {
+    static DWORD last_input = 0;
+    DWORD now = GetTickCount();
+    if (input_active || last_input == 0) last_input = now;
+    DWORD idle = now - last_input;
+    if (idle < AFK_DELAY_MS) return CAMERA_ZOOM;
+    float t = (float)(idle - AFK_DELAY_MS) / AFK_EASE_MS;
+    if (t > 1.0f) t = 1.0f;
+    t = t * t * (3.0f - 2.0f * t);
+    float a = (float)(idle - AFK_DELAY_MS) / 12000.0f;
+    cam_x += (int)(sinf(a) * 140.0f * t);
+    cam_y += (int)(sinf(a * 0.7f) * 70.0f * t);
+    return CAMERA_ZOOM + 0.22f * t;
 }
 
 int RainHash(int value) {
