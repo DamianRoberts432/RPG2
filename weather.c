@@ -342,6 +342,50 @@ int IsAdverseWeather(void) {
 // Ground cover is stateless like the falling leaves: which tiles carry a snow
 // drift or a leaf pile is a hash of the tile, and how many do follows
 // snow_cover / how far into Fall it is, so it builds up and melts away.
+static int NearActiveCampfire(float x, float y, float radius) {
+    for (int i = 0; i < MAX_CAMPFIRES; i++) {
+        if (!campfires[i].active || campfires[i].screen_id != current_screen_index) continue;
+        float dx = campfires[i].x - x, dy = campfires[i].y - y;
+        if (dx * dx + dy * dy <= radius * radius) return 1;
+    }
+    return 0;
+}
+
+// A lumpy drift: a shaded base with 3-5 stacked, shrinking mounds on top.
+static void DrawSnowClump(HDC hdc, int x, int y, int h, HBRUSH lit, HBRUSH shade, float depth) {
+    int size = 6 + (int)(depth * 8.0f) + h % 5;
+    int lumps = 3 + (h >> 5) % 3;
+    SelectObject(hdc, shade);
+    Ellipse(hdc, x - size - 2, y - size / 3, x + size + 2, y + size / 2 + 2);
+    SelectObject(hdc, lit);
+    for (int k = 0; k < lumps; k++) {
+        int hk = RainHash(h + k * 977) & 0x7fffffff;
+        int r = size / 2 + hk % (size / 2 + 1) - k * 2;
+        if (r < 3) r = 3;
+        int lx = x + (hk >> 4) % (size + 1) - size / 2;
+        int ly = y - (k * size) / (lumps + 1) - (hk >> 9) % 3;
+        Ellipse(hdc, lx - r, ly - r * 2 / 3, lx + r, ly + r / 3);
+    }
+}
+
+// Snow melts in a ring around burning campfires: repaint the plain grass there.
+static void DrawCampfireMeltPatches(HDC hdc) {
+    if (snow_cover < 0.05f) return;
+    float amb = (float)fabs(sin(day_night_cycle_accumulator));
+    COLORREF base = RGB((int)(25.0f + amb * 80.0f), (int)(30.0f + amb * 155.0f), (int)(40.0f + amb * 45.0f));
+    float saved = snow_cover; snow_cover = 0.0f;
+    HBRUSH grass = CreateSolidBrush(ApplySeasonToGround(base));
+    snow_cover = saved;
+    HGDIOBJ old_b = SelectObject(hdc, grass), old_p = SelectObject(hdc, GetStockObject(NULL_PEN));
+    for (int i = 0; i < MAX_CAMPFIRES; i++) {
+        if (!campfires[i].active || campfires[i].screen_id != current_screen_index) continue;
+        int sx, sy; GetIsoCoords(campfires[i].x, campfires[i].y, &sx, &sy);
+        int cy = sy + TILE_HEIGHT / 2;
+        Ellipse(hdc, sx - TILE_WIDTH, cy - TILE_HEIGHT, sx + TILE_WIDTH, cy + TILE_HEIGHT);
+    }
+    SelectObject(hdc, old_b); SelectObject(hdc, old_p); DeleteObject(grass);
+}
+
 void DrawSeasonalGroundCover(HDC hdc) {
     if (current_biome == BIOME_CAVE) return;
     float leaf_cover = 0.0f;
@@ -350,31 +394,33 @@ void DrawSeasonalGroundCover(HDC hdc) {
         leaf_cover = 0.3f * (1.0f - season_elapsed / (SEASON_LENGTH_SECONDS * 0.2f));
     leaf_cover *= 1.0f - snow_cover;
     if (snow_cover < 0.02f && leaf_cover < 0.02f) return;
+    DrawCampfireMeltPatches(hdc);
 
     static const COLORREF leaf_colors[] = { RGB(200, 105, 35), RGB(170, 60, 35), RGB(210, 165, 55), RGB(140, 85, 40) };
     int white = 140 + (int)((float)fabs(sin(day_night_cycle_accumulator)) * 110.0f);
     HBRUSH snow_b = CreateSolidBrush(RGB(white, white, white + 5 > 255 ? 255 : white + 5));
+    HBRUSH shade_b = CreateSolidBrush(RGB(white - 35, white - 30, white - 15));
     HBRUSH leaf_b[4];
     for (int i = 0; i < 4; i++) leaf_b[i] = CreateSolidBrush(leaf_colors[i]);
     HGDIOBJ old_b = SelectObject(hdc, snow_b), old_p = SelectObject(hdc, GetStockObject(NULL_PEN));
-    int snow_pct = (int)(snow_cover * 100.0f), leaf_pct = (int)(leaf_cover * 100.0f);
+    int snow_pct = (int)(snow_cover * 22.0f), leaf_pct = (int)(leaf_cover * 25.0f);
 
     for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) {
         uint8_t t = VISUAL_MAP[r][c];
         if (t == 1 || t == 10 || t == 12) continue;
         int sx, sy; GetIsoCoords((float)c, (float)r, &sx, &sy);
         if (sx < -TILE_WIDTH || sx > WINDOW_WIDTH + TILE_WIDTH || sy < -TILE_HEIGHT || sy > WINDOW_HEIGHT + TILE_HEIGHT) continue;
+        if (NearActiveCampfire((float)c, (float)r, 2.2f)) continue;
         int cy = sy + TILE_HEIGHT / 2;
         int h = RainHash(current_screen_index * 4099 + r * MAP_SIZE + c) & 0x7fffffff;
         if (h % 100 < snow_pct) {
-            int w = 10 + h % 12 + snow_pct / 8, hh = w / 2;
             int ox = (h >> 4) % 17 - 8, oy = (h >> 9) % 7 - 3;
-            SelectObject(hdc, snow_b);
-            Ellipse(hdc, sx + ox - w, cy + oy - hh, sx + ox + w, cy + oy + hh);
+            DrawSnowClump(hdc, sx + ox, cy + oy, h, snow_b, shade_b, snow_cover);
         } else if ((h >> 3) % 100 < leaf_pct) {
-            for (int k = 0; k < 3; k++) {
+            int leaves = 5 + (h >> 11) % 3;
+            for (int k = 0; k < leaves; k++) {
                 int hk = RainHash(h + k * 131) & 0x7fffffff;
-                int lx = sx + hk % 33 - 16, ly = cy + (hk >> 6) % 13 - 6;
+                int lx = sx + hk % 19 - 9, ly = cy + (hk >> 6) % 9 - 4 - k / 2;
                 SelectObject(hdc, leaf_b[hk % 4]);
                 POINT leaf[] = { {lx - 4, ly}, {lx, ly - 2}, {lx + 4, ly}, {lx, ly + 2} };
                 Polygon(hdc, leaf, 4);
@@ -382,7 +428,7 @@ void DrawSeasonalGroundCover(HDC hdc) {
         }
     }
     SelectObject(hdc, old_b); SelectObject(hdc, old_p);
-    DeleteObject(snow_b);
+    DeleteObject(snow_b); DeleteObject(shade_b);
     for (int i = 0; i < 4; i++) DeleteObject(leaf_b[i]);
 }
 
