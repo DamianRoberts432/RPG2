@@ -104,7 +104,7 @@ void UpdateGamePhysics(void) {
     if (player_spell.active) {
         player_spell.x += player_spell.vx;
         player_spell.y += player_spell.vy;
-        if (enemy_hearts > 0.0f && fabs(player_spell.x - enemy_x) < 0.5f && fabs(player_spell.y - enemy_y) < 0.5f) {
+        if (EnemyAtPoint(player_spell.x, player_spell.y, 0.5f) >= 0) {
             player_spell.active = 0; HandleEnemyDamage(player_spell.damage);
         } else if (player_spell.x < 0 || player_spell.x >= MAP_SIZE || player_spell.y < 0 || player_spell.y >= MAP_SIZE) {
             player_spell.active = 0;
@@ -115,7 +115,7 @@ void UpdateGamePhysics(void) {
         summoned_zombie.timer--;
         if (summoned_zombie.raise_frame < 6) summoned_zombie.raise_frame++;
         if (summoned_zombie.timer <= 0 || summoned_zombie.hp <= 0) summoned_zombie.active = 0;
-        else if (enemy_hearts > 0.0f) {
+        else if (SelectNearestEnemyTo(summoned_zombie.x, summoned_zombie.y) >= 0) {
             float zx = enemy_x - summoned_zombie.x, zy = enemy_y - summoned_zombie.y;
             float zd = (float)sqrt(zx * zx + zy * zy);
             if (zd > 0.65f) {
@@ -130,7 +130,10 @@ void UpdateGamePhysics(void) {
     // "CAVE" prompt (drawn in WinMain); the player must press the interact
     // button (HandleContextInteract -> EnterCave) to actually go inside.
 
-    // Enemy AI with Campfire Light Deterrent
+    // Enemy AI with Campfire Light Deterrent, run for each monster on screen.
+    StoreEnemy();
+    for (int e = 0; e < MAX_ENEMIES; e++) {
+    SelectEnemy(e);
     if (enemy_hearts > 0.0f) {
         int fleeing_from_fire = 0;
         float fire_fx = 0.0f, fire_fy = 0.0f;
@@ -190,7 +193,21 @@ void UpdateGamePhysics(void) {
                 if (VISUAL_MAP[(int)ty][(int)tx] != 1 && VISUAL_MAP[(int)ty][(int)tx] != 12) { enemy_x = tx; enemy_y = ty; }
             }
         }
+        // Keep monsters from stacking on top of one another.
+        for (int o = 0; o < MAX_ENEMIES; o++) {
+            if (o == e || enemies[o].hearts <= 0.0f) continue;
+            float ox = enemy_x - enemies[o].x, oy = enemy_y - enemies[o].y;
+            float od = (float)sqrt(ox * ox + oy * oy);
+            if (od < 0.7f && od > 0.001f) {
+                float nx = enemy_x + (ox / od) * 0.03f, ny = enemy_y + (oy / od) * 0.03f;
+                if (nx > 0.5f && ny > 0.5f && nx < MAP_SIZE - 0.5f && ny < MAP_SIZE - 0.5f &&
+                    VISUAL_MAP[(int)ny][(int)nx] != 1 && VISUAL_MAP[(int)ny][(int)nx] != 12) { enemy_x = nx; enemy_y = ny; }
+            }
+        }
     }
+    StoreEnemy();
+    }
+    UpdateEnemySpawns();
 }
 
 void UpdateIceSlide(void) {

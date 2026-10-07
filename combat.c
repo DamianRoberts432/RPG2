@@ -70,6 +70,7 @@ void PerformMeleeAttack(void) {
     if (player_stamina < stamina_cost) { strcpy(arpg_action_log, "Exhausted! Too tired to swing that weapon."); return; }
     player_stamina -= (float)stamina_cost;
     sword_swipe_frame = (weapon && weapon->attack_speed_mult < 1.0f) ? 14 : 10;
+    SelectTargetEnemy();
     float m_dist = DistanceToEnemy();
     if (m_dist < 1.8f && IsFacingEnemy()) {
         int broke = WearEquippedWeapon();
@@ -137,10 +138,10 @@ void HandleEnemyDamage(float dmg) {
             if (hoard) sprintf(arpg_action_log, "VICTORY: The %s falls! +%d XP, %d gold from its hoard!", MonsterName(active_monster), gained_xp, hoard);
             else sprintf(arpg_action_log, "VICTORY: %s slain! +%d XP", MonsterName(active_monster), gained_xp);
         }
-        TriggerMonsterRespawn();
     } else {
         sprintf(arpg_action_log, "STRIKE: Hit for %.1f DMG! Remainder: %.1f", dmg, enemy_hearts);
     }
+    StoreEnemy();
 }
 
 // Straight-line tile distance from the player to the active enemy. Shared
@@ -172,6 +173,93 @@ int IsFacingEnemyWithin(float dot_threshold) {
 
 int IsFacingEnemy(void) { return IsFacingEnemyWithin(FACING_CONE_DOT_THRESHOLD); }
 
+void SelectEnemy(int i) {
+    current_enemy = i;
+    enemy_x = enemies[i].x; enemy_y = enemies[i].y; enemy_hearts = enemies[i].hearts;
+    active_monster = enemies[i].type; enemy_direction = enemies[i].direction;
+}
+
+void StoreEnemy(void) {
+    EnemySlot *e = &enemies[current_enemy];
+    e->x = enemy_x; e->y = enemy_y; e->hearts = enemy_hearts; e->type = active_monster; e->direction = enemy_direction;
+}
+
+// Selects the first living enemy inside the box around (x, y).
+int EnemyAtPoint(float x, float y, float radius) {
+    StoreEnemy();
+    for (int i = 0; i < MAX_ENEMIES; i++) {
+        if (enemies[i].hearts > 0.0f && fabs(x - enemies[i].x) < radius && fabs(y - enemies[i].y) < radius) { SelectEnemy(i); return i; }
+    }
+    return -1;
+}
+
+int SelectNearestEnemyTo(float x, float y) {
+    StoreEnemy();
+    int best = -1; float best_d = 1e9f;
+    for (int i = 0; i < MAX_ENEMIES; i++) {
+        if (enemies[i].hearts <= 0.0f) continue;
+        float dx = enemies[i].x - x, dy = enemies[i].y - y, d = dx * dx + dy * dy;
+        if (d < best_d) { best_d = d; best = i; }
+    }
+    if (best >= 0) SelectEnemy(best);
+    return best;
+}
+
+// The player's target: the closest enemy they are facing, else the closest one.
+int SelectTargetEnemy(void) {
+    int nearest = SelectNearestEnemyTo(player_x, player_y);
+    if (nearest < 0) return -1;
+    int facing = -1; float best_d = 1e9f;
+    for (int i = 0; i < MAX_ENEMIES; i++) {
+        if (enemies[i].hearts <= 0.0f) continue;
+        SelectEnemy(i);
+        float d = DistanceToEnemy();
+        if (IsFacingEnemy() && d < best_d) { best_d = d; facing = i; }
+    }
+    SelectEnemy(facing >= 0 ? facing : nearest);
+    return current_enemy;
+}
+
+static int EnemyCap(void) { return fabs(sin(day_night_cycle_accumulator)) < 0.35f ? MAX_ENEMIES : MAX_ENEMIES_DAY; }
+
+static void SpawnEnemyInFreeSlot(void) {
+    StoreEnemy();
+    for (int i = 0; i < MAX_ENEMIES; i++) {
+        if (enemies[i].hearts > 0.0f) continue;
+        SelectEnemy(i); TriggerMonsterRespawn(); enemy_direction = FACE_DOWN; StoreEnemy();
+        return;
+    }
+}
+
+void SpawnScreenEnemies(void) {
+    for (int i = 0; i < MAX_ENEMIES; i++) enemies[i].hearts = 0.0f;
+    SelectEnemy(0);
+    int cap = EnemyCap();
+    int n = cap / 2 + rand() % (cap / 2 + 1); // day 2-4, night 3-6
+    for (int k = 0; k < n; k++) SpawnEnemyInFreeSlot();
+}
+
+// Every ENEMY_SPAWN_INTERVAL_MS another monster wanders in while the screen is
+// under its cap (4 by day, 6 at night); extras left at dawn wander off.
+void UpdateEnemySpawns(void) {
+    static DWORD last_spawn = 0;
+    DWORD now = GetTickCount();
+    if (now - last_spawn < ENEMY_SPAWN_INTERVAL_MS) return;
+    last_spawn = now;
+    StoreEnemy();
+    int alive = 0, farthest = -1; float far_d = -1.0f;
+    for (int i = 0; i < MAX_ENEMIES; i++) {
+        if (enemies[i].hearts <= 0.0f) continue;
+        alive++;
+        if (IS_BOSS_MONSTER(enemies[i].type)) continue;
+        float dx = enemies[i].x - player_x, dy = enemies[i].y - player_y, d = dx * dx + dy * dy;
+        if (d > far_d) { far_d = d; farthest = i; }
+    }
+    int cap = EnemyCap();
+    if (alive < cap) SpawnEnemyInFreeSlot();
+    else if (alive > cap && farthest >= 0) { enemies[farthest].hearts = 0.0f; SelectEnemy(current_enemy); }
+}
+
 // Arrows fly straight along the hero's facing; they only curve toward the
 // monster when the hero is actually facing it (within BOW_AIM_CONE_DOT).
 #define BOW_AIM_CONE_DOT 0.5f
@@ -179,6 +267,7 @@ void FirePlayerArrow(int is_tap) {
     player_arrow.x = player_x; player_arrow.y = player_y; player_arrow.z = 12.0f;
     player_arrow.origin_tx = (int)player_x; player_arrow.origin_ty = (int)player_y;
     float track_dx = 0.0f, track_dy = 0.0f;
+    SelectTargetEnemy();
     if (IsFacingEnemyWithin(BOW_AIM_CONE_DOT)) {
         track_dx = enemy_x - player_x; track_dy = enemy_y - player_y;
     } else {
@@ -221,7 +310,7 @@ void UpdatePlayerArrow(void) {
     }
     player_arrow.z += player_arrow.vz; player_arrow.vz -= 0.02f;
     float arrow_radius = 0.5f + fabs(player_arrow.vx) + fabs(player_arrow.vy);
-    if (enemy_hearts > 0.0f && fabs(player_arrow.x - enemy_x) < arrow_radius && fabs(player_arrow.y - enemy_y) < arrow_radius) {
+    if (EnemyAtPoint(player_arrow.x, player_arrow.y, arrow_radius) >= 0) {
         player_arrow.active = 0;
         int broke = WearEquippedBow();
         HandleEnemyDamage(player_arrow.damage);
@@ -274,6 +363,7 @@ void FireClassAbility(void) {
         }
         player_spell.x = player_x; player_spell.y = player_y; player_spell.z = 10.0f;
         float track_dx = 0.0f, track_dy = 0.0f;
+        SelectTargetEnemy();
         if (enemy_hearts > 0.0f) {
             track_dx = enemy_x - player_x; track_dy = enemy_y - player_y;
         } else if (player_facing == FACE_UP) track_dy = -1.0f;
@@ -309,6 +399,7 @@ void FireClassAbility(void) {
         ability_visual_frame = ABILITY_FLASH_FRAMES;
         player_mp -= CLASS_ABILITY_MP_COST; y_ability_cooldown_until = now + BACKSTEP_COOLDOWN_MS;
 
+        SelectTargetEnemy();
         float m_dist = DistanceToEnemy();
         if (enemy_hearts > 0.0f && m_dist < 2.0f && IsFacingEnemy()) {
             sword_swipe_frame = 10;

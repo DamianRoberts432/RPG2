@@ -242,6 +242,19 @@ extern float enemy_x;
 extern float enemy_y;
 extern float enemy_hearts;
 extern MonsterType active_monster;
+#define MAX_ENEMIES 6           // night cap
+#define MAX_ENEMIES_DAY 4
+#define ENEMY_SPAWN_INTERVAL_MS 20000
+typedef struct { float x, y, hearts; MonsterType type; int direction; } EnemySlot;
+extern EnemySlot enemies[MAX_ENEMIES];
+extern int current_enemy;
+void SelectEnemy(int i);
+void StoreEnemy(void);
+int EnemyAtPoint(float x, float y, float radius);
+int SelectNearestEnemyTo(float x, float y);
+int SelectTargetEnemy(void);
+void SpawnScreenEnemies(void);
+void UpdateEnemySpawns(void);
 extern float gator_x;
 extern float gator_y;
 extern int gator_active;

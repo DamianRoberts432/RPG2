@@ -144,6 +144,10 @@ int torch_gate_x = 12; int torch_gate_y = 12;
 // Living Entity Management
 float enemy_x = 27.0f; float enemy_y = 27.0f; float enemy_hearts = 3.0f;
 MonsterType active_monster = MONSTER_SKELLY;
+// Up to MAX_ENEMIES monsters share a screen. enemy_x/enemy_y/enemy_hearts/
+// active_monster/enemy_direction are the working copy of enemies[current_enemy].
+EnemySlot enemies[MAX_ENEMIES];
+int current_enemy = 0;
 float gator_x = 0.0f; float gator_y = 0.0f; int gator_active = 0; float gator_swim_timer = 0.0f;
 
 // Storefront Objects

@@ -393,6 +393,16 @@ static void DrawMythicBeast(HDC hdc, int sx, int sy, int face_dir) {
     }
 }
 
+void DrawEnemiesAtTile(HDC hdc, int c, int r) {
+    StoreEnemy();
+    int keep = current_enemy;
+    for (int i = 0; i < MAX_ENEMIES; i++) {
+        if (enemies[i].hearts <= 0.0f || (int)enemies[i].x != c || (int)enemies[i].y != r) continue;
+        SelectEnemy(i); DrawDynamicEnemy(hdc);
+    }
+    SelectEnemy(keep);
+}
+
 void DrawDynamicEnemy(HDC hdc) {
     if (enemy_hearts <= 0.0f) return;
     int sx, sy; GetIsoCoords(enemy_x, enemy_y, &sx, &sy);

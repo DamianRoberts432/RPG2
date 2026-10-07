@@ -193,7 +193,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                             }
                         }
                         if (c == (int)player_x && r == (int)player_y) DrawHeroAsset(memHDC);
-                        if (enemy_hearts > 0.0f && c == (int)enemy_x && r == (int)enemy_y) DrawDynamicEnemy(memHDC);
+                        DrawEnemiesAtTile(memHDC, c, r);
                     }
                 }
                 DrawCampfires(memHDC); DrawBedroll(memHDC); DrawGroundLoot(memHDC); DrawDroppedItems(memHDC); DrawDebrisTwigs(memHDC); DrawSummonedZombie(memHDC);
