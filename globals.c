@@ -95,7 +95,8 @@ float weather_next_change = 200.0f;
 
 // Menu / Pause System
 int is_menu_open = 0; 
-int current_menu_tab = 0; 
+int current_menu_tab = 0;
+int world_map_zoom = 1; 
 int selected_creation_field = 0;
 int creation_name_letter_cursor = 0; // 0-55 = A-Z, a-z, space, period, hyphen, apostrophe
 

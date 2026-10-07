@@ -179,6 +179,7 @@ extern int enemy_direction;
 extern float weather_next_change;
 extern int is_menu_open;
 extern int current_menu_tab;
+extern int world_map_zoom; // 1 = whole world; 2/4/8 = closer view around the hero
 extern int selected_creation_field;
 extern int creation_name_letter_cursor;
 extern int gold_count;

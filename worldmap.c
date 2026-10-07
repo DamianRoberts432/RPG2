@@ -105,16 +105,22 @@ static void DrawLegendSwatch(HDC hdc, int x, int y, COLORREF c, const char *labe
 }
 
 void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
-    // The whole 64x64 world is always shown at a fixed scale; unexplored
-    // cells stay dark until visited.
-    int min_x = 0, min_y = 0, max_x = META_GRID_SIZE - 1, max_y = META_GRID_SIZE - 1;
-    int cols = META_GRID_SIZE, rows = META_GRID_SIZE;
+    // world_map_zoom 1 shows the whole 64x64 world; 2/4/8 show a window
+    // centred on the hero's screen. Unexplored cells stay dark until visited.
+    int span = META_GRID_SIZE / world_map_zoom;
+    int min_x = screen_grid_x - span / 2, min_y = screen_grid_y - span / 2;
+    if (min_x < 0) min_x = 0;
+    if (min_y < 0) min_y = 0;
+    if (min_x > META_GRID_SIZE - span) min_x = META_GRID_SIZE - span;
+    if (min_y > META_GRID_SIZE - span) min_y = META_GRID_SIZE - span;
+    int max_x = min_x + span - 1, max_y = min_y + span - 1;
+    int cols = span, rows = span;
 
     // Cells are drawn as a 4x4 grid of small squares so landmarks read as
     // "a few squares".
     int q = max_w / (cols * 4);
     if (max_h / (rows * 4) < q) q = max_h / (rows * 4);
-    if (q > 10) q = 10;
+    if (q > 24) q = 24;
     if (q < 1) q = 1;
     int cs = q * 4;
 

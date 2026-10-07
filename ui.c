@@ -324,7 +324,8 @@ void DrawTabbedMenuOverlay(HDC hdc) {
     } else if (current_menu_tab == 1) { 
         const char *title = "WORLD MAP - every screen you have explored (saved automatically)";
         TextOut(hdc, 90, 100, title, (int)strlen(title));
-        sprintf(buf, "Location: (%d, %d)   Biome: %s   |   %d screens to town", screen_grid_x, screen_grid_y, biome_names[current_biome], screens_until_town);
+        sprintf(buf, "Location: (%d, %d)   Biome: %s   |   %d screens to town   |   Zoom x%d (LT/RT or -/+)", screen_grid_x, screen_grid_y,
+                biome_names[current_biome], screens_until_town, world_map_zoom);
         TextOut(hdc, 90, 122, buf, (int)strlen(buf));
         DrawWorldMapPanel(hdc, 100, 160, 1200, WINDOW_HEIGHT - 280);
         SetTextColor(hdc, RGB(200, 210, 220));
