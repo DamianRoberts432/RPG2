@@ -94,12 +94,13 @@ void DrawPlayerStatusHUD(HDC hdc) {
 
     char line[96];
     int underground = current_biome == BIOME_CAVE;
-    int day = (int)((SEASON_LENGTH_SECONDS - SeasonSecondsRemaining()) / (SEASON_LENGTH_SECONDS / 30.0f)) + 1;
-    if (day > 30) day = 30;
+    int hour, minute;
+    GetGameClock(&hour, &minute);
     SetTextColor(hdc, RGB(230, 235, 240));
-    sprintf(line, "Day %d of %s", day, season_names[current_season]);
+    sprintf(line, "%s, Day %d of %d  |  %s  |  %d:%02d %s", season_names[current_season], SeasonDay(), DAYS_PER_SEASON,
+            CalendarMonthName(), (hour + 11) % 12 + 1, minute, hour < 12 ? "AM" : "PM");
     TextOut(hdc, 20, HUD_DATE_Y, line, (int)strlen(line));
-    sprintf(line, "%s  |  %s%s", season_names[current_season], underground ? "Underground" : weather_names[current_weather],
+    sprintf(line, "Weather: %s%s", underground ? "Underground" : weather_names[current_weather],
             (!underground && fabs(wind_gust) > 0.3f) ? "  |  Windy" : "");
     TextOut(hdc, 20, HUD_DATE_Y + 20, line, (int)strlen(line));
     sprintf(line, "Region: %s", biome_names[current_biome]);
@@ -329,8 +330,8 @@ void DrawTabbedMenuOverlay(HDC hdc) {
         TextOut(hdc, 90, 122, buf, (int)strlen(buf));
         DrawWorldMapPanel(hdc, 100, 160, 1200, WINDOW_HEIGHT - 280);
         SetTextColor(hdc, RGB(200, 210, 220));
-        sprintf(buf, "Season: %s (%d min left)   Weather: %s%s   Start: %s", season_names[current_season],
-                (int)(SeasonSecondsRemaining() / 60.0f) + 1, weather_names[current_weather],
+        sprintf(buf, "Season: %s (day %d of %d)   Weather: %s%s   Start: %s", season_names[current_season],
+                SeasonDay(), DAYS_PER_SEASON, weather_names[current_weather],
                 fabs(wind_gust) > 0.3f ? ", windy" : "", weather_source_label);
         TextOut(hdc, 90, WINDOW_HEIGHT - 95, buf, (int)strlen(buf));
     } else { 

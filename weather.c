@@ -3,8 +3,8 @@
 
 // Seasons and world-wide weather. One global weather state covers every
 // screen, so moving between screens never changes the weather; it shifts
-// gradually on its own timer. Seasons last SEASON_LENGTH_SECONDS of real
-// time and start from the PC's date. If weather.ini names a location, the
+// gradually on its own timer. Seasons last DAYS_PER_SEASON days
+// (20 min day + 20 min night each) and start from the PC's date. If weather.ini names a location, the
 // starting weather comes from Open-Meteo (free, no API key).
 
 SeasonType current_season = SEASON_SPRING;
@@ -16,6 +16,7 @@ const char *weather_names[] = { "Fair", "Rain", "Snow" };
 char weather_source_label[96] = "PC clock/date";
 
 static float season_elapsed = 0.0f;
+static int calendar_restored = 0; // season/clock came from the save file
 static DWORD last_update_tick = 0;
 static WeatherType target_weather = WEATHER_CLEAR;
 static float target_intensity = 0.0f;
@@ -50,7 +51,67 @@ static void SetSeasonFromDate(const SYSTEMTIME *t) {
     float frac = ((float)months_in * 30.4f + (float)(t->wDay - 1)) / 91.0f;
     if (frac > 0.99f) frac = 0.99f;
     current_season = s;
-    season_elapsed = frac * SEASON_LENGTH_SECONDS;
+    // Start on the matching day of the season, at the PC's time of day.
+    int day = (int)(frac * DAYS_PER_SEASON);
+    season_elapsed = day * DAY_LENGTH_SECONDS + ((float)t->wHour + t->wMinute / 60.0f) * GAME_HOUR_SECONDS;
+}
+
+#define DAWN_PHASE 0.35757f // asin(0.35): where the |sin| < 0.35 night test flips
+
+static float HourOfDay(void) { return fmodf(season_elapsed, DAY_LENGTH_SECONDS) / GAME_HOUR_SECONDS; }
+
+// |sin| of the accumulator drives daylight (0 = midnight, PI/2 = noon). The
+// clock maps 6 AM-6 PM onto the daylight arc and 6 PM-6 AM onto the night arc.
+static void UpdateDaylightFromClock(void) {
+    float h = HourOfDay(), phase;
+    if (h < 6.0f) phase = DAWN_PHASE * h / 6.0f;
+    else if (h < 18.0f) phase = DAWN_PHASE + (3.14159265f - 2.0f * DAWN_PHASE) * (h - 6.0f) / 12.0f;
+    else phase = 3.14159265f - DAWN_PHASE + DAWN_PHASE * (h - 18.0f) / 6.0f;
+    day_night_cycle_accumulator = phase;
+}
+
+static void AdvanceClock(float seconds) {
+    season_elapsed += seconds;
+    while (season_elapsed >= SEASON_LENGTH_SECONDS) {
+        season_elapsed -= SEASON_LENGTH_SECONDS;
+        current_season = (SeasonType)((current_season + 1) % 4);
+        sprintf(arpg_action_log, "SEASON: %s has arrived.", season_names[current_season]);
+        RollNextFront();
+    }
+    UpdateDaylightFromClock();
+}
+
+// Bedroll sleep always wakes at 6 AM on the next day.
+void SleepUntilMorning(void) {
+    float day_start = floorf(season_elapsed / DAY_LENGTH_SECONDS) * DAY_LENGTH_SECONDS;
+    AdvanceClock(day_start + DAY_LENGTH_SECONDS + 6.0f * GAME_HOUR_SECONDS - season_elapsed);
+}
+
+int SeasonDay(void) { return (int)(season_elapsed / DAY_LENGTH_SECONDS) + 1; }
+
+// A season's three months are spread across its DAYS_PER_SEASON days.
+const char *CalendarMonthName(void) {
+    static const char *months[12] = { "January", "February", "March", "April", "May", "June", "July",
+                                      "August", "September", "October", "November", "December" };
+    static const int first_month[4] = { 3, 6, 9, 12 };
+    int m = first_month[current_season] - 1 + (SeasonDay() - 1) * 3 / DAYS_PER_SEASON;
+    return months[m % 12];
+}
+
+void GetGameClock(int *hour, int *minute) {
+    float h = HourOfDay();
+    *hour = (int)h;
+    *minute = (int)((h - (float)*hour) * 60.0f);
+}
+
+float SeasonClockSeconds(void) { return season_elapsed; }
+
+void RestoreCalendar(int season, float seconds_into_season) {
+    if (season < 0 || season > 3 || !(seconds_into_season >= 0.0f && seconds_into_season < SEASON_LENGTH_SECONDS)) return;
+    current_season = (SeasonType)season;
+    season_elapsed = seconds_into_season;
+    calendar_restored = 1;
+    UpdateDaylightFromClock();
 }
 
 // ---- Optional real-world weather (Open-Meteo via WinINet, loaded at runtime
@@ -170,7 +231,7 @@ static WeatherType WeatherFromWmo(int code) {
 
 static void ApplyLiveWeather(void) {
     InterlockedExchange(&live_state, 2);
-    if (live_lat < 0.0) current_season = (SeasonType)((current_season + 2) % 4); // southern hemisphere
+    if (live_lat < 0.0 && !calendar_restored) current_season = (SeasonType)((current_season + 2) % 4); // southern hemisphere
     current_weather = target_weather = WeatherFromWmo(live_code);
     weather_intensity = target_intensity = current_weather == WEATHER_CLEAR ? 0.0f : 0.8f;
     front_seconds_left = 300.0f;
@@ -184,9 +245,8 @@ void InitSeasonAndWeather(void) {
     SYSTEMTIME now;
     GetLocalTime(&now);
     weather_rng ^= (uint32_t)GetTickCount() * 2654435761u;
-    SetSeasonFromDate(&now);
-    // |sin| of the accumulator drives daylight: 0 = midnight, PI/2 = noon.
-    day_night_cycle_accumulator = ((float)now.wHour + now.wMinute / 60.0f) / 24.0f * 3.14159265f;
+    if (!calendar_restored) SetSeasonFromDate(&now);
+    UpdateDaylightFromClock();
     RollNextFront();
     current_weather = target_weather;
     weather_intensity = target_intensity;
@@ -227,13 +287,7 @@ void UpdateSeasonAndWeather(void) {
     if (dt > 1.0f) dt = 1.0f;
     if (live_state == 1) ApplyLiveWeather();
 
-    season_elapsed += dt;
-    if (season_elapsed >= SEASON_LENGTH_SECONDS) {
-        season_elapsed -= SEASON_LENGTH_SECONDS;
-        current_season = (SeasonType)((current_season + 1) % 4);
-        sprintf(arpg_action_log, "SEASON: %s has arrived.", season_names[current_season]);
-        RollNextFront();
-    }
+    AdvanceClock(dt * opt_day_night_speed);
 
     front_seconds_left -= dt;
     if (front_seconds_left <= 0.0f) RollNextFront();
@@ -262,7 +316,6 @@ void UpdateSeasonAndWeather(void) {
     wind_dir = (int)(sin(world_tick * 0.01f) * 3.0f) + (int)(wind_gust * 6.0f);
 }
 
-float SeasonSecondsRemaining(void) { return SEASON_LENGTH_SECONDS - season_elapsed; }
 
 int IsDeciduousTree(int tile_seed) {
     int seed = tile_seed + current_screen_index * 31;

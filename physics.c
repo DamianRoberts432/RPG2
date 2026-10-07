@@ -41,13 +41,13 @@ void UpdateGamePhysics(void) {
     world_frame++;
     world_tick += 0.05f; if (sword_swipe_frame > 0) sword_swipe_frame--;
     if (ability_visual_frame > 0) ability_visual_frame--;
-    day_night_cycle_accumulator += 0.0005f * opt_day_night_speed;
     if (sleep_fade_frame > 0) {
         sleep_fade_frame++;
         if (sleep_fade_frame == 30) {
             player_hp = max_player_hp; player_stamina = max_stamina; player_mp = max_player_mp;
-            day_night_cycle_accumulator += 2.0943951f;
-            if (day_night_cycle_accumulator >= 6.2831853f) day_night_cycle_accumulator -= 6.2831853f;
+            SleepUntilMorning();
+            sprintf(arpg_action_log, "You wake at dawn: %s, Day %d of %d (%s).", season_names[current_season],
+                    SeasonDay(), DAYS_PER_SEASON, CalendarMonthName());
             night_bonus_active = 1;
             RestockMerchant();
         } else if (sleep_fade_frame >= 60) sleep_fade_frame = 0;
