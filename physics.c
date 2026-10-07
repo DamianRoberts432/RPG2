@@ -63,7 +63,6 @@ void UpdateGamePhysics(void) {
     UpdateVillageNPCs();
     UpdateCritters();
     TryPickupGroundLoot();
-    TryPickupDroppedItems();
     ExpireDroppedItems();
     UpdateIceSlide();
     UpdateDebrisTwigs();

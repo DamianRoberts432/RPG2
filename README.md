@@ -87,13 +87,13 @@ game.exe
 | **A-Z Keys (while Name field selected)** | Type the Hero's Name (Backspace supported) | — |
 | **Enter Key / (A) Button** | Finalize Character & Enter the World | — |
 | **Space Bar / (A) Button** | — (types a space into the Name field if selected) | Swing Equipped Weapon (Axe by default) / Melee Attack |
-| **'X' / 'C' Key / (X) Button** | — | Contextual Interact: Chop Tree / Mine Rock / Talk / Fish. Next to a campfire it **adds 1 Wood** (a fire holds up to 10). Never lights a new campfire. |
+| **'X' / 'C' Key / (X) Button** | — | Contextual Interact: Pick up a dropped item / Chop Tree / Mine Rock / Talk / Fish. Next to a campfire it **adds 1 Wood** (a fire holds up to 10). Never lights a new campfire. |
 | **'F' / 'R' Key / RT (Right Trigger)** | — | Bow Charge (Tap for Quick Shot / Hold to Charge). The Bow is a **secondary** weapon: equip it alongside your sword/axe. Arrows fly the way you face (they only hit a monster you are facing), stop at trees and rocks, and vanish at the screen edge. |
 | **'Y' Button / Key** | — | Class Special Ability (gameplay-only, debounced to fire once per press, then on cooldown): Necromancer/Wizard ranged spell bolt, Knight/Warrior defensive backstep + counter-strike, Rogue sneak (breaks monster detection). |
 | **'M' Key / Start Button** | — | Open Inventory & Route Display |
 | **'1' Key / (A) in Inventory Tab** | — | Equip/Unequip the selected inventory item. One melee weapon and one Bow can be equipped at the same time. |
 | **'3' Key / (X) in Inventory Tab** | — | Light a Campfire — the ONLY way to place one. Uses 2 Wood + 1 Match and needs a free campfire slot; nothing is consumed unless all are available. |
-| **'4' Key / (Y) in Inventory Tab** | — | Drop the selected inventory item on the ground in front of the hero. Walk back over it to pick it up again. |
+| **'4' Key / (Y) in Inventory Tab** | — | Drop the selected inventory item on the ground in front of the hero. Stand on it and press X to pick it up again (no auto-pickup). Ordinary drops vanish after 5 minutes. |
 | **LB / 'Q' Key (speaking to a merchant)** | — | Switch the shop UI to the **Buy** tab (merchant's items for sale) |
 | **RB / 'E' Key (speaking to a merchant)** | — | Switch the shop UI to the **Sell** tab (your inventory items available to sell) |
 | **Up/Down Arrows / '[' / ']' Keys / DPAD Up-Down (shop open)** | — | Cycle the highlighted row within the active Buy/Sell tab |
