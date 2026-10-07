@@ -45,6 +45,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                     int new_gy = screen_grid_y + dgy;
                     if (new_gx < 0 || new_gx >= META_GRID_SIZE || new_gy < 0 || new_gy >= META_GRID_SIZE) {
                         // Edge of the known world: a hard dead end, bounce back in bounds.
+                        strcpy(arpg_action_log, "WORLD EDGE: Nothing lies beyond here... yet. Turn back.");
                         if (player_x <= 0.5f) player_x = 2.0f;
                         else if (player_x >= (MAP_SIZE - 1.5f)) player_x = (float)(MAP_SIZE - 3);
                         if (player_y <= 0.5f) player_y = 2.0f;

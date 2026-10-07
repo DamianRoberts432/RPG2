@@ -134,10 +134,10 @@ BiomeType PickBiomeForScreen(int gx, int gy) {
                        north == BIOME_RIVER || south == BIOME_RIVER || west == BIOME_RIVER || east == BIOME_RIVER);
 
     if (is_edge) {
-        // The world's outer rim is always Beach backed by Ocean; which one a
-        // given edge cell becomes is itself random so the coastline isn't a
-        // perfectly uniform ring.
-        return (rand() % 100 < 55) ? BIOME_OCEAN : BIOME_BEACH;
+        // About half of the world's outer rim is a coast (ocean on the outer
+        // side, then sand, then land); the rest is ordinary land. Either way
+        // the hero can't go further out, but always arrives on walkable ground.
+        if (rand() % 100 < 55) return BIOME_BEACH;
     }
 
     int roll = rand() % 1000;
@@ -270,21 +270,22 @@ void GenerateProceduralScreen(int index) {
                 if (c >= band - 2 && c <= band + 2) VISUAL_MAP[r][c] = 12;
                 else if (c == band - 3 || c == band + 3) VISUAL_MAP[r][c] = 0; // visible shore buffer
                 else if (noise < 8) VISUAL_MAP[r][c] = 2;
-            } else if (current_biome == BIOME_BEACH) {
-                // Beach is always the land strip immediately backing the
-                // Ocean at the world's rim; the ocean band sits along the
-                // map's southern edge with sand the rest of the way.
-                VISUAL_MAP[r][c] = 4;
-                if (r >= MAP_SIZE - 4) VISUAL_MAP[r][c] = 12;
-            } else if (current_biome == BIOME_OCEAN) {
-                // Beach on the entry side (facing the explored world), Water on
-                // the outer side (impassable).
-                int beach_strip = 6;
-                VISUAL_MAP[r][c] = 12;
-                if ((grid_c == 0 && c < beach_strip) ||
-                    (grid_c == META_GRID_SIZE - 1 && c >= MAP_SIZE - beach_strip) ||
-                    (grid_r == 0 && r < beach_strip) ||
-                    (grid_r == META_GRID_SIZE - 1 && r >= MAP_SIZE - beach_strip)) VISUAL_MAP[r][c] = 4;
+            } else if (current_biome == BIOME_BEACH || current_biome == BIOME_OCEAN) {
+                // World-border coast: ocean on the half facing out of the world,
+                // a sand beach next to it, and ordinary land on the inner side,
+                // so the hero always arrives on land and can turn back. (Ocean
+                // cells from older saves are drawn the same way.)
+                int d = MAP_SIZE;
+                if (grid_c == 0) d = c;
+                if (grid_c == META_GRID_SIZE - 1 && MAP_SIZE - 1 - c < d) d = MAP_SIZE - 1 - c;
+                if (grid_r == 0 && r < d) d = r;
+                if (grid_r == META_GRID_SIZE - 1 && MAP_SIZE - 1 - r < d) d = MAP_SIZE - 1 - r;
+                int along = (grid_c == 0 || grid_c == META_GRID_SIZE - 1) ? r : c;
+                int wobble = (int)(sinf((float)along * 0.35f + (float)index) * 1.5f);
+                if (d < 12 + wobble) VISUAL_MAP[r][c] = 12;
+                else if (d < 20 + wobble) VISUAL_MAP[r][c] = 4;
+                else if (noise < 8) VISUAL_MAP[r][c] = 11;
+                else if (noise < 14) VISUAL_MAP[r][c] = 6;
             } else if (current_biome == BIOME_ISLAND) {
                 VISUAL_MAP[r][c] = 12;
                 if (r > 13 && r < 19 && c > 13 && c < 19) VISUAL_MAP[r][c] = (noise < 50) ? 4 : 11;
