@@ -283,6 +283,37 @@ void DrawEnvironmentalCritters(HDC hdc) {
     }
 }
 
+// Night eyes peering out of the tree line: at most a couple of yellow pairs.
+// Red pairs foreshadow what comes after level 25 and are rare before it.
+// Pairs stay put for ~9 seconds, blink now and then, and never sit right
+// next to the hero.
+void DrawNightEyes(HDC hdc) {
+    if (current_biome == BIOME_CAVE || current_biome == BIOME_CASTLE) return;
+    if ((float)fabs(sin(day_night_cycle_accumulator)) >= 0.35f) return;
+    int trees[256], n = 0;
+    for (int r = 0; r < MAP_SIZE && n < 256; r++) for (int c = 0; c < MAP_SIZE && n < 256; c++) {
+        if (VISUAL_MAP[r][c] != 11) continue;
+        if (fabs(c - player_x) + fabs(r - player_y) < 5.0f) continue;
+        trees[n++] = r * MAP_SIZE + c;
+    }
+    if (n == 0) return;
+    DWORD now = GetTickCount();
+    unsigned int h0 = (unsigned int)RainHash(current_screen_index * 977 + (int)(now / 9000));
+    int yellow = (int)(h0 % 3);
+    int red_chance = (player_level >= 25) ? 30 : 3;
+    int red = (int)((h0 >> 8) % 100) < red_chance;
+    for (int k = 0; k < yellow + red; k++) {
+        unsigned int h = (unsigned int)RainHash((int)h0 + k * 131);
+        if (((now / 120) + h) % 30 == 0) continue; // brief blink
+        int t = trees[h % (unsigned int)n];
+        int sx, sy; GetIsoCoords((float)(t % MAP_SIZE), (float)(t / MAP_SIZE), &sx, &sy);
+        int ex = sx - 6 + (int)(h % 13), ey = sy - 4 - (int)((h >> 5) % 6);
+        HBRUSH b = CreateSolidBrush((red && k == yellow) ? RGB(235, 30, 25) : RGB(240, 215, 60));
+        RECT left = { ex - 4, ey, ex - 1, ey + 2 }, right = { ex + 1, ey, ex + 4, ey + 2 };
+        FillRect(hdc, &left, b); FillRect(hdc, &right, b); DeleteObject(b);
+    }
+}
+
 void DrawSolitaireSunMoonBeam(HDC hdc) {
     if (current_biome == BIOME_CAVE) return;
 
