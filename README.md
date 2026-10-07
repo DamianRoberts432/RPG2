@@ -20,61 +20,99 @@ Find where gcc was installed:
 where /r "%LOCALAPPDATA%\Microsoft\WinGet\Packages" gcc.exe
 ```
 
-On this PC it is:
-& "C:\Users\livid\Desktop\mingw64\bin\gcc.exe" *.c -o game.exe -lgdi32 -lxinput -lmsimg32
-.\game.exe
+Use that path in the home PC build line in step 4 if `gcc` alone is not recognized.
 
+## 2. Get the code (one time only)
 
-## 2. Get the code (one time)
+Do this **once per computer**. Never clone again after that - updates happen in the same folder (step 3).
 
 ```
-cd C:\Users\D\Desktop\RPG2
+cd %USERPROFILE%\Desktop
+```
+
+```
 git clone https://github.com/DamianRoberts432/RPG2.git
 ```
 
-To get later updates, run `git pull` inside the `RPG2` folder the clone created.
+This creates `Desktop\RPG2`. If it says "already exists", you already have it - skip to step 3.
 
-## 3. Build
+## 3. Update to the latest main (every time)
 
-Go into the cloned folder:
+Go into your RPG2 folder. Use the line for the computer you're on:
+
+Home PC:
 
 ```
 cd C:\Users\D\Desktop\RPG2\RPG2
 ```
 
-Build using the full gcc path (always works; it is one long line):
+Work laptop:
 
 ```
-C:\Users\D\AppData\Local\Microsoft\WinGet\Packages\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\mingw64\bin\gcc.exe *.c -o game.exe -lgdi32 -lxinput -lmsimg32
+cd C:\Users\livid\Desktop\RPG2_new
 ```
 
-Or, if you did the optional PATH step:
+Then get the latest code from GitHub:
+
+```
+git checkout main
+```
+
+```
+git pull
+```
+
+If `git checkout main` says local changes would be overwritten, run this, then run the two lines above again:
+
+```
+git checkout -- .
+```
+
+If `git pull` says "not a git repository", that folder came from a ZIP download and can't update. Do step 2 instead.
+
+## 4. Build (every time after updating)
+
+Home PC (Command Prompt):
 
 ```
 gcc *.c -o game.exe -lgdi32 -lxinput -lmsimg32
 ```
 
-`*.c` compiles every source file. The explicit equivalent is:
+If that says `'gcc' is not recognized`, use the full path instead (one long line):
 
 ```
-gcc main.c globals.c character.c campfire.c inventory.c vendor.c interact.c world.c combat.c render_world.c render_entities.c ui.c physics.c input.c worldmap.c weather.c -o game.exe -lgdi32 -lxinput -lmsimg32
+C:\Users\D\AppData\Local\Microsoft\WinGet\Packages\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\mingw64\bin\gcc.exe *.c -o game.exe -lgdi32 -lxinput -lmsimg32
 ```
 
-No output means the build succeeded.
+Work laptop (PowerShell):
 
-## 4. Run
+```
+& "C:\Users\livid\Desktop\mingw64\bin\gcc.exe" *.c -o game.exe -lgdi32 -lxinput -lmsimg32
+```
+
+`*.c` compiles every source file. No output means the build succeeded.
+
+## 5. Run
+
+Command Prompt:
 
 ```
 game.exe
+```
+
+PowerShell:
+
+```
+.\game.exe
 ```
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---|---|
-| `'gcc' is not recognized...` | Use the full-path build line from step 3, or do the optional PATH step and open a **new** Command Prompt window. |
+| `'gcc' is not recognized...` | Use the full-path build line from step 4. |
 | `Access is denied` or "This app can't run on your PC" when running gcc | That gcc install is damaged or blocked by Windows Security. Install gcc with winget (step 1) and use that one. |
-| `'game.exe' is not recognized...` | The build failed or you are in the wrong folder. Make sure you are in the folder with the `.c` files and the build printed no errors. |
+| `'game.exe' is not recognized...` | In PowerShell, type `.\game.exe`. Otherwise the build failed or you are in the wrong folder. Make sure you are in the folder with the `.c` files and the build printed no errors. |
 | "The filename, directory name, or volume label syntax is incorrect" | Several commands were pasted onto one line. Run each command on its own line. |
 | "XINPUT1_3.dll was not found" when starting the game | Rebuild with `-lxinput9_1_0` instead of `-lxinput`. |
 | "Windows protected your PC" (SmartScreen) | Click **More info** -> **Run anyway** (you built the exe yourself). |
