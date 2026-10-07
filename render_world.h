@@ -15,6 +15,7 @@ void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed);
 void DrawEnvironmentalCritters(HDC hdc);
 void DrawSolitaireSunMoonBeam(HDC hdc);
 int RainHash(int value);
+void ApplyCameraZoom(HDC hdc);
 void DrawRainZones(HDC hdc);
 void DrawSleepFade(HDC hdc);
 void DrawBedroll(HDC hdc);

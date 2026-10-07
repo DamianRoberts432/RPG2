@@ -404,6 +404,20 @@ void DrawBedroll(HDC hdc) {
     }
 }
 
+// Very slight zoom-in of the gameplay view (HUD is drawn afterwards, unscaled).
+#define CAMERA_ZOOM 1.08f
+void ApplyCameraZoom(HDC hdc) {
+    HDC copy_dc = CreateCompatibleDC(hdc);
+    HBITMAP copy_bmp = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT);
+    HGDIOBJ old_bmp = SelectObject(copy_dc, copy_bmp);
+    BitBlt(copy_dc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, hdc, 0, 0, SRCCOPY);
+    int src_w = (int)(WINDOW_WIDTH / CAMERA_ZOOM), src_h = (int)(WINDOW_HEIGHT / CAMERA_ZOOM);
+    SetStretchBltMode(hdc, COLORONCOLOR);
+    StretchBlt(hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, copy_dc,
+               (WINDOW_WIDTH - src_w) / 2, (WINDOW_HEIGHT - src_h) / 2, src_w, src_h, SRCCOPY);
+    SelectObject(copy_dc, old_bmp); DeleteObject(copy_bmp); DeleteDC(copy_dc);
+}
+
 int RainHash(int value) {
     uint32_t hash = (uint32_t)value;
     hash = (hash ^ (hash >> 13)) * 1274126177u;

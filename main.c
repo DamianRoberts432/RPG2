@@ -188,6 +188,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 DrawFlyingArrow(memHDC); DrawFlyingSpell(memHDC); DrawClassAbilityFX(memHDC); DrawButterflies(memHDC); DrawBloodMistFX(memHDC);
                 DrawEnvironmentalCritters(memHDC); DrawMerchantStoreFront(memHDC); DrawVillage(memHDC);
                 DrawWeatherEffects(memHDC); DrawSolitaireSunMoonBeam(memHDC);
+                ApplyCameraZoom(memHDC);
                 DrawPlayerStatusHUD(memHDC);
 
                 if (is_menu_open) DrawTabbedMenuOverlay(memHDC);
