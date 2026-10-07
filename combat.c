@@ -73,7 +73,7 @@ void PerformMeleeAttack(void) {
     float m_dist = DistanceToEnemy();
     if (m_dist < 1.8f && IsFacingEnemy()) {
         int broke = WearEquippedWeapon();
-        HandleEnemyDamage(damage);
+        HandleEnemyDamage(damage * (1.0f + 0.08f * stat_spent[0]));
         if (broke) strcpy(arpg_action_log, "Your weapon broke!");
     }
 }
@@ -104,9 +104,9 @@ void HandleEnemyDamage(float dmg) {
     if (enemy_hearts <= 0.0f) {
         SpawnBloodMist(enemy_x, enemy_y);
         int is_night = fabs(sin(day_night_cycle_accumulator)) < 0.35f;
-        int gained_xp = (int)(((25 + rand() % 15 + (is_night ? 5 : 0)) * opt_xp_mult) * ((is_night && night_bonus_active) ? 1.25f : 1.0f));
+        int gained_xp = (int)(((10 + rand() % 7 + (is_night ? 2 : 0)) * opt_xp_mult) * ((is_night && night_bonus_active) ? 1.25f : 1.0f));
         float loot_multiplier = opt_loot_mult * (is_night ? 1.5f : 1.0f);
-        int loot_chance = (int)(70.0f * loot_multiplier);
+        int loot_chance = (int)(70.0f * loot_multiplier) + 3 * stat_spent[4];
         if (loot_chance > 100) loot_chance = 100;
         if (rand() % 100 < loot_chance) {
             int loot_id = LOOT_SHORT_SWORD + rand() % 5;
@@ -125,10 +125,14 @@ void HandleEnemyDamage(float dmg) {
         }
         player_xp += gained_xp;
         if (player_xp >= player_next_level_xp) {
-            player_level++;
-            player_xp -= player_next_level_xp;
-            player_next_level_xp = (int)(player_next_level_xp * 1.5f);
-            sprintf(arpg_action_log, "LEVEL UP! Reached Level %d!", player_level);
+            // Each level needs 50 more XP than the last (level 10 ~ 200 kills, 25 ~ 1250).
+            while (player_xp >= player_next_level_xp) {
+                player_level++;
+                player_xp -= player_next_level_xp;
+                player_next_level_xp += 50;
+                stat_points += STAT_POINTS_PER_LEVEL;
+            }
+            sprintf(arpg_action_log, "LEVEL UP! Reached Level %d! %d attribute points to spend (Hero tab: Y / P).", player_level, stat_points);
         } else {
             if (hoard) sprintf(arpg_action_log, "VICTORY: The %s falls! +%d XP, %d gold from its hoard!", MonsterName(active_monster), gained_xp, hoard);
             else sprintf(arpg_action_log, "VICTORY: %s slain! +%d XP", MonsterName(active_monster), gained_xp);

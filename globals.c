@@ -226,6 +226,9 @@ const char *fort_barks[] = {
 int is_character_creation = 1;
 int stat_strength = 2, stat_dexterity = 2, stat_stamina = 2;
 int stat_magick = 2, stat_luck = 2, stat_intelligence = 2, stat_charisma = 2;
+// Level-up points: stat_spent[] is what the player bought on top of the class
+// base, so it survives re-creating the hero and is what the bonuses scale with.
+int stat_points = 0, stat_spent[STAT_COUNT] = { 0 }, stat_cursor = 0, stat_assign_mode = 0;
 char creation_error_msg[64] = "";
 
 char arpg_action_log[256] = "ARPG ENGINE: Character Creation Online. Config Name/Class/Race.";

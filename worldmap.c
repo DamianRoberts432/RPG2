@@ -50,6 +50,9 @@ int SaveWorldMapState(void) {
     ok = ok && fwrite(pos, sizeof(pos), 1, f) == 1;
     float cal[2] = { (float)current_season, SeasonClockSeconds() };
     ok = ok && fwrite(cal, sizeof(cal), 1, f) == 1;
+    int32_t hero[4 + STAT_COUNT] = { player_level, player_xp, player_next_level_xp, stat_points };
+    for (int i = 0; i < STAT_COUNT; i++) hero[4 + i] = stat_spent[i];
+    ok = ok && fwrite(hero, sizeof(hero), 1, f) == 1;
     ok = (fclose(f) == 0) && ok;
     if (!ok) { remove(SAVE_TEMP_NAME); return 0; }
     return MoveFileExA(SAVE_TEMP_NAME, SAVE_FILE_NAME, MOVEFILE_REPLACE_EXISTING) != 0;
@@ -68,12 +71,18 @@ int LoadWorldMapState(void) {
     int has_pos = ok && fread(pos, sizeof(pos), 1, f) == 1;
     float cal[2]; // season + seconds into it, appended after the position
     int has_cal = has_pos && fread(cal, sizeof(cal), 1, f) == 1;
+    int32_t hero[4 + STAT_COUNT]; // level, xp, next-level xp, unspent points, points spent per stat
+    int has_hero = has_cal && fread(hero, sizeof(hero), 1, f) == 1;
     fclose(f);
     if (!ok) return 0;
     memcpy(visited_biomes, biomes, sizeof(biomes));
     memcpy(map_poi, pois, sizeof(pois));
     if (has_pos && CellInWorld(pos[0], pos[1])) { screen_grid_x = pos[0]; screen_grid_y = pos[1]; }
     if (has_cal) RestoreCalendar((int)cal[0], cal[1]);
+    if (has_hero && hero[0] >= 1 && hero[2] > 0) {
+        player_level = hero[0]; player_xp = hero[1]; player_next_level_xp = hero[2]; stat_points = hero[3];
+        for (int i = 0; i < STAT_COUNT; i++) stat_spent[i] = (hero[4 + i] < 0 || hero[4 + i] > STAT_CAP) ? 0 : hero[4 + i];
+    }
     return 1;
 }
 
