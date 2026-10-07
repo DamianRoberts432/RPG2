@@ -264,6 +264,7 @@ extern int cam_x;
 extern int cam_y;
 
 // ---- Module APIs ----
+#define GAME_VERSION "1.0"
 #include "main.h"
 #include "character.h"
 #include "campfire.h"

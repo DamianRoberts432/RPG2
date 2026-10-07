@@ -89,6 +89,15 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 TextOut(memHDC, 80, 70, "HERO CHARACTER CREATION", 24);
                 SelectObject(memHDC, prev_cc_font);
 
+                // Version + build time, bottom-right of the start screen only.
+                char ver[96]; RECT cr; SIZE vs;
+                sprintf(ver, "Version %s  |  Updated %s %s", GAME_VERSION, __DATE__, __TIME__);
+                GetClientRect(hwnd, &cr);
+                GetTextExtentPoint32(memHDC, ver, (int)strlen(ver), &vs);
+                SetTextColor(memHDC, RGB(150, 160, 170));
+                TextOut(memHDC, cr.right - vs.cx - 20, cr.bottom - vs.cy - 16, ver, (int)strlen(ver));
+                SetTextColor(memHDC, RGB(0, 255, 230));
+
                 char label[256];
                 SetTextColor(memHDC, (selected_creation_field == 0) ? RGB(255, 255, 0) : RGB(200, 200, 200));
                 // Blinking text cursor on the Name field is the visible cue
