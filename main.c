@@ -188,12 +188,13 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 DrawFlyingArrow(memHDC); DrawFlyingSpell(memHDC); DrawClassAbilityFX(memHDC); DrawButterflies(memHDC); DrawBloodMistFX(memHDC);
                 DrawEnvironmentalCritters(memHDC); DrawMerchantStoreFront(memHDC); DrawVillage(memHDC);
                 DrawWeatherEffects(memHDC); DrawSolitaireSunMoonBeam(memHDC);
+                ApplyCameraZoom(memHDC);
                 DrawPlayerStatusHUD(memHDC);
 
                 if (is_menu_open) DrawTabbedMenuOverlay(memHDC);
 
                 SetTextColor(memHDC, RGB(255, 255, 255)); SetBkMode(memHDC, TRANSPARENT);
-                TextOut(memHDC, 20, 40, arpg_action_log, (int)strlen(arpg_action_log));
+                TextOut(memHDC, 20, HUD_LOG_Y, arpg_action_log, (int)strlen(arpg_action_log));
                 if (vendor_menu_open && IsNearMerchant()) {
                     DrawVendorShopOverlay(memHDC);
                 }

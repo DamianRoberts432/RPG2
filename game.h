@@ -184,6 +184,12 @@ extern int creation_name_letter_cursor;
 extern int gold_count;
 extern float player_stamina;
 extern float max_stamina;
+extern float player_mp, max_player_mp;
+#define CLASS_ABILITY_MP_COST 20.0f
+// Upper-left HUD: date/season/region lines start here; the action and
+// NPC dialogue log sits below them at HUD_LOG_Y.
+#define HUD_DATE_Y 16
+#define HUD_LOG_Y 82
 extern int stamina_rest_timer;
 #define STAMINA_REST_FRAMES_REQUIRED 45
 extern float player_hp, max_player_hp;

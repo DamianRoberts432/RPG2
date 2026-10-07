@@ -13,4 +13,5 @@ void GenerateProceduralScreen(int index);
 void UpdateVillageNPCs(void);
 void UpdateCritters(void);
 
+int MountainHasCave(int cell);
 #endif // WORLD_H

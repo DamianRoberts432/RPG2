@@ -42,17 +42,19 @@ void DrawStatJewels(HDC hdc, int x, int y, const char *label, int value) {
     SelectObject(hdc, old_p); DeleteObject(outline_p); DeleteObject(filled_b);
 }
 
-// Lower-left gameplay HUD: HP bar plus the stamina bar (white, shifting to
-// yellow at 50% and red at 20%), an "Exhausted" message once stamina hits
+// Lower-left gameplay HUD: red HP, blue MP and green stamina bars (stamina
+// shifts to yellow at 50% and red at 20%), an "Exhausted" message once stamina hits
 // zero, and a campfire burning/low status line when one is active nearby.
 void DrawPlayerStatusHUD(HDC hdc) {
     int bar_x = 20, bar_w = 160, bar_h = 12;
-    int hp_y = WINDOW_HEIGHT - 84;
+    int hp_y = WINDOW_HEIGHT - 120;
+    int mp_y = WINDOW_HEIGHT - 84;
     int sta_y = WINDOW_HEIGHT - 48;
 
     SetBkMode(hdc, TRANSPARENT);
     SetTextColor(hdc, RGB(220, 220, 220));
     TextOut(hdc, bar_x, hp_y - 14, "HP", 2);
+    TextOut(hdc, bar_x, mp_y - 14, "MP", 2);
     TextOut(hdc, bar_x, sta_y - 14, "STA", 3);
 
     RECT hp_bg = { bar_x, hp_y, bar_x + bar_w, hp_y + bar_h };
@@ -61,10 +63,16 @@ void DrawPlayerStatusHUD(HDC hdc) {
     RECT hp_fill = { bar_x, hp_y, bar_x + (int)(bar_w * hp_pct), hp_y + bar_h };
     HBRUSH hp_b = CreateSolidBrush(RGB(210, 45, 60)); FillRect(hdc, &hp_fill, hp_b); DeleteObject(hp_b);
 
+    RECT mp_bg = { bar_x, mp_y, bar_x + bar_w, mp_y + bar_h };
+    HBRUSH mp_bg_b = CreateSolidBrush(RGB(15, 20, 45)); FillRect(hdc, &mp_bg, mp_bg_b); DeleteObject(mp_bg_b);
+    float mp_pct = max_player_mp > 0.0f ? player_mp / max_player_mp : 0.0f;
+    RECT mp_fill = { bar_x, mp_y, bar_x + (int)(bar_w * mp_pct), mp_y + bar_h };
+    HBRUSH mp_b = CreateSolidBrush(RGB(60, 110, 235)); FillRect(hdc, &mp_fill, mp_b); DeleteObject(mp_b);
+
     RECT sta_bg = { bar_x, sta_y, bar_x + bar_w, sta_y + bar_h };
-    HBRUSH sta_bg_b = CreateSolidBrush(RGB(35, 35, 35)); FillRect(hdc, &sta_bg, sta_bg_b); DeleteObject(sta_bg_b);
+    HBRUSH sta_bg_b = CreateSolidBrush(RGB(15, 40, 20)); FillRect(hdc, &sta_bg, sta_bg_b); DeleteObject(sta_bg_b);
     float sta_pct = max_stamina > 0.0f ? player_stamina / max_stamina : 0.0f;
-    COLORREF sta_color = RGB(240, 240, 240);
+    COLORREF sta_color = RGB(60, 200, 80);
     if (sta_pct <= 0.20f) sta_color = RGB(220, 60, 50);
     else if (sta_pct <= 0.50f) sta_color = RGB(230, 210, 60);
     RECT sta_fill = { bar_x, sta_y, bar_x + (int)(bar_w * sta_pct), sta_y + bar_h };
@@ -84,12 +92,18 @@ void DrawPlayerStatusHUD(HDC hdc) {
         break;
     }
 
-    char sky[96];
+    char line[96];
     int underground = current_biome == BIOME_CAVE;
-    sprintf(sky, "%s  |  %s%s", season_names[current_season], underground ? "Underground" : weather_names[current_weather],
-            (!underground && fabs(wind_gust) > 0.3f) ? "  |  Windy" : "");
+    int day = (int)((SEASON_LENGTH_SECONDS - SeasonSecondsRemaining()) / (SEASON_LENGTH_SECONDS / 30.0f)) + 1;
+    if (day > 30) day = 30;
     SetTextColor(hdc, RGB(230, 235, 240));
-    TextOut(hdc, 20, 62, sky, (int)strlen(sky));
+    sprintf(line, "Day %d of %s", day, season_names[current_season]);
+    TextOut(hdc, 20, HUD_DATE_Y, line, (int)strlen(line));
+    sprintf(line, "%s  |  %s%s", season_names[current_season], underground ? "Underground" : weather_names[current_weather],
+            (!underground && fabs(wind_gust) > 0.3f) ? "  |  Windy" : "");
+    TextOut(hdc, 20, HUD_DATE_Y + 20, line, (int)strlen(line));
+    sprintf(line, "Region: %s", biome_names[current_biome]);
+    TextOut(hdc, 20, HUD_DATE_Y + 40, line, (int)strlen(line));
 }
 
 // Clear Buy/Sell shop UI: a boxed panel with an underlined tab header (shown

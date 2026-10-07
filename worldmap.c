@@ -164,9 +164,9 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
             FillSub(hdc, cx, cy, q, 0, 3, 1, 1, castle_tower);
             FillSub(hdc, cx, cy, q, 3, 3, 1, 1, castle_tower);
         }
-        // Every Mountain screen hides a cave; its treasure marker disappears
+        // Some Mountain screens hide a cave; its treasure marker disappears
         // once that cave's treasure has been claimed.
-        if (biome == BIOME_MOUNTAIN && !(poi & POI_TREASURE_FOUND)) {
+        if (biome == BIOME_MOUNTAIN && MountainHasCave(gy * META_GRID_SIZE + gx) && !(poi & POI_TREASURE_FOUND)) {
             FillSub(hdc, cx, cy, q, 1, 1, 2, 2, treasure_edge);
             RECT inner = { cx + q + 1, cy + q + 1, cx + 3 * q - 1, cy + 3 * q - 1 };
             if (inner.right <= inner.left) inner.right = inner.left + 1;

@@ -331,13 +331,15 @@ void DropSelectedItem(void) {
     if (was_equipped) SyncActiveWeapon();
 }
 
-void TryPickupDroppedItems(void) {
+// Dropped items are never picked up automatically; X (HandleContextInteract)
+// picks up the one the hero is standing on. Returns 1 if X was used up.
+int TryPickupDroppedItems(void) {
     for (int i = 0; i < MAX_DROPPED_ITEMS; i++) {
         DroppedInventoryItem *drop = &dropped_items[i];
-        if (!drop->active || drop->screen_id != current_screen_index || !IsNearPoint(drop->x, drop->y, 0.7f)) continue;
+        if (!drop->active || drop->screen_id != current_screen_index || !IsNearPoint(drop->x, drop->y, 1.0f)) continue;
         if (player_item_count >= MAX_INVENTORY_ITEMS || current_payload_weight + drop->item.weight * drop->item.quantity > CarryLimit()) {
             sprintf(arpg_action_log, "Inventory full! (%.1f/%.1f weight)", current_payload_weight, CarryLimit());
-            continue;
+            return 1;
         }
         drop->item.is_equipped = 0;
         player_inventory[player_item_count] = drop->item;
@@ -346,7 +348,17 @@ void TryPickupDroppedItems(void) {
         RecalculateCarriedWeight();
         sprintf(arpg_action_log, "PICKUP: %s x%d", drop->item.name, drop->item.quantity);
         drop->active = 0;
+        return 1;
     }
+    return 0;
+}
+
+// Full speed up to 75% of carry capacity, then slows linearly to a stop at 100%.
+float WeightSpeedFactor(void) {
+    float load = current_payload_weight / CarryLimit();
+    if (load <= 0.75f) return 1.0f;
+    if (load >= 1.0f) return 0.0f;
+    return (1.0f - load) / 0.25f;
 }
 
 int HasInventoryItem(const char *name) {

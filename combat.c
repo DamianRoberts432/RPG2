@@ -198,6 +198,11 @@ void FireClassAbility(void) {
         return;
     }
 
+    if (player_mp < CLASS_ABILITY_MP_COST) {
+        sprintf(arpg_action_log, "ABILITY: Not enough magic (%d/%d MP).", (int)player_mp, (int)CLASS_ABILITY_MP_COST);
+        return;
+    }
+
     if (selected_class == CLASS_NECROMANCER || selected_class == CLASS_WIZARD) {
         if (selected_class == CLASS_NECROMANCER) {
             if (summoned_zombie.active) { strcpy(arpg_action_log, "NECROMANCY: Your summoned dead still fight."); return; }
@@ -210,7 +215,7 @@ void FireClassAbility(void) {
             summoned_zombie.raise_frame = 0; summoned_zombie.attack_cooldown = 0;
             summoned_zombie.active = 1;
             ability_visual_frame = SPELL_FLASH_FRAMES;
-            y_ability_cooldown_until = now + SPELL_COOLDOWN_MS;
+            player_mp -= CLASS_ABILITY_MP_COST; y_ability_cooldown_until = now + SPELL_COOLDOWN_MS;
             strcpy(arpg_action_log, "NECROMANCY: A zombie claws its way from the earth!");
             return;
         }
@@ -236,7 +241,7 @@ void FireClassAbility(void) {
         player_spell.damage = 1.5f;
         player_spell.active = 1;
         ability_visual_frame = SPELL_FLASH_FRAMES;
-        y_ability_cooldown_until = now + SPELL_COOLDOWN_MS;
+        player_mp -= CLASS_ABILITY_MP_COST; y_ability_cooldown_until = now + SPELL_COOLDOWN_MS;
         strcpy(arpg_action_log, "ARCANE: Magic bolt unleashed!");
     } else if (selected_class == CLASS_KNIGHT || selected_class == CLASS_WARRIOR) {
         float ndx = 0.0f, ndy = 0.0f;
@@ -253,7 +258,7 @@ void FireClassAbility(void) {
 
         monster_pursuit_suppressed_until = now + BACKSTEP_SUPPRESS_MS;
         ability_visual_frame = ABILITY_FLASH_FRAMES;
-        y_ability_cooldown_until = now + BACKSTEP_COOLDOWN_MS;
+        player_mp -= CLASS_ABILITY_MP_COST; y_ability_cooldown_until = now + BACKSTEP_COOLDOWN_MS;
 
         float m_dist = DistanceToEnemy();
         if (enemy_hearts > 0.0f && m_dist < 2.0f && IsFacingEnemy()) {
@@ -267,7 +272,7 @@ void FireClassAbility(void) {
         is_sneaking = 1;
         monster_pursuit_suppressed_until = now + SNEAK_SUPPRESS_MS;
         ability_visual_frame = ABILITY_FLASH_FRAMES;
-        y_ability_cooldown_until = now + SNEAK_COOLDOWN_MS;
+        player_mp -= CLASS_ABILITY_MP_COST; y_ability_cooldown_until = now + SNEAK_COOLDOWN_MS;
         strcpy(arpg_action_log, "SNEAK: Breaking monster detection for 4s!");
     }
 }

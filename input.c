@@ -215,6 +215,7 @@ void ProcessGamepadInput(void) {
             if (GetAsyncKeyState(VK_UP) & 0x8000) { selected_inv_index = (selected_inv_index - 1 + player_item_count) % player_item_count; last_tab_kb = GetTickCount(); }
             if (GetAsyncKeyState(VK_DOWN) & 0x8000) { selected_inv_index = (selected_inv_index + 1) % player_item_count; last_tab_kb = GetTickCount(); }
             if (GetAsyncKeyState('1') & 0x8000) { HandleInventoryPrimaryAction(); last_tab_kb = GetTickCount(); }
+            if (GetAsyncKeyState('3') & 0x8000) { HandleMenuLightFire(); last_tab_kb = GetTickCount(); }
             if (GetAsyncKeyState('4') & 0x8000) { DropSelectedItem(); last_tab_kb = GetTickCount(); }
         } else if (current_menu_tab == 2) {
             if (GetAsyncKeyState('1') & 0x8000) { opt_xp_mult += 0.5f; if (opt_xp_mult > 3.0f) opt_xp_mult = 0.5f; last_tab_kb = GetTickCount(); }
@@ -332,7 +333,8 @@ void ProcessGamepadInput(void) {
         if (dx != 0.0f || dy != 0.0f) {
             is_running = 1; run_bob += 0.4f;
             float race_mult = GetRaceSpeedMultiplier();
-            float speed = 0.135f * race_mult * (1.0f - ((float)current_payload_weight / 100.0f)); if (speed < 0.01f) speed = 0.0f;
+            float speed = 0.135f * race_mult * WeightSpeedFactor(); if (speed < 0.01f) speed = 0.0f;
+            if (speed <= 0.0f) strcpy(arpg_action_log, "OVERLOADED: Too heavy to move! Drop something.");
             if (player_stamina <= 0.0f) {
                 speed *= 0.4f; // exhausted: can still shuffle along, just much slower
                 strcpy(arpg_action_log, "Exhausted! Rest to recover stamina.");
