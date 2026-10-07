@@ -68,6 +68,10 @@ void ProcessGamepadInput(void) {
         if (is_menu_open && (GetTickCount() - last_tab_gp > 200)) {
             if (buttons & XINPUT_GAMEPAD_LEFT_SHOULDER) { current_menu_tab = (current_menu_tab - 1 + 3) % 3; last_tab_gp = GetTickCount(); }
             if (buttons & XINPUT_GAMEPAD_RIGHT_SHOULDER) { current_menu_tab = (current_menu_tab + 1) % 3; last_tab_gp = GetTickCount(); }
+            if (current_menu_tab == 1) {
+                if (state.Gamepad.bLeftTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD && world_map_zoom > 1) { world_map_zoom /= 2; last_tab_gp = GetTickCount(); }
+                if (state.Gamepad.bRightTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD && world_map_zoom < 8) { world_map_zoom *= 2; last_tab_gp = GetTickCount(); }
+            }
             
             if (current_menu_tab == 0 && player_item_count > 0) {
                 if (buttons & XINPUT_GAMEPAD_DPAD_UP) { selected_inv_index = (selected_inv_index - 1 + player_item_count) % player_item_count; last_tab_gp = GetTickCount(); }
@@ -140,7 +144,7 @@ void ProcessGamepadInput(void) {
 
         static DWORD bow_charge_start_gp = 0;
         BYTE rt = state.Gamepad.bRightTrigger;
-        if (bow_equipped && rt > XINPUT_GAMEPAD_TRIGGER_THRESHOLD) {
+        if (bow_equipped && !is_menu_open && rt > XINPUT_GAMEPAD_TRIGGER_THRESHOLD) {
             if (!is_charging_bow) {
                 is_charging_bow = 1;
                 bow_charge_start_gp = GetTickCount();
@@ -224,6 +228,10 @@ void ProcessGamepadInput(void) {
     if (is_menu_open && (GetTickCount() - last_tab_kb > 200)) {
         if (GetAsyncKeyState('Q') & 0x8000) { current_menu_tab = (current_menu_tab - 1 + 3) % 3; last_tab_kb = GetTickCount(); }
         if (GetAsyncKeyState('E') & 0x8000) { current_menu_tab = (current_menu_tab + 1) % 3; last_tab_kb = GetTickCount(); }
+        if (current_menu_tab == 1) {
+            if ((GetAsyncKeyState(VK_OEM_MINUS) & 0x8000) && world_map_zoom > 1) { world_map_zoom /= 2; last_tab_kb = GetTickCount(); }
+            if ((GetAsyncKeyState(VK_OEM_PLUS) & 0x8000) && world_map_zoom < 8) { world_map_zoom *= 2; last_tab_kb = GetTickCount(); }
+        }
         
         if (current_menu_tab == 0 && player_item_count > 0) {
             if (GetAsyncKeyState(VK_UP) & 0x8000) { selected_inv_index = (selected_inv_index - 1 + player_item_count) % player_item_count; last_tab_kb = GetTickCount(); }

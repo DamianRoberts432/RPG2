@@ -1,13 +1,49 @@
 #include "game.h"
 
+const char *MonsterName(MonsterType m) {
+    static const char *names[] = { "Skeleton", "Zombie", "Dracula", "Goblin", "Satyr", "Yeti", "Sphinx", "Bigfoot", "Bunyip" };
+    return names[m];
+}
+
+// The mythic beast (if any) that belongs in the current land, following where
+// each legend comes from: Yeti - snowy Himalayan peaks, Sphinx - Egyptian
+// desert, Bigfoot - deep northern forest, Bunyip - Australian swamps/billabongs.
+static int MythicForCurrentLand(void) {
+    switch (current_biome) {
+        case BIOME_TUNDRA: return MONSTER_YETI;
+        case BIOME_MOUNTAIN: return (current_season == SEASON_WINTER || snow_cover > 0.3f) ? MONSTER_YETI : -1;
+        case BIOME_DESERT: case BIOME_OASIS: return MONSTER_SPHINX;
+        case BIOME_FOREST: return MONSTER_BIGFOOT;
+        case BIOME_SWAMP: case BIOME_LAKE: case BIOME_RIVER: return MONSTER_BUNYIP;
+        default: return -1;
+    }
+}
+
+#define MYTHIC_SPAWN_CHANCE 4 // percent per spawn in its home land, doubled at night
 void TriggerMonsterRespawn(void) {
-    enemy_hearts = (fabs(sin(day_night_cycle_accumulator)) < 0.35f) ? 3.5f : 3.0f;
+    int is_night = fabs(sin(day_night_cycle_accumulator)) < 0.35f;
     int spawn_side = rand() % 4;
     if (spawn_side == 0) { enemy_x = 2.0f; enemy_y = (float)(rand() % 24 + 4); }
     else if (spawn_side == 1) { enemy_x = 29.0f; enemy_y = (float)(rand() % 24 + 4); }
     else if (spawn_side == 2) { enemy_x = (float)(rand() % 24 + 4); enemy_y = 2.0f; }
     else { enemy_x = (float)(rand() % 24 + 4); enemy_y = 29.0f; }
-    active_monster = (MonsterType)(rand() % 2);
+    int mythic = MythicForCurrentLand();
+    if (mythic >= 0 && rand() % 100 < MYTHIC_SPAWN_CHANCE * (is_night ? 2 : 1)) active_monster = (MonsterType)mythic;
+    else if (is_night && rand() % 100 < 4) active_monster = MONSTER_DRACULA;
+    else {
+        // Satyr cultists keep to the wild Greek-style country: woods, meadows and hills.
+        int satyr_land = current_biome == BIOME_FOREST || current_biome == BIOME_GRASSLANDS ||
+                         current_biome == BIOME_PRAIRIE || current_biome == BIOME_MOUNTAIN;
+        int r = rand() % 100;
+        active_monster = r < 32 ? MONSTER_SKELLY : r < 64 ? MONSTER_ZOMBIE :
+                         (r < 82 || !satyr_land) ? MONSTER_GOBLIN : MONSTER_SATYR;
+    }
+    static const float base_hearts[] = { 3.0f, 3.0f, 6.0f, 2.0f, 3.5f, 9.0f, 9.0f, 8.0f, 8.0f };
+    enemy_hearts = base_hearts[active_monster] + (is_night ? 0.5f : 0.0f);
+    if (IS_MYTHIC_MONSTER(active_monster)) {
+        size_t n = strlen(arpg_action_log);
+        snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  |  A %s roams this land!", MonsterName(active_monster));
+    }
 }
 
 void SpawnBloodMist(float x, float y) {
@@ -79,6 +115,14 @@ void HandleEnemyDamage(float dmg) {
             if (rand() % 100 < (int)((loot_multiplier - (int)loot_multiplier) * 100.0f)) loot_quantity++;
             DropGroundLoot(enemy_x, enemy_y, loot_id, loot_quantity);
         }
+        int hoard = 0;
+        if (IS_BOSS_MONSTER(active_monster)) {
+            // Bosses carry the rare treasure: a gold hoard and a chance at Legendary loot.
+            hoard = 150 + rand() % 151;
+            gold_count += hoard;
+            gained_xp *= 4;
+            if (rand() % 100 < 40) DropGroundLoot(enemy_x, enemy_y, LOOT_MUSASHI_BLADE, 1);
+        }
         player_xp += gained_xp;
         if (player_xp >= player_next_level_xp) {
             player_level++;
@@ -86,7 +130,8 @@ void HandleEnemyDamage(float dmg) {
             player_next_level_xp = (int)(player_next_level_xp * 1.5f);
             sprintf(arpg_action_log, "LEVEL UP! Reached Level %d!", player_level);
         } else {
-            sprintf(arpg_action_log, "VICTORY: Enemy Slain! +%d XP", gained_xp);
+            if (hoard) sprintf(arpg_action_log, "VICTORY: The %s falls! +%d XP, %d gold from its hoard!", MonsterName(active_monster), gained_xp, hoard);
+            else sprintf(arpg_action_log, "VICTORY: %s slain! +%d XP", MonsterName(active_monster), gained_xp);
         }
         TriggerMonsterRespawn();
     } else {

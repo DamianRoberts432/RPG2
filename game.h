@@ -26,7 +26,7 @@
 #define MAX_BUTTERFLIES 8
 #define DEBRIS_MAX 16
 #define MAX_CRITTERS 4
-#define MERCH_ITEMS 16
+#define MERCH_ITEMS 15
 #define MAX_BLOOD_MIST 24
 #define MAX_CAMPFIRES 8
 #define MAX_INVENTORY_ITEMS 100
@@ -52,7 +52,12 @@
 
 typedef enum { FACE_DOWN, FACE_UP, FACE_LEFT, FACE_RIGHT } FacingDirection;
 typedef enum { WEAPON_SWORD, WEAPON_BOW, WEAPON_AXE } WeaponType;
-typedef enum { MONSTER_SKELLY, MONSTER_ZOMBIE, MONSTER_DRACULA } MonsterType;
+typedef enum { MONSTER_SKELLY, MONSTER_ZOMBIE, MONSTER_DRACULA, MONSTER_GOBLIN, MONSTER_SATYR,
+               MONSTER_YETI, MONSTER_SPHINX, MONSTER_BIGFOOT, MONSTER_BUNYIP } MonsterType;
+// Mythic beasts (Yeti..Bunyip) and Dracula are the bosses: the only source of Legendary loot.
+#define IS_MYTHIC_MONSTER(m) ((m) >= MONSTER_YETI)
+#define IS_BOSS_MONSTER(m) (IS_MYTHIC_MONSTER(m) || (m) == MONSTER_DRACULA)
+const char *MonsterName(MonsterType m);
 // 13 "world" biomes (Prairie through River) that the procedural generator
 // picks between for ordinary overworld screens, plus two special-purpose
 // locations (Cave interiors, the Castle endpoint) that are never chosen by
@@ -179,6 +184,7 @@ extern int enemy_direction;
 extern float weather_next_change;
 extern int is_menu_open;
 extern int current_menu_tab;
+extern int world_map_zoom; // 1 = whole world; 2/4/8 = closer view around the hero
 extern int selected_creation_field;
 extern int creation_name_letter_cursor;
 extern int gold_count;

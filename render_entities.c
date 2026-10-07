@@ -265,16 +265,151 @@ void DrawZombieBody(HDC hdc, int sx, int sy, int seed, int face_dir, int arms_ou
     SelectObject(hdc, prev); DeleteObject(head_b);
 }
 
+static void PenLine(HDC hdc, int w, COLORREF c, int x1, int y1, int x2, int y2) {
+    HPEN pen = CreatePen(PS_SOLID, w, c); HGDIOBJ prev = SelectObject(hdc, pen);
+    MoveToEx(hdc, x1, y1, NULL); LineTo(hdc, x2, y2);
+    SelectObject(hdc, prev); DeleteObject(pen);
+}
+
+static void BrushEllipse(HDC hdc, COLORREF c, int l, int t, int r, int b) {
+    HBRUSH br = CreateSolidBrush(c); HGDIOBJ prev = SelectObject(hdc, br);
+    Ellipse(hdc, l, t, r, b); SelectObject(hdc, prev); DeleteObject(br);
+}
+
+static void BrushPoly(HDC hdc, COLORREF c, POINT *pts, int n) {
+    HBRUSH br = CreateSolidBrush(c); HGDIOBJ prev = SelectObject(hdc, br);
+    Polygon(hdc, pts, n); SelectObject(hdc, prev); DeleteObject(br);
+}
+
+// Small, quick green goblin with big ears and a rusty dagger.
+static void DrawGoblin(HDC hdc, int sx, int sy, int face_dir) {
+    int step = (int)(sin(world_tick * 9.0f) * 2.0f);
+    COLORREF skin = RGB(95, 160, 70);
+    PenLine(hdc, 2, RGB(70, 110, 50), sx - 2, sy + 12, sx - 2 + step, sy + 19);
+    PenLine(hdc, 2, RGB(70, 110, 50), sx + 2, sy + 12, sx + 2 - step, sy + 19);
+    POINT body[] = { {sx - 5, sy + 2}, {sx + 5, sy + 2}, {sx + 6, sy + 13}, {sx - 6, sy + 13} };
+    BrushPoly(hdc, RGB(110, 80, 50), body, 4);
+    POINT ear_l[] = { {sx - 3, sy - 4}, {sx - 12, sy - 9}, {sx - 3, sy} };
+    POINT ear_r[] = { {sx + 3, sy - 4}, {sx + 12, sy - 9}, {sx + 3, sy} };
+    BrushPoly(hdc, skin, ear_l, 3); BrushPoly(hdc, skin, ear_r, 3);
+    BrushEllipse(hdc, skin, sx - 5, sy - 8, sx + 5, sy + 3);
+    HBRUSH eye = CreateSolidBrush(RGB(250, 220, 60));
+    RECT el = { sx - 3 + face_dir, sy - 4, sx - 1 + face_dir, sy - 2 }, er = { sx + 1 + face_dir, sy - 4, sx + 3 + face_dir, sy - 2 };
+    FillRect(hdc, &el, eye); FillRect(hdc, &er, eye); DeleteObject(eye);
+    PenLine(hdc, 2, RGB(160, 150, 140), sx + face_dir * 5, sy + 7, sx + face_dir * 12, sy + 2);
+}
+
+// Pan-style satyr cultist: goat legs with hooves, horns, red cult sash and a spear.
+static void DrawSatyr(HDC hdc, int sx, int sy, int face_dir) {
+    int step = (int)(sin(world_tick * 7.0f) * 2.0f);
+    COLORREF fur = RGB(105, 75, 50), skin = RGB(205, 160, 120);
+    for (int side = -1; side <= 1; side += 2) {
+        int hip = sx + side * 3, foot = hip + side * step;
+        HPEN pen = CreatePen(PS_SOLID, 4, fur); HGDIOBJ prev = SelectObject(hdc, pen);
+        MoveToEx(hdc, hip, sy + 6, NULL); LineTo(hdc, hip - face_dir * 3 + side * step, sy + 12); LineTo(hdc, foot, sy + 18);
+        SelectObject(hdc, prev); DeleteObject(pen);
+        HBRUSH hoof = CreateSolidBrush(RGB(35, 25, 20)); RECT h = { foot - 2, sy + 17, foot + 3, sy + 21 };
+        FillRect(hdc, &h, hoof); DeleteObject(hoof);
+    }
+    BrushEllipse(hdc, fur, sx - 6, sy + 1, sx + 6, sy + 10);
+    POINT torso[] = { {sx - 5, sy - 10}, {sx + 5, sy - 10}, {sx + 4, sy + 3}, {sx - 4, sy + 3} };
+    BrushPoly(hdc, skin, torso, 4);
+    PenLine(hdc, 2, RGB(150, 30, 40), sx - 5, sy - 9, sx + 4, sy + 2);
+    BrushEllipse(hdc, skin, sx - 4, sy - 19, sx + 4, sy - 10);
+    POINT beard[] = { {sx - 3, sy - 12}, {sx + 3, sy - 12}, {sx + face_dir, sy - 7} };
+    BrushPoly(hdc, fur, beard, 3);
+    for (int side = -1; side <= 1; side += 2) {
+        HPEN horn = CreatePen(PS_SOLID, 2, RGB(225, 215, 190)); HGDIOBJ prev = SelectObject(hdc, horn);
+        MoveToEx(hdc, sx + side * 3, sy - 18, NULL); LineTo(hdc, sx + side * 6, sy - 23); LineTo(hdc, sx + side * 4, sy - 26);
+        SelectObject(hdc, prev); DeleteObject(horn);
+    }
+    int ex = sx + face_dir * 16, ey = sy - 14;
+    PenLine(hdc, 2, RGB(120, 85, 50), sx - face_dir * 6, sy + 8, ex, ey);
+    POINT tip[] = { {ex + face_dir * 5, ey - 5}, {ex - 2, ey - 2}, {ex + 2, ey + 2} };
+    BrushPoly(hdc, RGB(170, 175, 185), tip, 3);
+    PenLine(hdc, 3, skin, sx + face_dir * 4, sy - 7, sx + face_dir * 6, sy);
+}
+
+// Mythic beasts are drawn roughly twice the size of ordinary monsters.
+static void DrawApeBeast(HDC hdc, int sx, int sy, int face_dir, COLORREF fur, COLORREF face) {
+    int step = (int)(sin(world_tick * 4.0f) * 3.0f);
+    PenLine(hdc, 7, fur, sx - 6, sy + 6, sx - 6 + step, sy + 20);
+    PenLine(hdc, 7, fur, sx + 6, sy + 6, sx + 6 - step, sy + 20);
+    BrushEllipse(hdc, fur, sx - 14, sy - 24, sx + 14, sy + 10);
+    PenLine(hdc, 6, fur, sx - 12, sy - 16, sx - 16, sy + 6 - step);
+    PenLine(hdc, 6, fur, sx + 12, sy - 16, sx + 16, sy + 6 + step);
+    BrushEllipse(hdc, fur, sx - 8, sy - 38, sx + 8, sy - 20);
+    BrushEllipse(hdc, face, sx - 5 + face_dir * 2, sy - 33, sx + 5 + face_dir * 2, sy - 23);
+    HBRUSH eye = CreateSolidBrush(RGB(20, 20, 25));
+    RECT el = { sx - 3 + face_dir * 2, sy - 30, sx - 1 + face_dir * 2, sy - 28 }, er = { sx + 1 + face_dir * 2, sy - 30, sx + 3 + face_dir * 2, sy - 28 };
+    FillRect(hdc, &el, eye); FillRect(hdc, &er, eye); DeleteObject(eye);
+}
+
+static void DrawSphinx(HDC hdc, int sx, int sy, int face_dir) {
+    COLORREF lion = RGB(200, 165, 100), skin = RGB(205, 165, 110), blue = RGB(40, 70, 160), gold = RGB(235, 195, 60);
+    int step = (int)(sin(world_tick * 4.0f) * 3.0f);
+    PenLine(hdc, 4, lion, sx - 12, sy + 2, sx - 12 + step, sy + 16);
+    PenLine(hdc, 4, lion, sx - 6, sy + 2, sx - 6 - step, sy + 16);
+    PenLine(hdc, 4, lion, sx + 6, sy + 2, sx + 6 + step, sy + 16);
+    PenLine(hdc, 4, lion, sx + 12, sy + 2, sx + 12 - step, sy + 16);
+    PenLine(hdc, 2, lion, sx - face_dir * 18, sy - 2, sx - face_dir * 26, sy - 12);
+    BrushEllipse(hdc, lion, sx - 18, sy - 8, sx + 18, sy + 8);
+    int hx = sx + face_dir * 14;
+    POINT nemes[] = { {hx - 8, sy - 22}, {hx + 8, sy - 22}, {hx + 10, sy + 2}, {hx - 10, sy + 2} };
+    BrushPoly(hdc, blue, nemes, 4);
+    PenLine(hdc, 2, gold, hx - 9, sy - 6, hx + 9, sy - 6);
+    PenLine(hdc, 2, gold, hx - 10, sy - 1, hx + 10, sy - 1);
+    BrushEllipse(hdc, skin, hx - 5, sy - 20, hx + 5, sy - 8);
+    HBRUSH eye = CreateSolidBrush(RGB(20, 20, 25));
+    RECT el = { hx - 3 + face_dir, sy - 16, hx - 1 + face_dir, sy - 14 }, er = { hx + 1 + face_dir, sy - 16, hx + 3 + face_dir, sy - 14 };
+    FillRect(hdc, &el, eye); FillRect(hdc, &er, eye); DeleteObject(eye);
+}
+
+static void DrawBunyip(HDC hdc, int sx, int sy, int face_dir) {
+    COLORREF hide = RGB(60, 70, 45);
+    int step = (int)(sin(world_tick * 3.0f) * 2.0f);
+    PenLine(hdc, 5, hide, sx - 11, sy + 2, sx - 11 + step, sy + 13);
+    PenLine(hdc, 5, hide, sx - 4, sy + 2, sx - 4 - step, sy + 13);
+    PenLine(hdc, 5, hide, sx + 4, sy + 2, sx + 4 + step, sy + 13);
+    PenLine(hdc, 5, hide, sx + 11, sy + 2, sx + 11 - step, sy + 13);
+    POINT tail[] = { {sx - face_dir * 14, sy}, {sx - face_dir * 26, sy - 7}, {sx - face_dir * 26, sy + 7} };
+    BrushPoly(hdc, hide, tail, 3);
+    BrushEllipse(hdc, hide, sx - 18, sy - 9, sx + 18, sy + 9);
+    int hx = sx + face_dir * 18;
+    BrushEllipse(hdc, RGB(70, 80, 50), hx - 8, sy - 16, hx + 8, sy - 2);
+    PenLine(hdc, 2, RGB(235, 230, 210), hx + face_dir * 3, sy - 5, hx + face_dir * 5, sy + 3);
+    PenLine(hdc, 2, RGB(235, 230, 210), hx - face_dir, sy - 5, hx, sy + 3);
+    HBRUSH eye = CreateSolidBrush(RGB(200, 240, 80));
+    RECT e = { hx + face_dir * 2 - 1, sy - 12, hx + face_dir * 2 + 2, sy - 10 };
+    FillRect(hdc, &e, eye); DeleteObject(eye);
+}
+
+static void DrawMythicBeast(HDC hdc, int sx, int sy, int face_dir) {
+    switch (active_monster) {
+        case MONSTER_YETI: DrawApeBeast(hdc, sx, sy, face_dir, RGB(235, 240, 248), RGB(120, 140, 165)); break;
+        case MONSTER_BIGFOOT: DrawApeBeast(hdc, sx, sy, face_dir, RGB(105, 70, 40), RGB(160, 120, 85)); break;
+        case MONSTER_SPHINX: DrawSphinx(hdc, sx, sy, face_dir); break;
+        default: DrawBunyip(hdc, sx, sy, face_dir); break;
+    }
+}
+
 void DrawDynamicEnemy(HDC hdc) {
     if (enemy_hearts <= 0.0f) return;
     int sx, sy; GetIsoCoords(enemy_x, enemy_y, &sx, &sy);
     int px, py; GetIsoCoords(player_x, player_y, &px, &py);
     int face_dir = (px >= sx) ? 1 : -1;
-    HBRUSH b1 = CreateSolidBrush(RGB(15, 20, 26)); HGDIOBJ old = SelectObject(hdc, b1); Ellipse(hdc, sx - 9, sy + 16, sx + 9, sy + 22); SelectObject(hdc, old); DeleteObject(b1);
+    int sw = IS_MYTHIC_MONSTER(active_monster) ? 20 : 9;
+    HBRUSH b1 = CreateSolidBrush(RGB(15, 20, 26)); HGDIOBJ old = SelectObject(hdc, b1); Ellipse(hdc, sx - sw, sy + 16, sx + sw, sy + 22); SelectObject(hdc, old); DeleteObject(b1);
     if (active_monster == MONSTER_ZOMBIE) {
         int seed = (int)(enemy_x * 13.0f + enemy_y * 7.0f);
         int arms_out = (((int)(world_tick * 0.3f) + seed) % 40) < 22; // reaches out some of the time
         DrawZombieBody(hdc, sx, sy, seed, face_dir, arms_out, RGB(165, 185, 150));
+    } else if (active_monster == MONSTER_GOBLIN) {
+        DrawGoblin(hdc, sx, sy, face_dir);
+    } else if (active_monster == MONSTER_SATYR) {
+        DrawSatyr(hdc, sx, sy, face_dir);
+    } else if (IS_MYTHIC_MONSTER(active_monster)) {
+        DrawMythicBeast(hdc, sx, sy, face_dir);
     } else {
         // Legs stride under the robe, then the robe and skull on top.
         int step = (int)(sin(world_tick * 6.0f) * 2.0f);
@@ -283,13 +418,14 @@ void DrawDynamicEnemy(HDC hdc) {
         MoveToEx(hdc, sx - 3, sy + 12, NULL); LineTo(hdc, sx - 3 + step, sy + 19);
         MoveToEx(hdc, sx + 3, sy + 12, NULL); LineTo(hdc, sx + 3 - step, sy + 19);
         SelectObject(hdc, prev_leg); DeleteObject(leg_pen);
-        HBRUSH robe_b = CreateSolidBrush(RGB(130, 60, 160)); HGDIOBJ prev_robe = SelectObject(hdc, robe_b);
+        HBRUSH robe_b = CreateSolidBrush(active_monster == MONSTER_DRACULA ? RGB(120, 20, 30) : RGB(130, 60, 160)); HGDIOBJ prev_robe = SelectObject(hdc, robe_b);
         POINT robe[] = {{sx - 5, sy}, {sx + 5, sy}, {sx + 6, sy + 14}, {sx - 6, sy + 14}}; Polygon(hdc, robe, 4); SelectObject(hdc, prev_robe); DeleteObject(robe_b);
         HBRUSH skull_b = CreateSolidBrush(RGB(220, 220, 230)); HGDIOBJ prev_skull = SelectObject(hdc, skull_b); Ellipse(hdc, sx - 5, sy - 9, sx + 5, sy + 1); SelectObject(hdc, prev_skull); DeleteObject(skull_b);
     }
     int total_bars = (int)ceil(enemy_hearts);
+    int bar_y = IS_MYTHIC_MONSTER(active_monster) ? sy - 46 : sy - 30;
     for (int i = 0; i < total_bars; i++) {
-        RECT r = {sx - 15 + (i * 10), sy - 30, sx - 7 + (i * 10), sy - 23};
+        RECT r = {sx - 15 + (i * 10), bar_y, sx - 7 + (i * 10), bar_y + 7};
         HBRUSH red_b = CreateSolidBrush(RGB(255, 40, 40)); FillRect(hdc, &r, red_b); DeleteObject(red_b);
     }
     SelectObject(hdc, old);

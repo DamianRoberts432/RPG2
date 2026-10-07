@@ -48,6 +48,8 @@ int SaveWorldMapState(void) {
              fwrite(map_poi, sizeof(map_poi), 1, f) == 1;
     int32_t pos[2] = { screen_grid_x, screen_grid_y };
     ok = ok && fwrite(pos, sizeof(pos), 1, f) == 1;
+    float cal[2] = { (float)current_season, SeasonClockSeconds() };
+    ok = ok && fwrite(cal, sizeof(cal), 1, f) == 1;
     ok = (fclose(f) == 0) && ok;
     if (!ok) { remove(SAVE_TEMP_NAME); return 0; }
     return MoveFileExA(SAVE_TEMP_NAME, SAVE_FILE_NAME, MOVEFILE_REPLACE_EXISTING) != 0;
@@ -64,11 +66,14 @@ int LoadWorldMapState(void) {
     // The hero's grid cell was appended later; older saves simply lack it.
     int32_t pos[2];
     int has_pos = ok && fread(pos, sizeof(pos), 1, f) == 1;
+    float cal[2]; // season + seconds into it, appended after the position
+    int has_cal = has_pos && fread(cal, sizeof(cal), 1, f) == 1;
     fclose(f);
     if (!ok) return 0;
     memcpy(visited_biomes, biomes, sizeof(biomes));
     memcpy(map_poi, pois, sizeof(pois));
     if (has_pos && CellInWorld(pos[0], pos[1])) { screen_grid_x = pos[0]; screen_grid_y = pos[1]; }
+    if (has_cal) RestoreCalendar((int)cal[0], cal[1]);
     return 1;
 }
 
@@ -105,16 +110,22 @@ static void DrawLegendSwatch(HDC hdc, int x, int y, COLORREF c, const char *labe
 }
 
 void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
-    // The whole 64x64 world is always shown at a fixed scale; unexplored
-    // cells stay dark until visited.
-    int min_x = 0, min_y = 0, max_x = META_GRID_SIZE - 1, max_y = META_GRID_SIZE - 1;
-    int cols = META_GRID_SIZE, rows = META_GRID_SIZE;
+    // world_map_zoom 1 shows the whole 64x64 world; 2/4/8 show a window
+    // centred on the hero's screen. Unexplored cells stay dark until visited.
+    int span = META_GRID_SIZE / world_map_zoom;
+    int min_x = screen_grid_x - span / 2, min_y = screen_grid_y - span / 2;
+    if (min_x < 0) min_x = 0;
+    if (min_y < 0) min_y = 0;
+    if (min_x > META_GRID_SIZE - span) min_x = META_GRID_SIZE - span;
+    if (min_y > META_GRID_SIZE - span) min_y = META_GRID_SIZE - span;
+    int max_x = min_x + span - 1, max_y = min_y + span - 1;
+    int cols = span, rows = span;
 
     // Cells are drawn as a 4x4 grid of small squares so landmarks read as
     // "a few squares".
     int q = max_w / (cols * 4);
     if (max_h / (rows * 4) < q) q = max_h / (rows * 4);
-    if (q > 10) q = 10;
+    if (q > 24) q = 24;
     if (q < 1) q = 1;
     int cs = q * 4;
 
