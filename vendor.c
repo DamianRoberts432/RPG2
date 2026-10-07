@@ -17,10 +17,16 @@ void RestockMerchant(void) {
     }
 }
 
+// Each CHR point spent takes 3% off merchant prices.
+int ShopPrice(int base) {
+    int price = base * (100 - 3 * stat_spent[6]) / 100;
+    return price < 1 ? 1 : price;
+}
+
 void HandleVendorBuy(void) {
     if (!IsNearMerchant()) { strcpy(arpg_action_log, "MARKET: No vendor nearby."); return; }
     MerchantItem *offer = &merchant_catalog[merchant_selection];
-    int price = offer->base_price * (int)offer->rarity;
+    int price = ShopPrice(offer->base_price * (int)offer->rarity);
     if (offer->requires_treasure_hunt && cave_treasure_hunts_found <= 0) {
         strcpy(arpg_action_log, "MARKET: This treasure-hunt item is still a rumor to this merchant."); return;
     }

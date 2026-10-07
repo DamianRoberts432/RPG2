@@ -339,7 +339,7 @@ void GenerateProceduralScreen(int index) {
     }
     GenerateVillageNPCs();
     if (current_biome == BIOME_SWAMP) { gator_x = 12.0f; gator_y = 12.0f; gator_active = 1; } else { gator_active = 0; }
-    TriggerMonsterRespawn();
+    SpawnScreenEnemies();
     RecordCurrentScreenOnMap();
     SaveSaveFileToDisk();
 }

@@ -103,7 +103,7 @@ void DrawPlayerStatusHUD(HDC hdc) {
     sprintf(line, "Weather: %s%s", underground ? "Underground" : weather_names[current_weather],
             (!underground && fabs(wind_gust) > 0.3f) ? "  |  Windy" : "");
     TextOut(hdc, 20, HUD_DATE_Y + 20, line, (int)strlen(line));
-    sprintf(line, "Region: %s", biome_names[current_biome]);
+    sprintf(line, "Region: %s%s", biome_names[current_biome], stat_points > 0 ? "  |  Attribute points to spend!" : "");
     TextOut(hdc, 20, HUD_DATE_Y + 40, line, (int)strlen(line));
 }
 
@@ -148,7 +148,7 @@ void DrawVendorShopOverlay(HDC hdc) {
             MerchantItem *offer = &merchant_catalog[i];
             const char *rarity_tag = offer->rarity == RARITY_LEGENDARY ? "Legendary" :
                 offer->rarity == RARITY_RARE ? "Rare" : offer->rarity == RARITY_UNCOMMON ? "Uncommon" : "Common";
-            int price = offer->base_price * (int)offer->rarity;
+            int price = ShopPrice(offer->base_price * (int)offer->rarity);
             int locked = offer->requires_treasure_hunt && cave_treasure_hunts_found <= 0;
             SetTextColor(hdc, (i == merchant_selection) ? RGB(255, 255, 0) : RGB(210, 210, 210));
             char stock_str[16];
@@ -253,6 +253,16 @@ void DrawTabbedMenuOverlay(HDC hdc) {
         DrawStatJewels(hdc, info_x, 216, "LCK", stat_luck);
         DrawStatJewels(hdc, info_x, 230, "INT", stat_intelligence);
         DrawStatJewels(hdc, info_x, 244, "CHR", stat_charisma);
+        if (stat_points > 0 || stat_assign_mode) {
+            SetTextColor(hdc, RGB(255, 215, 0));
+            if (stat_assign_mode) sprintf(buf, "POINTS: %d   D-pad/arrows pick, A/Enter add, Y/P done", stat_points);
+            else sprintf(buf, "POINTS: %d   press Y / P to assign", stat_points);
+            TextOut(hdc, info_x + 110, 142, buf, (int)strlen(buf));
+        }
+        if (stat_assign_mode) {
+            SetTextColor(hdc, RGB(255, 215, 0));
+            TextOut(hdc, info_x - 14, 160 + 14 * stat_cursor, ">", 1);
+        }
 
         SetTextColor(hdc, RGB(255, 215, 0));
         sprintf(buf, "LUMBER: %d  STONE: %d  GOLD: %d", GetMaterialCount("Wood"), GetMaterialCount("Stone"), gold_count);

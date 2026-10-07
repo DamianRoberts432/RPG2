@@ -191,7 +191,14 @@ extern int gold_count;
 extern float player_stamina;
 extern float max_stamina;
 extern float player_mp, max_player_mp;
-#define CLASS_ABILITY_MP_COST 20.0f
+#define CLASS_ABILITY_MP_COST (20.0f - (float)stat_spent[5]) // each INT point spent saves 1 MP
+#define STAT_COUNT 7            // STR DEX STA MAG LCK INT CHR (Hero tab order)
+#define STAT_CAP 10             // one jewel row
+#define STAT_POINTS_PER_LEVEL 2
+extern int stat_points, stat_spent[STAT_COUNT], stat_cursor, stat_assign_mode;
+int *StatByIndex(int i);
+void SpendStatPoint(void);
+int ShopPrice(int base);
 // Upper-left HUD: date/season/region lines start here; the action and
 // NPC dialogue log sits below them at HUD_LOG_Y.
 #define HUD_DATE_Y 16
@@ -235,6 +242,19 @@ extern float enemy_x;
 extern float enemy_y;
 extern float enemy_hearts;
 extern MonsterType active_monster;
+#define MAX_ENEMIES 6           // night cap
+#define MAX_ENEMIES_DAY 4
+#define ENEMY_SPAWN_INTERVAL_MS 20000
+typedef struct { float x, y, hearts; MonsterType type; int direction; } EnemySlot;
+extern EnemySlot enemies[MAX_ENEMIES];
+extern int current_enemy;
+void SelectEnemy(int i);
+void StoreEnemy(void);
+int EnemyAtPoint(float x, float y, float radius);
+int SelectNearestEnemyTo(float x, float y);
+int SelectTargetEnemy(void);
+void SpawnScreenEnemies(void);
+void UpdateEnemySpawns(void);
 extern float gator_x;
 extern float gator_y;
 extern int gator_active;
@@ -264,6 +284,7 @@ extern int cam_x;
 extern int cam_y;
 
 // ---- Module APIs ----
+#define GAME_VERSION "1.0"
 #include "main.h"
 #include "character.h"
 #include "campfire.h"

@@ -73,7 +73,12 @@ void ProcessGamepadInput(void) {
                 if (state.Gamepad.bRightTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD && world_map_zoom < 8) { world_map_zoom *= 2; last_tab_gp = GetTickCount(); }
             }
             
-            if (current_menu_tab == 0 && player_item_count > 0) {
+            if (current_menu_tab == 0 && (buttons & XINPUT_GAMEPAD_Y)) { stat_assign_mode = !stat_assign_mode; last_tab_gp = GetTickCount(); }
+            if (current_menu_tab == 0 && stat_assign_mode) {
+                if (buttons & XINPUT_GAMEPAD_DPAD_UP) { stat_cursor = (stat_cursor + STAT_COUNT - 1) % STAT_COUNT; last_tab_gp = GetTickCount(); }
+                if (buttons & XINPUT_GAMEPAD_DPAD_DOWN) { stat_cursor = (stat_cursor + 1) % STAT_COUNT; last_tab_gp = GetTickCount(); }
+                if (buttons & XINPUT_GAMEPAD_A) { SpendStatPoint(); last_tab_gp = GetTickCount(); }
+            } else if (current_menu_tab == 0 && player_item_count > 0) {
                 if (buttons & XINPUT_GAMEPAD_DPAD_UP) { selected_inv_index = (selected_inv_index - 1 + player_item_count) % player_item_count; last_tab_gp = GetTickCount(); }
                 if (buttons & XINPUT_GAMEPAD_DPAD_DOWN) { selected_inv_index = (selected_inv_index + 1) % player_item_count; last_tab_gp = GetTickCount(); }
                 if (buttons & XINPUT_GAMEPAD_A) { HandleInventoryPrimaryAction(); last_tab_gp = GetTickCount(); }
@@ -233,7 +238,12 @@ void ProcessGamepadInput(void) {
             if ((GetAsyncKeyState(VK_OEM_PLUS) & 0x8000) && world_map_zoom < 8) { world_map_zoom *= 2; last_tab_kb = GetTickCount(); }
         }
         
-        if (current_menu_tab == 0 && player_item_count > 0) {
+        if (current_menu_tab == 0 && (GetAsyncKeyState('P') & 0x8000)) { stat_assign_mode = !stat_assign_mode; last_tab_kb = GetTickCount(); }
+        if (current_menu_tab == 0 && stat_assign_mode) {
+            if (GetAsyncKeyState(VK_UP) & 0x8000) { stat_cursor = (stat_cursor + STAT_COUNT - 1) % STAT_COUNT; last_tab_kb = GetTickCount(); }
+            if (GetAsyncKeyState(VK_DOWN) & 0x8000) { stat_cursor = (stat_cursor + 1) % STAT_COUNT; last_tab_kb = GetTickCount(); }
+            if (GetAsyncKeyState(VK_RETURN) & 0x8000) { SpendStatPoint(); last_tab_kb = GetTickCount(); }
+        } else if (current_menu_tab == 0 && player_item_count > 0) {
             if (GetAsyncKeyState(VK_UP) & 0x8000) { selected_inv_index = (selected_inv_index - 1 + player_item_count) % player_item_count; last_tab_kb = GetTickCount(); }
             if (GetAsyncKeyState(VK_DOWN) & 0x8000) { selected_inv_index = (selected_inv_index + 1) % player_item_count; last_tab_kb = GetTickCount(); }
             if (GetAsyncKeyState('1') & 0x8000) { HandleInventoryPrimaryAction(); last_tab_kb = GetTickCount(); }
@@ -355,7 +365,7 @@ void ProcessGamepadInput(void) {
         if (dx != 0.0f || dy != 0.0f) {
             is_running = 1; run_bob += 0.4f;
             float race_mult = GetRaceSpeedMultiplier();
-            float speed = 0.135f * race_mult * WeightSpeedFactor(); if (speed < 0.01f) speed = 0.0f;
+            float speed = 0.135f * race_mult * WeightSpeedFactor() * (1.0f + 0.02f * stat_spent[1]); if (speed < 0.01f) speed = 0.0f;
             if (speed <= 0.0f) strcpy(arpg_action_log, "OVERLOADED: Too heavy to move! Drop something.");
             if (player_stamina <= 0.0f) {
                 speed *= 0.4f; // exhausted: can still shuffle along, just much slower
