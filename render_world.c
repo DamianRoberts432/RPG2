@@ -232,10 +232,6 @@ void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed) {
         HBRUSH stone = CreateSolidBrush(RGB(100, 105, 115)); HGDIOBJ old = SelectObject(hdc, stone);
         POINT poly[] = {{sx - 6, sy + 2}, {sx + 8, sy}, {sx + 4, sy + 8}, {sx - 4, sy + 6}};
         Polygon(hdc, poly, 4); SelectObject(hdc, old); DeleteObject(stone);
-    } else if (type == 4) { // Desert/Beach sand dune ripple
-        HBRUSH sand = CreateSolidBrush(RGB(225, 200, 150)); HGDIOBJ old = SelectObject(hdc, sand);
-        RECT dune = { sx - 7, sy + 4, sx + 7, sy + 7 };
-        FillRect(hdc, &dune, sand); SelectObject(hdc, old); DeleteObject(sand);
     } else if (type == 5) { // Tundra snow mound
         HBRUSH snow = CreateSolidBrush(RGB(235, 240, 250)); HGDIOBJ old = SelectObject(hdc, snow);
         Ellipse(hdc, sx - 6, sy + 1, sx + 6, sy + 9); SelectObject(hdc, old); DeleteObject(snow);
