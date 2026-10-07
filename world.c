@@ -66,6 +66,13 @@ void EnterCave(void) {
     }
 }
 
+// Only about one Mountain screen in four hides a treasure cave. Decided by
+// the cell id alone, so the world map and the screen always agree.
+int MountainHasCave(int cell) {
+    unsigned int h = (unsigned int)cell * 2654435761u;
+    return ((h >> 13) % 4) == 0;
+}
+
 // Only way out of a Cave: the treasure must be found first (per-cave, so a
 // cleared cave never respawns loot on re-entry).
 void ClaimCaveTreasureAndExit(void) {
@@ -75,8 +82,11 @@ void ClaimCaveTreasureAndExit(void) {
         rec->treasure_claimed = 1;
         MarkMapTreasureFound(current_cave_origin_cell);
         cave_treasure_hunts_found++;
-        DropGroundLoot(cave_treasure_x, cave_treasure_y, LOOT_RUSTY_SWORD, 1);
-        strcpy(arpg_action_log, "TREASURE: Found cave treasure! The way out opens behind you.");
+        int loot = LOOT_SHORT_SWORD + rand() % (LOOT_RUSTY_SWORD - LOOT_SHORT_SWORD + 1);
+        int gold = 40 + rand() % 81;
+        gold_count += gold;
+        DropGroundLoot(cave_treasure_x, cave_treasure_y, loot, 1);
+        sprintf(arpg_action_log, "TREASURE: %d gold and a %s! The way out opens behind you.", gold, weapon_catalog[loot - 1].name);
     }
     in_cave = 0;
     pending_forced_biome = -1;
@@ -297,11 +307,13 @@ void GenerateProceduralScreen(int index) {
     // flanked by torches; stepping onto the crevice no longer auto-teleports
     // (see HandleContextInteract) - approaching it just surfaces the "CAVE"
     // prompt so entry is always an explicit player choice.
-    if (current_biome == BIOME_MOUNTAIN) {
+    if (current_biome == BIOME_MOUNTAIN && MountainHasCave(index)) {
         torch_gate_x = 12; torch_gate_y = 12;
         VISUAL_MAP[torch_gate_y][torch_gate_x] = 0;
         VISUAL_MAP[torch_gate_y][torch_gate_x - 1] = 1;
         VISUAL_MAP[torch_gate_y][torch_gate_x + 1] = 1;
+    } else {
+        torch_gate_x = -100; torch_gate_y = -100;
     }
 
     for (int i = 0; i < MAX_CRITTERS; i++) {
