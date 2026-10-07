@@ -105,6 +105,7 @@ float player_stamina = 100.0f; float max_stamina = 100.0f;
 // regenerate back past the 30% "winded" threshold - see UpdateGamePhysics.
 int stamina_rest_timer = 0;
 float player_hp = 100.0f, max_player_hp = 100.0f;
+float player_mp = 100.0f, max_player_mp = 100.0f;
 // Recomputed at startup (and after every inventory change) from the actual
 // unequipped items carried in player_inventory - see RecalculateCarriedWeight().
 float current_payload_weight = 0.0f;

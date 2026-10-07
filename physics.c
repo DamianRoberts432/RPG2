@@ -45,7 +45,7 @@ void UpdateGamePhysics(void) {
     if (sleep_fade_frame > 0) {
         sleep_fade_frame++;
         if (sleep_fade_frame == 30) {
-            player_hp = max_player_hp; player_stamina = max_stamina;
+            player_hp = max_player_hp; player_stamina = max_stamina; player_mp = max_player_mp;
             day_night_cycle_accumulator += 2.0943951f;
             if (day_night_cycle_accumulator >= 6.2831853f) day_night_cycle_accumulator -= 6.2831853f;
             night_bonus_active = 1;
@@ -71,6 +71,10 @@ void UpdateGamePhysics(void) {
         stamina_rest_timer = 0;
     } else if (stamina_rest_timer < STAMINA_REST_FRAMES_REQUIRED) {
         stamina_rest_timer++;
+    }
+    if (player_mp < max_player_mp) {
+        player_mp += 0.06f + stat_magick * 0.01f;
+        if (player_mp > max_player_mp) player_mp = max_player_mp;
     }
     if (player_stamina < max_stamina) {
         float stamina_floor = max_stamina * 0.30f;
