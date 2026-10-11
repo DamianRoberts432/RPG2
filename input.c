@@ -128,6 +128,7 @@ void ProcessGamepadInput(void) {
                     if (buttons & XINPUT_GAMEPAD_DPAD_DOWN) { selected_inv_index = (selected_inv_index + 1) % player_item_count; last_vendor_gp = GetTickCount(); }
                 }
                 if (buttons & XINPUT_GAMEPAD_B) { vendor_menu_open = 0; last_vendor_gp = GetTickCount(); }
+                if (buttons & XINPUT_GAMEPAD_BACK) { HandleVendorSteal(); last_vendor_gp = GetTickCount(); }
             }
 
             static DWORD last_attack_gp = 0;
@@ -287,6 +288,7 @@ void ProcessGamepadInput(void) {
                 if ((GetAsyncKeyState(VK_OEM_6) | GetAsyncKeyState(VK_DOWN)) & 0x8000) { selected_inv_index = (selected_inv_index + 1) % player_item_count; last_vendor_kb = GetTickCount(); }
             }
             if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) { vendor_menu_open = 0; last_vendor_kb = GetTickCount(); }
+            if (GetAsyncKeyState('T') & 0x8000) { HandleVendorSteal(); last_vendor_kb = GetTickCount(); }
         }
 
         static DWORD last_eat = 0;

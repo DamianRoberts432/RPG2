@@ -49,6 +49,19 @@ void HandleVendorBuy(void) {
     sprintf(arpg_action_log, "MARKET: Bought %s for %d gold.", offer->name, price);
 }
 
+// Zero tolerance: any attempt to steal from a shop fails. The guards take a
+// quarter of the hero's gold and lock them up until dawn.
+void HandleVendorSteal(void) {
+    if (!IsNearMerchant() || sleep_fade_frame > 0) return;
+    int fine = gold_count / 4;
+    gold_count -= fine;
+    vendor_menu_open = 0;
+    KarmaAdjust(-10, 0, 25, 0);
+    jailed_tonight = 1;
+    sleep_fade_frame = 1;
+    sprintf(arpg_action_log, "STRAIGHT TO JAIL! The guards seize %d gold. You spend the night in a cell.", fine);
+}
+
 void HandleVendorSell(void) {
     if (!IsNearMerchant() || player_item_count == 0) { strcpy(arpg_action_log, "MARKET: No vendor or item available."); return; }
     InventoryItem *item = &player_inventory[selected_inv_index];

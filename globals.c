@@ -93,6 +93,7 @@ float bedroll_x = 0.0f, bedroll_y = 0.0f;
 int night_bonus_active = 0;
 int wind_dir = 0;
 int sleep_fade_frame = 0;
+int jailed_tonight = 0;
 int enemy_direction = FACE_DOWN;
 float weather_next_change = 200.0f;
 

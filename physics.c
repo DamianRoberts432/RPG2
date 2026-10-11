@@ -54,6 +54,10 @@ void UpdateGamePhysics(void) {
             night_bonus_active = 1;
             RestockMerchant();
             KarmaAdjust(0, -20, -10, 0); // a night's rest clears miasma and cools town heat
+            if (jailed_tonight) {
+                jailed_tonight = 0;
+                sprintf(arpg_action_log, "The guards release you at dawn. Town Heat: %d.", karma.town_heat);
+            }
         } else if (sleep_fade_frame >= 60) sleep_fade_frame = 0;
     }
     UpdateSeasonAndWeather();

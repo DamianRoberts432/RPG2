@@ -184,6 +184,7 @@ extern float bedroll_x, bedroll_y;
 extern int night_bonus_active;
 extern int wind_dir;
 extern int sleep_fade_frame;
+extern int jailed_tonight;
 extern int enemy_direction;
 extern float weather_next_change;
 extern int is_menu_open;
