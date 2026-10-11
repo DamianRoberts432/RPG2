@@ -471,6 +471,9 @@ void DrawTabbedMenuOverlay(HDC hdc) {
         sprintf(buf, "[1] XP Multiplier: %.1fx   (Modify with Left/Right Arrow)", opt_xp_mult); TextOut(hdc, 100, 140, buf, (int)strlen(buf));
         sprintf(buf, "[2] Loot Multiplier: %.1fx", opt_loot_mult); TextOut(hdc, 100, 180, buf, (int)strlen(buf));
         sprintf(buf, "[3] Day/Night Cycle Speed: %.1fx", opt_day_night_speed); TextOut(hdc, 100, 220, buf, (int)strlen(buf));
+        SetTextColor(hdc, RGB(255, 120, 100));
+        TextOut(hdc, 100, 280, "[9] / Back: Delete save file (press twice to confirm)", 53);
+        SetTextColor(hdc, RGB(255, 255, 255));
     }
 
     SelectObject(hdc, old_p); DeleteObject(border_p); SelectObject(hdc, old_b);

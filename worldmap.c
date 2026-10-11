@@ -39,7 +39,16 @@ int IsMapTreasureFound(int origin_cell) {
     return origin_cell >= 0 && CellInWorld(gx, gy) && (map_poi[gy][gx] & POI_TREASURE_FOUND);
 }
 
+static int save_disabled = 0; // set after the player deletes their save, until restart
+
+// Options tab: wipes rpg2_save.dat and stops auto-saving so it isn't recreated.
+int DeleteSaveFile(void) {
+    save_disabled = 1;
+    return DeleteFileA(SAVE_FILE_NAME) != 0 || GetLastError() == ERROR_FILE_NOT_FOUND;
+}
+
 int SaveWorldMapState(void) {
+    if (save_disabled) return 0;
     FILE *f = fopen(SAVE_TEMP_NAME, "wb");
     if (!f) return 0;
     SaveHeader hdr = { SAVE_MAGIC, SAVE_VERSION, META_GRID_SIZE };
