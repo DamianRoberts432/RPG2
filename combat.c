@@ -134,7 +134,8 @@ void UpdateDebrisTwigs(void) {
     }
 }
 
-#define JUNK_DROP_RATE 0.6f
+#define JUNK_DROP_RATE 0.4f
+#define GOLD_DROP_CAP 75
 #define OVERKILL_BLOOD 1.0f // hearts of damage past zero that trigger an extra spray
 void HandleEnemyDamage(float dmg) {
     if (fabs(sin(day_night_cycle_accumulator)) < 0.35f) dmg *= 0.9f;
@@ -152,7 +153,7 @@ void HandleEnemyDamage(float dmg) {
         int is_night = fabs(sin(day_night_cycle_accumulator)) < 0.35f;
         int gained_xp = (int)(((10 + rand() % 7 + (is_night ? 2 : 0)) * opt_xp_mult) * ((is_night && night_bonus_active) ? 1.25f : 1.0f));
         float loot_multiplier = opt_loot_mult * (is_night ? 1.5f : 1.0f);
-        // Ordinary (junk) drops are 40% rarer than they used to be, to cut ground clutter.
+        // Ordinary (junk) drops are 60% rarer than they used to be, to cut ground clutter.
         int loot_chance = (int)(70.0f * JUNK_DROP_RATE * loot_multiplier) + 3 * stat_spent[4];
         if (loot_chance > 100) loot_chance = 100;
         if (rand() % 100 < loot_chance) {
@@ -161,6 +162,13 @@ void HandleEnemyDamage(float dmg) {
             if (loot_quantity < 1) loot_quantity = 1;
             if (rand() % 100 < (int)((loot_multiplier - (int)loot_multiplier) * 100.0f)) loot_quantity++;
             DropGroundLoot(enemy_x, enemy_y, loot_id, loot_quantity);
+        }
+        // A little gold, more with level and luck, never more than GOLD_DROP_CAP.
+        int coins = 0;
+        if (rand() % 100 < 35 + 2 * stat_spent[4]) {
+            coins = 1 + rand() % (3 + player_level + 2 * stat_spent[4]);
+            if (coins > GOLD_DROP_CAP) coins = GOLD_DROP_CAP;
+            gold_count += coins;
         }
         int hoard = 0;
         if (IS_BOSS_MONSTER(active_monster)) {
@@ -186,6 +194,7 @@ void HandleEnemyDamage(float dmg) {
             if (hoard) sprintf(arpg_action_log, "VICTORY: The %s falls! +%d XP, %d gold from its hoard!", MonsterName(active_monster), gained_xp, hoard);
             else sprintf(arpg_action_log, "VICTORY: %s slain! +%d XP", MonsterName(active_monster), gained_xp);
         }
+        if (coins) { size_t n = strlen(arpg_action_log); snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  +%d gold", coins); }
         if (monster_card_links[active_monster].kills < 65535) monster_card_links[active_monster].kills++;
         TryCardDrop(active_monster);
     } else {
