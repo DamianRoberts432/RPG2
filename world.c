@@ -87,6 +87,7 @@ void ClaimCaveTreasureAndExit(void) {
         gold_count += gold;
         DropGroundLoot(cave_treasure_x, cave_treasure_y, loot, 1);
         sprintf(arpg_action_log, "TREASURE: %d gold and a %s! The way out opens behind you.", gold, weapon_catalog[loot - 1].name);
+        TryCardDrop(-1);
     }
     in_cave = 0;
     pending_forced_biome = -1;

@@ -206,6 +206,18 @@ typedef struct { int8_t soul; uint16_t life_marks; uint8_t miasma, town_heat, gr
 #pragma pack(pop)
 extern KarmaState karma;
 void KarmaAdjust(int soul, int miasma, int heat, int grapevine);
+// Card collection: two 21-byte bitmasks (168 bits) for 166 cards. Card ids
+// below MONSTER_TYPE_COUNT are monster cards, linked to the bestiary.
+#define CARD_COUNT 166
+#define CARD_BYTES 21
+#define CARD_DROP_PERCENT 2
+#define MONSTER_TYPE_COUNT 9
+typedef struct { uint8_t monster, card_id; uint16_t kills; } MonsterCardLink;
+extern uint8_t card_collection_bits[CARD_BYTES], deck_of_cards_bits[CARD_BYTES];
+extern MonsterCardLink monster_card_links[MONSTER_TYPE_COUNT];
+int HasCard(int id);
+int CardCount(void);
+void TryCardDrop(int monster); // monster < 0 for chests and fishing
 // Upper-left HUD: date/season/region lines start here; the action and
 // NPC dialogue log sits below them at HUD_LOG_Y.
 #define HUD_DATE_Y 16

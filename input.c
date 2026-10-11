@@ -352,7 +352,7 @@ void ProcessGamepadInput(void) {
                     if (!IsFacingFishWater()) strcpy(arpg_action_log, "FISHING: No fish in this water.");
                     else {
                         int count = 1 + rand() % 3;
-                        if (AddLootToInventory(LOOT_FISH, count)) sprintf(arpg_action_log, "FISHING: Caught %d fish!", count);
+                        if (AddLootToInventory(LOOT_FISH, count)) { sprintf(arpg_action_log, "FISHING: Caught %d fish!", count); TryCardDrop(-1); }
                         else strcpy(arpg_action_log, "FISHING: Catch lost; inventory is too heavy.");
                     }
                 } else strcpy(arpg_action_log, "FISHING: The fish got away.");

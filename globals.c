@@ -235,6 +235,10 @@ int stat_magick = 2, stat_luck = 2, stat_intelligence = 2, stat_charisma = 2;
 int stat_points = 0, stat_spent[STAT_COUNT] = { 0 }, stat_cursor = 0, stat_assign_mode = 0;
 char creation_error_msg[64] = "";
 KarmaState karma = { 0 };
+uint8_t card_collection_bits[CARD_BYTES] = { 0 }, deck_of_cards_bits[CARD_BYTES] = { 0 };
+MonsterCardLink monster_card_links[MONSTER_TYPE_COUNT] = {
+    {0, 0, 0}, {1, 1, 0}, {2, 2, 0}, {3, 3, 0}, {4, 4, 0}, {5, 5, 0}, {6, 6, 0}, {7, 7, 0}, {8, 8, 0}
+};
 
 char arpg_action_log[256] = "ARPG ENGINE: Character Creation Online. Config Name/Class/Race.";
 int cam_x = 0; int cam_y = 0;

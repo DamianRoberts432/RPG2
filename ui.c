@@ -281,6 +281,19 @@ void DrawTabbedMenuOverlay(HDC hdc) {
         for (int m = 0; m < 16; m++) if (IS_BOSS_MONSTER(m) && (karma.life_marks & (1u << m))) { strcat(buf, " "); strcat(buf, MonsterName((MonsterType)m)); }
         if (karma.life_marks == 0) strcat(buf, " none yet (slay a boss)");
         TextOut(hdc, lore_x, 126, buf, (int)strlen(buf));
+        SetTextColor(hdc, RGB(255, 215, 0));
+        sprintf(buf, "CARDS: %d / %d collected", CardCount(), CARD_COUNT);
+        TextOut(hdc, lore_x, 146, buf, (int)strlen(buf));
+        prev_font = SelectObject(hdc, underline_font);
+        SetTextColor(hdc, RGB(0, 230, 200));
+        TextOut(hdc, lore_x, 166, "BESTIARY (kills)", 16);
+        SelectObject(hdc, prev_font);
+        for (int m = 0; m < MONSTER_TYPE_COUNT; m++) {
+            SetTextColor(hdc, HasCard(monster_card_links[m].card_id) ? RGB(255, 215, 0) : RGB(200, 200, 200));
+            sprintf(buf, "%-8s %5u%s", MonsterName((MonsterType)m), (unsigned)monster_card_links[m].kills,
+                    HasCard(monster_card_links[m].card_id) ? "  [card]" : "");
+            TextOut(hdc, lore_x, 184 + m * 14, buf, (int)strlen(buf));
+        }
 
         prev_font = SelectObject(hdc, underline_font);
         SetTextColor(hdc, RGB(0, 230, 200));

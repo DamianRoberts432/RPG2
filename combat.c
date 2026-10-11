@@ -166,6 +166,8 @@ void HandleEnemyDamage(float dmg) {
             if (hoard) sprintf(arpg_action_log, "VICTORY: The %s falls! +%d XP, %d gold from its hoard!", MonsterName(active_monster), gained_xp, hoard);
             else sprintf(arpg_action_log, "VICTORY: %s slain! +%d XP", MonsterName(active_monster), gained_xp);
         }
+        if (monster_card_links[active_monster].kills < 65535) monster_card_links[active_monster].kills++;
+        TryCardDrop(active_monster);
     } else {
         sprintf(arpg_action_log, "%s: Hit for %.1f DMG! Remainder: %.1f", crit ? "CRITICAL" : "STRIKE", dmg, enemy_hearts);
     }
