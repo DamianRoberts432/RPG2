@@ -13,6 +13,7 @@ void HandleEnemyDamage(float dmg);
 float DistanceToEnemy(void);
 int IsFacingEnemyWithin(float dot_threshold);
 int IsFacingEnemy(void);
+void ChargeBow(void);
 void FirePlayerArrow(int is_tap);
 void UpdatePlayerArrow(void);
 void FireClassAbility(void);

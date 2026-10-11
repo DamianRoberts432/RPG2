@@ -289,6 +289,17 @@ void UpdateEnemySpawns(void) {
 // Arrows fly straight along the hero's facing; they only curve toward the
 // monster when the hero is actually facing it (within BOW_AIM_CONE_DOT).
 #define BOW_AIM_CONE_DOT 0.5f
+// Holding the draw (RT / F) costs stamina every frame; once winded the
+// charge stops building, though the arrow can still be loosed.
+#define BOW_DRAW_STAMINA_PER_FRAME 0.5f
+void ChargeBow(void) {
+    if (player_stamina <= 0.0f) return;
+    player_stamina -= BOW_DRAW_STAMINA_PER_FRAME;
+    if (player_stamina < 0.0f) player_stamina = 0.0f;
+    bow_charge_time += 0.05f;
+    if (bow_charge_time > 1.0f) bow_charge_time = 1.0f;
+}
+
 void FirePlayerArrow(int is_tap) {
     player_arrow.x = player_x; player_arrow.y = player_y; player_arrow.z = 12.0f;
     player_arrow.origin_tx = (int)player_x; player_arrow.origin_ty = (int)player_y;
@@ -306,7 +317,6 @@ void FirePlayerArrow(int is_tap) {
     if (distance < 0.001f) { track_dx = 1.0f; distance = 1.0f; }
     float distance_mult = is_tap ? 0.5f : 0.5f + (bow_charge_time * 1.5f);
     float spd = 0.35f * distance_mult;
-    player_stamina -= bow_charge_time * 10.0f; if (player_stamina < 0.0f) player_stamina = 0.0f;
     player_arrow.vx = (track_dx / distance) * spd;
     player_arrow.vy = (track_dy / distance) * spd;
     player_arrow.vz = is_tap ? 0.25f : 0.5f;

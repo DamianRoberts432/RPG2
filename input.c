@@ -156,8 +156,7 @@ void ProcessGamepadInput(void) {
                 bow_charge_started_at = bow_charge_start_gp;
                 bow_charge_time = 0.0f;
             }
-            bow_charge_time += 0.05f;
-            if (bow_charge_time > 1.0f) bow_charge_time = 1.0f;
+            ChargeBow();
         } else if (is_charging_bow && bow_charge_start_gp != 0) {
             DWORD hold_duration = GetTickCount() - bow_charge_start_gp;
             int is_tap = (hold_duration < 150 || bow_charge_time < 0.1f);
@@ -326,8 +325,7 @@ void ProcessGamepadInput(void) {
                 bow_charge_started_at = bow_charge_start_kb;
                 bow_charge_time = 0.0f;
             }
-            bow_charge_time += 0.05f;
-            if (bow_charge_time > 1.0f) bow_charge_time = 1.0f;
+            ChargeBow();
         } else if (is_charging_bow && bow_charge_start_kb != 0) {
             DWORD hold_duration = GetTickCount() - bow_charge_start_kb;
             int is_tap = (hold_duration < 150 || bow_charge_time < 0.1f);
