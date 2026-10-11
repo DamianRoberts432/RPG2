@@ -19,6 +19,7 @@ void AddMaterialToInventory(const char *name, int quantity);
 int ConsumeMaterialFromInventory(const char *name, int quantity);
 float LootWeight(int item_id);
 int AddLootToInventory(int item_id, int quantity);
+void FindDropSpot(float x, float y, int center_first, float *ox, float *oy);
 void DropGroundLoot(float x, float y, int item_id, int quantity);
 void TryPickupGroundLoot(void);
 void DropSelectedItem(void);

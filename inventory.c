@@ -247,7 +247,33 @@ int AddLootToInventory(int item_id, int quantity) {
     return 1;
 }
 
+static int SpotHasLoot(float x, float y) {
+    for (int i = 0; i < MAX_GROUND_LOOT; i++)
+        if (ground_loot[i].active && ground_loot[i].screen_id == current_screen_index && fabs(ground_loot[i].x - x) < 0.45f && fabs(ground_loot[i].y - y) < 0.45f) return 1;
+    for (int i = 0; i < MAX_DROPPED_ITEMS; i++)
+        if (dropped_items[i].active && dropped_items[i].screen_id == current_screen_index && fabs(dropped_items[i].x - x) < 0.45f && fabs(dropped_items[i].y - y) < 0.45f) return 1;
+    return 0;
+}
+
+// Picks a walkable, uncluttered spot near (x, y) so drops never land inside
+// trees, rocks or water or on top of another drop. center_first tries (x, y)
+// itself before the ring around it (nearest free tile); otherwise the ring is
+// walked from a random direction so loot scatters around a fallen monster.
+void FindDropSpot(float x, float y, int center_first, float *ox, float *oy) {
+    static const float ring[12][2] = { {0.7f, 0}, {0.5f, 0.5f}, {0, 0.7f}, {-0.5f, 0.5f}, {-0.7f, 0}, {-0.5f, -0.5f},
+                                       {0, -0.7f}, {0.5f, -0.5f}, {1.3f, 0}, {0, 1.3f}, {-1.3f, 0}, {0, -1.3f} };
+    if (center_first && PlayerCanStandAt(x, y) && !SpotHasLoot(x, y)) { *ox = x; *oy = y; return; }
+    int start = center_first ? 0 : rand() % 8;
+    for (int k = 0; k < 12; k++) {
+        int i = k < 8 ? (start + k) % 8 : k;
+        float tx = x + ring[i][0], ty = y + ring[i][1];
+        if (PlayerCanStandAt(tx, ty) && !SpotHasLoot(tx, ty)) { *ox = tx; *oy = ty; return; }
+    }
+    *ox = x; *oy = y;
+}
+
 void DropGroundLoot(float x, float y, int item_id, int quantity) {
+    FindDropSpot(x, y, 0, &x, &y);
     for (int i = 0; i < MAX_GROUND_LOOT; i++) {
         if (!ground_loot[i].active) {
             ground_loot[i].x = x; ground_loot[i].y = y;
