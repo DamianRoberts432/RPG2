@@ -128,7 +128,7 @@ void UpdateGamePhysics(void) {
         else if (SelectNearestEnemyTo(summoned_zombie.x, summoned_zombie.y) >= 0) {
             float zx = enemy_x - summoned_zombie.x, zy = enemy_y - summoned_zombie.y;
             float zd = (float)sqrt(zx * zx + zy * zy);
-            static const float summon_speed[3] = { 0.035f, 0.03f, 0.06f }, summon_dmg[3] = { 0.75f, 0.5f, 1.0f };
+            static const float summon_speed[3] = { 0.03f, 0.045f, 0.06f }, summon_dmg[3] = { 1.0f, 0.75f, 0.5f };
             int st = summoned_zombie.type;
             if (zd > 0.65f) {
                 summoned_zombie.x += (zx / zd) * summon_speed[st];
