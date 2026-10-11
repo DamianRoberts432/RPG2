@@ -53,7 +53,7 @@ void SpawnBloodMist(float x, float y) {
     // (rand()%100 spread over a 6400.0f divisor, re-centered by subtracting
     // the midpoint) and lifetime from 8-16 frames, both deliberately short
     // so specks fade before they can travel far or grow large on screen.
-    for (int i = 0; i < MAX_BLOOD_MIST; i++) {
+    for (int i = 0; i < MAX_BLOOD_MIST / 2; i++) {
         blood_mist[i].x = x; blood_mist[i].y = y;
         blood_mist[i].vx = ((rand() % 100) / 6400.0f - 0.0078f);
         blood_mist[i].vy = ((rand() % 100) / 6400.0f - 0.0078f);
@@ -121,6 +121,7 @@ void UpdateDebrisTwigs(void) {
 }
 
 #define JUNK_DROP_RATE 0.6f
+#define OVERKILL_BLOOD 1.0f // hearts of damage past zero that trigger an extra spray
 void HandleEnemyDamage(float dmg) {
     if (fabs(sin(day_night_cycle_accumulator)) < 0.35f) dmg *= 0.9f;
     int crit = dmg > 0.0f && rand() % 100 < 5 + 2 * stat_spent[4]; // each LCK point spent: +2% crit
@@ -133,6 +134,7 @@ void HandleEnemyDamage(float dmg) {
     
     if (enemy_hearts <= 0.0f) {
         SpawnBloodMist(enemy_x, enemy_y);
+        if (-enemy_hearts >= OVERKILL_BLOOD) { SpawnBloodBurst(enemy_x, enemy_y, k_dx, k_dy); SpawnBloodBurst(enemy_x, enemy_y, k_dx, k_dy); }
         int is_night = fabs(sin(day_night_cycle_accumulator)) < 0.35f;
         int gained_xp = (int)(((10 + rand() % 7 + (is_night ? 2 : 0)) * opt_xp_mult) * ((is_night && night_bonus_active) ? 1.25f : 1.0f));
         float loot_multiplier = opt_loot_mult * (is_night ? 1.5f : 1.0f);
