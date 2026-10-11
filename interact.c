@@ -60,7 +60,9 @@ void HandleContextInteract(void) {
             vendor_menu_open = 1;
             vendor_tab = 0;
             strcpy(arpg_action_log, "MARKET: LB Buy tab / RB Sell tab, SPACE confirms, ESC closes.");
-        } else strcpy(arpg_action_log, village_npcs[i].dialogue);
+        } else if (village_npcs[i].type == 3) RepairEquippedWeapon();
+        else if (village_npcs[i].type == 5) BuyCardBooster();
+        else strcpy(arpg_action_log, village_npcs[i].dialogue);
         return;
     }
 
