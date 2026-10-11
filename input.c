@@ -134,17 +134,19 @@ void ProcessGamepadInput(void) {
             // confirms the buy/sell, and B closes the shop.
             static DWORD last_vendor_gp = 0;
             if (shopping && (GetTickCount() - last_vendor_gp > 200)) {
-                if (buttons & XINPUT_GAMEPAD_LEFT_SHOULDER)  { vendor_tab = 0; last_vendor_gp = GetTickCount(); }
-                if (buttons & XINPUT_GAMEPAD_RIGHT_SHOULDER) { vendor_tab = 1; last_vendor_gp = GetTickCount(); }
-                if (vendor_tab == 0) {
+                if (buttons & XINPUT_GAMEPAD_LEFT_SHOULDER)  { vendor_tab = 0; shop_action_menu = 0; last_vendor_gp = GetTickCount(); }
+                if (buttons & XINPUT_GAMEPAD_RIGHT_SHOULDER) { vendor_tab = 1; shop_action_menu = 0; last_vendor_gp = GetTickCount(); }
+                if (vendor_tab == 0 && shop_action_menu) {
+                    if (buttons & XINPUT_GAMEPAD_DPAD_UP)   { ShopMoveCursor(-1); last_vendor_gp = GetTickCount(); }
+                    if (buttons & XINPUT_GAMEPAD_DPAD_DOWN) { ShopMoveCursor(1); last_vendor_gp = GetTickCount(); }
+                } else if (vendor_tab == 0) {
                     if (buttons & XINPUT_GAMEPAD_DPAD_UP)   { merchant_selection = (merchant_selection + MERCH_ITEMS - 1) % MERCH_ITEMS; last_vendor_gp = GetTickCount(); }
                     if (buttons & XINPUT_GAMEPAD_DPAD_DOWN) { merchant_selection = (merchant_selection + 1) % MERCH_ITEMS; last_vendor_gp = GetTickCount(); }
                 } else if (player_item_count > 0) {
                     if (buttons & XINPUT_GAMEPAD_DPAD_UP)   { selected_inv_index = (selected_inv_index + player_item_count - 1) % player_item_count; last_vendor_gp = GetTickCount(); }
                     if (buttons & XINPUT_GAMEPAD_DPAD_DOWN) { selected_inv_index = (selected_inv_index + 1) % player_item_count; last_vendor_gp = GetTickCount(); }
                 }
-                if (buttons & XINPUT_GAMEPAD_B) { vendor_menu_open = 0; last_vendor_gp = GetTickCount(); }
-                if (buttons & XINPUT_GAMEPAD_BACK) { HandleVendorSteal(); last_vendor_gp = GetTickCount(); }
+                if (buttons & XINPUT_GAMEPAD_B) { if (shop_action_menu) shop_action_menu = 0; else vendor_menu_open = 0; last_vendor_gp = GetTickCount(); }
             }
 
             static DWORD last_attack_gp = 0;
@@ -153,7 +155,7 @@ void ProcessGamepadInput(void) {
                 (DWORD)(350.0f / held_weapon->attack_speed_mult) : 350;
             if ((buttons & XINPUT_GAMEPAD_A) && (GetTickCount() - last_attack_gp > attack_delay_gp)) {
                 if (shopping) {
-                    if (vendor_tab == 0) HandleVendorBuy(); else HandleVendorSell();
+                    if (vendor_tab == 0) ShopConfirm(); else HandleVendorSell();
                 } else if (active_weapon != WEAPON_BOW) {
                     PerformMeleeAttack();
                 }
@@ -296,17 +298,19 @@ void ProcessGamepadInput(void) {
             // E switches to the Sell tab (player's inventory). Bracket keys
             // cycle the highlighted row within the active tab, SPACE/Z
             // confirms, and ESCAPE closes the shop.
-            if (GetAsyncKeyState('Q') & 0x8000) { vendor_tab = 0; last_vendor_kb = GetTickCount(); }
-            if (GetAsyncKeyState('E') & 0x8000) { vendor_tab = 1; last_vendor_kb = GetTickCount(); }
-            if (vendor_tab == 0) {
+            if (GetAsyncKeyState('Q') & 0x8000) { vendor_tab = 0; shop_action_menu = 0; last_vendor_kb = GetTickCount(); }
+            if (GetAsyncKeyState('E') & 0x8000) { vendor_tab = 1; shop_action_menu = 0; last_vendor_kb = GetTickCount(); }
+            if (vendor_tab == 0 && shop_action_menu) {
+                if ((GetAsyncKeyState(VK_OEM_4) | GetAsyncKeyState(VK_UP)) & 0x8000) { ShopMoveCursor(-1); last_vendor_kb = GetTickCount(); }
+                if ((GetAsyncKeyState(VK_OEM_6) | GetAsyncKeyState(VK_DOWN)) & 0x8000) { ShopMoveCursor(1); last_vendor_kb = GetTickCount(); }
+            } else if (vendor_tab == 0) {
                 if ((GetAsyncKeyState(VK_OEM_4) | GetAsyncKeyState(VK_UP)) & 0x8000) { merchant_selection = (merchant_selection + MERCH_ITEMS - 1) % MERCH_ITEMS; last_vendor_kb = GetTickCount(); }
                 if ((GetAsyncKeyState(VK_OEM_6) | GetAsyncKeyState(VK_DOWN)) & 0x8000) { merchant_selection = (merchant_selection + 1) % MERCH_ITEMS; last_vendor_kb = GetTickCount(); }
             } else if (player_item_count > 0) {
                 if ((GetAsyncKeyState(VK_OEM_4) | GetAsyncKeyState(VK_UP)) & 0x8000) { selected_inv_index = (selected_inv_index + player_item_count - 1) % player_item_count; last_vendor_kb = GetTickCount(); }
                 if ((GetAsyncKeyState(VK_OEM_6) | GetAsyncKeyState(VK_DOWN)) & 0x8000) { selected_inv_index = (selected_inv_index + 1) % player_item_count; last_vendor_kb = GetTickCount(); }
             }
-            if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) { vendor_menu_open = 0; last_vendor_kb = GetTickCount(); }
-            if (GetAsyncKeyState('T') & 0x8000) { HandleVendorSteal(); last_vendor_kb = GetTickCount(); }
+            if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) { if (shop_action_menu) shop_action_menu = 0; else vendor_menu_open = 0; last_vendor_kb = GetTickCount(); }
         }
 
         static DWORD last_eat = 0;
@@ -333,7 +337,7 @@ void ProcessGamepadInput(void) {
             (DWORD)(350.0f / held_weapon->attack_speed_mult) : 350;
         if (((GetAsyncKeyState(VK_SPACE) | GetAsyncKeyState('Z')) & 0x8000) && (GetTickCount() - last_attack_kb > attack_delay_kb)) {
             if (shopping_kb) {
-                if (vendor_tab == 0) HandleVendorBuy(); else HandleVendorSell();
+                if (vendor_tab == 0) ShopConfirm(); else HandleVendorSell();
             } else if (active_weapon != WEAPON_BOW) {
                 PerformMeleeAttack();
             }

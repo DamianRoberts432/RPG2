@@ -49,23 +49,29 @@ void HandleVendorBuy(void) {
     sprintf(arpg_action_log, "MARKET: Bought %s for %d gold.", offer->name, price);
 }
 
-// Zero tolerance: any attempt to steal from a shop fails. The guards take a
-// quarter of the hero's gold and lock them up until dawn.
-void HandleVendorSteal(void) {
-    if (!IsNearMerchant() || sleep_fade_frame > 0) return;
-    // The Strategy Guide can only be browsed or bought, never stolen.
-    if (vendor_tab == 0 && strcmp(merchant_catalog[merchant_selection].name, "Strategy Guide") == 0) {
+// Buy tab: A / SPACE on an item opens a small Browse / Buy / Cancel menu.
+int shop_action_menu = 0, shop_action_cursor = 1;
+
+void HandleVendorBrowse(void) {
+    if (!IsNearMerchant()) return;
+    MerchantItem *offer = &merchant_catalog[merchant_selection];
+    if (strcmp(offer->name, "Strategy Guide") == 0) {
         guide_flash_until = GetTickCount() + GUIDE_FLASH_MS;
         strcpy(arpg_action_log, "You browse the A&D Strategy Guide. Buy it to keep it.");
-        return;
+    } else if (offer->requires_treasure_hunt && cave_treasure_hunts_found <= 0) {
+        strcpy(arpg_action_log, "MARKET: This treasure-hunt item is still a rumor to this merchant.");
+    } else {
+        sprintf(arpg_action_log, "You look over the %s. %d gold.", offer->name, ShopPrice(offer->base_price * (int)offer->rarity));
     }
-    int fine = gold_count / 4;
-    gold_count -= fine;
-    vendor_menu_open = 0;
-    KarmaAdjust(-10, 0, 25, 0);
-    jailed_tonight = 1;
-    sleep_fade_frame = 1;
-    sprintf(arpg_action_log, "STRAIGHT TO JAIL! The guards seize %d gold. You spend the night in a cell.", fine);
+}
+
+void ShopMoveCursor(int step) { shop_action_cursor = (shop_action_cursor + step + 3) % 3; }
+
+void ShopConfirm(void) {
+    if (!shop_action_menu) { shop_action_menu = 1; shop_action_cursor = 1; return; }
+    shop_action_menu = 0;
+    if (shop_action_cursor == 0) HandleVendorBrowse();
+    else if (shop_action_cursor == 1) HandleVendorBuy();
 }
 
 // Blacksmith: restores the equipped melee weapon to full durability for 1 gold per point.
