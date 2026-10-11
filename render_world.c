@@ -7,6 +7,14 @@ void DrawDroppedItems(HDC hdc) {
         DWORD age = GetTickCount() - drop->dropped_at;
         if (!drop->legendary && age > DROPPED_ITEM_LIFETIME_MS - 30000 && (world_frame / 8) % 2) continue;
         int sx, sy; GetIsoCoords(drop->x, drop->y, &sx, &sy);
+        if (strcmp(drop->item.name, "Spear") == 0) {
+            HPEN shaft = CreatePen(PS_SOLID, 2, RGB(150, 110, 70)); HGDIOBJ old_s = SelectObject(hdc, shaft);
+            MoveToEx(hdc, sx - 14, sy + 3, NULL); LineTo(hdc, sx + 12, sy - 3);
+            HPEN tip = CreatePen(PS_SOLID, 3, RGB(210, 215, 225)); SelectObject(hdc, tip);
+            MoveToEx(hdc, sx + 12, sy - 3, NULL); LineTo(hdc, sx + 17, sy - 4);
+            SelectObject(hdc, old_s); DeleteObject(shaft); DeleteObject(tip);
+            continue;
+        }
         HBRUSH b = CreateSolidBrush(RGB(170, 150, 110)); HGDIOBJ old = SelectObject(hdc, b);
         POINT pack[] = { {sx - 6, sy - 4}, {sx + 6, sy - 4}, {sx + 7, sy + 5}, {sx - 7, sy + 5} };
         Polygon(hdc, pack, 4); SelectObject(hdc, old); DeleteObject(b);

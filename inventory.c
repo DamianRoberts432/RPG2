@@ -14,7 +14,8 @@ void SyncActiveWeapon(void) {
         if (!player_inventory[i].is_equipped || strcmp(player_inventory[i].slot, "Weapon") != 0) continue;
         if (IsBowItem(&player_inventory[i])) { bow_equipped = 1; continue; }
         if (!has_melee) {
-            active_weapon = strcmp(player_inventory[i].name, "Axe") == 0 ? WEAPON_AXE : WEAPON_SWORD;
+            active_weapon = strcmp(player_inventory[i].name, "Axe") == 0 ? WEAPON_AXE :
+                            strcmp(player_inventory[i].name, "Spear") == 0 ? WEAPON_SPEAR : WEAPON_SWORD;
             has_melee = 1;
         }
     }
@@ -64,6 +65,9 @@ void HandleInventoryPrimaryAction(void) {
         HandleMenuLightFire();
     } else if (strcmp(item->name, "Wood") == 0 && AddWoodToNearbyFire()) {
         // handled inside AddWoodToNearbyFire()
+    } else if (strcmp(item->name, "Strategy Guide") == 0) {
+        guide_flash_until = GetTickCount() + GUIDE_FLASH_MS;
+        strcpy(arpg_action_log, "A&D STRATEGY GUIDE: secret card combos revealed!");
     } else if (strcmp(item->name, "Fish") == 0 || strcmp(item->name, "Apple") == 0) {
         ConsumeSelectedFood();
     } else if (strcmp(item->slot, "Weapon") == 0 || strcmp(item->slot, "Armor") == 0 || strcmp(item->slot, "Shield") == 0) {
@@ -123,6 +127,8 @@ float GetNamedItemWeight(const char *name) {
     if (strcmp(name, "Dagger") == 0) return 1.0f;
     if (strcmp(name, "Long Sword") == 0) return 5.0f;
     if (strcmp(name, "Axe") == 0) return 4.0f;
+    if (strcmp(name, "Spear") == 0) return 3.0f;
+    if (strcmp(name, "Strategy Guide") == 0) return 0.5f;
     if (strcmp(name, "Rusty Sword") == 0) return 2.0f;
     if (strcmp(name, "Iron Sword") == 0) return 4.0f;
     if (strcmp(name, "Wooden Shield") == 0) return 3.0f;
@@ -170,6 +176,37 @@ int AddInventoryItem(const char *name, const char *slot, int quantity) {
     return 1;
 }
 
+// Food, materials and matches stack up to MAX_STACK per inventory slot.
+int IsStackableItem(const char *name, const char *slot) {
+    return strcmp(slot, "Food") == 0 || strcmp(slot, "Material") == 0 || strcmp(name, "Matches") == 0;
+}
+
+static int StackRoom(const char *name) {
+    int room = 0;
+    for (int i = 0; i < player_item_count; i++)
+        if (strcmp(player_inventory[i].name, name) == 0 && player_inventory[i].quantity < MAX_STACK) room += MAX_STACK - player_inventory[i].quantity;
+    return room;
+}
+
+// Tops up existing stacks first, then opens new slots. Returns 1 if all fit
+// (nothing is added when it would not).
+int AddStackableItem(const char *name, const char *slot, int quantity) {
+    int free_slots = MAX_INVENTORY_ITEMS - player_item_count;
+    if (StackRoom(name) + free_slots * MAX_STACK < quantity) return 0;
+    for (int i = 0; i < player_item_count && quantity > 0; i++) {
+        InventoryItem *it = &player_inventory[i];
+        if (strcmp(it->name, name) != 0 || it->quantity >= MAX_STACK) continue;
+        int add = MAX_STACK - it->quantity; if (add > quantity) add = quantity;
+        it->quantity += add; quantity -= add;
+    }
+    while (quantity > 0) {
+        int add = quantity < MAX_STACK ? quantity : MAX_STACK;
+        AddInventoryItem(name, slot, add);
+        quantity -= add;
+    }
+    return 1;
+}
+
 float CarryLimit(void) {
     return 100.0f;
 }
@@ -185,8 +222,9 @@ int FindInventoryItemIndex(const char *name) {
 
 // Raw gathered quantity (e.g. Wood/Stone) currently sitting in the pack.
 int GetMaterialCount(const char *name) {
-    int idx = FindInventoryItemIndex(name);
-    return idx == -1 ? 0 : player_inventory[idx].quantity;
+    int total = 0;
+    for (int i = 0; i < player_item_count; i++) if (strcmp(player_inventory[i].name, name) == 0) total += player_inventory[i].quantity;
+    return total;
 }
 
 // Adds gathered material (Wood/Stone) straight into the weighted inventory,
@@ -194,32 +232,31 @@ int GetMaterialCount(const char *name) {
 // up, carry weight, and can be sold or dropped exactly like any other item.
 void AddMaterialToInventory(const char *name, int quantity) {
     if (quantity <= 0) return;
-    int idx = FindInventoryItemIndex(name);
-    if (idx != -1) {
-        player_inventory[idx].quantity += quantity;
-    } else if (!AddInventoryItem(name, "Material", quantity)) {
-        return;
-    }
+    AddStackableItem(name, "Material", quantity);
     RecalculateCarriedWeight();
 }
 
 // Removes up to `quantity` of a named material, deleting the slot entirely
 // once it reaches zero. Returns 1 on success, 0 if not enough is owned.
 int ConsumeMaterialFromInventory(const char *name, int quantity) {
-    int idx = FindInventoryItemIndex(name);
-    if (idx == -1 || player_inventory[idx].quantity < quantity) return 0;
-    player_inventory[idx].quantity -= quantity;
-    if (player_inventory[idx].quantity <= 0) {
-        for (int i = idx; i < player_item_count - 1; i++) player_inventory[i] = player_inventory[i + 1];
-        player_item_count--;
-        if (selected_inv_index >= player_item_count && player_item_count > 0) selected_inv_index = player_item_count - 1;
+    if (GetMaterialCount(name) < quantity) return 0;
+    // Take from the last stacks first so the fuller, older stack stays put.
+    for (int idx = player_item_count - 1; idx >= 0 && quantity > 0; idx--) {
+        if (strcmp(player_inventory[idx].name, name) != 0) continue;
+        int take = player_inventory[idx].quantity < quantity ? player_inventory[idx].quantity : quantity;
+        player_inventory[idx].quantity -= take; quantity -= take;
+        if (player_inventory[idx].quantity <= 0) {
+            for (int i = idx; i < player_item_count - 1; i++) player_inventory[i] = player_inventory[i + 1];
+            player_item_count--;
+        }
     }
+    if (selected_inv_index >= player_item_count && player_item_count > 0) selected_inv_index = player_item_count - 1;
     RecalculateCarriedWeight();
     return 1;
 }
 
 float LootWeight(int item_id) {
-    if (item_id >= LOOT_SHORT_SWORD && item_id <= LOOT_MUSASHI_BLADE) return weapon_catalog[item_id - 1].weight;
+    if (item_id >= LOOT_SHORT_SWORD && item_id <= LOOT_SPEAR) return weapon_catalog[item_id - 1].weight;
     return (item_id == LOOT_FISH || item_id == LOOT_APPLE) ? GetNamedItemWeight(item_id == LOOT_FISH ? "Fish" : "Apple") : 0.0f;
 }
 
@@ -227,7 +264,7 @@ int AddLootToInventory(int item_id, int quantity) {
     const char *name;
     const char *slot;
     WeaponStats *weapon = NULL;
-    if (item_id >= LOOT_SHORT_SWORD && item_id <= LOOT_MUSASHI_BLADE) {
+    if (item_id >= LOOT_SHORT_SWORD && item_id <= LOOT_SPEAR) {
         weapon = &weapon_catalog[item_id - 1];
         name = weapon->name; slot = item_id == LOOT_SHORT_BOW ? "Weapon" : "Weapon";
     } else if (item_id == LOOT_FISH) { name = "Fish"; slot = "Food"; }
@@ -235,7 +272,12 @@ int AddLootToInventory(int item_id, int quantity) {
     else return 0;
 
     float weight = LootWeight(item_id) * quantity;
-    if (current_payload_weight + weight > CarryLimit() || player_item_count >= MAX_INVENTORY_ITEMS) return 0;
+    if (current_payload_weight + weight > CarryLimit()) return 0;
+    if (!weapon) {
+        if (!AddStackableItem(name, slot, quantity)) return 0;
+        RecalculateCarriedWeight();
+        return 1;
+    }
     if (!AddInventoryItem(name, slot, quantity)) return 0;
     InventoryItem *item = &player_inventory[player_item_count - 1];
     item->weight = LootWeight(item_id);
@@ -247,7 +289,33 @@ int AddLootToInventory(int item_id, int quantity) {
     return 1;
 }
 
+static int SpotHasLoot(float x, float y) {
+    for (int i = 0; i < MAX_GROUND_LOOT; i++)
+        if (ground_loot[i].active && ground_loot[i].screen_id == current_screen_index && fabs(ground_loot[i].x - x) < 0.45f && fabs(ground_loot[i].y - y) < 0.45f) return 1;
+    for (int i = 0; i < MAX_DROPPED_ITEMS; i++)
+        if (dropped_items[i].active && dropped_items[i].screen_id == current_screen_index && fabs(dropped_items[i].x - x) < 0.45f && fabs(dropped_items[i].y - y) < 0.45f) return 1;
+    return 0;
+}
+
+// Picks a walkable, uncluttered spot near (x, y) so drops never land inside
+// trees, rocks or water or on top of another drop. center_first tries (x, y)
+// itself before the ring around it (nearest free tile); otherwise the ring is
+// walked from a random direction so loot scatters around a fallen monster.
+void FindDropSpot(float x, float y, int center_first, float *ox, float *oy) {
+    static const float ring[12][2] = { {0.7f, 0}, {0.5f, 0.5f}, {0, 0.7f}, {-0.5f, 0.5f}, {-0.7f, 0}, {-0.5f, -0.5f},
+                                       {0, -0.7f}, {0.5f, -0.5f}, {1.3f, 0}, {0, 1.3f}, {-1.3f, 0}, {0, -1.3f} };
+    if (center_first && PlayerCanStandAt(x, y) && !SpotHasLoot(x, y)) { *ox = x; *oy = y; return; }
+    int start = center_first ? 0 : rand() % 8;
+    for (int k = 0; k < 12; k++) {
+        int i = k < 8 ? (start + k) % 8 : k;
+        float tx = x + ring[i][0], ty = y + ring[i][1];
+        if (PlayerCanStandAt(tx, ty) && !SpotHasLoot(tx, ty)) { *ox = tx; *oy = ty; return; }
+    }
+    *ox = x; *oy = y;
+}
+
 void DropGroundLoot(float x, float y, int item_id, int quantity) {
+    FindDropSpot(x, y, 0, &x, &y);
     for (int i = 0; i < MAX_GROUND_LOOT; i++) {
         if (!ground_loot[i].active) {
             ground_loot[i].x = x; ground_loot[i].y = y;
@@ -311,8 +379,7 @@ void DropSelectedItem(void) {
     else if (player_facing == FACE_LEFT) dx = -1.0f;
     else dx = 1.0f;
 
-    dropped_items[slot].x = player_x + dx;
-    dropped_items[slot].y = player_y + dy;
+    FindDropSpot(player_x + dx, player_y + dy, 1, &dropped_items[slot].x, &dropped_items[slot].y);
     dropped_items[slot].screen_id = current_screen_index;
     dropped_items[slot].item = *item;
     dropped_items[slot].active = 1;
@@ -342,9 +409,13 @@ int TryPickupDroppedItems(void) {
             return 1;
         }
         drop->item.is_equipped = 0;
-        player_inventory[player_item_count] = drop->item;
-        player_inventory[player_item_count].id = player_item_count + 1;
-        player_item_count++;
+        if (IsStackableItem(drop->item.name, drop->item.slot)) {
+            if (!AddStackableItem(drop->item.name, drop->item.slot, drop->item.quantity)) { strcpy(arpg_action_log, "Inventory full!"); return 1; }
+        } else {
+            player_inventory[player_item_count] = drop->item;
+            player_inventory[player_item_count].id = player_item_count + 1;
+            player_item_count++;
+        }
         RecalculateCarriedWeight();
         sprintf(arpg_action_log, "PICKUP: %s x%d", drop->item.name, drop->item.quantity);
         drop->active = 0;

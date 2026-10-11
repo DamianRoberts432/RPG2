@@ -6,6 +6,7 @@
 int IsNameValid(void);
 void ApplyClassAndRaceStats(void);
 float GetRaceSpeedMultiplier(void);
+int RaceClassSynergyStat(void);
 void SaveSaveFileToDisk(void);
 
 #endif // CHARACTER_H

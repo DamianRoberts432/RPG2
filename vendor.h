@@ -6,5 +6,6 @@
 void RestockMerchant(void);
 void HandleVendorBuy(void);
 void HandleVendorSell(void);
+void HandleVendorSteal(void);
 
 #endif // VENDOR_H

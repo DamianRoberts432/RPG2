@@ -23,7 +23,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
         else {
             ProcessGamepadInput(); UpdateGamePhysics();
             
-            UpdatePlayerArrow();
+            UpdatePlayerArrow(); UpdateThrownSpear();
             
             if (!in_cave && (player_x <= 0.5f || player_x >= (MAP_SIZE - 1.5f) || player_y <= 0.5f || player_y >= (MAP_SIZE - 1.5f))) {
                 // Leaving the Castle steps to its real neighbouring cell like any
@@ -118,6 +118,12 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
 
                 SetTextColor(memHDC, (selected_creation_field == 2) ? RGB(255, 255, 0) : RGB(200, 200, 200));
                 sprintf(label, "[3] Race:  < %s >", race_names[selected_race]); TextOut(memHDC, 100, 220, label, (int)strlen(label));
+                if (RaceClassSynergyStat() >= 0) {
+                    static const char *syn_names[STAT_COUNT] = { "STR", "DEX", "STA", "MAG", "LCK", "INT", "CHR" };
+                    SetTextColor(memHDC, RGB(255, 215, 0));
+                    sprintf(label, "Natural fit! +1 %s", syn_names[RaceClassSynergyStat()]);
+                    TextOut(memHDC, 120, 242, label, (int)strlen(label));
+                }
 
                 DrawHeroAssetEx(memHDC, 520, 200, 2.0f);
 
@@ -197,13 +203,14 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                     }
                 }
                 DrawCampfires(memHDC); DrawBedroll(memHDC); DrawGroundLoot(memHDC); DrawDroppedItems(memHDC); DrawDebrisTwigs(memHDC); DrawSummonedZombie(memHDC);
-                DrawFlyingArrow(memHDC); DrawFlyingSpell(memHDC); DrawClassAbilityFX(memHDC); DrawButterflies(memHDC); DrawBloodMistFX(memHDC);
+                DrawFlyingArrow(memHDC); DrawFlyingSpear(memHDC); DrawFlyingSpell(memHDC); DrawClassAbilityFX(memHDC); DrawButterflies(memHDC); DrawBloodMistFX(memHDC);
                 DrawEnvironmentalCritters(memHDC); DrawMerchantStoreFront(memHDC); DrawVillage(memHDC); DrawNightEyes(memHDC);
                 DrawWeatherEffects(memHDC); DrawSolitaireSunMoonBeam(memHDC);
                 ApplyCameraZoom(memHDC, view_zoom);
                 DrawPlayerStatusHUD(memHDC);
 
                 if (is_menu_open) DrawTabbedMenuOverlay(memHDC);
+                DrawStrategyGuideFlash(memHDC);
 
                 SetTextColor(memHDC, RGB(255, 255, 255)); SetBkMode(memHDC, TRANSPARENT);
                 TextOut(memHDC, 20, HUD_LOG_Y, arpg_action_log, (int)strlen(arpg_action_log));

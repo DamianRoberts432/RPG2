@@ -63,6 +63,29 @@ void SpawnBloodMist(float x, float y) {
     }
 }
 
+// Heavy or critical hits spray 8-16 specks away from the hero.
+#define HEAVY_HIT_DAMAGE 2.0f
+#define SPEAR_REACH 2.6f
+#define SPEAR_THRUST_DOT 0.7f // narrower than a sword swing: a straight thrust
+void SpawnBloodBurst(float x, float y, float dir_x, float dir_y) {
+    float d = (float)sqrt(dir_x * dir_x + dir_y * dir_y);
+    if (d < 0.001f) { dir_x = 0.0f; dir_y = 1.0f; d = 1.0f; }
+    dir_x /= d; dir_y /= d;
+    int want = 8 + rand() % 9, spawned = 0;
+    for (int i = 0; i < MAX_BLOOD_MIST && spawned < want; i++) {
+        if (blood_mist[i].active) continue;
+        float spd = 0.012f + (rand() % 100) / 4000.0f;
+        float spread = ((rand() % 100) - 50) / 80.0f;
+        blood_mist[i].x = x; blood_mist[i].y = y;
+        blood_mist[i].vx = (dir_x - dir_y * spread) * spd;
+        blood_mist[i].vy = (dir_y + dir_x * spread) * spd;
+        blood_mist[i].life = 10 + rand() % 9;
+        blood_mist[i].max_life = blood_mist[i].life;
+        blood_mist[i].active = 1;
+        spawned++;
+    }
+}
+
 void PerformMeleeAttack(void) {
     WeaponStats *weapon = GetEquippedWeaponStats();
     float damage = weapon ? (float)weapon->damage : 1.0f;
@@ -72,7 +95,8 @@ void PerformMeleeAttack(void) {
     sword_swipe_frame = (weapon && weapon->attack_speed_mult < 1.0f) ? 14 : 10;
     SelectTargetEnemy();
     float m_dist = DistanceToEnemy();
-    if (m_dist < 1.8f && IsFacingEnemy()) {
+    int spear = active_weapon == WEAPON_SPEAR;
+    if (m_dist < (spear ? SPEAR_REACH : 1.8f) && (spear ? IsFacingEnemyWithin(SPEAR_THRUST_DOT) : IsFacingEnemy())) {
         int broke = WearEquippedWeapon();
         HandleEnemyDamage(damage * (1.0f + 0.08f * stat_spent[0]));
         if (broke) strcpy(arpg_action_log, "Your weapon broke!");
@@ -96,10 +120,15 @@ void UpdateDebrisTwigs(void) {
     }
 }
 
+#define JUNK_DROP_RATE 0.9f
 void HandleEnemyDamage(float dmg) {
     if (fabs(sin(day_night_cycle_accumulator)) < 0.35f) dmg *= 0.9f;
+    int crit = dmg > 0.0f && rand() % 100 < 5 + 2 * stat_spent[4]; // each LCK point spent: +2% crit
+    if (crit) dmg *= 2.0f;
     enemy_hearts -= dmg;
+    if (active_monster == MONSTER_YETI) enemies[current_enemy].angry = 1;
     float k_dx = enemy_x - player_x; float k_dy = enemy_y - player_y; float k_dist = (float)sqrt(k_dx * k_dx + k_dy * k_dy);
+    if (crit || dmg >= HEAVY_HIT_DAMAGE) SpawnBloodBurst(enemy_x, enemy_y, k_dx, k_dy);
     if (k_dist > 0.01f) { enemy_x += (k_dx / k_dist) * 0.25f; enemy_y += (k_dy / k_dist) * 0.25f; }
     
     if (enemy_hearts <= 0.0f) {
@@ -107,7 +136,8 @@ void HandleEnemyDamage(float dmg) {
         int is_night = fabs(sin(day_night_cycle_accumulator)) < 0.35f;
         int gained_xp = (int)(((10 + rand() % 7 + (is_night ? 2 : 0)) * opt_xp_mult) * ((is_night && night_bonus_active) ? 1.25f : 1.0f));
         float loot_multiplier = opt_loot_mult * (is_night ? 1.5f : 1.0f);
-        int loot_chance = (int)(70.0f * loot_multiplier) + 3 * stat_spent[4];
+        // Ordinary (junk) drops are 10% rarer than they used to be.
+        int loot_chance = (int)(70.0f * JUNK_DROP_RATE * loot_multiplier) + 3 * stat_spent[4];
         if (loot_chance > 100) loot_chance = 100;
         if (rand() % 100 < loot_chance) {
             int loot_id = LOOT_SHORT_SWORD + rand() % 5;
@@ -125,6 +155,8 @@ void HandleEnemyDamage(float dmg) {
             if (rand() % 100 < 40) DropGroundLoot(enemy_x, enemy_y, LOOT_MUSASHI_BLADE, 1);
         }
         player_xp += gained_xp;
+        if (IS_BOSS_MONSTER(active_monster)) { karma.life_marks |= (uint16_t)(1u << active_monster); KarmaAdjust(5, 0, 0, 10); }
+        else if (rand() % 5 == 0) KarmaAdjust(1, 0, 0, 0);
         if (player_xp >= player_next_level_xp) {
             // Each level needs 50 more XP than the last (level 10 ~ 200 kills, 25 ~ 1250).
             while (player_xp >= player_next_level_xp) {
@@ -138,8 +170,10 @@ void HandleEnemyDamage(float dmg) {
             if (hoard) sprintf(arpg_action_log, "VICTORY: The %s falls! +%d XP, %d gold from its hoard!", MonsterName(active_monster), gained_xp, hoard);
             else sprintf(arpg_action_log, "VICTORY: %s slain! +%d XP", MonsterName(active_monster), gained_xp);
         }
+        if (monster_card_links[active_monster].kills < 65535) monster_card_links[active_monster].kills++;
+        TryCardDrop(active_monster);
     } else {
-        sprintf(arpg_action_log, "STRIKE: Hit for %.1f DMG! Remainder: %.1f", dmg, enemy_hearts);
+        sprintf(arpg_action_log, "%s: Hit for %.1f DMG! Remainder: %.1f", crit ? "CRITICAL" : "STRIKE", dmg, enemy_hearts);
     }
     StoreEnemy();
 }
@@ -226,7 +260,7 @@ static void SpawnEnemyInFreeSlot(void) {
     StoreEnemy();
     for (int i = 0; i < MAX_ENEMIES; i++) {
         if (enemies[i].hearts > 0.0f) continue;
-        SelectEnemy(i); TriggerMonsterRespawn(); enemy_direction = FACE_DOWN; StoreEnemy();
+        SelectEnemy(i); TriggerMonsterRespawn(); enemy_direction = FACE_DOWN; StoreEnemy(); enemies[i].angry = 0; enemies[i].poison = 0;
         return;
     }
 }
@@ -263,6 +297,17 @@ void UpdateEnemySpawns(void) {
 // Arrows fly straight along the hero's facing; they only curve toward the
 // monster when the hero is actually facing it (within BOW_AIM_CONE_DOT).
 #define BOW_AIM_CONE_DOT 0.5f
+// Holding the draw (RT / F) costs stamina every frame; once winded the
+// charge stops building, though the arrow can still be loosed.
+#define BOW_DRAW_STAMINA_PER_FRAME 0.5f
+void ChargeBow(void) {
+    if (player_stamina <= 0.0f) return;
+    player_stamina -= BOW_DRAW_STAMINA_PER_FRAME;
+    if (player_stamina < 0.0f) player_stamina = 0.0f;
+    bow_charge_time += 0.05f;
+    if (bow_charge_time > 1.0f) bow_charge_time = 1.0f;
+}
+
 void FirePlayerArrow(int is_tap) {
     player_arrow.x = player_x; player_arrow.y = player_y; player_arrow.z = 12.0f;
     player_arrow.origin_tx = (int)player_x; player_arrow.origin_ty = (int)player_y;
@@ -280,7 +325,6 @@ void FirePlayerArrow(int is_tap) {
     if (distance < 0.001f) { track_dx = 1.0f; distance = 1.0f; }
     float distance_mult = is_tap ? 0.5f : 0.5f + (bow_charge_time * 1.5f);
     float spd = 0.35f * distance_mult;
-    player_stamina -= bow_charge_time * 10.0f; if (player_stamina < 0.0f) player_stamina = 0.0f;
     player_arrow.vx = (track_dx / distance) * spd;
     player_arrow.vy = (track_dy / distance) * spd;
     player_arrow.vz = is_tap ? 0.25f : 0.5f;
@@ -319,6 +363,84 @@ void UpdatePlayerArrow(void) {
     if (player_arrow.z <= 0.0f) player_arrow.active = 0;
 }
 
+// Spear, second mode: RT / F throws the equipped spear. It flies along the
+// hero's facing (curving to a faced enemy), drops with gravity and lands as a
+// dropped item that X picks back up with its durability intact.
+#define SPEAR_THROW_SPEED 0.3f
+void ThrowSpear(void) {
+    if (thrown_spear.active) return;
+    int idx = -1;
+    for (int i = 0; i < player_item_count; i++)
+        if (player_inventory[i].is_equipped && strcmp(player_inventory[i].name, "Spear") == 0) { idx = i; break; }
+    if (idx < 0) return;
+    thrown_spear_item = player_inventory[idx];
+    thrown_spear_item.is_equipped = 0;
+    for (int i = idx; i < player_item_count - 1; i++) player_inventory[i] = player_inventory[i + 1];
+    player_item_count--;
+    if (selected_inv_index >= player_item_count && player_item_count > 0) selected_inv_index = player_item_count - 1;
+    RecalculateCarriedWeight();
+    SyncActiveWeapon();
+    float tdx = 0.0f, tdy = 0.0f;
+    SelectTargetEnemy();
+    if (IsFacingEnemyWithin(BOW_AIM_CONE_DOT)) { tdx = enemy_x - player_x; tdy = enemy_y - player_y; }
+    else if (player_facing == FACE_UP) tdy = -1.0f;
+    else if (player_facing == FACE_DOWN) tdy = 1.0f;
+    else if (player_facing == FACE_LEFT) tdx = -1.0f;
+    else tdx = 1.0f;
+    float d = (float)sqrt(tdx * tdx + tdy * tdy);
+    if (d < 0.001f) { tdx = 1.0f; d = 1.0f; }
+    thrown_spear.x = player_x; thrown_spear.y = player_y; thrown_spear.z = 14.0f;
+    thrown_spear.vx = tdx / d * SPEAR_THROW_SPEED; thrown_spear.vy = tdy / d * SPEAR_THROW_SPEED;
+    thrown_spear.vz = 0.3f;
+    thrown_spear.origin_tx = (int)player_x; thrown_spear.origin_ty = (int)player_y;
+    thrown_spear.damage = (float)thrown_spear_item.damage * 1.5f * (1.0f + 0.08f * stat_spent[0]);
+    thrown_spear.active = 1;
+    player_stamina -= 5.0f; if (player_stamina < 0.0f) player_stamina = 0.0f;
+    strcpy(arpg_action_log, "SPEAR: Thrown! Stand on it and press X to pick it up.");
+}
+
+static int SpearBlockedAt(float x, float y) {
+    if (x < 0.5f || y < 0.5f || x >= MAP_SIZE - 0.5f || y >= MAP_SIZE - 0.5f) return 1;
+    int tx = (int)x, ty = (int)y;
+    if (tx == thrown_spear.origin_tx && ty == thrown_spear.origin_ty) return 0;
+    uint8_t t = VISUAL_MAP[ty][tx];
+    return t == 11 || t == 1 || t == 3;
+}
+
+static void LandThrownSpear(void) {
+    thrown_spear.active = 0;
+    int slot = -1;
+    for (int i = 0; i < MAX_DROPPED_ITEMS; i++) if (!dropped_items[i].active) { slot = i; break; }
+    if (slot < 0) {
+        if (player_item_count < MAX_INVENTORY_ITEMS) { player_inventory[player_item_count++] = thrown_spear_item; RecalculateCarriedWeight(); }
+        return;
+    }
+    DroppedInventoryItem *drop = &dropped_items[slot];
+    FindDropSpot(thrown_spear.x, thrown_spear.y, 1, &drop->x, &drop->y);
+    drop->item = thrown_spear_item;
+    drop->screen_id = current_screen_index;
+    drop->dropped_at = GetTickCount();
+    drop->legendary = 0;
+    drop->active = 1;
+}
+
+void UpdateThrownSpear(void) {
+    if (!thrown_spear.active) return;
+    for (int step = 0; step < 2; step++) {
+        float nx = thrown_spear.x + thrown_spear.vx * 0.5f, ny = thrown_spear.y + thrown_spear.vy * 0.5f;
+        if (SpearBlockedAt(nx, ny)) { LandThrownSpear(); return; }
+        thrown_spear.x = nx; thrown_spear.y = ny;
+    }
+    thrown_spear.z += thrown_spear.vz; thrown_spear.vz -= 0.03f;
+    if (EnemyAtPoint(thrown_spear.x, thrown_spear.y, 0.6f) >= 0) {
+        HandleEnemyDamage(thrown_spear.damage);
+        if (--thrown_spear_item.durability_current <= 0) { thrown_spear.active = 0; strcpy(arpg_action_log, "Your spear broke!"); return; }
+        LandThrownSpear();
+        return;
+    }
+    if (thrown_spear.z <= 0.0f) LandThrownSpear();
+}
+
 // Debounced/cooldown-bound class special ability bound to the "Y" button
 // (gamepad and keyboard). Callers must only invoke this on the rising edge of
 // the button press so it fires once per press rather than every held frame.
@@ -349,12 +471,24 @@ void FireClassAbility(void) {
             else if (player_facing == FACE_DOWN) summoned_zombie.y += 1.0f;
             else if (player_facing == FACE_LEFT) summoned_zombie.x -= 1.0f;
             else summoned_zombie.x += 1.0f;
-            summoned_zombie.hp = 3.0f; summoned_zombie.timer = 900;
+            // Zombie (poison bite) from level 1, Skeleton (tank) from 3, Ghost
+            // (fast, phases through blows) from 5; each cast raises the next one.
+            static const int unlock_level[3] = { 1, 3, 5 };
+            static const float summon_hp[3] = { 3.0f, 6.0f, 2.0f };
+            static const char *summon_msg[3] = { "NECROMANCY: A zombie claws its way from the earth! Its bite poisons.",
+                                                 "NECROMANCY: A skeleton warrior rises to shield you!",
+                                                 "NECROMANCY: A ghost drifts out of the veil!" };
+            int type = player_level >= unlock_level[next_summon_type] ? next_summon_type : SUMMON_ZOMBIE;
+            next_summon_type = type;
+            do next_summon_type = (next_summon_type + 1) % 3; while (player_level < unlock_level[next_summon_type]);
+            summoned_zombie.type = type;
+            summoned_zombie.hp = summon_hp[type]; summoned_zombie.timer = 900;
             summoned_zombie.raise_frame = 0; summoned_zombie.attack_cooldown = 0;
             summoned_zombie.active = 1;
+            KarmaAdjust(0, 5, 0, 0);
             ability_visual_frame = SPELL_FLASH_FRAMES;
             player_mp -= CLASS_ABILITY_MP_COST; y_ability_cooldown_until = now + SPELL_COOLDOWN_MS;
-            strcpy(arpg_action_log, "NECROMANCY: A zombie claws its way from the earth!");
+            strcpy(arpg_action_log, summon_msg[type]);
             return;
         }
         if (player_spell.active) {

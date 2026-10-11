@@ -204,8 +204,37 @@ void DrawVendorShopOverlay(HDC hdc) {
     }
     SetTextColor(hdc, RGB(150, 220, 255));
     TextOut(hdc, box.left + 320, box.bottom - 30, "[ ESC/B ] Close shop", 20);
+    SetTextColor(hdc, RGB(200, 90, 80));
+    TextOut(hdc, box.left + 320, box.bottom - 52, "[ T/Back ] Steal", 16);
     SetTextColor(hdc, RGB(150, 160, 170));
     TextOut(hdc, box.left + 20, box.bottom - 52, "UP/DOWN or [ ] / D-PAD: scroll", 30);
+}
+
+// Two-second peek at the secret card combos after reading the Strategy Guide.
+void DrawStrategyGuideFlash(HDC hdc) {
+    if ((long)(guide_flash_until - GetTickCount()) <= 0) return;
+    RECT box = { WINDOW_WIDTH / 2 - 330, WINDOW_HEIGHT / 2 - 110, WINDOW_WIDTH / 2 + 330, WINDOW_HEIGHT / 2 + 110 };
+    HBRUSH bg = CreateSolidBrush(RGB(40, 30, 20)); FillRect(hdc, &box, bg); DeleteObject(bg);
+    HPEN border = CreatePen(PS_SOLID, 3, RGB(220, 180, 90)); HGDIOBJ old_p = SelectObject(hdc, border);
+    HGDIOBJ old_b = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+    Rectangle(hdc, box.left, box.top, box.right, box.bottom);
+    SelectObject(hdc, old_b); SelectObject(hdc, old_p); DeleteObject(border);
+    SetBkMode(hdc, TRANSPARENT);
+    static const char *lines[] = {
+        "A&D STRATEGY GUIDE - SECRET CARD COMBOS",
+        "",
+        "Skeleton + Zombie + Dracula   ->  NIGHT TERROR",
+        "Yeti + Bigfoot + Satyr        ->  WILD HUNT",
+        "Sphinx + Bunyip + Goblin      ->  RIDDLE OF THE DEEP",
+    };
+    for (int i = 0; i < 5; i++) {
+        SetTextColor(hdc, i == 0 ? RGB(255, 215, 0) : RGB(235, 225, 205));
+        TextOut(hdc, box.left + 30, box.top + 24 + i * 24, lines[i], (int)strlen(lines[i]));
+    }
+    char buf[64];
+    sprintf(buf, "Your binder: %d / %d cards", CardCount(), CARD_COUNT);
+    SetTextColor(hdc, RGB(150, 220, 255));
+    TextOut(hdc, box.left + 30, box.bottom - 40, buf, (int)strlen(buf));
 }
 
 void DrawTabbedMenuOverlay(HDC hdc) {
@@ -268,6 +297,32 @@ void DrawTabbedMenuOverlay(HDC hdc) {
         sprintf(buf, "LUMBER: %d  STONE: %d  GOLD: %d", GetMaterialCount("Wood"), GetMaterialCount("Stone"), gold_count);
         TextOut(hdc, info_x, 264, buf, (int)strlen(buf));
         sprintf(buf, "WEIGHT: %.1f / %.1f", current_payload_weight, CarryLimit()); TextOut(hdc, info_x, 280, buf, (int)strlen(buf));
+
+        const int lore_x = 820;
+        prev_font = SelectObject(hdc, underline_font);
+        SetTextColor(hdc, RGB(0, 230, 200));
+        TextOut(hdc, lore_x, 92, "KARMA", 5);
+        SelectObject(hdc, prev_font);
+        SetTextColor(hdc, RGB(220, 220, 220));
+        sprintf(buf, "Soul %+d   Miasma %d   Town Heat %d   Grapevine %d", karma.soul, karma.miasma, karma.town_heat, karma.grapevine);
+        TextOut(hdc, lore_x, 110, buf, (int)strlen(buf));
+        strcpy(buf, "Life marks:");
+        for (int m = 0; m < 16; m++) if (IS_BOSS_MONSTER(m) && (karma.life_marks & (1u << m))) { strcat(buf, " "); strcat(buf, MonsterName((MonsterType)m)); }
+        if (karma.life_marks == 0) strcat(buf, " none yet (slay a boss)");
+        TextOut(hdc, lore_x, 126, buf, (int)strlen(buf));
+        SetTextColor(hdc, RGB(255, 215, 0));
+        sprintf(buf, "CARDS: %d / %d collected", CardCount(), CARD_COUNT);
+        TextOut(hdc, lore_x, 146, buf, (int)strlen(buf));
+        prev_font = SelectObject(hdc, underline_font);
+        SetTextColor(hdc, RGB(0, 230, 200));
+        TextOut(hdc, lore_x, 166, "BESTIARY (kills)", 16);
+        SelectObject(hdc, prev_font);
+        for (int m = 0; m < MONSTER_TYPE_COUNT; m++) {
+            SetTextColor(hdc, HasCard(monster_card_links[m].card_id) ? RGB(255, 215, 0) : RGB(200, 200, 200));
+            sprintf(buf, "%-8s %5u%s", MonsterName((MonsterType)m), (unsigned)monster_card_links[m].kills,
+                    HasCard(monster_card_links[m].card_id) ? "  [card]" : "");
+            TextOut(hdc, lore_x, 184 + m * 14, buf, (int)strlen(buf));
+        }
 
         prev_font = SelectObject(hdc, underline_font);
         SetTextColor(hdc, RGB(0, 230, 200));

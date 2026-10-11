@@ -68,6 +68,20 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         } else if (player_facing == FACE_UP || player_facing == FACE_LEFT) { MoveToEx(hdc, sx - 6, sy + 8, NULL); LineTo(hdc, sx - 14, sy - 2); }
         else { MoveToEx(hdc, sx + 6, sy + 10, NULL); LineTo(hdc, sx + 14, sy + 18); }
         SelectObject(hdc, prev_p); DeleteObject(p);
+    } else if (shown_weapon == WEAPON_SPEAR) {
+        // Iso screen direction of the facing; the thrust pushes the spear out.
+        int fx = 1, fy = 1;
+        if (player_facing == FACE_UP) { fx = 1; fy = -1; }
+        else if (player_facing == FACE_DOWN) { fx = -1; fy = 1; }
+        else if (player_facing == FACE_LEFT) { fx = -1; fy = -1; }
+        int len = sword_swipe_frame > 0 ? 32 : 20;
+        int bx = sx - fx * 6, by = sy + 8 - fy * 3;
+        int tx = bx + fx * len, ty = by + fy * len / 2;
+        HPEN shaft = CreatePen(PS_SOLID, 2, RGB(150, 110, 70)); HGDIOBJ prev_p = SelectObject(hdc, shaft);
+        MoveToEx(hdc, bx, by, NULL); LineTo(hdc, tx, ty);
+        HPEN tip = CreatePen(PS_SOLID, 3, RGB(210, 215, 225)); SelectObject(hdc, tip);
+        MoveToEx(hdc, tx, ty, NULL); LineTo(hdc, tx + fx * 5, ty + fy * 3);
+        SelectObject(hdc, prev_p); DeleteObject(shaft); DeleteObject(tip);
     } else {
         HPEN wood_pen = CreatePen(PS_SOLID, 2, RGB(235, 175, 45)); HGDIOBJ prev_wood_p = SelectObject(hdc, wood_pen);
         HPEN string_pen = CreatePen(PS_SOLID, 1, RGB(15, 18, 24)); 
@@ -136,6 +150,17 @@ void DrawFlyingArrow(HDC hdc) {
     HPEN fletcher_p = CreatePen(PS_SOLID, 1, RGB(190, 65, 35)); HGDIOBJ old_p = SelectObject(hdc, fletcher_p);
     MoveToEx(hdc, sx, sy, NULL); LineTo(hdc, sx - (int)(12 * cos_a), sy - (int)(12 * sin_a));
     SelectObject(hdc, old_p); DeleteObject(fletcher_p);
+}
+
+void DrawFlyingSpear(HDC hdc) {
+    if (!thrown_spear.active) return;
+    int sx, sy; GetIsoCoords(thrown_spear.x, thrown_spear.y, &sx, &sy); sy -= (int)thrown_spear.z;
+    int ex, ey; GetIsoCoords(thrown_spear.x - thrown_spear.vx * 3.0f, thrown_spear.y - thrown_spear.vy * 3.0f, &ex, &ey); ey -= (int)thrown_spear.z;
+    HPEN shaft = CreatePen(PS_SOLID, 2, RGB(150, 110, 70)); HGDIOBJ old_p = SelectObject(hdc, shaft);
+    MoveToEx(hdc, ex, ey, NULL); LineTo(hdc, sx, sy);
+    HPEN tip = CreatePen(PS_SOLID, 3, RGB(210, 215, 225)); SelectObject(hdc, tip);
+    MoveToEx(hdc, sx, sy, NULL); LineTo(hdc, sx + (sx - ex) / 5, sy + (sy - ey) / 5);
+    SelectObject(hdc, old_p); DeleteObject(shaft); DeleteObject(tip);
 }
 
 void DrawFlyingSpell(HDC hdc) {
@@ -605,6 +630,32 @@ void DrawVillage(HDC hdc) {
     }
 }
 
+static void DrawSummonedSkeleton(HDC hdc, int sx, int sy, int face_dir) {
+    COLORREF bone = RGB(230, 228, 215);
+    int step = (int)(sin(world_tick * 6.0f) * 2.0f);
+    PenLine(hdc, 2, bone, sx - 3, sy + 8, sx - 3 + step, sy + 19);
+    PenLine(hdc, 2, bone, sx + 3, sy + 8, sx + 3 - step, sy + 19);
+    PenLine(hdc, 2, bone, sx, sy - 2, sx, sy + 9);
+    for (int r = 0; r < 3; r++) PenLine(hdc, 1, bone, sx - 5, sy + r * 3, sx + 5, sy + r * 3);
+    PenLine(hdc, 2, bone, sx, sy + 1, sx + face_dir * 9, sy + 4);
+    PenLine(hdc, 2, RGB(170, 175, 185), sx + face_dir * 9, sy + 4, sx + face_dir * 15, sy - 6);
+    BrushEllipse(hdc, bone, sx - 5, sy - 11, sx + 5, sy - 1);
+    HBRUSH eye = CreateSolidBrush(RGB(30, 25, 35));
+    RECT el = { sx - 3 + face_dir, sy - 8, sx - 1 + face_dir, sy - 6 }, er = { sx + 1 + face_dir, sy - 8, sx + 3 + face_dir, sy - 6 };
+    FillRect(hdc, &el, eye); FillRect(hdc, &er, eye); DeleteObject(eye);
+}
+
+static void DrawSummonedGhost(HDC hdc, int sx, int sy, int face_dir) {
+    sy += (int)(sin(world_tick * 3.0f) * 3.0f) - 4;
+    COLORREF mist = RGB(200, 225, 240);
+    BrushEllipse(hdc, mist, sx - 8, sy - 12, sx + 8, sy + 6);
+    POINT tail[] = { {sx - 8, sy}, {sx + 8, sy}, {sx + 6, sy + 14}, {sx + 2, sy + 9}, {sx - 2, sy + 15}, {sx - 6, sy + 9} };
+    BrushPoly(hdc, mist, tail, 6);
+    HBRUSH eye = CreateSolidBrush(RGB(40, 50, 70));
+    RECT el = { sx - 4 + face_dir * 2, sy - 6, sx - 1 + face_dir * 2, sy - 2 }, er = { sx + 1 + face_dir * 2, sy - 6, sx + 4 + face_dir * 2, sy - 2 };
+    FillRect(hdc, &el, eye); FillRect(hdc, &er, eye); DeleteObject(eye);
+}
+
 void DrawSummonedZombie(HDC hdc) {
     if (!summoned_zombie.active) return;
     int sx, sy; GetIsoCoords(summoned_zombie.x, summoned_zombie.y, &sx, &sy);
@@ -614,5 +665,7 @@ void DrawSummonedZombie(HDC hdc) {
     // reaching toward the enemy it is hunting (or ahead, if there is none).
     int face_dir = 1;
     if (enemy_hearts > 0.0f) { int ex, ey; GetIsoCoords(enemy_x, enemy_y, &ex, &ey); face_dir = (ex >= sx) ? 1 : -1; }
-    DrawZombieBody(hdc, sx, sy, (int)(summoned_zombie.x * 11.0f + summoned_zombie.y * 5.0f), face_dir, 1, RGB(150, 170, 130));
+    if (summoned_zombie.type == SUMMON_SKELETON) DrawSummonedSkeleton(hdc, sx, sy, face_dir);
+    else if (summoned_zombie.type == SUMMON_GHOST) DrawSummonedGhost(hdc, sx, sy, face_dir);
+    else DrawZombieBody(hdc, sx, sy, (int)(summoned_zombie.x * 11.0f + summoned_zombie.y * 5.0f), face_dir, 1, RGB(150, 170, 130));
 }

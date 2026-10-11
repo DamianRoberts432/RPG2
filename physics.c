@@ -1,6 +1,9 @@
 #include "game.h"
 
 #define PLAYER_COLLISION_RADIUS 0.3f
+#define YETI_AGGRO_RADIUS 3.0f
+#define YETI_CHARGE_SPEED 0.04f
+#define POISON_TICK_DAMAGE 0.2f
 static int TileBlocksPlayer(float x, float y) {
     if (x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE) return 1;
     uint8_t t = VISUAL_MAP[(int)y][(int)x];
@@ -50,6 +53,11 @@ void UpdateGamePhysics(void) {
                     SeasonDay(), DAYS_PER_SEASON, CalendarMonthName());
             night_bonus_active = 1;
             RestockMerchant();
+            KarmaAdjust(0, -20, -10, 0); // a night's rest clears miasma and cools town heat
+            if (jailed_tonight) {
+                jailed_tonight = 0;
+                sprintf(arpg_action_log, "The guards release you at dawn. Town Heat: %d.", karma.town_heat);
+            }
         } else if (sleep_fade_frame >= 60) sleep_fade_frame = 0;
     }
     UpdateSeasonAndWeather();
@@ -72,7 +80,7 @@ void UpdateGamePhysics(void) {
         stamina_rest_timer++;
     }
     if (player_mp < max_player_mp) {
-        player_mp += 0.06f + stat_magick * 0.01f;
+        player_mp += 0.06f + (stat_magick + stat_intelligence) * 0.01f; // MAG and INT both speed MP regen
         if (player_mp > max_player_mp) player_mp = max_player_mp;
     }
     if (player_stamina < max_stamina) {
@@ -118,11 +126,17 @@ void UpdateGamePhysics(void) {
         else if (SelectNearestEnemyTo(summoned_zombie.x, summoned_zombie.y) >= 0) {
             float zx = enemy_x - summoned_zombie.x, zy = enemy_y - summoned_zombie.y;
             float zd = (float)sqrt(zx * zx + zy * zy);
+            static const float summon_speed[3] = { 0.035f, 0.03f, 0.06f }, summon_dmg[3] = { 0.75f, 0.5f, 1.0f };
+            int st = summoned_zombie.type;
             if (zd > 0.65f) {
-                summoned_zombie.x += (zx / zd) * 0.035f;
-                summoned_zombie.y += (zy / zd) * 0.035f;
+                summoned_zombie.x += (zx / zd) * summon_speed[st];
+                summoned_zombie.y += (zy / zd) * summon_speed[st];
             } else if (summoned_zombie.attack_cooldown > 0) summoned_zombie.attack_cooldown--;
-            else { summoned_zombie.attack_cooldown = 30; HandleEnemyDamage(0.75f); }
+            else {
+                summoned_zombie.attack_cooldown = st == SUMMON_GHOST ? 24 : 30;
+                HandleEnemyDamage(summon_dmg[st]);
+                if (st == SUMMON_ZOMBIE) enemies[current_enemy].poison = 3;
+            }
         }
     }
 
@@ -135,6 +149,11 @@ void UpdateGamePhysics(void) {
     for (int e = 0; e < MAX_ENEMIES; e++) {
     SelectEnemy(e);
     if (enemy_hearts > 0.0f) {
+        if (enemies[e].poison > 0 && world_frame % 45 == 0) {
+            enemies[e].poison--;
+            enemy_hearts -= POISON_TICK_DAMAGE;
+            if (enemy_hearts <= 0.0f) { HandleEnemyDamage(0.0f); continue; }
+        }
         int fleeing_from_fire = 0;
         float fire_fx = 0.0f, fire_fy = 0.0f;
         
@@ -164,21 +183,28 @@ void UpdateGamePhysics(void) {
             float target_x = player_x, target_y = player_y;
             float pdx = player_x - enemy_x, pdy = player_y - enemy_y;
             float player_dist = (float)sqrt(pdx * pdx + pdy * pdy);
+            // Yeti: a calm wanderer until the hero comes close or strikes it.
+            int calm = 0;
+            if (active_monster == MONSTER_YETI && !enemies[e].angry) {
+                if (player_dist < YETI_AGGRO_RADIUS) { enemies[e].angry = 1; strcpy(arpg_action_log, "The Yeti roars and charges!"); }
+                else calm = 1;
+            }
             float zdx = summoned_zombie.x - enemy_x, zdy = summoned_zombie.y - enemy_y;
             float zombie_dist = summoned_zombie.active ? (float)sqrt(zdx * zdx + zdy * zdy) : 1000.0f;
             if (zombie_dist < player_dist) { target_x = summoned_zombie.x; target_y = summoned_zombie.y; }
             float s_dx = target_x - enemy_x, s_dy = target_y - enemy_y;
             float dist = (float)sqrt(s_dx * s_dx + s_dy * s_dy);
-            if (dist <= 8.0f && dist > 0.2f) {
+            if (!calm && dist <= 8.0f && dist > 0.2f) {
                 static const float speeds[] = { 0.0275f, 0.014f, 0.03f, 0.034f, 0.03f, 0.022f, 0.02f, 0.024f, 0.018f };
                 float speed = speeds[active_monster];
+                if (active_monster == MONSTER_YETI) speed = YETI_CHARGE_SPEED;
                 if (fabs(sin(day_night_cycle_accumulator)) < 0.35f) speed *= 1.2f;
                 if (VISUAL_MAP[(int)enemy_y][(int)enemy_x] == 12) speed *= 0.25f;
                 enemy_x += (s_dx / dist) * speed;
                 enemy_y += (s_dy / dist) * speed;
                 if (summoned_zombie.active && zombie_dist < player_dist && zombie_dist < 0.7f &&
-                    world_frame % 40 == 0) summoned_zombie.hp -= 0.5f;
-            } else if (dist > 8.0f && world_frame % 10 == 0) {
+                    world_frame % 40 == 0 && summoned_zombie.type != SUMMON_GHOST) summoned_zombie.hp -= 0.5f; // ghosts phase through blows
+            } else if ((calm || dist > 8.0f) && world_frame % 10 == 0) {
                 static const int dir_lut[4][3] = {
                     { FACE_LEFT, FACE_DOWN, FACE_RIGHT }, { FACE_RIGHT, FACE_UP, FACE_LEFT },
                     { FACE_DOWN, FACE_LEFT, FACE_UP }, { FACE_UP, FACE_RIGHT, FACE_DOWN }

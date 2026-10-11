@@ -64,6 +64,8 @@ DWORD bow_charge_started_at = 0;
 
 // Class-special ("Y" button) ability state. Fires once per button press (edge
 // triggered) and is further gated by a per-class cooldown so it cannot spam.
+ArrowProjectile thrown_spear = {0};
+InventoryItem thrown_spear_item;
 ArrowProjectile player_spell = {0}; // Reused projectile shape for Necromancer/Wizard bolts
 int y_button_was_down = 0;          // Edge-detection latch for gamepad Y
 int y_key_was_down = 0;             // Edge-detection latch for keyboard Y
@@ -82,6 +84,7 @@ DroppedInventoryItem dropped_items[MAX_DROPPED_ITEMS] = {0};
 NPCEntity village_npcs[MAX_NPCS] = {0};
 int village_npc_count = 0;
 ZombieEntity summoned_zombie = {0};
+int next_summon_type = SUMMON_ZOMBIE;
 AppleTreeState apple_tree_states[MAX_APPLE_TREES] = {0};
 int vendor_menu_open = 0;
 int fishing_active = 0, fishing_power = 0;
@@ -90,6 +93,8 @@ float bedroll_x = 0.0f, bedroll_y = 0.0f;
 int night_bonus_active = 0;
 int wind_dir = 0;
 int sleep_fade_frame = 0;
+int jailed_tonight = 0;
+DWORD guide_flash_until = 0;
 int enemy_direction = FACE_DOWN;
 float weather_next_change = 200.0f;
 
@@ -167,7 +172,9 @@ WeaponStats weapon_catalog[] = {
     // HandleEnemyDamage). Durability is set absurdly high
     // to stand in for "infinite", and it is specifically excluded from
     // selling/dropping (see HandleVendorSell/DropSelectedItem).
-    { LOOT_MUSASHI_BLADE, "Musashi's Blade", 10, 99999, 1.0f, 1.0f, 5000, 1.0f }
+    { LOOT_MUSASHI_BLADE, "Musashi's Blade", 10, 99999, 1.0f, 1.0f, 5000, 1.0f },
+    // Thrust reaches further than a sword; RT / F throws it (see ThrowSpear).
+    { LOOT_SPEAR, "Spear", 2, 100, 3.0f, 1.0f, 30, 0.85f }
 };
 
 // Catalog spans every common weapon/armor/tool/food the
@@ -188,8 +195,10 @@ MerchantItem merchant_catalog[MERCH_ITEMS] = {
     { "Wood",          "Material", 0,                  1, -1, 0, RARITY_COMMON, 0 },
     { "Fish",          "Food",     0,                  5, -1, 0, RARITY_COMMON, 0 },
     { "Apple",         "Food",     0,                  3, -1, 0, RARITY_COMMON, 0 },
+    { "Spear",         "Weapon",   LOOT_SPEAR,        30, 2,  2, RARITY_COMMON, 0 },
     { "Long Sword",    "Weapon",   LOOT_LONG_SWORD,   35, 2,  2, RARITY_UNCOMMON, 0 },
     { "Short Bow",     "Weapon",   LOOT_SHORT_BOW,    25, 2,  2, RARITY_UNCOMMON, 0 },
+    { "Strategy Guide", "Tool",    0,                 20, 1,  1, RARITY_UNCOMMON, 0 },
     { "Dragon Scale Armor", "Armor", 0,                40, 1,  1, RARITY_RARE, 0 }
     // Legendary items are never sold; they only drop from bosses (see HandleEnemyDamage).
 };
@@ -234,6 +243,11 @@ int stat_magick = 2, stat_luck = 2, stat_intelligence = 2, stat_charisma = 2;
 // base, so it survives re-creating the hero and is what the bonuses scale with.
 int stat_points = 0, stat_spent[STAT_COUNT] = { 0 }, stat_cursor = 0, stat_assign_mode = 0;
 char creation_error_msg[64] = "";
+KarmaState karma = { 0 };
+uint8_t card_collection_bits[CARD_BYTES] = { 0 }, deck_of_cards_bits[CARD_BYTES] = { 0 };
+MonsterCardLink monster_card_links[MONSTER_TYPE_COUNT] = {
+    {0, 0, 0}, {1, 1, 0}, {2, 2, 0}, {3, 3, 0}, {4, 4, 0}, {5, 5, 0}, {6, 6, 0}, {7, 7, 0}, {8, 8, 0}
+};
 
 char arpg_action_log[256] = "ARPG ENGINE: Character Creation Online. Config Name/Class/Race.";
 int cam_x = 0; int cam_y = 0;

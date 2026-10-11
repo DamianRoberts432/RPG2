@@ -88,8 +88,8 @@ game.exe
 | **Enter Key / (A) Button** | Finalize Character & Enter the World | — |
 | **Space Bar / (A) Button** | — (types a space into the Name field if selected) | Swing Equipped Weapon (Axe by default) / Melee Attack |
 | **'X' / 'C' Key / (X) Button** | — | Contextual Interact: Pick up a dropped item / Chop Tree / Mine Rock / Talk / Fish. Next to a campfire it **adds 1 Wood** (a fire holds up to 10). Never lights a new campfire. |
-| **'F' / 'R' Key / RT (Right Trigger)** | — | Bow Charge (Tap for Quick Shot / Hold to Charge). The Bow is a **secondary** weapon: equip it alongside your sword/axe. Arrows fly the way you face (they only hit a monster you are facing), stop at trees and rocks, and vanish at the screen edge. |
-| **'Y' Button / Key** | — | Class Special Ability (gameplay-only, debounced to fire once per press, then on cooldown): Necromancer/Wizard ranged spell bolt, Knight/Warrior defensive backstep + counter-strike, Rogue sneak (breaks monster detection). |
+| **'F' / 'R' Key / RT (Right Trigger)** | — | Bow Charge (Tap for Quick Shot / Hold to Charge; holding the draw drains stamina every frame). With a **Spear** equipped and no Bow, it **throws the spear**: it lands on the ground, stand on it and press X to pick it up. The Bow is a **secondary** weapon: equip it alongside your sword/axe. Arrows fly the way you face (they only hit a monster you are facing), stop at trees and rocks, and vanish at the screen edge. |
+| **'Y' Button / Key** | — | Class Special Ability (gameplay-only, debounced to fire once per press, then on cooldown): Necromancer summons (Zombie from level 1 - poison bite, Skeleton from level 3 - tough, Ghost from level 5 - fast and can't be hit; each press raises the next one), Wizard ranged spell bolt, Knight/Warrior defensive backstep + counter-strike, Rogue sneak (breaks monster detection). |
 | **'M' Key / Start Button** | — | Open Inventory & Route Display |
 | **'1' Key / (A) in Inventory Tab** | — | Equip/Unequip the selected inventory item. One melee weapon and one Bow can be equipped at the same time. |
 | **'3' Key / (X) in Inventory Tab** | — | Light a Campfire — the ONLY way to place one. Uses 2 Wood + 1 Match and needs a free campfire slot; nothing is consumed unless all are available. |
@@ -98,9 +98,12 @@ game.exe
 | **RB / 'E' Key (speaking to a merchant)** | — | Switch the shop UI to the **Sell** tab (your inventory items available to sell) |
 | **Up/Down Arrows / '[' / ']' Keys / DPAD Up-Down (shop open)** | — | Cycle the highlighted row within the active Buy/Sell tab |
 | **Space Bar / (A) Button (shop open)** | — | Confirm the buy or sell on the highlighted row |
+| **'T' Key / Back Button (shop open)** | — | Try to steal. It always fails: **Straight to Jail!** The guards take 25% of your gold, you spend the night in a cell, and Town Heat rises. |
 | **Escape / (B) Button (shop open)** | — | Close the shop menu |
 
 ## World map and saving
+
+The **Hero** tab also shows your **Karma** (Soul, Miasma from dark magic, Town Heat from crimes, Grapevine fame, and a life mark for each boss type slain), your **card collection** (each kill, cave treasure and fish catch has a 2% chance to give a card; monsters usually drop their own card), and the **bestiary** kill count per monster. These are saved with your hero. Food, materials and matches stack up to 99 per slot. The merchant now sells a **Spear** and an **A&D Strategy Guide** (use it from the inventory for a 2-second peek at secret card combos). A **Yeti** stays calm until you get within 3 tiles or hit it - then it charges. Races give small stat bonuses, and natural pairings (Elf Wizard, Human Knight, Dwarf Warrior, Halfling Rogue, Gnome Necromancer) get +1 to their key stat.
 
 The **World Map** tab (M / Start, then tab 2) shows every screen you have explored: biome colours, brown squares for village homes, grey squares for castles, blue for rivers, lakes and sea, and a gold square for cave treasure you have not claimed yet. The game auto-saves the map to `rpg2_save.dat` (next to `game.exe`) every time you change screens, and loads it on start. Delete that file to start with a blank map.
 

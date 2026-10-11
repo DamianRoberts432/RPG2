@@ -26,7 +26,7 @@
 #define MAX_BUTTERFLIES 8
 #define DEBRIS_MAX 16
 #define MAX_CRITTERS 4
-#define MERCH_ITEMS 15
+#define MERCH_ITEMS 17
 #define MAX_BLOOD_MIST 24
 #define MAX_CAMPFIRES 8
 #define MAX_INVENTORY_ITEMS 100
@@ -51,7 +51,7 @@
 #define ABILITY_FLASH_FRAMES  14
 
 typedef enum { FACE_DOWN, FACE_UP, FACE_LEFT, FACE_RIGHT } FacingDirection;
-typedef enum { WEAPON_SWORD, WEAPON_BOW, WEAPON_AXE } WeaponType;
+typedef enum { WEAPON_SWORD, WEAPON_BOW, WEAPON_AXE, WEAPON_SPEAR } WeaponType;
 typedef enum { MONSTER_SKELLY, MONSTER_ZOMBIE, MONSTER_DRACULA, MONSTER_GOBLIN, MONSTER_SATYR,
                MONSTER_YETI, MONSTER_SPHINX, MONSTER_BIGFOOT, MONSTER_BUNYIP } MonsterType;
 // Mythic beasts (Yeti..Bunyip) and Dracula are the bosses: the only source of Legendary loot.
@@ -97,7 +97,8 @@ typedef struct {
 typedef struct { int id; const char *name; int damage, durability_max; float weight; float stamina_cost; int price; float attack_speed_mult; } WeaponStats;
 typedef struct { float x, y; int item_id, quantity, screen_id, active; } GroundLoot;
 typedef struct { float x, y, home_x, home_y; int type, idle_timer, direction; const char *dialogue; int dialogue_cooldown; } NPCEntity;
-typedef struct { float x, y, hp; int active, timer, raise_frame, attack_cooldown; } ZombieEntity;
+typedef enum { SUMMON_ZOMBIE, SUMMON_SKELETON, SUMMON_GHOST } SummonType;
+typedef struct { float x, y, hp; int active, timer, raise_frame, attack_cooldown, type; } ZombieEntity;
 typedef struct { int x, y, screen_id, left_frame, active, has_left; } AppleTreeState;
 
 typedef struct {
@@ -156,6 +157,8 @@ extern float bow_charge_time;
 extern int is_charging_bow;
 extern DWORD bow_charge_started_at;
 extern ArrowProjectile player_spell;
+extern ArrowProjectile thrown_spear;
+extern InventoryItem thrown_spear_item;
 extern int y_button_was_down;
 extern int y_key_was_down;
 extern DWORD y_ability_cooldown_until;
@@ -172,6 +175,7 @@ extern DroppedInventoryItem dropped_items[MAX_DROPPED_ITEMS];
 extern NPCEntity village_npcs[MAX_NPCS];
 extern int village_npc_count;
 extern ZombieEntity summoned_zombie;
+extern int next_summon_type;
 extern AppleTreeState apple_tree_states[MAX_APPLE_TREES];
 extern int vendor_menu_open;
 extern int fishing_active, fishing_power;
@@ -180,6 +184,9 @@ extern float bedroll_x, bedroll_y;
 extern int night_bonus_active;
 extern int wind_dir;
 extern int sleep_fade_frame;
+extern int jailed_tonight;
+#define GUIDE_FLASH_MS 2000
+extern DWORD guide_flash_until;
 extern int enemy_direction;
 extern float weather_next_change;
 extern int is_menu_open;
@@ -199,6 +206,25 @@ extern int stat_points, stat_spent[STAT_COUNT], stat_cursor, stat_assign_mode;
 int *StatByIndex(int i);
 void SpendStatPoint(void);
 int ShopPrice(int base);
+// 6-byte karma block: soul alignment, a life mark per boss type slain,
+// miasma (dark magic used), town heat (crimes) and grapevine (fame).
+#pragma pack(push, 1)
+typedef struct { int8_t soul; uint16_t life_marks; uint8_t miasma, town_heat, grapevine; } KarmaState;
+#pragma pack(pop)
+extern KarmaState karma;
+void KarmaAdjust(int soul, int miasma, int heat, int grapevine);
+// Card collection: two 21-byte bitmasks (168 bits) for 166 cards. Card ids
+// below MONSTER_TYPE_COUNT are monster cards, linked to the bestiary.
+#define CARD_COUNT 166
+#define CARD_BYTES 21
+#define CARD_DROP_PERCENT 2
+#define MONSTER_TYPE_COUNT 9
+typedef struct { uint8_t monster, card_id; uint16_t kills; } MonsterCardLink;
+extern uint8_t card_collection_bits[CARD_BYTES], deck_of_cards_bits[CARD_BYTES];
+extern MonsterCardLink monster_card_links[MONSTER_TYPE_COUNT];
+int HasCard(int id);
+int CardCount(void);
+void TryCardDrop(int monster); // monster < 0 for chests and fishing
 // Upper-left HUD: date/season/region lines start here; the action and
 // NPC dialogue log sits below them at HUD_LOG_Y.
 #define HUD_DATE_Y 16
@@ -245,7 +271,7 @@ extern MonsterType active_monster;
 #define MAX_ENEMIES 6           // night cap
 #define MAX_ENEMIES_DAY 4
 #define ENEMY_SPAWN_INTERVAL_MS 20000
-typedef struct { float x, y, hearts; MonsterType type; int direction; } EnemySlot;
+typedef struct { float x, y, hearts; MonsterType type; int direction; int angry; int poison; } EnemySlot;
 extern EnemySlot enemies[MAX_ENEMIES];
 extern int current_enemy;
 void SelectEnemy(int i);
@@ -265,9 +291,9 @@ extern int merchant_selection;
 extern int vendor_tab;
 
 // LOOT_* ids map 1:1 onto weapon_catalog[id - 1] for every entry up through
-// LOOT_MUSASHI_BLADE (kept contiguous on purpose - see LootWeight/AddLootToInventory).
-enum { LOOT_SHORT_SWORD = 1, LOOT_LONG_SWORD, LOOT_AXE, LOOT_SHORT_BOW, LOOT_RUSTY_SWORD, LOOT_MUSASHI_BLADE, LOOT_FISH, LOOT_APPLE };
-extern WeaponStats weapon_catalog[6];
+// LOOT_SPEAR (kept contiguous on purpose - see LootWeight/AddLootToInventory).
+enum { LOOT_SHORT_SWORD = 1, LOOT_LONG_SWORD, LOOT_AXE, LOOT_SHORT_BOW, LOOT_RUSTY_SWORD, LOOT_MUSASHI_BLADE, LOOT_SPEAR, LOOT_FISH, LOOT_APPLE };
+extern WeaponStats weapon_catalog[7];
 #define WEAPON_CATALOG_COUNT ((int)(sizeof(weapon_catalog) / sizeof(weapon_catalog[0])))
 extern MerchantItem merchant_catalog[MERCH_ITEMS];
 extern const char *villager_greetings[];

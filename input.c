@@ -128,6 +128,7 @@ void ProcessGamepadInput(void) {
                     if (buttons & XINPUT_GAMEPAD_DPAD_DOWN) { selected_inv_index = (selected_inv_index + 1) % player_item_count; last_vendor_gp = GetTickCount(); }
                 }
                 if (buttons & XINPUT_GAMEPAD_B) { vendor_menu_open = 0; last_vendor_gp = GetTickCount(); }
+                if (buttons & XINPUT_GAMEPAD_BACK) { HandleVendorSteal(); last_vendor_gp = GetTickCount(); }
             }
 
             static DWORD last_attack_gp = 0;
@@ -156,14 +157,17 @@ void ProcessGamepadInput(void) {
                 bow_charge_started_at = bow_charge_start_gp;
                 bow_charge_time = 0.0f;
             }
-            bow_charge_time += 0.05f;
-            if (bow_charge_time > 1.0f) bow_charge_time = 1.0f;
+            ChargeBow();
         } else if (is_charging_bow && bow_charge_start_gp != 0) {
             DWORD hold_duration = GetTickCount() - bow_charge_start_gp;
             int is_tap = (hold_duration < 150 || bow_charge_time < 0.1f);
             if (!player_arrow.active) FirePlayerArrow(is_tap);
             is_charging_bow = 0; bow_charge_time = 0.0f; bow_charge_start_gp = 0;
         }
+        static int spear_rt_was_down = 0;
+        int spear_rt = rt > XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
+        if (!bow_equipped && !is_menu_open && active_weapon == WEAPON_SPEAR && spear_rt && !spear_rt_was_down) ThrowSpear();
+        spear_rt_was_down = spear_rt;
     }
 
     if (is_character_creation) {
@@ -284,6 +288,7 @@ void ProcessGamepadInput(void) {
                 if ((GetAsyncKeyState(VK_OEM_6) | GetAsyncKeyState(VK_DOWN)) & 0x8000) { selected_inv_index = (selected_inv_index + 1) % player_item_count; last_vendor_kb = GetTickCount(); }
             }
             if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) { vendor_menu_open = 0; last_vendor_kb = GetTickCount(); }
+            if (GetAsyncKeyState('T') & 0x8000) { HandleVendorSteal(); last_vendor_kb = GetTickCount(); }
         }
 
         static DWORD last_eat = 0;
@@ -326,14 +331,16 @@ void ProcessGamepadInput(void) {
                 bow_charge_started_at = bow_charge_start_kb;
                 bow_charge_time = 0.0f;
             }
-            bow_charge_time += 0.05f;
-            if (bow_charge_time > 1.0f) bow_charge_time = 1.0f;
+            ChargeBow();
         } else if (is_charging_bow && bow_charge_start_kb != 0) {
             DWORD hold_duration = GetTickCount() - bow_charge_start_kb;
             int is_tap = (hold_duration < 150 || bow_charge_time < 0.1f);
             if (!player_arrow.active) FirePlayerArrow(is_tap);
             is_charging_bow = 0; bow_charge_time = 0.0f; bow_charge_start_kb = 0;
         }
+        static int spear_key_was_down = 0;
+        if (!bow_equipped && active_weapon == WEAPON_SPEAR && !fishing_active && bow_key_down && !spear_key_was_down) ThrowSpear();
+        spear_key_was_down = bow_key_down;
 
         static int was_g_down = 0, was_fishing_held = 0;
         int g_down = (GetAsyncKeyState('G') & 0x8000) != 0;
@@ -354,7 +361,7 @@ void ProcessGamepadInput(void) {
                     if (!IsFacingFishWater()) strcpy(arpg_action_log, "FISHING: No fish in this water.");
                     else {
                         int count = 1 + rand() % 3;
-                        if (AddLootToInventory(LOOT_FISH, count)) sprintf(arpg_action_log, "FISHING: Caught %d fish!", count);
+                        if (AddLootToInventory(LOOT_FISH, count)) { sprintf(arpg_action_log, "FISHING: Caught %d fish!", count); TryCardDrop(-1); }
                         else strcpy(arpg_action_log, "FISHING: Catch lost; inventory is too heavy.");
                     }
                 } else strcpy(arpg_action_log, "FISHING: The fish got away.");

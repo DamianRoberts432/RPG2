@@ -39,7 +39,7 @@ void HandleVendorBuy(void) {
         added = AddLootToInventory(offer->loot_id, 1);
     } else {
         float w = GetNamedItemWeight(offer->name);
-        if (current_payload_weight + w <= CarryLimit() && AddInventoryItem(offer->name, offer->slot, 1)) {
+        if (current_payload_weight + w <= CarryLimit() && (IsStackableItem(offer->name, offer->slot) ? AddStackableItem(offer->name, offer->slot, 1) : AddInventoryItem(offer->name, offer->slot, 1))) {
             RecalculateCarriedWeight(); added = 1;
         }
     }
@@ -47,6 +47,19 @@ void HandleVendorBuy(void) {
     gold_count -= price;
     if (offer->stock > 0) offer->stock--;
     sprintf(arpg_action_log, "MARKET: Bought %s for %d gold.", offer->name, price);
+}
+
+// Zero tolerance: any attempt to steal from a shop fails. The guards take a
+// quarter of the hero's gold and lock them up until dawn.
+void HandleVendorSteal(void) {
+    if (!IsNearMerchant() || sleep_fade_frame > 0) return;
+    int fine = gold_count / 4;
+    gold_count -= fine;
+    vendor_menu_open = 0;
+    KarmaAdjust(-10, 0, 25, 0);
+    jailed_tonight = 1;
+    sleep_fade_frame = 1;
+    sprintf(arpg_action_log, "STRAIGHT TO JAIL! The guards seize %d gold. You spend the night in a cell.", fine);
 }
 
 void HandleVendorSell(void) {

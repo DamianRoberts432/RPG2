@@ -53,6 +53,10 @@ int SaveWorldMapState(void) {
     int32_t hero[4 + STAT_COUNT] = { player_level, player_xp, player_next_level_xp, stat_points };
     for (int i = 0; i < STAT_COUNT; i++) hero[4 + i] = stat_spent[i];
     ok = ok && fwrite(hero, sizeof(hero), 1, f) == 1;
+    ok = ok && fwrite(&karma, sizeof(karma), 1, f) == 1;
+    ok = ok && fwrite(card_collection_bits, sizeof(card_collection_bits), 1, f) == 1 &&
+         fwrite(deck_of_cards_bits, sizeof(deck_of_cards_bits), 1, f) == 1 &&
+         fwrite(monster_card_links, sizeof(monster_card_links), 1, f) == 1;
     ok = (fclose(f) == 0) && ok;
     if (!ok) { remove(SAVE_TEMP_NAME); return 0; }
     return MoveFileExA(SAVE_TEMP_NAME, SAVE_FILE_NAME, MOVEFILE_REPLACE_EXISTING) != 0;
@@ -73,6 +77,12 @@ int LoadWorldMapState(void) {
     int has_cal = has_pos && fread(cal, sizeof(cal), 1, f) == 1;
     int32_t hero[4 + STAT_COUNT]; // level, xp, next-level xp, unspent points, points spent per stat
     int has_hero = has_cal && fread(hero, sizeof(hero), 1, f) == 1;
+    KarmaState saved_karma;
+    int has_karma = has_hero && fread(&saved_karma, sizeof(saved_karma), 1, f) == 1;
+    uint8_t cards[CARD_BYTES], deck[CARD_BYTES];
+    MonsterCardLink links[MONSTER_TYPE_COUNT];
+    int has_cards = has_karma && fread(cards, sizeof(cards), 1, f) == 1 && fread(deck, sizeof(deck), 1, f) == 1 &&
+                    fread(links, sizeof(links), 1, f) == 1;
     fclose(f);
     if (!ok) return 0;
     memcpy(visited_biomes, biomes, sizeof(biomes));
@@ -82,6 +92,12 @@ int LoadWorldMapState(void) {
     if (has_hero && hero[0] >= 1 && hero[2] > 0) {
         player_level = hero[0]; player_xp = hero[1]; player_next_level_xp = hero[2]; stat_points = hero[3];
         for (int i = 0; i < STAT_COUNT; i++) stat_spent[i] = (hero[4 + i] < 0 || hero[4 + i] > STAT_CAP) ? 0 : hero[4 + i];
+    }
+    if (has_karma) karma = saved_karma;
+    if (has_cards) {
+        memcpy(card_collection_bits, cards, sizeof(cards));
+        memcpy(deck_of_cards_bits, deck, sizeof(deck));
+        for (int i = 0; i < MONSTER_TYPE_COUNT; i++) monster_card_links[i].kills = links[i].kills;
     }
     return 1;
 }

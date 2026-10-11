@@ -5,6 +5,7 @@
 
 void TriggerMonsterRespawn(void);
 void SpawnBloodMist(float x, float y);
+void SpawnBloodBurst(float x, float y, float dir_x, float dir_y);
 void PerformMeleeAttack(void);
 void SpawnTreeDebris(float cx, float cy);
 void UpdateDebrisTwigs(void);
@@ -12,8 +13,11 @@ void HandleEnemyDamage(float dmg);
 float DistanceToEnemy(void);
 int IsFacingEnemyWithin(float dot_threshold);
 int IsFacingEnemy(void);
+void ChargeBow(void);
 void FirePlayerArrow(int is_tap);
 void UpdatePlayerArrow(void);
 void FireClassAbility(void);
+void ThrowSpear(void);
+void UpdateThrownSpear(void);
 
 #endif // COMBAT_H
