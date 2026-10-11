@@ -42,6 +42,7 @@
 // than their matching cooldowns so pursuit suppression always lapses before
 // the ability can be used again.
 #define FACING_CONE_DOT_THRESHOLD 0.25f
+#define MELEE_SWING_STAMINA 8.0f // every swing tires the hero; heavy weapons cost more
 #define SPELL_COOLDOWN_MS     1500
 #define BACKSTEP_COOLDOWN_MS  2000
 #define SNEAK_COOLDOWN_MS     5000

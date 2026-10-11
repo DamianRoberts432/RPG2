@@ -66,7 +66,6 @@ void SpawnBloodMist(float x, float y) {
 // Heavy or critical hits spray 8-16 specks away from the hero.
 #define HEAVY_HIT_DAMAGE 2.0f
 #define SPEAR_REACH 2.6f
-#define MELEE_SWING_STAMINA 8.0f // every swing tires the hero; heavy weapons cost more
 #define SPEAR_THRUST_DOT 0.7f // narrower than a sword swing: a straight thrust
 void SpawnBloodBurst(float x, float y, float dir_x, float dir_y) {
     float d = (float)sqrt(dir_x * dir_x + dir_y * dir_y);
