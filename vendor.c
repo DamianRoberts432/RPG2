@@ -39,7 +39,7 @@ void HandleVendorBuy(void) {
         added = AddLootToInventory(offer->loot_id, 1);
     } else {
         float w = GetNamedItemWeight(offer->name);
-        if (current_payload_weight + w <= CarryLimit() && AddInventoryItem(offer->name, offer->slot, 1)) {
+        if (current_payload_weight + w <= CarryLimit() && (IsStackableItem(offer->name, offer->slot) ? AddStackableItem(offer->name, offer->slot, 1) : AddInventoryItem(offer->name, offer->slot, 1))) {
             RecalculateCarriedWeight(); added = 1;
         }
     }

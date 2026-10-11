@@ -12,6 +12,9 @@ int WearEquippedBow(void);
 float GetNamedItemWeight(const char *name);
 void RecalculateCarriedWeight(void);
 int AddInventoryItem(const char *name, const char *slot, int quantity);
+#define MAX_STACK 99
+int IsStackableItem(const char *name, const char *slot);
+int AddStackableItem(const char *name, const char *slot, int quantity);
 float CarryLimit(void);
 int FindInventoryItemIndex(const char *name);
 int GetMaterialCount(const char *name);
