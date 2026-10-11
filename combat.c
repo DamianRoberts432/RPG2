@@ -66,6 +66,7 @@ void SpawnBloodMist(float x, float y) {
 // Heavy or critical hits spray 8-16 specks away from the hero.
 #define HEAVY_HIT_DAMAGE 2.0f
 #define SPEAR_REACH 2.6f
+#define MELEE_SWING_STAMINA 8.0f // every swing tires the hero; heavy weapons cost more
 #define SPEAR_THRUST_DOT 0.7f // narrower than a sword swing: a straight thrust
 void SpawnBloodBurst(float x, float y, float dir_x, float dir_y) {
     float d = (float)sqrt(dir_x * dir_x + dir_y * dir_y);
@@ -89,9 +90,10 @@ void SpawnBloodBurst(float x, float y, float dir_x, float dir_y) {
 void PerformMeleeAttack(void) {
     WeaponStats *weapon = GetEquippedWeaponStats();
     float damage = weapon ? (float)weapon->damage : 1.0f;
-    float stamina_cost = weapon ? weapon->stamina_cost : 0.0f;
+    float stamina_cost = MELEE_SWING_STAMINA + (weapon ? weapon->stamina_cost * 2.0f : 0.0f);
     if (player_stamina < stamina_cost) { strcpy(arpg_action_log, "Exhausted! Too tired to swing that weapon."); return; }
     player_stamina -= (float)stamina_cost;
+    stamina_rest_timer = 0;
     sword_swipe_frame = (weapon && weapon->attack_speed_mult < 1.0f) ? 14 : 10;
     SelectTargetEnemy();
     float m_dist = DistanceToEnemy();
@@ -313,7 +315,7 @@ void UpdateEnemySpawns(void) {
 #define BOW_AIM_CONE_DOT 0.5f
 // Holding the draw (RT / F) costs stamina every frame; once winded the
 // charge stops building, though the arrow can still be loosed.
-#define BOW_DRAW_STAMINA_PER_FRAME 0.5f
+#define BOW_DRAW_STAMINA_PER_FRAME 1.0f
 void ChargeBow(void) {
     if (player_stamina <= 0.0f) return;
     player_stamina -= BOW_DRAW_STAMINA_PER_FRAME;
