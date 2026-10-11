@@ -102,6 +102,18 @@ game.exe
 | **Space Bar / (A) Button (shop open)** | — | Confirm the buy or sell on the highlighted row |
 | **SPACE / A (shop open, Buy tab)** | — | Opens a Browse / Buy / Cancel menu; pick with up/down. There is no stealing. |
 | **Escape / (B) Button (shop open)** | — | Close the shop menu |
+| **X (next to a blacksmith, card shop, pet shop, king, banker, beggar or altar)** | X | Step inside: a side-view room with a menu. Up/Down picks a row, SPACE / A selects, ESC / B leaves. |
+
+## Town buildings
+
+Talking to a shopkeeper takes you inside their building (merchant included).
+
+- **Blacksmith** (every town): repair any worn item, over-forge your weapon (+1 damage per forge up to +10, each forge costs 10% of its max durability), buy rare weapons (Katana, War Hammer, Great Axe) and recycle spare gear into Iron, Wood, Leather, String and Rope.
+- **Card shop** (some days): ten random cards with set, rarity and ATK/DEF, plus 3-card (20,000), 7-card (40,000) and 60-card (350,000) packs. The kid at the corner table explains how the game is played; he won't play for ante.
+- **Pet shop** (some days): familiars from level 3. Day familiars sleep in your pack from 9 PM to 6 AM, night ones by day.
+- **Castle towns** also have the **King** (Legendary quests from level 25: slay a mythic beast or Dracula, then report back for 10,000 gold), a **Bank** vault, a **beggar** and an **altar**. Villages have an altar and sometimes a beggar.
+- **Beggars**: giving gold or food raises Soul and lowers Town Heat; refusing does the opposite.
+- **Altars** belong to one of four gods: Solara (Light, Incense heals you), Nyx (Dark, a Chaos Relic gives +50% damage for 5 minutes), Baron Samedi (Voodoo, Tarot Card + Rum Bottle + Cigar gives Ghost Whisperer, +25% damage) or the Drowned One (Eldritch, offer a Fish). The merchant sells the offerings. Pray once a day for favor.
 
 ## World map and saving
 
@@ -111,7 +123,7 @@ The **World Map** tab (M / Start, then tab 2) shows every screen you have explor
 
 ## Seasons and weather
 
-Each season lasts 45 real minutes. The game starts in the season and time of day from your PC's clock (October = fall). Weather is the same everywhere in the world and changes gradually between fair, rain and snow; snow builds up on the ground during winter, leaves blow in fall, and occasional wind gusts (most often in fall) add to the normal breeze.
+One real second is one game minute, so a day lasts 24 real minutes and each 30-day season about 12 hours. The game starts in the season and time of day from your PC's clock (October = fall). Weather is the same everywhere in the world and changes gradually between fair, rain and snow; snow builds up on the ground during winter, leaves blow in fall, and occasional wind gusts (most often in fall) add to the normal breeze.
 
 **Optional real weather:** copy `weather.ini.example` to `weather.ini` next to `game.exe` and put your city (or latitude/longitude) in it. On start the game asks Open-Meteo (free, no API key) for your current weather, so if it is snowing outside the game starts snowing too. If there is no `weather.ini` or no internet, it just uses the clock.
 
@@ -126,6 +138,7 @@ Each season lasts 45 real minutes. The game starts in the season and time of day
 | campfire.c | Campfire placement, fuel, lighting |
 | inventory.c | Inventory, equipment, weight, ground loot, dropped items, food |
 | vendor.c | Merchant restock, buying, selling |
+| town.c | Blacksmith, card shop, pet shop, king, bank, beggars, altars, interiors, familiars |
 | interact.c | Proximity checks and contextual interact (chop/mine/fish/talk) |
 | world.c | Biomes, procedural screens, caves, villages, NPCs, critters |
 | combat.c | Melee, enemy damage/respawn, class abilities, blood/debris |
