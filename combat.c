@@ -110,6 +110,18 @@ void SpawnTreeDebris(float cx, float cy) {
     }
 }
 
+// Dirt clods kicked up when a summoned zombie or skeleton claws out of the ground.
+void SpawnDirtClods(float cx, float cy) {
+    int n = 0;
+    for (int i = 0; i < DEBRIS_MAX && n < 8; i++) {
+        if (twigs[i].active) continue;
+        twigs[i].x = cx; twigs[i].y = cy;
+        twigs[i].vx = (rand() % 100) / 2500.0f - 0.02f; twigs[i].vy = (rand() % 100) / 2500.0f - 0.02f;
+        twigs[i].life = 20 + rand() % 15; twigs[i].screen_id = current_screen_index; twigs[i].active = 1;
+        n++;
+    }
+}
+
 // Twigs/chips drift briefly outward from the chopped tree or mined rock, then
 // vanish shortly after - debris is no longer left permanently on the ground.
 void UpdateDebrisTwigs(void) {
@@ -487,6 +499,7 @@ void FireClassAbility(void) {
             summoned_zombie.hp = summon_hp[type]; summoned_zombie.timer = 900;
             summoned_zombie.raise_frame = 0; summoned_zombie.attack_cooldown = 0;
             summoned_zombie.active = 1;
+            if (type != SUMMON_GHOST) SpawnDirtClods(summoned_zombie.x, summoned_zombie.y + 0.3f);
             KarmaAdjust(0, 5, 0, 0);
             ability_visual_frame = SPELL_FLASH_FRAMES;
             player_mp -= CLASS_ABILITY_MP_COST; y_ability_cooldown_until = now + SPELL_COOLDOWN_MS;
