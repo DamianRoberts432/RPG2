@@ -97,7 +97,8 @@ typedef struct {
 typedef struct { int id; const char *name; int damage, durability_max; float weight; float stamina_cost; int price; float attack_speed_mult; } WeaponStats;
 typedef struct { float x, y; int item_id, quantity, screen_id, active; } GroundLoot;
 typedef struct { float x, y, home_x, home_y; int type, idle_timer, direction; const char *dialogue; int dialogue_cooldown; } NPCEntity;
-typedef struct { float x, y, hp; int active, timer, raise_frame, attack_cooldown; } ZombieEntity;
+typedef enum { SUMMON_ZOMBIE, SUMMON_SKELETON, SUMMON_GHOST } SummonType;
+typedef struct { float x, y, hp; int active, timer, raise_frame, attack_cooldown, type; } ZombieEntity;
 typedef struct { int x, y, screen_id, left_frame, active, has_left; } AppleTreeState;
 
 typedef struct {
@@ -174,6 +175,7 @@ extern DroppedInventoryItem dropped_items[MAX_DROPPED_ITEMS];
 extern NPCEntity village_npcs[MAX_NPCS];
 extern int village_npc_count;
 extern ZombieEntity summoned_zombie;
+extern int next_summon_type;
 extern AppleTreeState apple_tree_states[MAX_APPLE_TREES];
 extern int vendor_menu_open;
 extern int fishing_active, fishing_power;
@@ -266,7 +268,7 @@ extern MonsterType active_monster;
 #define MAX_ENEMIES 6           // night cap
 #define MAX_ENEMIES_DAY 4
 #define ENEMY_SPAWN_INTERVAL_MS 20000
-typedef struct { float x, y, hearts; MonsterType type; int direction; int angry; } EnemySlot;
+typedef struct { float x, y, hearts; MonsterType type; int direction; int angry; int poison; } EnemySlot;
 extern EnemySlot enemies[MAX_ENEMIES];
 extern int current_enemy;
 void SelectEnemy(int i);

@@ -84,6 +84,7 @@ DroppedInventoryItem dropped_items[MAX_DROPPED_ITEMS] = {0};
 NPCEntity village_npcs[MAX_NPCS] = {0};
 int village_npc_count = 0;
 ZombieEntity summoned_zombie = {0};
+int next_summon_type = SUMMON_ZOMBIE;
 AppleTreeState apple_tree_states[MAX_APPLE_TREES] = {0};
 int vendor_menu_open = 0;
 int fishing_active = 0, fishing_power = 0;

@@ -3,6 +3,7 @@
 #define PLAYER_COLLISION_RADIUS 0.3f
 #define YETI_AGGRO_RADIUS 3.0f
 #define YETI_CHARGE_SPEED 0.04f
+#define POISON_TICK_DAMAGE 0.2f
 static int TileBlocksPlayer(float x, float y) {
     if (x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE) return 1;
     uint8_t t = VISUAL_MAP[(int)y][(int)x];
@@ -121,11 +122,17 @@ void UpdateGamePhysics(void) {
         else if (SelectNearestEnemyTo(summoned_zombie.x, summoned_zombie.y) >= 0) {
             float zx = enemy_x - summoned_zombie.x, zy = enemy_y - summoned_zombie.y;
             float zd = (float)sqrt(zx * zx + zy * zy);
+            static const float summon_speed[3] = { 0.035f, 0.03f, 0.06f }, summon_dmg[3] = { 0.75f, 0.5f, 1.0f };
+            int st = summoned_zombie.type;
             if (zd > 0.65f) {
-                summoned_zombie.x += (zx / zd) * 0.035f;
-                summoned_zombie.y += (zy / zd) * 0.035f;
+                summoned_zombie.x += (zx / zd) * summon_speed[st];
+                summoned_zombie.y += (zy / zd) * summon_speed[st];
             } else if (summoned_zombie.attack_cooldown > 0) summoned_zombie.attack_cooldown--;
-            else { summoned_zombie.attack_cooldown = 30; HandleEnemyDamage(0.75f); }
+            else {
+                summoned_zombie.attack_cooldown = st == SUMMON_GHOST ? 24 : 30;
+                HandleEnemyDamage(summon_dmg[st]);
+                if (st == SUMMON_ZOMBIE) enemies[current_enemy].poison = 3;
+            }
         }
     }
 
@@ -138,6 +145,11 @@ void UpdateGamePhysics(void) {
     for (int e = 0; e < MAX_ENEMIES; e++) {
     SelectEnemy(e);
     if (enemy_hearts > 0.0f) {
+        if (enemies[e].poison > 0 && world_frame % 45 == 0) {
+            enemies[e].poison--;
+            enemy_hearts -= POISON_TICK_DAMAGE;
+            if (enemy_hearts <= 0.0f) { HandleEnemyDamage(0.0f); continue; }
+        }
         int fleeing_from_fire = 0;
         float fire_fx = 0.0f, fire_fy = 0.0f;
         
@@ -187,7 +199,7 @@ void UpdateGamePhysics(void) {
                 enemy_x += (s_dx / dist) * speed;
                 enemy_y += (s_dy / dist) * speed;
                 if (summoned_zombie.active && zombie_dist < player_dist && zombie_dist < 0.7f &&
-                    world_frame % 40 == 0) summoned_zombie.hp -= 0.5f;
+                    world_frame % 40 == 0 && summoned_zombie.type != SUMMON_GHOST) summoned_zombie.hp -= 0.5f; // ghosts phase through blows
             } else if ((calm || dist > 8.0f) && world_frame % 10 == 0) {
                 static const int dir_lut[4][3] = {
                     { FACE_LEFT, FACE_DOWN, FACE_RIGHT }, { FACE_RIGHT, FACE_UP, FACE_LEFT },

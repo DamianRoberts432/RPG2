@@ -630,6 +630,32 @@ void DrawVillage(HDC hdc) {
     }
 }
 
+static void DrawSummonedSkeleton(HDC hdc, int sx, int sy, int face_dir) {
+    COLORREF bone = RGB(230, 228, 215);
+    int step = (int)(sin(world_tick * 6.0f) * 2.0f);
+    PenLine(hdc, 2, bone, sx - 3, sy + 8, sx - 3 + step, sy + 19);
+    PenLine(hdc, 2, bone, sx + 3, sy + 8, sx + 3 - step, sy + 19);
+    PenLine(hdc, 2, bone, sx, sy - 2, sx, sy + 9);
+    for (int r = 0; r < 3; r++) PenLine(hdc, 1, bone, sx - 5, sy + r * 3, sx + 5, sy + r * 3);
+    PenLine(hdc, 2, bone, sx, sy + 1, sx + face_dir * 9, sy + 4);
+    PenLine(hdc, 2, RGB(170, 175, 185), sx + face_dir * 9, sy + 4, sx + face_dir * 15, sy - 6);
+    BrushEllipse(hdc, bone, sx - 5, sy - 11, sx + 5, sy - 1);
+    HBRUSH eye = CreateSolidBrush(RGB(30, 25, 35));
+    RECT el = { sx - 3 + face_dir, sy - 8, sx - 1 + face_dir, sy - 6 }, er = { sx + 1 + face_dir, sy - 8, sx + 3 + face_dir, sy - 6 };
+    FillRect(hdc, &el, eye); FillRect(hdc, &er, eye); DeleteObject(eye);
+}
+
+static void DrawSummonedGhost(HDC hdc, int sx, int sy, int face_dir) {
+    sy += (int)(sin(world_tick * 3.0f) * 3.0f) - 4;
+    COLORREF mist = RGB(200, 225, 240);
+    BrushEllipse(hdc, mist, sx - 8, sy - 12, sx + 8, sy + 6);
+    POINT tail[] = { {sx - 8, sy}, {sx + 8, sy}, {sx + 6, sy + 14}, {sx + 2, sy + 9}, {sx - 2, sy + 15}, {sx - 6, sy + 9} };
+    BrushPoly(hdc, mist, tail, 6);
+    HBRUSH eye = CreateSolidBrush(RGB(40, 50, 70));
+    RECT el = { sx - 4 + face_dir * 2, sy - 6, sx - 1 + face_dir * 2, sy - 2 }, er = { sx + 1 + face_dir * 2, sy - 6, sx + 4 + face_dir * 2, sy - 2 };
+    FillRect(hdc, &el, eye); FillRect(hdc, &er, eye); DeleteObject(eye);
+}
+
 void DrawSummonedZombie(HDC hdc) {
     if (!summoned_zombie.active) return;
     int sx, sy; GetIsoCoords(summoned_zombie.x, summoned_zombie.y, &sx, &sy);
@@ -639,5 +665,7 @@ void DrawSummonedZombie(HDC hdc) {
     // reaching toward the enemy it is hunting (or ahead, if there is none).
     int face_dir = 1;
     if (enemy_hearts > 0.0f) { int ex, ey; GetIsoCoords(enemy_x, enemy_y, &ex, &ey); face_dir = (ex >= sx) ? 1 : -1; }
-    DrawZombieBody(hdc, sx, sy, (int)(summoned_zombie.x * 11.0f + summoned_zombie.y * 5.0f), face_dir, 1, RGB(150, 170, 130));
+    if (summoned_zombie.type == SUMMON_SKELETON) DrawSummonedSkeleton(hdc, sx, sy, face_dir);
+    else if (summoned_zombie.type == SUMMON_GHOST) DrawSummonedGhost(hdc, sx, sy, face_dir);
+    else DrawZombieBody(hdc, sx, sy, (int)(summoned_zombie.x * 11.0f + summoned_zombie.y * 5.0f), face_dir, 1, RGB(150, 170, 130));
 }

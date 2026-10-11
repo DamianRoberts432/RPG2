@@ -260,7 +260,7 @@ static void SpawnEnemyInFreeSlot(void) {
     StoreEnemy();
     for (int i = 0; i < MAX_ENEMIES; i++) {
         if (enemies[i].hearts > 0.0f) continue;
-        SelectEnemy(i); TriggerMonsterRespawn(); enemy_direction = FACE_DOWN; StoreEnemy(); enemies[i].angry = 0;
+        SelectEnemy(i); TriggerMonsterRespawn(); enemy_direction = FACE_DOWN; StoreEnemy(); enemies[i].angry = 0; enemies[i].poison = 0;
         return;
     }
 }
@@ -471,13 +471,24 @@ void FireClassAbility(void) {
             else if (player_facing == FACE_DOWN) summoned_zombie.y += 1.0f;
             else if (player_facing == FACE_LEFT) summoned_zombie.x -= 1.0f;
             else summoned_zombie.x += 1.0f;
-            summoned_zombie.hp = 3.0f; summoned_zombie.timer = 900;
+            // Zombie (poison bite) from level 1, Skeleton (tank) from 3, Ghost
+            // (fast, phases through blows) from 5; each cast raises the next one.
+            static const int unlock_level[3] = { 1, 3, 5 };
+            static const float summon_hp[3] = { 3.0f, 6.0f, 2.0f };
+            static const char *summon_msg[3] = { "NECROMANCY: A zombie claws its way from the earth! Its bite poisons.",
+                                                 "NECROMANCY: A skeleton warrior rises to shield you!",
+                                                 "NECROMANCY: A ghost drifts out of the veil!" };
+            int type = player_level >= unlock_level[next_summon_type] ? next_summon_type : SUMMON_ZOMBIE;
+            next_summon_type = type;
+            do next_summon_type = (next_summon_type + 1) % 3; while (player_level < unlock_level[next_summon_type]);
+            summoned_zombie.type = type;
+            summoned_zombie.hp = summon_hp[type]; summoned_zombie.timer = 900;
             summoned_zombie.raise_frame = 0; summoned_zombie.attack_cooldown = 0;
             summoned_zombie.active = 1;
             KarmaAdjust(0, 5, 0, 0);
             ability_visual_frame = SPELL_FLASH_FRAMES;
             player_mp -= CLASS_ABILITY_MP_COST; y_ability_cooldown_until = now + SPELL_COOLDOWN_MS;
-            strcpy(arpg_action_log, "NECROMANCY: A zombie claws its way from the earth!");
+            strcpy(arpg_action_log, summon_msg[type]);
             return;
         }
         if (player_spell.active) {
