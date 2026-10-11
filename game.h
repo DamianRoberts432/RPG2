@@ -199,6 +199,13 @@ extern int stat_points, stat_spent[STAT_COUNT], stat_cursor, stat_assign_mode;
 int *StatByIndex(int i);
 void SpendStatPoint(void);
 int ShopPrice(int base);
+// 6-byte karma block: soul alignment, a life mark per boss type slain,
+// miasma (dark magic used), town heat (crimes) and grapevine (fame).
+#pragma pack(push, 1)
+typedef struct { int8_t soul; uint16_t life_marks; uint8_t miasma, town_heat, grapevine; } KarmaState;
+#pragma pack(pop)
+extern KarmaState karma;
+void KarmaAdjust(int soul, int miasma, int heat, int grapevine);
 // Upper-left HUD: date/season/region lines start here; the action and
 // NPC dialogue log sits below them at HUD_LOG_Y.
 #define HUD_DATE_Y 16

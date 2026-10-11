@@ -151,6 +151,8 @@ void HandleEnemyDamage(float dmg) {
             if (rand() % 100 < 40) DropGroundLoot(enemy_x, enemy_y, LOOT_MUSASHI_BLADE, 1);
         }
         player_xp += gained_xp;
+        if (IS_BOSS_MONSTER(active_monster)) { karma.life_marks |= (uint16_t)(1u << active_monster); KarmaAdjust(5, 0, 0, 10); }
+        else if (rand() % 5 == 0) KarmaAdjust(1, 0, 0, 0);
         if (player_xp >= player_next_level_xp) {
             // Each level needs 50 more XP than the last (level 10 ~ 200 kills, 25 ~ 1250).
             while (player_xp >= player_next_level_xp) {
@@ -388,6 +390,7 @@ void FireClassAbility(void) {
             summoned_zombie.hp = 3.0f; summoned_zombie.timer = 900;
             summoned_zombie.raise_frame = 0; summoned_zombie.attack_cooldown = 0;
             summoned_zombie.active = 1;
+            KarmaAdjust(0, 5, 0, 0);
             ability_visual_frame = SPELL_FLASH_FRAMES;
             player_mp -= CLASS_ABILITY_MP_COST; y_ability_cooldown_until = now + SPELL_COOLDOWN_MS;
             strcpy(arpg_action_log, "NECROMANCY: A zombie claws its way from the earth!");

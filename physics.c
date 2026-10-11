@@ -50,6 +50,7 @@ void UpdateGamePhysics(void) {
                     SeasonDay(), DAYS_PER_SEASON, CalendarMonthName());
             night_bonus_active = 1;
             RestockMerchant();
+            KarmaAdjust(0, -20, -10, 0); // a night's rest clears miasma and cools town heat
         } else if (sleep_fade_frame >= 60) sleep_fade_frame = 0;
     }
     UpdateSeasonAndWeather();

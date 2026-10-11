@@ -51,6 +51,14 @@ void ApplyClassAndRaceStats(void) {
     else player_height_m = 1.82f;
 }
 
+static int ClampKarma(int v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : v; }
+void KarmaAdjust(int soul, int miasma, int heat, int grapevine) {
+    karma.soul = (int8_t)ClampKarma(karma.soul + soul, -100, 100);
+    karma.miasma = (uint8_t)ClampKarma(karma.miasma + miasma, 0, 100);
+    karma.town_heat = (uint8_t)ClampKarma(karma.town_heat + heat, 0, 100);
+    karma.grapevine = (uint8_t)ClampKarma(karma.grapevine + grapevine, 0, 100);
+}
+
 float GetRaceSpeedMultiplier(void) {
     switch (selected_race) {
         case RACE_GNOME:    return 1.40f; 

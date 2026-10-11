@@ -269,6 +269,19 @@ void DrawTabbedMenuOverlay(HDC hdc) {
         TextOut(hdc, info_x, 264, buf, (int)strlen(buf));
         sprintf(buf, "WEIGHT: %.1f / %.1f", current_payload_weight, CarryLimit()); TextOut(hdc, info_x, 280, buf, (int)strlen(buf));
 
+        const int lore_x = 820;
+        prev_font = SelectObject(hdc, underline_font);
+        SetTextColor(hdc, RGB(0, 230, 200));
+        TextOut(hdc, lore_x, 92, "KARMA", 5);
+        SelectObject(hdc, prev_font);
+        SetTextColor(hdc, RGB(220, 220, 220));
+        sprintf(buf, "Soul %+d   Miasma %d   Town Heat %d   Grapevine %d", karma.soul, karma.miasma, karma.town_heat, karma.grapevine);
+        TextOut(hdc, lore_x, 110, buf, (int)strlen(buf));
+        strcpy(buf, "Life marks:");
+        for (int m = 0; m < 16; m++) if (IS_BOSS_MONSTER(m) && (karma.life_marks & (1u << m))) { strcat(buf, " "); strcat(buf, MonsterName((MonsterType)m)); }
+        if (karma.life_marks == 0) strcat(buf, " none yet (slay a boss)");
+        TextOut(hdc, lore_x, 126, buf, (int)strlen(buf));
+
         prev_font = SelectObject(hdc, underline_font);
         SetTextColor(hdc, RGB(0, 230, 200));
         sprintf(buf, "INVENTORY (%d/%d)", player_item_count, MAX_INVENTORY_ITEMS);

@@ -234,6 +234,7 @@ int stat_magick = 2, stat_luck = 2, stat_intelligence = 2, stat_charisma = 2;
 // base, so it survives re-creating the hero and is what the bonuses scale with.
 int stat_points = 0, stat_spent[STAT_COUNT] = { 0 }, stat_cursor = 0, stat_assign_mode = 0;
 char creation_error_msg[64] = "";
+KarmaState karma = { 0 };
 
 char arpg_action_log[256] = "ARPG ENGINE: Character Creation Online. Config Name/Class/Race.";
 int cam_x = 0; int cam_y = 0;
