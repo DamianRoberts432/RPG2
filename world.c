@@ -323,15 +323,19 @@ void GenerateProceduralScreen(int index) {
         torch_gate_x = -100; torch_gate_y = -100;
     }
 
+    int spawn_hour, spawn_minute; GetGameClock(&spawn_hour, &spawn_minute);
+    int spawn_night = spawn_hour >= 21 || spawn_hour < 6;
     for (int i = 0; i < MAX_CRITTERS; i++) {
         critters[i].x = (float)(5 + rand() % 20);
         critters[i].y = (float)(5 + rand() % 20);
         critters[i].base_x = critters[i].x;
         critters[i].base_y = critters[i].y;
-        critters[i].type = rand() % 3; // 0 bird, 1 squirrel (both diurnal), 2 owl (nocturnal)
+        // 0 bird, 1 squirrel (both diurnal), 2 owl (nocturnal). Day screens get
+        // birds and squirrels; owls only roost on screens entered at night.
+        critters[i].type = spawn_night && i < 2 ? 2 : i % 2;
         critters[i].state = 0;
         critters[i].active = 1;
-        critters[i].hidden = 0;
+        critters[i].hidden = spawn_night != (critters[i].type == 2);
     }
 
     for(int i = 13; i <= 17; i++) { for(int j = 13; j <= 17; j++) { VISUAL_MAP[i][j] = 0; } }
@@ -379,11 +383,19 @@ void UpdateVillageNPCs(void) {
     }
 }
 
+int CritterAsleep(const CritterEntity *critter) {
+    int hour, minute; GetGameClock(&hour, &minute);
+    int night = hour >= 21 || hour < 6;
+    return night != (critter->type == 2);
+}
+
 void UpdateCritters(void) {
     if (world_frame % 30 != 0) return;
     for (int i = 0; i < MAX_CRITTERS; i++) {
         CritterEntity *critter = &critters[i];
         if (!critter->active) continue;
+        // Day animals sleep from 9 PM to 6 AM; the owl only comes out then.
+        if (CritterAsleep(critter)) { critter->hidden = 1; continue; }
         // Rain or snow sends nature to the nearest tree (or into a burrow if
         // there are none); it comes back out once the weather turns fair.
         if (IsAdverseWeather()) {
@@ -404,10 +416,6 @@ void UpdateCritters(void) {
             critter->hidden = 1;
             continue;
         }
-        // Day animals sleep from 9 PM to 6 AM; the owl only comes out then.
-        int hour, minute; GetGameClock(&hour, &minute);
-        int night = hour >= 21 || hour < 6;
-        if (night != (critter->type == 2)) { critter->hidden = 1; continue; }
         critter->hidden = 0;
         // Wildlife scatters from anything nearby, unless the hero is truly
         // virtuous and lucky enough that animals trust them.

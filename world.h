@@ -12,6 +12,7 @@ BiomeType PickBiomeForScreen(int gx, int gy);
 void GenerateProceduralScreen(int index);
 void UpdateVillageNPCs(void);
 void UpdateCritters(void);
+int CritterAsleep(const CritterEntity *critter);
 
 int MountainHasCave(int cell);
 #endif // WORLD_H

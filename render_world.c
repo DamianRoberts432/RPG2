@@ -267,6 +267,7 @@ void DrawEnvironmentalCritters(HDC hdc) {
     for (int i = 0; i < MAX_CRITTERS; i++) {
         if (!critters[i].active) continue;
         if (critters[i].hidden) {
+            if (CritterAsleep(&critters[i])) continue; // sleeping animals stay out of sight
             int tree_x, tree_y; GetIsoCoords(critters[i].x, critters[i].y, &tree_x, &tree_y);
             if (world_frame % 30 == 0) {
                 HBRUSH eye = CreateSolidBrush(RGB(245, 235, 190));
