@@ -323,7 +323,7 @@ void GenerateProceduralScreen(int index) {
         critters[i].y = (float)(5 + rand() % 20);
         critters[i].base_x = critters[i].x;
         critters[i].base_y = critters[i].y;
-        critters[i].type = rand() % 2; 
+        critters[i].type = rand() % 3; // 0 bird, 1 squirrel (both diurnal), 2 owl (nocturnal)
         critters[i].state = 0;
         critters[i].active = 1;
         critters[i].hidden = 0;
@@ -399,7 +399,27 @@ void UpdateCritters(void) {
             critter->hidden = 1;
             continue;
         }
+        // Day animals sleep from 9 PM to 6 AM; the owl only comes out then.
+        int hour, minute; GetGameClock(&hour, &minute);
+        int night = hour >= 21 || hour < 6;
+        if (night != (critter->type == 2)) { critter->hidden = 1; continue; }
         critter->hidden = 0;
+        // Wildlife scatters from anything nearby, unless the hero is truly
+        // virtuous and lucky enough that animals trust them.
+        int trusted = karma.soul >= 50 && stat_luck >= 8;
+        float fx = 0.0f, fy = 0.0f, near_d = 9.0f;
+        float tdx = critter->x - player_x, tdy = critter->y - player_y;
+        if (!trusted && tdx * tdx + tdy * tdy < near_d) { near_d = tdx * tdx + tdy * tdy; fx = tdx; fy = tdy; }
+        for (int e = 0; e < MAX_ENEMIES; e++) {
+            if (enemies[e].hearts <= 0.0f) continue;
+            float edx = critter->x - enemies[e].x, edy = critter->y - enemies[e].y;
+            if (edx * edx + edy * edy < near_d) { near_d = edx * edx + edy * edy; fx = edx; fy = edy; }
+        }
+        if (near_d < 9.0f) {
+            float d = (float)sqrt(fx * fx + fy * fy); if (d < 0.01f) { fx = 1.0f; d = 1.0f; }
+            critter->x += fx / d * 0.6f; critter->y += fy / d * 0.6f;
+            critter->state = 1;
+        } else critter->state = 0;
         critter->x += (float)(rand() % 3 - 1) * 0.08f;
         critter->y += (float)(rand() % 3 - 1) * 0.08f;
         if (critter->x < 2) critter->x = 2;
