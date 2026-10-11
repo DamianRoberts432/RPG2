@@ -94,7 +94,8 @@ void HandleInventoryPrimaryAction(void) {
         strcpy(arpg_action_log, "A&D STRATEGY GUIDE: secret card combos revealed!");
     } else if (strcmp(item->name, "Fish") == 0 || strcmp(item->name, "Apple") == 0) {
         ConsumeSelectedFood();
-    } else if (strcmp(item->slot, "Weapon") == 0 || strcmp(item->slot, "Armor") == 0 || strcmp(item->slot, "Shield") == 0) {
+    } else if (strcmp(item->slot, "Weapon") == 0 || strcmp(item->slot, "Armor") == 0 || strcmp(item->slot, "Shield") == 0 ||
+               strcmp(item->slot, "Ring") == 0) {
         ToggleEquipSelectedItem();
     } else if (strcmp(item->slot, "Tool") == 0) {
         strcpy(arpg_action_log, "TOOL: Already ready to gather - just interact with trees/rocks.");
@@ -152,6 +153,8 @@ float GetNamedItemWeight(const char *name) {
     if (strcmp(name, "Long Sword") == 0) return 5.0f;
     if (strcmp(name, "Axe") == 0) return 4.0f;
     if (strcmp(name, "Spear") == 0) return 3.0f;
+    if (strcmp(name, "Mace") == 0) return 5.0f;
+    if (strcmp(name, "Night Vision Ring") == 0) return 0.1f;
     if (strcmp(name, "Strategy Guide") == 0) return 0.5f;
     if (strcmp(name, "Rusty Sword") == 0) return 2.0f;
     if (strcmp(name, "Iron Sword") == 0) return 4.0f;
@@ -280,7 +283,7 @@ int ConsumeMaterialFromInventory(const char *name, int quantity) {
 }
 
 float LootWeight(int item_id) {
-    if (item_id >= LOOT_SHORT_SWORD && item_id <= LOOT_SPEAR) return weapon_catalog[item_id - 1].weight;
+    if (item_id >= LOOT_SHORT_SWORD && item_id <= LOOT_LAST_WEAPON) return weapon_catalog[item_id - 1].weight;
     return (item_id == LOOT_FISH || item_id == LOOT_APPLE) ? GetNamedItemWeight(item_id == LOOT_FISH ? "Fish" : "Apple") : 0.0f;
 }
 
@@ -288,7 +291,7 @@ int AddLootToInventory(int item_id, int quantity) {
     const char *name;
     const char *slot;
     WeaponStats *weapon = NULL;
-    if (item_id >= LOOT_SHORT_SWORD && item_id <= LOOT_SPEAR) {
+    if (item_id >= LOOT_SHORT_SWORD && item_id <= LOOT_LAST_WEAPON) {
         weapon = &weapon_catalog[item_id - 1];
         name = weapon->name; slot = item_id == LOOT_SHORT_BOW ? "Weapon" : "Weapon";
     } else if (item_id == LOOT_FISH) { name = "Fish"; slot = "Food"; }
@@ -454,6 +457,13 @@ float WeightSpeedFactor(void) {
     if (load <= 0.75f) return 1.0f;
     if (load >= 1.0f) return 0.0f;
     return (1.0f - load) / 0.25f;
+}
+
+// Worn Night Vision Ring: the night is drawn much brighter.
+int NightVisionActive(void) {
+    for (int i = 0; i < player_item_count; i++)
+        if (player_inventory[i].is_equipped && strcmp(player_inventory[i].name, "Night Vision Ring") == 0) return 1;
+    return 0;
 }
 
 int HasInventoryItem(const char *name) {

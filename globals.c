@@ -174,7 +174,10 @@ WeaponStats weapon_catalog[] = {
     // selling/dropping (see HandleVendorSell/DropSelectedItem).
     { LOOT_MUSASHI_BLADE, "Musashi's Blade", 10, 99999, 1.0f, 1.0f, 5000, 1.0f },
     // Thrust reaches further than a sword; RT / F throws it (see ThrowSpear).
-    { LOOT_SPEAR, "Spear", 2, 100, 3.0f, 1.0f, 30, 0.85f }
+    { LOOT_SPEAR, "Spear", 2, 100, 3.0f, 1.0f, 30, 0.85f },
+    { LOOT_LONG_BOW, "Long Bow", 2, 120, 2.0f, 0.0f, 40, 1.0f }, // arrows fly harder (see FirePlayerArrow)
+    { LOOT_MACE, "Mace", 3, 150, 5.0f, 1.5f, 35, 0.8f },
+    { LOOT_DAGGER, "Dagger", 1, 60, 1.0f, 0.0f, 10, 1.0f }
 };
 
 // Catalog spans every common weapon/armor/tool/food the
@@ -196,6 +199,10 @@ MerchantItem merchant_catalog[MERCH_ITEMS] = {
     { "Fish",          "Food",     0,                  5, -1, 0, RARITY_COMMON, 0 },
     { "Apple",         "Food",     0,                  3, -1, 0, RARITY_COMMON, 0 },
     { "Spear",         "Weapon",   LOOT_SPEAR,        30, 2,  2, RARITY_COMMON, 0 },
+    { "Dagger",        "Weapon",   LOOT_DAGGER,       10, 2,  2, RARITY_COMMON, 0 },
+    { "Mace",          "Weapon",   LOOT_MACE,         35, 1,  1, RARITY_UNCOMMON, 0 },
+    { "Long Bow",      "Weapon",   LOOT_LONG_BOW,     40, 1,  1, RARITY_UNCOMMON, 0 },
+    { "Night Vision Ring", "Ring", 0,                 60, 1,  1, RARITY_RARE, 0 },
     { "Long Sword",    "Weapon",   LOOT_LONG_SWORD,   35, 2,  2, RARITY_UNCOMMON, 0 },
     { "Short Bow",     "Weapon",   LOOT_SHORT_BOW,    25, 2,  2, RARITY_UNCOMMON, 0 },
     { "Strategy Guide", "Tool",    0,             200000, 1,  1, RARITY_RARE, 0 }, // 1,000,000 gold endgame luxury

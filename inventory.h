@@ -33,6 +33,7 @@ int IsLegendaryItemName(const char *name);
 void ExpireDroppedItems(void);
 void ClearLegendaryDrops(void);
 int HasInventoryItem(const char *name);
+int NightVisionActive(void);
 void ConsumeSelectedFood(void);
 
 #endif // INVENTORY_H

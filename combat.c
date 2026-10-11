@@ -353,6 +353,8 @@ void FirePlayerArrow(int is_tap) {
     player_arrow.vy = (track_dy / distance) * spd;
     player_arrow.vz = is_tap ? 0.25f : 0.5f;
     player_arrow.damage = is_tap ? 0.4f : (0.5f + (bow_charge_time * 1.5f));
+    for (int i = 0; i < player_item_count; i++)
+        if (player_inventory[i].is_equipped && strcmp(player_inventory[i].name, "Long Bow") == 0) { player_arrow.damage *= 1.4f; player_arrow.vx *= 1.2f; player_arrow.vy *= 1.2f; break; }
     player_arrow.active = 1; // Projectile active only upon release
     if (is_tap) {
         sprintf(arpg_action_log, "BOW: Quick-shot tap fired! (Light dmg: %.1f)", player_arrow.damage);

@@ -145,6 +145,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 TextOut(memHDC, 80, 430, "PRESS [ENTER] or [A BUTTON] TO ENTER THE WORLD.", 48);
             } else {
                 float ambient_intensity = (float)fabs(sin(day_night_cycle_accumulator));
+                if (NightVisionActive() && ambient_intensity < 0.6f) ambient_intensity = 0.6f;
                 int r_tone = (int)(25.0f + ambient_intensity * 80.0f);
                 int g_tone = (int)(30.0f + ambient_intensity * 155.0f);
                 int b_tone = (int)(40.0f + ambient_intensity * 45.0f);
