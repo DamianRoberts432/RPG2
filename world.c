@@ -4,7 +4,7 @@ void GenerateVillageNPCs(void) {
     village_npc_count = 0;
     int is_market = current_biome == BIOME_CASTLE;
     // Fewer settlements: only about one Prairie screen in three holds a village.
-    if (!is_market && !(current_biome == BIOME_PRAIRIE && screens_until_town > 2 && current_screen_index % 3 == 0)) return;
+    if (!is_market && !(current_biome == BIOME_PRAIRIE && current_screen_index % 3 == 0)) return;
     int shift = (current_screen_index % 3) - 1;
     const float village_x[4] = { 11.0f, 15.0f, 19.0f, 15.0f };
     const float village_y[4] = { 11.0f, 10.0f, 11.0f, 18.0f };
@@ -229,6 +229,10 @@ void GenerateProceduralScreen(int index) {
         grid_r >= 0 && grid_r < META_GRID_SIZE && grid_c >= 0 && grid_c < META_GRID_SIZE) {
         visited_biomes[grid_r][grid_c] = (uint8_t)(current_biome + 1);
     }
+    // Re-seed from the cell and its biome: the biome picker only rolls on a
+    // first visit, so without this a revisit would draw different tiles than
+    // the ones logged on the map.
+    srand((unsigned int)(0x51A7u + index * 313u) ^ ((unsigned int)current_biome * 2654435761u));
 
     for (int r = 0; r < MAP_SIZE; r++) {
         for (int c = 0; c < MAP_SIZE; c++) {

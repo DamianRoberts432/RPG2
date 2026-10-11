@@ -29,6 +29,10 @@ void RecordCurrentScreenOnMap(void) {
     else map_poi[gy][gx] &= (uint8_t)~POI_VILLAGE;
 }
 
+int IsMapCastle(int gx, int gy) {
+    return CellInWorld(gx, gy) && (map_poi[gy][gx] & POI_CASTLE);
+}
+
 void MarkMapTreasureFound(int origin_cell) {
     int gx = origin_cell % META_GRID_SIZE, gy = origin_cell / META_GRID_SIZE;
     if (origin_cell >= 0 && CellInWorld(gx, gy)) map_poi[gy][gx] |= POI_TREASURE_FOUND;
