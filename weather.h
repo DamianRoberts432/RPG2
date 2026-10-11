@@ -2,9 +2,9 @@
 #define WEATHER_H
 
 typedef enum { SEASON_SPRING, SEASON_SUMMER, SEASON_FALL, SEASON_WINTER } SeasonType;
-#define DAY_LENGTH_SECONDS (40.0f * 60.0f) // 20 min of daylight + 20 min of night
+#define DAY_LENGTH_SECONDS (24.0f * 60.0f) // 1 real second = 1 game minute
 #define GAME_HOUR_SECONDS (DAY_LENGTH_SECONDS / 24.0f)
-#define DAYS_PER_SEASON 5
+#define DAYS_PER_SEASON 30
 #define SEASON_LENGTH_SECONDS (DAY_LENGTH_SECONDS * DAYS_PER_SEASON)
 
 extern SeasonType current_season;

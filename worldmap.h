@@ -11,5 +11,6 @@ int IsMapTreasureFound(int origin_cell);
 void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h);
 int SaveWorldMapState(void);
 int LoadWorldMapState(void);
+int DeleteSaveFile(void);
 
 #endif // WORLDMAP_H

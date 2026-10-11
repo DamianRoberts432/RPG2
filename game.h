@@ -26,7 +26,7 @@
 #define MAX_BUTTERFLIES 8
 #define DEBRIS_MAX 16
 #define MAX_CRITTERS 4
-#define MERCH_ITEMS 17
+#define MERCH_ITEMS 24
 #define MAX_BLOOD_MIST 48
 #define MAX_CAMPFIRES 8
 #define MAX_INVENTORY_ITEMS 100
@@ -42,6 +42,7 @@
 // than their matching cooldowns so pursuit suppression always lapses before
 // the ability can be used again.
 #define FACING_CONE_DOT_THRESHOLD 0.25f
+#define MELEE_SWING_STAMINA 8.0f // every swing tires the hero; heavy weapons cost more
 #define SPELL_COOLDOWN_MS     1500
 #define BACKSTEP_COOLDOWN_MS  2000
 #define SNEAK_COOLDOWN_MS     5000
@@ -69,7 +70,7 @@ typedef enum {
     BIOME_CAVE, BIOME_CASTLE
 } BiomeType;
 extern const char *biome_names[];
-typedef enum { WEATHER_CLEAR, WEATHER_RAIN, WEATHER_SNOW } WeatherType;
+typedef enum { WEATHER_CLEAR, WEATHER_RAIN, WEATHER_SNOW, WEATHER_CLOUDY } WeatherType;
 
 typedef enum { RACE_ELF, RACE_HUMAN, RACE_DWARF, RACE_HALFLING, RACE_GNOME } RaceType;
 typedef enum { CLASS_NECROMANCER, CLASS_WIZARD, CLASS_KNIGHT, CLASS_WARRIOR, CLASS_ROGUE } ClassType;
@@ -292,8 +293,9 @@ extern int vendor_tab;
 
 // LOOT_* ids map 1:1 onto weapon_catalog[id - 1] for every entry up through
 // LOOT_SPEAR (kept contiguous on purpose - see LootWeight/AddLootToInventory).
-enum { LOOT_SHORT_SWORD = 1, LOOT_LONG_SWORD, LOOT_AXE, LOOT_SHORT_BOW, LOOT_RUSTY_SWORD, LOOT_MUSASHI_BLADE, LOOT_SPEAR, LOOT_FISH, LOOT_APPLE };
-extern WeaponStats weapon_catalog[7];
+enum { LOOT_SHORT_SWORD = 1, LOOT_LONG_SWORD, LOOT_AXE, LOOT_SHORT_BOW, LOOT_RUSTY_SWORD, LOOT_MUSASHI_BLADE, LOOT_SPEAR, LOOT_LONG_BOW, LOOT_MACE, LOOT_DAGGER, LOOT_FISH, LOOT_APPLE };
+#define LOOT_LAST_WEAPON LOOT_DAGGER
+extern WeaponStats weapon_catalog[10];
 #define WEAPON_CATALOG_COUNT ((int)(sizeof(weapon_catalog) / sizeof(weapon_catalog[0])))
 extern MerchantItem merchant_catalog[MERCH_ITEMS];
 extern const char *villager_greetings[];

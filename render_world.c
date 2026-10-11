@@ -270,8 +270,8 @@ void DrawEnvironmentalCritters(HDC hdc) {
             int tree_x, tree_y; GetIsoCoords(critters[i].x, critters[i].y, &tree_x, &tree_y);
             if (world_frame % 30 == 0) {
                 HBRUSH eye = CreateSolidBrush(RGB(245, 235, 190));
-                RECT eyes = { tree_x - 4, tree_y - 4, tree_x + 5, tree_y - 1 };
-                FillRect(hdc, &eyes, eye); DeleteObject(eye);
+                RECT el = { tree_x - 3, tree_y - 4, tree_x - 1, tree_y - 2 }, er = { tree_x + 1, tree_y - 4, tree_x + 3, tree_y - 2 };
+                FillRect(hdc, &el, eye); FillRect(hdc, &er, eye); DeleteObject(eye);
             }
             continue;
         }
@@ -282,11 +282,26 @@ void DrawEnvironmentalCritters(HDC hdc) {
             int flap = (int)(sin(world_tick * 12.0f + i) * 3.0f);
             POINT wing[] = {{sx - 6, sy - 4 - flap}, {sx, sy + jump_bob}, {sx + 6, sy - 4 - flap}, {sx, sy - 2 + jump_bob}};
             Polygon(hdc, wing, 4); SelectObject(hdc, old); DeleteObject(bird_b);
-        } else {
+        } else if (critters[i].type == 2) { // owl
+            HBRUSH owl_b = CreateSolidBrush(RGB(120, 90, 60)); HGDIOBJ old = SelectObject(hdc, owl_b);
+            HPEN owl_p = CreatePen(PS_SOLID, 1, RGB(80, 60, 40)); HGDIOBJ old_p = SelectObject(hdc, owl_p);
+            Ellipse(hdc, sx - 5, sy - 10, sx + 5, sy + 3);
+            SelectObject(hdc, old); SelectObject(hdc, old_p); DeleteObject(owl_b); DeleteObject(owl_p);
+            HBRUSH eye = CreateSolidBrush(RGB(250, 210, 60));
+            RECT el = { sx - 4, sy - 7, sx - 1, sy - 4 }, er = { sx + 1, sy - 7, sx + 4, sy - 4 };
+            FillRect(hdc, &el, eye); FillRect(hdc, &er, eye); DeleteObject(eye);
+        } else { // squirrel: round body, head with an eye, little hands, bushy tail
+            int y0 = sy - jump_bob;
             HBRUSH sq_b = CreateSolidBrush(RGB(210, 105, 30)); HGDIOBJ old = SelectObject(hdc, sq_b);
-            RECT body = { sx - 4, sy - 4 - jump_bob, sx + 4, sy + 2 - jump_bob }; FillRect(hdc, &body, sq_b);
-            POINT tail[] = {{sx - 4, sy - jump_bob}, {sx - 10, sy - 8 - jump_bob}, {sx - 6, sy - jump_bob}};
-            Polygon(hdc, tail, 3); SelectObject(hdc, old); DeleteObject(sq_b);
+            HPEN sq_p = CreatePen(PS_SOLID, 1, RGB(150, 70, 20)); HGDIOBJ old_p = SelectObject(hdc, sq_p);
+            POINT tail[] = {{sx - 3, y0}, {sx - 9, y0 - 4}, {sx - 10, y0 - 10}, {sx - 6, y0 - 12}, {sx - 5, y0 - 5}};
+            Polygon(hdc, tail, 5);
+            Ellipse(hdc, sx - 4, y0 - 5, sx + 4, y0 + 2);
+            Ellipse(hdc, sx + 1, y0 - 9, sx + 7, y0 - 3);
+            MoveToEx(hdc, sx + 3, y0 - 2, NULL); LineTo(hdc, sx + 6, y0 - 1);
+            SelectObject(hdc, old); SelectObject(hdc, old_p); DeleteObject(sq_b); DeleteObject(sq_p);
+            HBRUSH eye = CreateSolidBrush(RGB(20, 15, 10));
+            RECT e = { sx + 4, y0 - 7, sx + 6, y0 - 5 }; FillRect(hdc, &e, eye); DeleteObject(eye);
         }
     }
 }
@@ -324,6 +339,7 @@ void DrawNightEyes(HDC hdc) {
 
 void DrawSolitaireSunMoonBeam(HDC hdc) {
     if (current_biome == BIOME_CAVE) return;
+    if (current_weather != WEATHER_CLEAR) return; // clouds, rain and snow hide the sun and moon
 
     float ambient_intensity = (float)fabs(sin(day_night_cycle_accumulator));
     int is_night = (ambient_intensity < 0.35f);

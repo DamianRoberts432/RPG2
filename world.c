@@ -3,7 +3,8 @@
 void GenerateVillageNPCs(void) {
     village_npc_count = 0;
     int is_market = current_biome == BIOME_CASTLE;
-    if (!is_market && !(current_biome == BIOME_PRAIRIE && screens_until_town > 2)) return;
+    // Fewer settlements: only about one Prairie screen in three holds a village.
+    if (!is_market && !(current_biome == BIOME_PRAIRIE && screens_until_town > 2 && current_screen_index % 3 == 0)) return;
     int shift = (current_screen_index % 3) - 1;
     const float village_x[4] = { 11.0f, 15.0f, 19.0f, 15.0f };
     const float village_y[4] = { 11.0f, 10.0f, 11.0f, 18.0f };
@@ -14,9 +15,13 @@ void GenerateVillageNPCs(void) {
     if (is_market) {
         RestockMerchant();
         village_npcs[0] = (NPCEntity){ 15.0f, 17.0f, 15.0f, 17.0f, 1, 0, FACE_DOWN, "Welcome, adventurer!", 90 };
-        village_npcs[1] = (NPCEntity){ 11.0f, 16.0f, 11.0f, 16.0f, 2, 0, FACE_DOWN, "Fine wares from distant roads.", 130 };
-        village_npcs[2] = (NPCEntity){ 19.0f, 16.0f, 19.0f, 16.0f, 2, 0, FACE_DOWN, "Keep your purse close.", 160 };
-        village_npc_count = 3;
+        // Merchant and blacksmith are always here; the pet shop and card shop
+        // keepers only sometimes set up in town.
+        village_npcs[1] = (NPCEntity){ 11.0f, 16.0f, 11.0f, 16.0f, 3, 0, FACE_DOWN, "Blacksmith: X to repair your weapon.", 130 };
+        village_npc_count = 2;
+        unsigned int roll = (unsigned int)RainHash(current_screen_index * 7919 + SeasonDay());
+        if (roll % 2) village_npcs[village_npc_count++] = (NPCEntity){ 19.0f, 16.0f, 19.0f, 16.0f, 4, 0, FACE_DOWN, "Pet shop: companions arrive soon!", 160 };
+        if ((roll >> 3) % 2) village_npcs[village_npc_count++] = (NPCEntity){ 15.0f, 20.0f, 15.0f, 20.0f, 5, 0, FACE_DOWN, "Card shop: X buys a 3-card booster (20,000 gold).", 190 };
         merchant_x = village_npcs[0].x; merchant_y = village_npcs[0].y;
     } else {
         for (int i = 0; i < 4; i++) {
@@ -323,7 +328,7 @@ void GenerateProceduralScreen(int index) {
         critters[i].y = (float)(5 + rand() % 20);
         critters[i].base_x = critters[i].x;
         critters[i].base_y = critters[i].y;
-        critters[i].type = rand() % 2; 
+        critters[i].type = rand() % 3; // 0 bird, 1 squirrel (both diurnal), 2 owl (nocturnal)
         critters[i].state = 0;
         critters[i].active = 1;
         critters[i].hidden = 0;
@@ -399,7 +404,27 @@ void UpdateCritters(void) {
             critter->hidden = 1;
             continue;
         }
+        // Day animals sleep from 9 PM to 6 AM; the owl only comes out then.
+        int hour, minute; GetGameClock(&hour, &minute);
+        int night = hour >= 21 || hour < 6;
+        if (night != (critter->type == 2)) { critter->hidden = 1; continue; }
         critter->hidden = 0;
+        // Wildlife scatters from anything nearby, unless the hero is truly
+        // virtuous and lucky enough that animals trust them.
+        int trusted = karma.soul >= 50 && stat_luck >= 8;
+        float fx = 0.0f, fy = 0.0f, near_d = 9.0f;
+        float tdx = critter->x - player_x, tdy = critter->y - player_y;
+        if (!trusted && tdx * tdx + tdy * tdy < near_d) { near_d = tdx * tdx + tdy * tdy; fx = tdx; fy = tdy; }
+        for (int e = 0; e < MAX_ENEMIES; e++) {
+            if (enemies[e].hearts <= 0.0f) continue;
+            float edx = critter->x - enemies[e].x, edy = critter->y - enemies[e].y;
+            if (edx * edx + edy * edy < near_d) { near_d = edx * edx + edy * edy; fx = edx; fy = edy; }
+        }
+        if (near_d < 9.0f) {
+            float d = (float)sqrt(fx * fx + fy * fy); if (d < 0.01f) { fx = 1.0f; d = 1.0f; }
+            critter->x += fx / d * 0.6f; critter->y += fy / d * 0.6f;
+            critter->state = 1;
+        } else critter->state = 0;
         critter->x += (float)(rand() % 3 - 1) * 0.08f;
         critter->y += (float)(rand() % 3 - 1) * 0.08f;
         if (critter->x < 2) critter->x = 2;

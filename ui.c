@@ -112,6 +112,69 @@ void DrawPlayerStatusHUD(HDC hdc) {
 // rows - merchant items with price/stock on the Buy tab, or owned items with
 // their sell price on the Sell tab - so it's always obvious what is being
 // bought or sold, instead of the old single confusing status line.
+static WeaponStats *FindWeaponStats(const char *name) {
+    for (int i = 0; i < WEAPON_CATALOG_COUNT; i++) if (strcmp(weapon_catalog[i].name, name) == 0) return &weapon_catalog[i];
+    if (strcmp(name, "Iron Sword") == 0) return &weapon_catalog[0];
+    return NULL;
+}
+
+static const char *ItemBlurb(const char *name) {
+    if (strcmp(name, "Strategy Guide") == 0) return "Secret card combos. T/Back to browse here, or buy it.";
+    if (strcmp(name, "Matches") == 0) return "Light a campfire from the inventory (needs 2 Wood).";
+    if (strcmp(name, "Fish") == 0 || strcmp(name, "Apple") == 0) return "Eat to restore health.";
+    if (strcmp(name, "Pickaxe") == 0) return "Mine rocks with X.";
+    if (strcmp(name, "Axe") == 0) return "Chop trees with X; also a heavy weapon.";
+    if (strcmp(name, "Fishing Pole") == 0) return "G to cast at water, hold F and release at 50-80%.";
+    if (strcmp(name, "Spear") == 0) return "Long thrust; RT/F throws it.";
+    if (strcmp(name, "Night Vision Ring") == 0) return "Worn: the night looks much brighter.";
+    if (strcmp(name, "Canoe") == 0 || strcmp(name, "Raft") == 0 || strcmp(name, "Boat") == 0) return "Carry it to paddle across water.";
+    return "";
+}
+
+// Shop "item card": stats of the highlighted row, with a frame on the far
+// right reserved for the item's picture.
+static void DrawShopItemCard(HDC hdc) {
+    const char *name, *slot, *rarity = ""; int price = -1, qty = 0, dur = 0, dur_max = 0;
+    if (vendor_tab == 0) {
+        MerchantItem *o = &merchant_catalog[merchant_selection];
+        if (o->requires_treasure_hunt && cave_treasure_hunts_found <= 0) return;
+        name = o->name; slot = o->slot; price = ShopPrice(o->base_price * (int)o->rarity);
+        rarity = o->rarity == RARITY_LEGENDARY ? "Legendary" : o->rarity == RARITY_RARE ? "Rare" : o->rarity == RARITY_UNCOMMON ? "Uncommon" : "Common";
+    } else {
+        if (player_item_count == 0) return;
+        InventoryItem *it = &player_inventory[selected_inv_index];
+        name = it->name; slot = it->slot; qty = it->quantity; dur = it->durability_current; dur_max = it->durability_max;
+    }
+    WeaponStats *w = FindWeaponStats(name);
+    RECT card = { 660, 90, WINDOW_WIDTH - 60, 420 };
+    HBRUSH bg = CreateSolidBrush(RGB(26, 24, 20)); FillRect(hdc, &card, bg); DeleteObject(bg);
+    HPEN pen = CreatePen(PS_SOLID, 2, RGB(200, 170, 90)); HGDIOBJ old_p = SelectObject(hdc, pen);
+    HGDIOBJ old_b = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+    Rectangle(hdc, card.left, card.top, card.right, card.bottom);
+    HPEN dash = CreatePen(PS_DOT, 1, RGB(150, 140, 120)); SelectObject(hdc, dash);
+    Rectangle(hdc, WINDOW_WIDTH - 320, 110, WINDOW_WIDTH - 80, 400);
+    SelectObject(hdc, old_b); SelectObject(hdc, old_p); DeleteObject(pen); DeleteObject(dash);
+    SetBkMode(hdc, TRANSPARENT);
+    SetTextColor(hdc, RGB(150, 140, 120));
+    TextOut(hdc, WINDOW_WIDTH - 236, 248, "(item art)", 10);
+    char line[128]; int y = 106;
+    SetTextColor(hdc, RGB(255, 215, 0)); TextOut(hdc, 680, y, name, (int)strlen(name)); y += 26;
+    SetTextColor(hdc, RGB(225, 225, 225));
+    sprintf(line, "Type: %s%s%s", slot, rarity[0] ? "   Rarity: " : "", rarity); TextOut(hdc, 680, y, line, (int)strlen(line)); y += 20;
+    sprintf(line, "Weight: %.1f", w ? w->weight : GetNamedItemWeight(name)); TextOut(hdc, 680, y, line, (int)strlen(line)); y += 20;
+    if (w) {
+        sprintf(line, "Damage: %d   Durability: %d / %d", w->damage, dur_max ? dur : w->durability_max, dur_max ? dur_max : w->durability_max);
+        TextOut(hdc, 680, y, line, (int)strlen(line)); y += 20;
+        if (strstr(name, "Bow")) strcpy(line, "Ranged: hold RT / F to draw (drains stamina)");
+        else sprintf(line, "Stamina per swing: %.0f   Speed: %s", MELEE_SWING_STAMINA + 2.0f * w->stamina_cost, w->attack_speed_mult < 1.0f ? "Slow" : "Normal");
+        TextOut(hdc, 680, y, line, (int)strlen(line)); y += 20;
+    }
+    if (price >= 0) { sprintf(line, "Price: %d gold", price); TextOut(hdc, 680, y, line, (int)strlen(line)); y += 20; }
+    if (qty) { sprintf(line, "You own: %d", qty); TextOut(hdc, 680, y, line, (int)strlen(line)); y += 20; }
+    const char *blurb = ItemBlurb(name);
+    SetTextColor(hdc, RGB(170, 200, 230)); TextOut(hdc, 680, y + 10, blurb, (int)strlen(blurb));
+}
+
 void DrawVendorShopOverlay(HDC hdc) {
     RECT box = { 160, 90, 640, 420 };
     HBRUSH bg = CreateSolidBrush(RGB(18, 20, 28)); FillRect(hdc, &box, bg); DeleteObject(bg);
@@ -205,9 +268,13 @@ void DrawVendorShopOverlay(HDC hdc) {
     SetTextColor(hdc, RGB(150, 220, 255));
     TextOut(hdc, box.left + 320, box.bottom - 30, "[ ESC/B ] Close shop", 20);
     SetTextColor(hdc, RGB(200, 90, 80));
-    TextOut(hdc, box.left + 320, box.bottom - 52, "[ T/Back ] Steal", 16);
+    int guide_row = vendor_tab == 0 && strcmp(merchant_catalog[merchant_selection].name, "Strategy Guide") == 0;
+    const char *t_hint = guide_row ? "[ T/Back ] Browse" : "[ T/Back ] Steal";
+    TextOut(hdc, box.left + 320, box.bottom - 52, t_hint, (int)strlen(t_hint));
     SetTextColor(hdc, RGB(150, 160, 170));
     TextOut(hdc, box.left + 20, box.bottom - 52, "UP/DOWN or [ ] / D-PAD: scroll", 30);
+    DrawShopItemCard(hdc);
+    DrawStrategyGuideFlash(hdc);
 }
 
 // Two-second peek at the secret card combos after reading the Strategy Guide.
@@ -404,6 +471,9 @@ void DrawTabbedMenuOverlay(HDC hdc) {
         sprintf(buf, "[1] XP Multiplier: %.1fx   (Modify with Left/Right Arrow)", opt_xp_mult); TextOut(hdc, 100, 140, buf, (int)strlen(buf));
         sprintf(buf, "[2] Loot Multiplier: %.1fx", opt_loot_mult); TextOut(hdc, 100, 180, buf, (int)strlen(buf));
         sprintf(buf, "[3] Day/Night Cycle Speed: %.1fx", opt_day_night_speed); TextOut(hdc, 100, 220, buf, (int)strlen(buf));
+        SetTextColor(hdc, RGB(255, 120, 100));
+        TextOut(hdc, 100, 280, "[9] / Back: Delete save file (press twice to confirm)", 53);
+        SetTextColor(hdc, RGB(255, 255, 255));
     }
 
     SelectObject(hdc, old_p); DeleteObject(border_p); SelectObject(hdc, old_b);

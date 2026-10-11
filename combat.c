@@ -66,7 +66,6 @@ void SpawnBloodMist(float x, float y) {
 // Heavy or critical hits spray 8-16 specks away from the hero.
 #define HEAVY_HIT_DAMAGE 2.0f
 #define SPEAR_REACH 2.6f
-#define MELEE_SWING_STAMINA 8.0f // every swing tires the hero; heavy weapons cost more
 #define SPEAR_THRUST_DOT 0.7f // narrower than a sword swing: a straight thrust
 void SpawnBloodBurst(float x, float y, float dir_x, float dir_y) {
     float d = (float)sqrt(dir_x * dir_x + dir_y * dir_y);
@@ -134,7 +133,8 @@ void UpdateDebrisTwigs(void) {
     }
 }
 
-#define JUNK_DROP_RATE 0.6f
+#define JUNK_DROP_RATE 0.4f
+#define GOLD_DROP_CAP 75
 #define OVERKILL_BLOOD 1.0f // hearts of damage past zero that trigger an extra spray
 void HandleEnemyDamage(float dmg) {
     if (fabs(sin(day_night_cycle_accumulator)) < 0.35f) dmg *= 0.9f;
@@ -152,7 +152,7 @@ void HandleEnemyDamage(float dmg) {
         int is_night = fabs(sin(day_night_cycle_accumulator)) < 0.35f;
         int gained_xp = (int)(((10 + rand() % 7 + (is_night ? 2 : 0)) * opt_xp_mult) * ((is_night && night_bonus_active) ? 1.25f : 1.0f));
         float loot_multiplier = opt_loot_mult * (is_night ? 1.5f : 1.0f);
-        // Ordinary (junk) drops are 40% rarer than they used to be, to cut ground clutter.
+        // Ordinary (junk) drops are 60% rarer than they used to be, to cut ground clutter.
         int loot_chance = (int)(70.0f * JUNK_DROP_RATE * loot_multiplier) + 3 * stat_spent[4];
         if (loot_chance > 100) loot_chance = 100;
         if (rand() % 100 < loot_chance) {
@@ -161,6 +161,13 @@ void HandleEnemyDamage(float dmg) {
             if (loot_quantity < 1) loot_quantity = 1;
             if (rand() % 100 < (int)((loot_multiplier - (int)loot_multiplier) * 100.0f)) loot_quantity++;
             DropGroundLoot(enemy_x, enemy_y, loot_id, loot_quantity);
+        }
+        // A little gold, more with level and luck, never more than GOLD_DROP_CAP.
+        int coins = 0;
+        if (rand() % 100 < 35 + 2 * stat_spent[4]) {
+            coins = 1 + rand() % (3 + player_level + 2 * stat_spent[4]);
+            if (coins > GOLD_DROP_CAP) coins = GOLD_DROP_CAP;
+            gold_count += coins;
         }
         int hoard = 0;
         if (IS_BOSS_MONSTER(active_monster)) {
@@ -174,11 +181,11 @@ void HandleEnemyDamage(float dmg) {
         if (IS_BOSS_MONSTER(active_monster)) { karma.life_marks |= (uint16_t)(1u << active_monster); KarmaAdjust(5, 0, 0, 10); }
         else if (rand() % 5 == 0) KarmaAdjust(1, 0, 0, 0);
         if (player_xp >= player_next_level_xp) {
-            // Each level needs 50 more XP than the last (level 10 ~ 200 kills, 25 ~ 1250).
+            // Each level needs 100 more XP than the last, so attribute points come slower.
             while (player_xp >= player_next_level_xp) {
                 player_level++;
                 player_xp -= player_next_level_xp;
-                player_next_level_xp += 50;
+                player_next_level_xp += 100;
                 stat_points += STAT_POINTS_PER_LEVEL;
             }
             sprintf(arpg_action_log, "LEVEL UP! Reached Level %d! %d attribute points to spend (Hero tab: Y / P).", player_level, stat_points);
@@ -186,6 +193,7 @@ void HandleEnemyDamage(float dmg) {
             if (hoard) sprintf(arpg_action_log, "VICTORY: The %s falls! +%d XP, %d gold from its hoard!", MonsterName(active_monster), gained_xp, hoard);
             else sprintf(arpg_action_log, "VICTORY: %s slain! +%d XP", MonsterName(active_monster), gained_xp);
         }
+        if (coins) { size_t n = strlen(arpg_action_log); snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  +%d gold", coins); }
         if (monster_card_links[active_monster].kills < 65535) monster_card_links[active_monster].kills++;
         TryCardDrop(active_monster);
     } else {
@@ -345,6 +353,8 @@ void FirePlayerArrow(int is_tap) {
     player_arrow.vy = (track_dy / distance) * spd;
     player_arrow.vz = is_tap ? 0.25f : 0.5f;
     player_arrow.damage = is_tap ? 0.4f : (0.5f + (bow_charge_time * 1.5f));
+    for (int i = 0; i < player_item_count; i++)
+        if (player_inventory[i].is_equipped && strcmp(player_inventory[i].name, "Long Bow") == 0) { player_arrow.damage *= 1.4f; player_arrow.vx *= 1.2f; player_arrow.vy *= 1.2f; break; }
     player_arrow.active = 1; // Projectile active only upon release
     if (is_tap) {
         sprintf(arpg_action_log, "BOW: Quick-shot tap fired! (Light dmg: %.1f)", player_arrow.damage);
@@ -462,8 +472,13 @@ void UpdateThrownSpear(void) {
 // the button press so it fires once per press rather than every held frame.
 // See the FACING_CONE_DOT_THRESHOLD / *_COOLDOWN_MS / *_SUPPRESS_MS /
 // *_FLASH_FRAMES constants defined near the top of the file for tuning.
+// Every class ability grows in three stages: level 1, 3 and 5.
+static int AbilityStage(void) { return player_level >= 5 ? 3 : player_level >= 3 ? 2 : 1; }
+#define ZOMBIE_EXTRA_MP 10.0f
+
 void FireClassAbility(void) {
     DWORD now = GetTickCount();
+    int stage = AbilityStage();
     // Signed-subtraction comparison (rather than `now < y_ability_cooldown_until`)
     // stays correct across the ~49.7 day GetTickCount() wraparound boundary,
     // matching the (GetTickCount() - last_x > threshold) pattern used elsewhere
@@ -487,24 +502,28 @@ void FireClassAbility(void) {
             else if (player_facing == FACE_DOWN) summoned_zombie.y += 1.0f;
             else if (player_facing == FACE_LEFT) summoned_zombie.x -= 1.0f;
             else summoned_zombie.x += 1.0f;
-            // Zombie (poison bite) from level 1, Skeleton (tank) from 3, Ghost
-            // (fast, phases through blows) from 5; each cast raises the next one.
-            static const int unlock_level[3] = { 1, 3, 5 };
-            static const float summon_hp[3] = { 3.0f, 6.0f, 2.0f };
+            // Ghost (fast, weakest, fades soonest) from level 1, Skeleton from 3,
+            // Zombie (hardest hitting, poison, lingers longest, extra MP) from 5.
+            // Each cast raises the next unlocked one.
+            static const int unlock_level[3] = { 5, 3, 1 };      // zombie, skeleton, ghost
+            static const float summon_hp[3] = { 4.0f, 5.0f, 2.0f };
+            static const int summon_linger[3] = { 1200, 900, 600 }; // frames
             static const char *summon_msg[3] = { "NECROMANCY: A zombie claws its way from the earth! Its bite poisons.",
                                                  "NECROMANCY: A skeleton warrior rises to shield you!",
                                                  "NECROMANCY: A ghost drifts out of the veil!" };
-            int type = player_level >= unlock_level[next_summon_type] ? next_summon_type : SUMMON_ZOMBIE;
+            int type = player_level >= unlock_level[next_summon_type] ? next_summon_type : SUMMON_GHOST;
+            float summon_mp = CLASS_ABILITY_MP_COST + (type == SUMMON_ZOMBIE ? ZOMBIE_EXTRA_MP : 0.0f);
+            if (player_mp < summon_mp) { sprintf(arpg_action_log, "ABILITY: Not enough magic (%d/%d MP).", (int)player_mp, (int)summon_mp); return; }
             next_summon_type = type;
             do next_summon_type = (next_summon_type + 1) % 3; while (player_level < unlock_level[next_summon_type]);
             summoned_zombie.type = type;
-            summoned_zombie.hp = summon_hp[type]; summoned_zombie.timer = 900;
+            summoned_zombie.hp = summon_hp[type]; summoned_zombie.timer = summon_linger[type];
             summoned_zombie.raise_frame = 0; summoned_zombie.attack_cooldown = 0;
             summoned_zombie.active = 1;
             if (type != SUMMON_GHOST) SpawnDirtClods(summoned_zombie.x, summoned_zombie.y + 0.3f);
             KarmaAdjust(0, 5, 0, 0);
             ability_visual_frame = SPELL_FLASH_FRAMES;
-            player_mp -= CLASS_ABILITY_MP_COST; y_ability_cooldown_until = now + SPELL_COOLDOWN_MS;
+            player_mp -= summon_mp; y_ability_cooldown_until = now + SPELL_COOLDOWN_MS;
             strcpy(arpg_action_log, summon_msg[type]);
             return;
         }
@@ -524,11 +543,11 @@ void FireClassAbility(void) {
 
         float distance = (float)sqrt(track_dx * track_dx + track_dy * track_dy);
         if (distance < 0.001f) { track_dx = 1.0f; distance = 1.0f; }
-        float spd = 0.32f;
+        float spd = 0.28f + 0.06f * stage;
         player_spell.vx = (track_dx / distance) * spd;
         player_spell.vy = (track_dy / distance) * spd;
         player_spell.vz = 0.0f;
-        player_spell.damage = 1.5f;
+        player_spell.damage = 1.0f + 0.75f * stage;
         player_spell.active = 1;
         ability_visual_frame = SPELL_FLASH_FRAMES;
         player_mp -= CLASS_ABILITY_MP_COST; y_ability_cooldown_until = now + SPELL_COOLDOWN_MS;
@@ -540,7 +559,8 @@ void FireClassAbility(void) {
         else if (player_facing == FACE_LEFT) ndx = 1.0f;
         else ndx = -1.0f;
 
-        float tx = player_x + ndx, ty = player_y + ndy;
+        float hop = 0.5f + 0.5f * stage;
+        float tx = player_x + ndx * hop, ty = player_y + ndy * hop;
         if (tx >= 0 && tx < MAP_SIZE && ty >= 0 && ty < MAP_SIZE &&
             VISUAL_MAP[(int)ty][(int)tx] != 1 && VISUAL_MAP[(int)ty][(int)tx] != 12) {
             player_x = tx; player_y = ty;
@@ -554,16 +574,17 @@ void FireClassAbility(void) {
         float m_dist = DistanceToEnemy();
         if (enemy_hearts > 0.0f && m_dist < 2.0f && IsFacingEnemy()) {
             sword_swipe_frame = 10;
-            HandleEnemyDamage(2.0f);
+            HandleEnemyDamage(1.0f + 1.0f * stage);
             strcpy(arpg_action_log, "DEFENSIVE BACKSTEP: Countered with a heavy strike!");
         } else {
             strcpy(arpg_action_log, "DEFENSIVE BACKSTEP: Repositioned, enemies briefly wary!");
         }
     } else { // Rogue
         is_sneaking = 1;
-        monster_pursuit_suppressed_until = now + SNEAK_SUPPRESS_MS;
+        int sneak_ms = SNEAK_SUPPRESS_MS + 2000 * (stage - 1); // 4 / 6 / 8 seconds
+        monster_pursuit_suppressed_until = now + sneak_ms;
         ability_visual_frame = ABILITY_FLASH_FRAMES;
-        player_mp -= CLASS_ABILITY_MP_COST; y_ability_cooldown_until = now + SNEAK_COOLDOWN_MS;
-        strcpy(arpg_action_log, "SNEAK: Breaking monster detection for 4s!");
+        player_mp -= CLASS_ABILITY_MP_COST; y_ability_cooldown_until = now + SNEAK_COOLDOWN_MS + 2000 * (stage - 1);
+        sprintf(arpg_action_log, "SNEAK: Breaking monster detection for %ds!", sneak_ms / 1000);
     }
 }

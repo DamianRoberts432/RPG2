@@ -645,7 +645,7 @@ static void DrawSummonedSkeleton(HDC hdc, int sx, int sy, int face_dir) {
     FillRect(hdc, &el, eye); FillRect(hdc, &er, eye); DeleteObject(eye);
 }
 
-static void DrawSummonedGhost(HDC hdc, int sx, int sy, int face_dir) {
+static void DrawGhostShape(HDC hdc, int sx, int sy, int face_dir) {
     sy += (int)(sin(world_tick * 3.0f) * 3.0f) - 4;
     COLORREF mist = RGB(200, 225, 240);
     BrushEllipse(hdc, mist, sx - 8, sy - 12, sx + 8, sy + 6);
@@ -654,6 +654,20 @@ static void DrawSummonedGhost(HDC hdc, int sx, int sy, int face_dir) {
     HBRUSH eye = CreateSolidBrush(RGB(40, 50, 70));
     RECT el = { sx - 4 + face_dir * 2, sy - 6, sx - 1 + face_dir * 2, sy - 2 }, er = { sx + 1 + face_dir * 2, sy - 6, sx + 4 + face_dir * 2, sy - 2 };
     FillRect(hdc, &el, eye); FillRect(hdc, &er, eye); DeleteObject(eye);
+}
+
+// The ghost is drawn onto a copy of the background, then blended back at
+// about 40% so the scene clearly shows through it.
+static void DrawSummonedGhost(HDC hdc, int sx, int sy, int face_dir) {
+    const int W = 32, H = 40, ox = sx - 16, oy = sy - 22;
+    HDC mem = CreateCompatibleDC(hdc);
+    HBITMAP bmp = CreateCompatibleBitmap(hdc, W, H);
+    HGDIOBJ old_bmp = SelectObject(mem, bmp);
+    BitBlt(mem, 0, 0, W, H, hdc, ox, oy, SRCCOPY);
+    DrawGhostShape(mem, 16, 22, face_dir);
+    BLENDFUNCTION bf = { AC_SRC_OVER, 0, 105, 0 };
+    AlphaBlend(hdc, ox, oy, W, H, mem, 0, 0, W, H, bf);
+    SelectObject(mem, old_bmp); DeleteObject(bmp); DeleteDC(mem);
 }
 
 void DrawSummonedZombie(HDC hdc) {

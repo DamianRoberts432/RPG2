@@ -14,6 +14,20 @@ int AnyPlayerInput(void) {
     return 0;
 }
 
+// Delete needs two presses within 3 seconds so it can't happen by accident.
+void RequestDeleteSave(void) {
+    static DWORD armed_at = 0;
+    DWORD now = GetTickCount();
+    if (armed_at == 0 || now - armed_at > 3000) {
+        armed_at = now;
+        strcpy(arpg_action_log, "DELETE SAVE: press again within 3 seconds to confirm.");
+        return;
+    }
+    armed_at = 0;
+    if (DeleteSaveFile()) strcpy(arpg_action_log, "SAVE DELETED. Quit and restart for a fresh world (saving is off until then).");
+    else strcpy(arpg_action_log, "DELETE SAVE: could not delete rpg2_save.dat.");
+}
+
 void ProcessGamepadInput(void) {
     if (sleep_fade_frame > 0) return;
     XINPUT_STATE state; SecureZeroMemory(&state, sizeof(XINPUT_STATE));
@@ -73,6 +87,7 @@ void ProcessGamepadInput(void) {
                 if (state.Gamepad.bRightTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD && world_map_zoom < 8) { world_map_zoom *= 2; last_tab_gp = GetTickCount(); }
             }
             
+            if (current_menu_tab == 2 && (buttons & XINPUT_GAMEPAD_BACK)) { RequestDeleteSave(); last_tab_gp = GetTickCount(); }
             if (current_menu_tab == 0 && (buttons & XINPUT_GAMEPAD_Y)) { stat_assign_mode = !stat_assign_mode; last_tab_gp = GetTickCount(); }
             if (current_menu_tab == 0 && stat_assign_mode) {
                 if (buttons & XINPUT_GAMEPAD_DPAD_UP) { stat_cursor = (stat_cursor + STAT_COUNT - 1) % STAT_COUNT; last_tab_gp = GetTickCount(); }
@@ -259,6 +274,7 @@ void ProcessGamepadInput(void) {
             if (GetAsyncKeyState('1') & 0x8000) { opt_xp_mult += 0.5f; if (opt_xp_mult > 3.0f) opt_xp_mult = 0.5f; last_tab_kb = GetTickCount(); }
             if (GetAsyncKeyState('2') & 0x8000) { opt_loot_mult += 0.5f; if (opt_loot_mult > 3.0f) opt_loot_mult = 0.5f; last_tab_kb = GetTickCount(); }
             if (GetAsyncKeyState('3') & 0x8000) { opt_day_night_speed += 0.5f; if (opt_day_night_speed > 3.0f) opt_day_night_speed = 0.5f; last_tab_kb = GetTickCount(); }
+            if (GetAsyncKeyState('9') & 0x8000) { RequestDeleteSave(); last_tab_kb = GetTickCount(); }
         }
     }
 

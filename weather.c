@@ -12,7 +12,7 @@ float weather_intensity = 0.0f;
 float snow_cover = 0.0f;
 float wind_gust = 0.0f;
 const char *season_names[] = { "Spring", "Summer", "Fall", "Winter" };
-const char *weather_names[] = { "Fair", "Rain", "Snow" };
+const char *weather_names[] = { "Fair", "Rain", "Snow", "Cloudy" };
 char weather_source_label[96] = "PC clock/date";
 
 static float season_elapsed = 0.0f;
@@ -23,6 +23,8 @@ static float target_intensity = 0.0f;
 static float front_seconds_left = 0.0f;
 static float gust_time = 0.0f, gust_duration = 0.0f, gust_power = 0.0f, gust_check_timer = 0.0f;
 static int gust_sign = 1;
+static float cloud_hold = 0.0f; // seconds of dry overcast between weather fronts
+#define CLOUD_HOLD_SECONDS 60.0f
 static uint32_t weather_rng = 0x9E3779B9u;
 
 // Separate generator so weather never depends on the per-screen srand() seed.
@@ -39,7 +41,9 @@ static void RollNextFront(void) {
     const float *p = odds[current_season];
     target_weather = r < p[0] ? WEATHER_CLEAR : (r < p[0] + p[1] ? WEATHER_RAIN : WEATHER_SNOW);
     target_intensity = target_weather == WEATHER_CLEAR ? 0.0f : 0.5f + 0.5f * WeatherRandom();
-    front_seconds_left = 120.0f + 240.0f * WeatherRandom();
+    // Dry fronts are often just overcast, so fair weather doesn't flip straight to rain.
+    if (target_weather == WEATHER_CLEAR && WeatherRandom() < 0.35f) target_weather = WEATHER_CLOUDY;
+    front_seconds_left = 240.0f + 480.0f * WeatherRandom();
 }
 
 static void SetSeasonFromDate(const SYSTEMTIME *t) {
@@ -226,6 +230,7 @@ static void ReadWeatherConfig(void) {
 static WeatherType WeatherFromWmo(int code) {
     if ((code >= 71 && code <= 77) || code == 85 || code == 86) return WEATHER_SNOW;
     if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95) return WEATHER_RAIN;
+    if (code >= 2 && code <= 48) return WEATHER_CLOUDY; // overcast / fog
     return WEATHER_CLEAR;
 }
 
@@ -296,7 +301,13 @@ void UpdateSeasonAndWeather(void) {
     // fades in, so snow eases off into a dry spell or rain instead of flipping.
     if (current_weather != target_weather) {
         weather_intensity -= dt / 20.0f;
-        if (weather_intensity <= 0.0f) { weather_intensity = 0.0f; current_weather = target_weather; }
+        if (weather_intensity <= 0.0f) {
+            weather_intensity = 0.0f;
+            // Every change passes through a dry overcast spell first.
+            if (current_weather != WEATHER_CLOUDY && target_weather != WEATHER_CLOUDY) { current_weather = WEATHER_CLOUDY; cloud_hold = CLOUD_HOLD_SECONDS; }
+            else if (current_weather == WEATHER_CLOUDY && (cloud_hold -= dt) > 0.0f) { /* still overcast */ }
+            else current_weather = target_weather;
+        }
     } else if (weather_intensity < target_intensity) {
         weather_intensity += dt / 25.0f;
         if (weather_intensity > target_intensity) weather_intensity = target_intensity;
