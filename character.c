@@ -25,6 +25,14 @@ void SpendStatPoint(void) {
     sprintf(arpg_action_log, "%s raised to %d. Points left: %d", names[stat_cursor], *stat, stat_points);
 }
 
+// Natural pairings: Elf Wizard (MAG), Human Knight (STA), Dwarf Warrior (STR),
+// Halfling Rogue (DEX), Gnome Necromancer (INT). Returns the stat index or -1.
+int RaceClassSynergyStat(void) {
+    static const int fit[5] = { CLASS_WIZARD, CLASS_KNIGHT, CLASS_WARRIOR, CLASS_ROGUE, CLASS_NECROMANCER };
+    static const int stat[5] = { 3, 2, 0, 1, 5 };
+    return fit[selected_race] == (int)selected_class ? stat[selected_race] : -1;
+}
+
 void ApplyClassAndRaceStats(void) {
     static const int class_stats[5][7] = {
         { 1, 1, 1, 3, 2, 1, 2 }, /* Necromancer */
@@ -36,6 +44,18 @@ void ApplyClassAndRaceStats(void) {
     const int *stats = class_stats[selected_class];
     stat_strength = stats[0]; stat_dexterity = stats[1]; stat_stamina = stats[2];
     stat_magick = stats[3]; stat_intelligence = stats[4]; stat_charisma = stats[5]; stat_luck = stats[6];
+    // Race x class matrix: each race adds small bonuses (STR DEX STA MAG LCK
+    // INT CHR order) and a natural race/class pairing adds +1 to its key stat.
+    static const int race_mods[5][STAT_COUNT] = {
+        { 0, 1, 0, 1, 0, 0, 0 }, /* Elf */
+        { 0, 0, 0, 0, 1, 0, 1 }, /* Human */
+        { 1, 0, 1, 0, 0, 0, 0 }, /* Dwarf */
+        { 0, 1, 0, 0, 1, 0, 0 }, /* Halfling */
+        { 0, 0, 0, 1, 0, 1, 0 }  /* Gnome */
+    };
+    for (int i = 0; i < STAT_COUNT; i++) *StatByIndex(i) += race_mods[selected_race][i];
+    int synergy = RaceClassSynergyStat();
+    if (synergy >= 0) (*StatByIndex(synergy))++;
     for (int i = 0; i < STAT_COUNT; i++) {
         int *stat = StatByIndex(i);
         *stat += stat_spent[i];
