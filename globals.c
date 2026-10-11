@@ -200,16 +200,16 @@ MerchantItem merchant_catalog[MERCH_ITEMS] = {
     { "Apple",         "Food",     0,                  3, -1, 0, RARITY_COMMON, 0 },
     { "Spear",         "Weapon",   LOOT_SPEAR,        30, 2,  2, RARITY_COMMON, 0 },
     { "Dagger",        "Weapon",   LOOT_DAGGER,       10, 2,  2, RARITY_COMMON, 0 },
-    { "Mace",          "Weapon",   LOOT_MACE,         35, 1,  1, RARITY_UNCOMMON, 0 },
-    { "Long Bow",      "Weapon",   LOOT_LONG_BOW,     40, 1,  1, RARITY_UNCOMMON, 0 },
-    { "Night Vision Ring", "Ring", 0,                 60, 1,  1, RARITY_RARE, 0 },
+    { "Mace",          "Weapon",   LOOT_MACE,        600, 1,  1, RARITY_UNCOMMON, 0 },
+    { "Long Bow",      "Weapon",   LOOT_LONG_BOW,    750, 1,  1, RARITY_UNCOMMON, 0 },
+    { "Night Vision Ring", "Ring", 0,               3000, 1,  1, RARITY_RARE, 0 },
     { "Raft",          "Tool",     0,                 30, 1,  1, RARITY_COMMON, 0 },
-    { "Canoe",         "Tool",     0,                 60, 1,  1, RARITY_UNCOMMON, 0 },
-    { "Boat",          "Tool",     0,                 50, 1,  1, RARITY_RARE, 0 },
-    { "Long Sword",    "Weapon",   LOOT_LONG_SWORD,   35, 2,  2, RARITY_UNCOMMON, 0 },
-    { "Short Bow",     "Weapon",   LOOT_SHORT_BOW,    25, 2,  2, RARITY_UNCOMMON, 0 },
+    { "Canoe",         "Tool",     0,               1000, 1,  1, RARITY_UNCOMMON, 0 },
+    { "Boat",          "Tool",     0,               2400, 1,  1, RARITY_RARE, 0 },
+    { "Long Sword",    "Weapon",   LOOT_LONG_SWORD,  700, 2,  2, RARITY_UNCOMMON, 0 },
+    { "Short Bow",     "Weapon",   LOOT_SHORT_BOW,   500, 2,  2, RARITY_UNCOMMON, 0 },
     { "Strategy Guide", "Tool",    0,             200000, 1,  1, RARITY_RARE, 0 }, // 1,000,000 gold endgame luxury
-    { "Dragon Scale Armor", "Armor", 0,                40, 1,  1, RARITY_RARE, 0 }
+    { "Dragon Scale Armor", "Armor", 0,              5000, 1,  1, RARITY_RARE, 0 }
     // Legendary items are never sold; they only drop from bosses (see HandleEnemyDamage).
 };
 const char *villager_greetings[] = {
