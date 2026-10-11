@@ -7,6 +7,7 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale);
 void DrawHeroAsset(HDC hdc);
 void DrawFlyingArrow(HDC hdc);
 void DrawFlyingSpell(HDC hdc);
+void DrawFlyingSpear(HDC hdc);
 void DrawClassAbilityFX(HDC hdc);
 void DrawButterflies(HDC hdc);
 void DrawBloodMistFX(HDC hdc);

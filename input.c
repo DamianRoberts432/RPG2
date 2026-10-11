@@ -163,6 +163,10 @@ void ProcessGamepadInput(void) {
             if (!player_arrow.active) FirePlayerArrow(is_tap);
             is_charging_bow = 0; bow_charge_time = 0.0f; bow_charge_start_gp = 0;
         }
+        static int spear_rt_was_down = 0;
+        int spear_rt = rt > XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
+        if (!bow_equipped && !is_menu_open && active_weapon == WEAPON_SPEAR && spear_rt && !spear_rt_was_down) ThrowSpear();
+        spear_rt_was_down = spear_rt;
     }
 
     if (is_character_creation) {
@@ -332,6 +336,9 @@ void ProcessGamepadInput(void) {
             if (!player_arrow.active) FirePlayerArrow(is_tap);
             is_charging_bow = 0; bow_charge_time = 0.0f; bow_charge_start_kb = 0;
         }
+        static int spear_key_was_down = 0;
+        if (!bow_equipped && active_weapon == WEAPON_SPEAR && !fishing_active && bow_key_down && !spear_key_was_down) ThrowSpear();
+        spear_key_was_down = bow_key_down;
 
         static int was_g_down = 0, was_fishing_held = 0;
         int g_down = (GetAsyncKeyState('G') & 0x8000) != 0;

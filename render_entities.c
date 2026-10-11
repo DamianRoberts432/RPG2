@@ -68,6 +68,20 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         } else if (player_facing == FACE_UP || player_facing == FACE_LEFT) { MoveToEx(hdc, sx - 6, sy + 8, NULL); LineTo(hdc, sx - 14, sy - 2); }
         else { MoveToEx(hdc, sx + 6, sy + 10, NULL); LineTo(hdc, sx + 14, sy + 18); }
         SelectObject(hdc, prev_p); DeleteObject(p);
+    } else if (shown_weapon == WEAPON_SPEAR) {
+        // Iso screen direction of the facing; the thrust pushes the spear out.
+        int fx = 1, fy = 1;
+        if (player_facing == FACE_UP) { fx = 1; fy = -1; }
+        else if (player_facing == FACE_DOWN) { fx = -1; fy = 1; }
+        else if (player_facing == FACE_LEFT) { fx = -1; fy = -1; }
+        int len = sword_swipe_frame > 0 ? 32 : 20;
+        int bx = sx - fx * 6, by = sy + 8 - fy * 3;
+        int tx = bx + fx * len, ty = by + fy * len / 2;
+        HPEN shaft = CreatePen(PS_SOLID, 2, RGB(150, 110, 70)); HGDIOBJ prev_p = SelectObject(hdc, shaft);
+        MoveToEx(hdc, bx, by, NULL); LineTo(hdc, tx, ty);
+        HPEN tip = CreatePen(PS_SOLID, 3, RGB(210, 215, 225)); SelectObject(hdc, tip);
+        MoveToEx(hdc, tx, ty, NULL); LineTo(hdc, tx + fx * 5, ty + fy * 3);
+        SelectObject(hdc, prev_p); DeleteObject(shaft); DeleteObject(tip);
     } else {
         HPEN wood_pen = CreatePen(PS_SOLID, 2, RGB(235, 175, 45)); HGDIOBJ prev_wood_p = SelectObject(hdc, wood_pen);
         HPEN string_pen = CreatePen(PS_SOLID, 1, RGB(15, 18, 24)); 
@@ -136,6 +150,17 @@ void DrawFlyingArrow(HDC hdc) {
     HPEN fletcher_p = CreatePen(PS_SOLID, 1, RGB(190, 65, 35)); HGDIOBJ old_p = SelectObject(hdc, fletcher_p);
     MoveToEx(hdc, sx, sy, NULL); LineTo(hdc, sx - (int)(12 * cos_a), sy - (int)(12 * sin_a));
     SelectObject(hdc, old_p); DeleteObject(fletcher_p);
+}
+
+void DrawFlyingSpear(HDC hdc) {
+    if (!thrown_spear.active) return;
+    int sx, sy; GetIsoCoords(thrown_spear.x, thrown_spear.y, &sx, &sy); sy -= (int)thrown_spear.z;
+    int ex, ey; GetIsoCoords(thrown_spear.x - thrown_spear.vx * 3.0f, thrown_spear.y - thrown_spear.vy * 3.0f, &ex, &ey); ey -= (int)thrown_spear.z;
+    HPEN shaft = CreatePen(PS_SOLID, 2, RGB(150, 110, 70)); HGDIOBJ old_p = SelectObject(hdc, shaft);
+    MoveToEx(hdc, ex, ey, NULL); LineTo(hdc, sx, sy);
+    HPEN tip = CreatePen(PS_SOLID, 3, RGB(210, 215, 225)); SelectObject(hdc, tip);
+    MoveToEx(hdc, sx, sy, NULL); LineTo(hdc, sx + (sx - ex) / 5, sy + (sy - ey) / 5);
+    SelectObject(hdc, old_p); DeleteObject(shaft); DeleteObject(tip);
 }
 
 void DrawFlyingSpell(HDC hdc) {

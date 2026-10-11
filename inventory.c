@@ -14,7 +14,8 @@ void SyncActiveWeapon(void) {
         if (!player_inventory[i].is_equipped || strcmp(player_inventory[i].slot, "Weapon") != 0) continue;
         if (IsBowItem(&player_inventory[i])) { bow_equipped = 1; continue; }
         if (!has_melee) {
-            active_weapon = strcmp(player_inventory[i].name, "Axe") == 0 ? WEAPON_AXE : WEAPON_SWORD;
+            active_weapon = strcmp(player_inventory[i].name, "Axe") == 0 ? WEAPON_AXE :
+                            strcmp(player_inventory[i].name, "Spear") == 0 ? WEAPON_SPEAR : WEAPON_SWORD;
             has_melee = 1;
         }
     }
@@ -123,6 +124,7 @@ float GetNamedItemWeight(const char *name) {
     if (strcmp(name, "Dagger") == 0) return 1.0f;
     if (strcmp(name, "Long Sword") == 0) return 5.0f;
     if (strcmp(name, "Axe") == 0) return 4.0f;
+    if (strcmp(name, "Spear") == 0) return 3.0f;
     if (strcmp(name, "Rusty Sword") == 0) return 2.0f;
     if (strcmp(name, "Iron Sword") == 0) return 4.0f;
     if (strcmp(name, "Wooden Shield") == 0) return 3.0f;
@@ -250,7 +252,7 @@ int ConsumeMaterialFromInventory(const char *name, int quantity) {
 }
 
 float LootWeight(int item_id) {
-    if (item_id >= LOOT_SHORT_SWORD && item_id <= LOOT_MUSASHI_BLADE) return weapon_catalog[item_id - 1].weight;
+    if (item_id >= LOOT_SHORT_SWORD && item_id <= LOOT_SPEAR) return weapon_catalog[item_id - 1].weight;
     return (item_id == LOOT_FISH || item_id == LOOT_APPLE) ? GetNamedItemWeight(item_id == LOOT_FISH ? "Fish" : "Apple") : 0.0f;
 }
 
@@ -258,7 +260,7 @@ int AddLootToInventory(int item_id, int quantity) {
     const char *name;
     const char *slot;
     WeaponStats *weapon = NULL;
-    if (item_id >= LOOT_SHORT_SWORD && item_id <= LOOT_MUSASHI_BLADE) {
+    if (item_id >= LOOT_SHORT_SWORD && item_id <= LOOT_SPEAR) {
         weapon = &weapon_catalog[item_id - 1];
         name = weapon->name; slot = item_id == LOOT_SHORT_BOW ? "Weapon" : "Weapon";
     } else if (item_id == LOOT_FISH) { name = "Fish"; slot = "Food"; }

@@ -26,7 +26,7 @@
 #define MAX_BUTTERFLIES 8
 #define DEBRIS_MAX 16
 #define MAX_CRITTERS 4
-#define MERCH_ITEMS 15
+#define MERCH_ITEMS 16
 #define MAX_BLOOD_MIST 24
 #define MAX_CAMPFIRES 8
 #define MAX_INVENTORY_ITEMS 100
@@ -51,7 +51,7 @@
 #define ABILITY_FLASH_FRAMES  14
 
 typedef enum { FACE_DOWN, FACE_UP, FACE_LEFT, FACE_RIGHT } FacingDirection;
-typedef enum { WEAPON_SWORD, WEAPON_BOW, WEAPON_AXE } WeaponType;
+typedef enum { WEAPON_SWORD, WEAPON_BOW, WEAPON_AXE, WEAPON_SPEAR } WeaponType;
 typedef enum { MONSTER_SKELLY, MONSTER_ZOMBIE, MONSTER_DRACULA, MONSTER_GOBLIN, MONSTER_SATYR,
                MONSTER_YETI, MONSTER_SPHINX, MONSTER_BIGFOOT, MONSTER_BUNYIP } MonsterType;
 // Mythic beasts (Yeti..Bunyip) and Dracula are the bosses: the only source of Legendary loot.
@@ -156,6 +156,8 @@ extern float bow_charge_time;
 extern int is_charging_bow;
 extern DWORD bow_charge_started_at;
 extern ArrowProjectile player_spell;
+extern ArrowProjectile thrown_spear;
+extern InventoryItem thrown_spear_item;
 extern int y_button_was_down;
 extern int y_key_was_down;
 extern DWORD y_ability_cooldown_until;
@@ -284,9 +286,9 @@ extern int merchant_selection;
 extern int vendor_tab;
 
 // LOOT_* ids map 1:1 onto weapon_catalog[id - 1] for every entry up through
-// LOOT_MUSASHI_BLADE (kept contiguous on purpose - see LootWeight/AddLootToInventory).
-enum { LOOT_SHORT_SWORD = 1, LOOT_LONG_SWORD, LOOT_AXE, LOOT_SHORT_BOW, LOOT_RUSTY_SWORD, LOOT_MUSASHI_BLADE, LOOT_FISH, LOOT_APPLE };
-extern WeaponStats weapon_catalog[6];
+// LOOT_SPEAR (kept contiguous on purpose - see LootWeight/AddLootToInventory).
+enum { LOOT_SHORT_SWORD = 1, LOOT_LONG_SWORD, LOOT_AXE, LOOT_SHORT_BOW, LOOT_RUSTY_SWORD, LOOT_MUSASHI_BLADE, LOOT_SPEAR, LOOT_FISH, LOOT_APPLE };
+extern WeaponStats weapon_catalog[7];
 #define WEAPON_CATALOG_COUNT ((int)(sizeof(weapon_catalog) / sizeof(weapon_catalog[0])))
 extern MerchantItem merchant_catalog[MERCH_ITEMS];
 extern const char *villager_greetings[];

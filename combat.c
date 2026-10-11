@@ -65,6 +65,8 @@ void SpawnBloodMist(float x, float y) {
 
 // Heavy or critical hits spray 8-16 specks away from the hero.
 #define HEAVY_HIT_DAMAGE 2.0f
+#define SPEAR_REACH 2.6f
+#define SPEAR_THRUST_DOT 0.7f // narrower than a sword swing: a straight thrust
 void SpawnBloodBurst(float x, float y, float dir_x, float dir_y) {
     float d = (float)sqrt(dir_x * dir_x + dir_y * dir_y);
     if (d < 0.001f) { dir_x = 0.0f; dir_y = 1.0f; d = 1.0f; }
@@ -93,7 +95,8 @@ void PerformMeleeAttack(void) {
     sword_swipe_frame = (weapon && weapon->attack_speed_mult < 1.0f) ? 14 : 10;
     SelectTargetEnemy();
     float m_dist = DistanceToEnemy();
-    if (m_dist < 1.8f && IsFacingEnemy()) {
+    int spear = active_weapon == WEAPON_SPEAR;
+    if (m_dist < (spear ? SPEAR_REACH : 1.8f) && (spear ? IsFacingEnemyWithin(SPEAR_THRUST_DOT) : IsFacingEnemy())) {
         int broke = WearEquippedWeapon();
         HandleEnemyDamage(damage * (1.0f + 0.08f * stat_spent[0]));
         if (broke) strcpy(arpg_action_log, "Your weapon broke!");
@@ -358,6 +361,84 @@ void UpdatePlayerArrow(void) {
         if (broke) strcpy(arpg_action_log, "Your bow broke!");
     }
     if (player_arrow.z <= 0.0f) player_arrow.active = 0;
+}
+
+// Spear, second mode: RT / F throws the equipped spear. It flies along the
+// hero's facing (curving to a faced enemy), drops with gravity and lands as a
+// dropped item that X picks back up with its durability intact.
+#define SPEAR_THROW_SPEED 0.3f
+void ThrowSpear(void) {
+    if (thrown_spear.active) return;
+    int idx = -1;
+    for (int i = 0; i < player_item_count; i++)
+        if (player_inventory[i].is_equipped && strcmp(player_inventory[i].name, "Spear") == 0) { idx = i; break; }
+    if (idx < 0) return;
+    thrown_spear_item = player_inventory[idx];
+    thrown_spear_item.is_equipped = 0;
+    for (int i = idx; i < player_item_count - 1; i++) player_inventory[i] = player_inventory[i + 1];
+    player_item_count--;
+    if (selected_inv_index >= player_item_count && player_item_count > 0) selected_inv_index = player_item_count - 1;
+    RecalculateCarriedWeight();
+    SyncActiveWeapon();
+    float tdx = 0.0f, tdy = 0.0f;
+    SelectTargetEnemy();
+    if (IsFacingEnemyWithin(BOW_AIM_CONE_DOT)) { tdx = enemy_x - player_x; tdy = enemy_y - player_y; }
+    else if (player_facing == FACE_UP) tdy = -1.0f;
+    else if (player_facing == FACE_DOWN) tdy = 1.0f;
+    else if (player_facing == FACE_LEFT) tdx = -1.0f;
+    else tdx = 1.0f;
+    float d = (float)sqrt(tdx * tdx + tdy * tdy);
+    if (d < 0.001f) { tdx = 1.0f; d = 1.0f; }
+    thrown_spear.x = player_x; thrown_spear.y = player_y; thrown_spear.z = 14.0f;
+    thrown_spear.vx = tdx / d * SPEAR_THROW_SPEED; thrown_spear.vy = tdy / d * SPEAR_THROW_SPEED;
+    thrown_spear.vz = 0.3f;
+    thrown_spear.origin_tx = (int)player_x; thrown_spear.origin_ty = (int)player_y;
+    thrown_spear.damage = (float)thrown_spear_item.damage * 1.5f * (1.0f + 0.08f * stat_spent[0]);
+    thrown_spear.active = 1;
+    player_stamina -= 5.0f; if (player_stamina < 0.0f) player_stamina = 0.0f;
+    strcpy(arpg_action_log, "SPEAR: Thrown! Stand on it and press X to pick it up.");
+}
+
+static int SpearBlockedAt(float x, float y) {
+    if (x < 0.5f || y < 0.5f || x >= MAP_SIZE - 0.5f || y >= MAP_SIZE - 0.5f) return 1;
+    int tx = (int)x, ty = (int)y;
+    if (tx == thrown_spear.origin_tx && ty == thrown_spear.origin_ty) return 0;
+    uint8_t t = VISUAL_MAP[ty][tx];
+    return t == 11 || t == 1 || t == 3;
+}
+
+static void LandThrownSpear(void) {
+    thrown_spear.active = 0;
+    int slot = -1;
+    for (int i = 0; i < MAX_DROPPED_ITEMS; i++) if (!dropped_items[i].active) { slot = i; break; }
+    if (slot < 0) {
+        if (player_item_count < MAX_INVENTORY_ITEMS) { player_inventory[player_item_count++] = thrown_spear_item; RecalculateCarriedWeight(); }
+        return;
+    }
+    DroppedInventoryItem *drop = &dropped_items[slot];
+    FindDropSpot(thrown_spear.x, thrown_spear.y, 1, &drop->x, &drop->y);
+    drop->item = thrown_spear_item;
+    drop->screen_id = current_screen_index;
+    drop->dropped_at = GetTickCount();
+    drop->legendary = 0;
+    drop->active = 1;
+}
+
+void UpdateThrownSpear(void) {
+    if (!thrown_spear.active) return;
+    for (int step = 0; step < 2; step++) {
+        float nx = thrown_spear.x + thrown_spear.vx * 0.5f, ny = thrown_spear.y + thrown_spear.vy * 0.5f;
+        if (SpearBlockedAt(nx, ny)) { LandThrownSpear(); return; }
+        thrown_spear.x = nx; thrown_spear.y = ny;
+    }
+    thrown_spear.z += thrown_spear.vz; thrown_spear.vz -= 0.03f;
+    if (EnemyAtPoint(thrown_spear.x, thrown_spear.y, 0.6f) >= 0) {
+        HandleEnemyDamage(thrown_spear.damage);
+        if (--thrown_spear_item.durability_current <= 0) { thrown_spear.active = 0; strcpy(arpg_action_log, "Your spear broke!"); return; }
+        LandThrownSpear();
+        return;
+    }
+    if (thrown_spear.z <= 0.0f) LandThrownSpear();
 }
 
 // Debounced/cooldown-bound class special ability bound to the "Y" button

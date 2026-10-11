@@ -64,6 +64,8 @@ DWORD bow_charge_started_at = 0;
 
 // Class-special ("Y" button) ability state. Fires once per button press (edge
 // triggered) and is further gated by a per-class cooldown so it cannot spam.
+ArrowProjectile thrown_spear = {0};
+InventoryItem thrown_spear_item;
 ArrowProjectile player_spell = {0}; // Reused projectile shape for Necromancer/Wizard bolts
 int y_button_was_down = 0;          // Edge-detection latch for gamepad Y
 int y_key_was_down = 0;             // Edge-detection latch for keyboard Y
@@ -167,7 +169,9 @@ WeaponStats weapon_catalog[] = {
     // HandleEnemyDamage). Durability is set absurdly high
     // to stand in for "infinite", and it is specifically excluded from
     // selling/dropping (see HandleVendorSell/DropSelectedItem).
-    { LOOT_MUSASHI_BLADE, "Musashi's Blade", 10, 99999, 1.0f, 1.0f, 5000, 1.0f }
+    { LOOT_MUSASHI_BLADE, "Musashi's Blade", 10, 99999, 1.0f, 1.0f, 5000, 1.0f },
+    // Thrust reaches further than a sword; RT / F throws it (see ThrowSpear).
+    { LOOT_SPEAR, "Spear", 2, 100, 3.0f, 1.0f, 30, 0.85f }
 };
 
 // Catalog spans every common weapon/armor/tool/food the
@@ -188,6 +192,7 @@ MerchantItem merchant_catalog[MERCH_ITEMS] = {
     { "Wood",          "Material", 0,                  1, -1, 0, RARITY_COMMON, 0 },
     { "Fish",          "Food",     0,                  5, -1, 0, RARITY_COMMON, 0 },
     { "Apple",         "Food",     0,                  3, -1, 0, RARITY_COMMON, 0 },
+    { "Spear",         "Weapon",   LOOT_SPEAR,        30, 2,  2, RARITY_COMMON, 0 },
     { "Long Sword",    "Weapon",   LOOT_LONG_SWORD,   35, 2,  2, RARITY_UNCOMMON, 0 },
     { "Short Bow",     "Weapon",   LOOT_SHORT_BOW,    25, 2,  2, RARITY_UNCOMMON, 0 },
     { "Dragon Scale Armor", "Armor", 0,                40, 1,  1, RARITY_RARE, 0 }

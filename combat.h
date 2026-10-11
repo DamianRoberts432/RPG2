@@ -17,5 +17,7 @@ void ChargeBow(void);
 void FirePlayerArrow(int is_tap);
 void UpdatePlayerArrow(void);
 void FireClassAbility(void);
+void ThrowSpear(void);
+void UpdateThrownSpear(void);
 
 #endif // COMBAT_H
