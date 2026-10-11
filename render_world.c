@@ -519,7 +519,7 @@ static void FillWindowAlpha(HDC hdc, COLORREF color, int alpha) {
 void DrawRainZones(HDC hdc) {
     if (current_weather != WEATHER_RAIN || weather_intensity < 0.02f) return;
     HPEN rain = CreatePen(PS_SOLID, 1, RGB(155, 190, 220)); HGDIOBJ old = SelectObject(hdc, rain);
-    int phase = (int)(world_tick / 8.0f);
+    int fall = (int)(world_tick * 160.0f); // drops fall ~8 px every frame
     const int PERIOD_X = 200, PERIOD_Y = 150;
     // Rain cells are keyed off absolute world-space pixel coordinates (offset
     // by the camera, same as GetIsoCoords) instead of raw screen pixels, so
@@ -538,13 +538,14 @@ void DrawRainZones(HDC hdc) {
     int drops = 3 + (int)(11.0f * weather_intensity);
     for (int zy = 0; zy < rows; zy++) for (int zx = 0; zx < cols; zx++) {
         int cell_x = base_cell_x + zx, cell_y = base_cell_y + zy;
-        int seed = phase + cell_x * 31 + cell_y * 67;
+        int seed = cell_x * 31 + cell_y * 67;
         int screen_ox = cell_x * PERIOD_X - cam_x + (WINDOW_WIDTH / 2) + wind_dir * 12;
         int screen_oy = cell_y * PERIOD_Y - cam_y + (WINDOW_HEIGHT / 2);
         for (int n = 0; n < drops; n++) {
             int h = RainHash(seed + n * 17);
-            int x = screen_ox + h % 190, y = screen_oy + (h / 191) % 140;
-            MoveToEx(hdc, x, y, NULL); LineTo(hdc, x - wind_dir, y + 9);
+            int dy = ((h / 191) + fall + n * 37) % 140;
+            int x = screen_ox + h % 190 - dy * wind_dir / 6, y = screen_oy + dy;
+            MoveToEx(hdc, x, y, NULL); LineTo(hdc, x - wind_dir * 2, y + 10);
         }
     }
     SelectObject(hdc, old); DeleteObject(rain);
