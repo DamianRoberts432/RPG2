@@ -244,6 +244,19 @@ const char *fort_barks[] = {
     "The pass is clear for now.", "Rest here, traveler. The watch is strong.",
     "A merchant wagon passed through at dawn.", "No one crosses the camp without a greeting."
 };
+// Little truths about how the world works, shared now and then by villagers.
+const char *world_hints[WORLD_HINT_COUNT] = {
+    "Every second you spend here is a minute to us. A whole day passes in 24 of yours.",
+    "Each season lasts 30 days. Count them if you like.",
+    "Weather never jumps from fair to rain. The clouds always roll in first.",
+    "When clouds cover the sky, the sun and moon can't throw their beams down.",
+    "Birds and squirrels sleep from 9 at night until 6. The owls keep watch then.",
+    "Animals bolt from anyone close, unless your soul is pure and luck is on your side.",
+    "No foe carries more than 75 gold, though purses grow with your level and luck.",
+    "Two wood and a match from your pack will light a campfire.",
+    "Charm the merchant: every point of charisma takes 3 percent off his prices.",
+    "Carry a raft, canoe or boat and no river can stop you."
+};
 
 // Character Creation & Stats
 int is_character_creation = 1;

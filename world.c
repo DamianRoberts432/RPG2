@@ -367,7 +367,7 @@ void UpdateVillageNPCs(void) {
             float dx = player_x - npc->x, dy = player_y - npc->y;
             npc->direction = fabs(dx) > fabs(dy) ? (dx < 0 ? FACE_LEFT : FACE_RIGHT) : (dy < 0 ? FACE_UP : FACE_DOWN);
             if (npc->dialogue_cooldown == 0) {
-                if (npc->type == 0) npc->dialogue = villager_greetings[rand() % 3];
+                if (npc->type == 0) npc->dialogue = rand() % 3 == 0 ? world_hints[rand() % WORLD_HINT_COUNT] : villager_greetings[rand() % 3];
                 else if (npc->type == 2) npc->dialogue = fort_barks[rand() % 3];
                 else npc->dialogue = "Welcome, adventurer!";
                 npc->dialogue_cooldown = 120 + rand() % 61;
