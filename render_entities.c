@@ -428,6 +428,8 @@ void DrawEnemiesAtTile(HDC hdc, int c, int r) {
     SelectEnemy(keep);
 }
 
+static void DrawSummonedSkeleton(HDC hdc, int sx, int sy, int face_dir);
+
 void DrawDynamicEnemy(HDC hdc) {
     if (enemy_hearts <= 0.0f) return;
     int sx, sy; GetIsoCoords(enemy_x, enemy_y, &sx, &sy);
@@ -445,6 +447,8 @@ void DrawDynamicEnemy(HDC hdc) {
         DrawSatyr(hdc, sx, sy, face_dir);
     } else if (IS_MYTHIC_MONSTER(active_monster)) {
         DrawMythicBeast(hdc, sx, sy, face_dir);
+    } else if (active_monster == MONSTER_SKELLY) {
+        DrawSummonedSkeleton(hdc, sx, sy, face_dir); // skull, ribs and bony limbs
     } else {
         // Legs stride under the robe, then the robe and skull on top.
         int step = (int)(sin(world_tick * 6.0f) * 2.0f);
