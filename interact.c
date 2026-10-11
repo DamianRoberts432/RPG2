@@ -29,6 +29,7 @@ void RememberChoppedAppleTree(int x, int y) {
 }
 
 void HandleContextInteract(void) {
+    if (town_menu) return;
     if (TryPickupDroppedItems()) return;
     if (in_cave && IsNearPoint(cave_treasure_x, cave_treasure_y, 1.2f)) {
         ClaimCaveTreasureAndExit();
@@ -60,9 +61,10 @@ void HandleContextInteract(void) {
             vendor_menu_open = 1;
             vendor_tab = 0;
             strcpy(arpg_action_log, "MARKET: LB Buy tab / RB Sell tab, SPACE confirms, ESC closes.");
-        } else if (village_npcs[i].type == 3) RepairEquippedWeapon();
-        else if (village_npcs[i].type == 5) BuyCardBooster();
-        else strcpy(arpg_action_log, village_npcs[i].dialogue);
+        } else if (village_npcs[i].type >= 3 && village_npcs[i].type <= 9) {
+            static const int menus[7] = { TM_SMITH, TM_PETS, TM_CARDS, TM_KING, TM_BEGGAR, TM_ALTAR, TM_BANK };
+            OpenTownMenu(menus[village_npcs[i].type - 3]);
+        } else strcpy(arpg_action_log, village_npcs[i].dialogue);
         return;
     }
 

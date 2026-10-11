@@ -82,7 +82,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
             }
             
             cam_x = (int)((player_x - player_y) * (TILE_WIDTH / 2)); cam_y = (int)((player_x + player_y) * (TILE_HEIGHT / 2));
-            float view_zoom = UpdateAfkCamera(AnyPlayerInput() || is_menu_open || vendor_menu_open ||
+            float view_zoom = UpdateAfkCamera(AnyPlayerInput() || is_menu_open || vendor_menu_open || town_menu ||
                                               is_character_creation || sleep_fade_frame > 0);
             HDC hdc = GetDC(hwnd); HDC memHDC = CreateCompatibleDC(hdc); HBITMAP memBitmap = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT); SelectObject(memHDC, memBitmap);
             
@@ -210,7 +210,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 }
                 DrawCampfires(memHDC); DrawBedroll(memHDC); DrawGroundLoot(memHDC); DrawDroppedItems(memHDC); DrawDebrisTwigs(memHDC); DrawSummonedZombie(memHDC);
                 DrawFlyingArrow(memHDC); DrawFlyingSpear(memHDC); DrawFlyingSpell(memHDC); DrawClassAbilityFX(memHDC); DrawButterflies(memHDC); DrawBloodMistFX(memHDC);
-                DrawEnvironmentalCritters(memHDC); DrawMerchantStoreFront(memHDC); DrawVillage(memHDC); DrawNightEyes(memHDC);
+                DrawEnvironmentalCritters(memHDC); DrawFamiliar(memHDC); DrawMerchantStoreFront(memHDC); DrawVillage(memHDC); DrawNightEyes(memHDC);
                 DrawWeatherEffects(memHDC); DrawSolitaireSunMoonBeam(memHDC);
                 ApplyCameraZoom(memHDC, view_zoom);
                 DrawPlayerStatusHUD(memHDC);
@@ -223,6 +223,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 if (vendor_menu_open && IsNearMerchant()) {
                     DrawVendorShopOverlay(memHDC);
                 }
+                DrawTownMenu(memHDC);
                 DrawSleepFade(memHDC);
             }
             BitBlt(hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, memHDC, 0, 0, SRCCOPY); DeleteObject(memBitmap); DeleteDC(memHDC); ReleaseDC(hwnd, hdc); Sleep(16);

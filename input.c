@@ -115,7 +115,7 @@ void ProcessGamepadInput(void) {
             y_button_was_down = y_down_gp;
 
             int shopping = vendor_menu_open && IsNearMerchant();
-            if (!shopping) {
+            if (!shopping && !town_menu) {
                 if (buttons & XINPUT_GAMEPAD_DPAD_LEFT)  { dx = -1.0f; player_facing = FACE_LEFT; }
                 if (buttons & XINPUT_GAMEPAD_DPAD_RIGHT) { dx = 1.0f; player_facing = FACE_RIGHT; }
                 if (buttons & XINPUT_GAMEPAD_DPAD_UP)    { dy = -1.0f; player_facing = FACE_UP; }
@@ -127,6 +127,20 @@ void ProcessGamepadInput(void) {
                 HandleContextInteract();
                 last_interact_gp = GetTickCount();
             }
+
+            // Town building menus: up/down pick a row, A confirms once per
+            // press, B leaves.
+            int town_busy_gp = town_menu;
+            static DWORD last_town_gp = 0;
+            static int town_a_was_down = 0;
+            int town_a_down = (buttons & XINPUT_GAMEPAD_A) != 0;
+            if (town_menu && GetTickCount() - last_town_gp > 200) {
+                if (buttons & XINPUT_GAMEPAD_DPAD_UP)   { TownMenuMove(-1); last_town_gp = GetTickCount(); }
+                if (buttons & XINPUT_GAMEPAD_DPAD_DOWN) { TownMenuMove(1); last_town_gp = GetTickCount(); }
+                if (buttons & XINPUT_GAMEPAD_B) { TownMenuBack(); last_town_gp = GetTickCount(); }
+            }
+            if (town_menu && town_a_down && !town_a_was_down) TownMenuConfirm();
+            town_a_was_down = town_a_down;
 
             // Shop UI: LB switches to the Buy tab (merchant's items for sale),
             // RB switches to the Sell tab (player's inventory). DPAD up/down
@@ -156,11 +170,11 @@ void ProcessGamepadInput(void) {
             if ((buttons & XINPUT_GAMEPAD_A) && (GetTickCount() - last_attack_gp > attack_delay_gp)) {
                 if (shopping) {
                     if (vendor_tab == 0) ShopConfirm(); else HandleVendorSell();
-                } else if (active_weapon != WEAPON_BOW) {
+                } else if (!town_busy_gp && active_weapon != WEAPON_BOW) {
                     PerformMeleeAttack();
                 }
                 last_attack_gp = GetTickCount();
-            } else if ((buttons & XINPUT_GAMEPAD_B) && !shopping && (GetTickCount() - last_attack_gp > attack_delay_gp)) {
+            } else if ((buttons & XINPUT_GAMEPAD_B) && !shopping && !town_busy_gp && (GetTickCount() - last_attack_gp > attack_delay_gp)) {
                 if (active_weapon != WEAPON_BOW) PerformMeleeAttack();
                 last_attack_gp = GetTickCount();
             }
@@ -318,12 +332,24 @@ void ProcessGamepadInput(void) {
             ConsumeSelectedFood(); last_eat = GetTickCount();
         }
 
-        if (!shopping_kb) {
+        if (!shopping_kb && !town_menu) {
             if (GetAsyncKeyState(VK_LEFT) & 0x8000)  { dx = -1.0f; player_facing = FACE_LEFT; }
             if (GetAsyncKeyState(VK_RIGHT) & 0x8000) { dx = 1.0f; player_facing = FACE_RIGHT; }
             if (GetAsyncKeyState(VK_UP) & 0x8000)    { dy = -1.0f; player_facing = FACE_UP; }
             if (GetAsyncKeyState(VK_DOWN) & 0x8000)  { dy = 1.0f; player_facing = FACE_DOWN; }
         }
+
+        int town_busy_kb = town_menu;
+        static DWORD last_town_kb = 0;
+        static int town_ok_was_down = 0;
+        int town_ok_down = ((GetAsyncKeyState(VK_SPACE) | GetAsyncKeyState('Z')) & 0x8000) != 0;
+        if (town_menu && GetTickCount() - last_town_kb > 200) {
+            if ((GetAsyncKeyState(VK_OEM_4) | GetAsyncKeyState(VK_UP)) & 0x8000) { TownMenuMove(-1); last_town_kb = GetTickCount(); }
+            if ((GetAsyncKeyState(VK_OEM_6) | GetAsyncKeyState(VK_DOWN)) & 0x8000) { TownMenuMove(1); last_town_kb = GetTickCount(); }
+            if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) { TownMenuBack(); last_town_kb = GetTickCount(); }
+        }
+        if (town_menu && town_ok_down && !town_ok_was_down) TownMenuConfirm();
+        town_ok_was_down = town_ok_down;
 
         static DWORD last_interact_kb = 0;
         if (((GetAsyncKeyState('X') | GetAsyncKeyState('C')) & 0x8000) && (GetTickCount() - last_interact_kb > 350)) {
@@ -338,7 +364,7 @@ void ProcessGamepadInput(void) {
         if (((GetAsyncKeyState(VK_SPACE) | GetAsyncKeyState('Z')) & 0x8000) && (GetTickCount() - last_attack_kb > attack_delay_kb)) {
             if (shopping_kb) {
                 if (vendor_tab == 0) ShopConfirm(); else HandleVendorSell();
-            } else if (active_weapon != WEAPON_BOW) {
+            } else if (!town_busy_kb && active_weapon != WEAPON_BOW) {
                 PerformMeleeAttack();
             }
             last_attack_kb = GetTickCount();

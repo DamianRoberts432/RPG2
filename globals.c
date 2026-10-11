@@ -177,7 +177,11 @@ WeaponStats weapon_catalog[] = {
     { LOOT_SPEAR, "Spear", 2, 100, 3.0f, 1.0f, 30, 0.85f },
     { LOOT_LONG_BOW, "Long Bow", 2, 120, 2.0f, 0.0f, 40, 1.0f }, // arrows fly harder (see FirePlayerArrow)
     { LOOT_MACE, "Mace", 3, 150, 5.0f, 1.5f, 35, 0.8f },
-    { LOOT_DAGGER, "Dagger", 1, 60, 1.0f, 0.0f, 10, 1.0f }
+    { LOOT_DAGGER, "Dagger", 1, 60, 1.0f, 0.0f, 10, 1.0f },
+    // Rare smith work, sold only by the blacksmith (see town.c).
+    { LOOT_KATANA, "Katana", 5, 200, 2.5f, 0.5f, 12000, 1.0f },
+    { LOOT_WAR_HAMMER, "War Hammer", 6, 250, 7.0f, 2.5f, 15000, 0.7f },
+    { LOOT_GREAT_AXE, "Great Axe", 7, 220, 8.0f, 3.0f, 18000, 0.65f }
 };
 
 // Catalog spans every common weapon/armor/tool/food the
@@ -209,7 +213,13 @@ MerchantItem merchant_catalog[MERCH_ITEMS] = {
     { "Long Sword",    "Weapon",   LOOT_LONG_SWORD,  700, 2,  2, RARITY_UNCOMMON, 0 },
     { "Short Bow",     "Weapon",   LOOT_SHORT_BOW,   500, 2,  2, RARITY_UNCOMMON, 0 },
     { "Strategy Guide", "Tool",    0,             200000, 1,  1, RARITY_RARE, 0 }, // 1,000,000 gold endgame luxury
-    { "Dragon Scale Armor", "Armor", 0,              5000, 1,  1, RARITY_RARE, 0 }
+    { "Dragon Scale Armor", "Armor", 0,              5000, 1,  1, RARITY_RARE, 0 },
+    // Altar offerings (see town.c).
+    { "Incense",     "Material", 0, 30,  -1, 0, RARITY_COMMON, 0 },
+    { "Tarot Card",  "Material", 0, 40,  -1, 0, RARITY_COMMON, 0 },
+    { "Rum Bottle",  "Material", 0, 25,  -1, 0, RARITY_COMMON, 0 },
+    { "Cigar",       "Material", 0, 15,  -1, 0, RARITY_COMMON, 0 },
+    { "Chaos Relic", "Material", 0, 600,  2, 2, RARITY_UNCOMMON, 0 }
     // Legendary items are never sold; they only drop from bosses (see HandleEnemyDamage).
 };
 const char *villager_greetings[] = {
