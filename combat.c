@@ -63,6 +63,27 @@ void SpawnBloodMist(float x, float y) {
     }
 }
 
+// Heavy or critical hits spray 8-16 specks away from the hero.
+#define HEAVY_HIT_DAMAGE 2.0f
+void SpawnBloodBurst(float x, float y, float dir_x, float dir_y) {
+    float d = (float)sqrt(dir_x * dir_x + dir_y * dir_y);
+    if (d < 0.001f) { dir_x = 0.0f; dir_y = 1.0f; d = 1.0f; }
+    dir_x /= d; dir_y /= d;
+    int want = 8 + rand() % 9, spawned = 0;
+    for (int i = 0; i < MAX_BLOOD_MIST && spawned < want; i++) {
+        if (blood_mist[i].active) continue;
+        float spd = 0.012f + (rand() % 100) / 4000.0f;
+        float spread = ((rand() % 100) - 50) / 80.0f;
+        blood_mist[i].x = x; blood_mist[i].y = y;
+        blood_mist[i].vx = (dir_x - dir_y * spread) * spd;
+        blood_mist[i].vy = (dir_y + dir_x * spread) * spd;
+        blood_mist[i].life = 10 + rand() % 9;
+        blood_mist[i].max_life = blood_mist[i].life;
+        blood_mist[i].active = 1;
+        spawned++;
+    }
+}
+
 void PerformMeleeAttack(void) {
     WeaponStats *weapon = GetEquippedWeaponStats();
     float damage = weapon ? (float)weapon->damage : 1.0f;
@@ -98,8 +119,11 @@ void UpdateDebrisTwigs(void) {
 
 void HandleEnemyDamage(float dmg) {
     if (fabs(sin(day_night_cycle_accumulator)) < 0.35f) dmg *= 0.9f;
+    int crit = dmg > 0.0f && rand() % 100 < 5 + 2 * stat_spent[4]; // each LCK point spent: +2% crit
+    if (crit) dmg *= 2.0f;
     enemy_hearts -= dmg;
     float k_dx = enemy_x - player_x; float k_dy = enemy_y - player_y; float k_dist = (float)sqrt(k_dx * k_dx + k_dy * k_dy);
+    if (crit || dmg >= HEAVY_HIT_DAMAGE) SpawnBloodBurst(enemy_x, enemy_y, k_dx, k_dy);
     if (k_dist > 0.01f) { enemy_x += (k_dx / k_dist) * 0.25f; enemy_y += (k_dy / k_dist) * 0.25f; }
     
     if (enemy_hearts <= 0.0f) {
@@ -139,7 +163,7 @@ void HandleEnemyDamage(float dmg) {
             else sprintf(arpg_action_log, "VICTORY: %s slain! +%d XP", MonsterName(active_monster), gained_xp);
         }
     } else {
-        sprintf(arpg_action_log, "STRIKE: Hit for %.1f DMG! Remainder: %.1f", dmg, enemy_hearts);
+        sprintf(arpg_action_log, "%s: Hit for %.1f DMG! Remainder: %.1f", crit ? "CRITICAL" : "STRIKE", dmg, enemy_hearts);
     }
     StoreEnemy();
 }

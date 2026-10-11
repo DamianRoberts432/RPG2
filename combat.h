@@ -5,6 +5,7 @@
 
 void TriggerMonsterRespawn(void);
 void SpawnBloodMist(float x, float y);
+void SpawnBloodBurst(float x, float y, float dir_x, float dir_y);
 void PerformMeleeAttack(void);
 void SpawnTreeDebris(float cx, float cy);
 void UpdateDebrisTwigs(void);
