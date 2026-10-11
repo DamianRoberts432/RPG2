@@ -382,7 +382,7 @@ void DrawTabbedMenuOverlay(HDC hdc) {
         }
 
         SetTextColor(hdc, RGB(255, 180, 60));
-        const char *actions = "ACTIONS: [1] Equip  [3] Campfire  [4] Drop  [H] Eat";
+        const char *actions = "ACTIONS: [1] Equip  [3] Campfire  [4] Drop  [5] Sort  [H] Eat";
         TextOut(hdc, 80, 515, actions, (int)strlen(actions));
         SetTextColor(hdc, RGB(160, 170, 180));
         TextOut(hdc, 80, 531, "Use UP/DOWN ARROWS or D-PAD to select inventory items.", 54);

@@ -22,6 +22,30 @@ void SyncActiveWeapon(void) {
     if (!has_melee && bow_equipped) active_weapon = WEAPON_BOW;
 }
 
+// Groups the pack by type (weapons, armor, shields, tools, food, materials),
+// equipped gear first within each group, then alphabetically.
+static int SlotRank(const char *slot) {
+    static const char *order[] = { "Weapon", "Armor", "Shield", "Tool", "Food", "Material" };
+    for (int i = 0; i < 6; i++) if (strcmp(slot, order[i]) == 0) return i;
+    return 6;
+}
+
+static int CompareItems(const void *a, const void *b) {
+    const InventoryItem *x = a, *y = b;
+    int d = SlotRank(x->slot) - SlotRank(y->slot);
+    if (d) return d;
+    if (x->is_equipped != y->is_equipped) return y->is_equipped - x->is_equipped;
+    return strcmp(x->name, y->name);
+}
+
+void SortInventory(void) {
+    if (player_item_count < 2) return;
+    qsort(player_inventory, player_item_count, sizeof(InventoryItem), CompareItems);
+    for (int i = 0; i < player_item_count; i++) player_inventory[i].id = i + 1;
+    selected_inv_index = 0;
+    strcpy(arpg_action_log, "INVENTORY: Sorted by type.");
+}
+
 void ToggleEquipSelectedItem(void) {
     if (player_item_count == 0) return;
     InventoryItem *item = &player_inventory[selected_inv_index];

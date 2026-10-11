@@ -5,6 +5,7 @@
 
 void SyncActiveWeapon(void);
 void ToggleEquipSelectedItem(void);
+void SortInventory(void);
 void HandleInventoryPrimaryAction(void);
 WeaponStats *GetEquippedWeaponStats(void);
 int WearEquippedWeapon(void);
