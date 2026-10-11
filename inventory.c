@@ -154,6 +154,9 @@ float GetNamedItemWeight(const char *name) {
     if (strcmp(name, "Axe") == 0) return 4.0f;
     if (strcmp(name, "Spear") == 0) return 3.0f;
     if (strcmp(name, "Mace") == 0) return 5.0f;
+    if (strcmp(name, "Raft") == 0) return 8.0f;
+    if (strcmp(name, "Canoe") == 0) return 6.0f;
+    if (strcmp(name, "Boat") == 0) return 4.0f;
     if (strcmp(name, "Night Vision Ring") == 0) return 0.1f;
     if (strcmp(name, "Strategy Guide") == 0) return 0.5f;
     if (strcmp(name, "Rusty Sword") == 0) return 2.0f;

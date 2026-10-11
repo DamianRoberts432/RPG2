@@ -8,7 +8,7 @@
 static int TileBlocksPlayer(float x, float y) {
     if (x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE) return 1;
     uint8_t t = VISUAL_MAP[(int)y][(int)x];
-    return t == 1 || t == 12;
+    return t == 1 || (t == 12 && !HasInventoryItem("Raft") && !HasInventoryItem("Canoe") && !HasInventoryItem("Boat"));
 }
 
 // Centre must be passable, and so must the surrounding 3x3 sample grid at the
