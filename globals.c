@@ -198,7 +198,7 @@ MerchantItem merchant_catalog[MERCH_ITEMS] = {
     { "Spear",         "Weapon",   LOOT_SPEAR,        30, 2,  2, RARITY_COMMON, 0 },
     { "Long Sword",    "Weapon",   LOOT_LONG_SWORD,   35, 2,  2, RARITY_UNCOMMON, 0 },
     { "Short Bow",     "Weapon",   LOOT_SHORT_BOW,    25, 2,  2, RARITY_UNCOMMON, 0 },
-    { "Strategy Guide", "Tool",    0,                 20, 1,  1, RARITY_UNCOMMON, 0 },
+    { "Strategy Guide", "Tool",    0,             200000, 1,  1, RARITY_RARE, 0 }, // 1,000,000 gold endgame luxury
     { "Dragon Scale Armor", "Armor", 0,                40, 1,  1, RARITY_RARE, 0 }
     // Legendary items are never sold; they only drop from bosses (see HandleEnemyDamage).
 };

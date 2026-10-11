@@ -140,13 +140,15 @@ static void DrawDeciduousCanopy(HDC hdc, int sx, int sy, int tile_seed) {
 void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
     static int sway_lut[32], sway_initialized = 0;
     if (!sway_initialized) {
-        for (int i = 0; i < 32; i++) sway_lut[i] = (int)(sin(i * 6.2831853f / 32.0f) * 3.0f);
+        for (int i = 0; i < 32; i++) sway_lut[i] = (int)(sin(i * 6.2831853f / 32.0f) * 2.0f);
         sway_initialized = 1;
     }
     int wind_strength = abs(wind_dir);
     int sway_phase = ((int)(world_tick * 2.0f) + tile_seed) & 31;
+    int root_x = sx; // the trunk stays rooted; only the canopy sways
     sx += sway_lut[sway_phase] * (3 + wind_strength) / 3;
-    POINT trunk[] = {{sx - 4, sy + 10}, {sx + 4, sy + 10}, {sx + 4, sy + 24}, {sx - 4, sy + 24}};
+    int lean = (sx - root_x) / 2;
+    POINT trunk[] = {{root_x - 4 + lean, sy + 10}, {root_x + 4 + lean, sy + 10}, {root_x + 4, sy + 24}, {root_x - 4, sy + 24}};
     HBRUSH b = CreateSolidBrush(RGB(130, 95, 70)); HGDIOBJ old = SelectObject(hdc, b); Polygon(hdc, trunk, 4); SelectObject(hdc, old); DeleteObject(b);
     
     int deciduous = IsDeciduousTree(tile_seed);
@@ -243,10 +245,12 @@ void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed) {
     } else if (type == 5) { // Tundra snow mound
         HBRUSH snow = CreateSolidBrush(RGB(235, 240, 250)); HGDIOBJ old = SelectObject(hdc, snow);
         Ellipse(hdc, sx - 6, sy + 1, sx + 6, sy + 9); SelectObject(hdc, old); DeleteObject(snow);
-    } else if (type == 6) { // Grasslands tall grass tuft
-        HBRUSH tuft = CreateSolidBrush(RGB(150, 210, 90)); HGDIOBJ old = SelectObject(hdc, tuft);
-        POINT poly[] = {{sx, sy}, {sx - 3, sy + 9}, {sx + 3, sy + 9}};
-        Polygon(hdc, poly, 3); SelectObject(hdc, old); DeleteObject(tuft);
+    } else if (type == 6) { // Grasslands tall grass tuft: single blades that lean a little in the wind
+        HPEN blade = CreatePen(PS_SOLID, 1, RGB(150, 210, 90)); HGDIOBJ old = SelectObject(hdc, blade);
+        int lean = (int)(sin(world_tick * 1.5f + sx * 0.1f) * 1.5f);
+        static const int base_dx[5] = { -3, -1, 0, 2, 3 }, tip_dx[5] = { -5, -2, 0, 2, 5 }, height[5] = { 6, 9, 10, 8, 6 };
+        for (int b = 0; b < 5; b++) { MoveToEx(hdc, sx + base_dx[b], sy + 9, NULL); LineTo(hdc, sx + tip_dx[b] + lean, sy + 9 - height[b]); }
+        SelectObject(hdc, old); DeleteObject(blade);
     } else if (type == 7) { // Desert/Oasis cactus
         HBRUSH cactus = CreateSolidBrush(RGB(60, 140, 90)); HGDIOBJ old = SelectObject(hdc, cactus);
         RECT stalk = { sx - 2, sy - 6, sx + 2, sy + 9 }, arm = { sx - 6, sy - 2, sx - 2, sy + 2 };

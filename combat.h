@@ -8,6 +8,7 @@ void SpawnBloodMist(float x, float y);
 void SpawnBloodBurst(float x, float y, float dir_x, float dir_y);
 void PerformMeleeAttack(void);
 void SpawnTreeDebris(float cx, float cy);
+void SpawnDirtClods(float cx, float cy);
 void UpdateDebrisTwigs(void);
 void HandleEnemyDamage(float dmg);
 float DistanceToEnemy(void);

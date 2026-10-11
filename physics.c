@@ -4,6 +4,7 @@
 #define YETI_AGGRO_RADIUS 3.0f
 #define YETI_CHARGE_SPEED 0.04f
 #define POISON_TICK_DAMAGE 0.2f
+#define WINDED_STAMINA_REGEN 0.3f
 static int TileBlocksPlayer(float x, float y) {
     if (x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE) return 1;
     uint8_t t = VISUAL_MAP[(int)y][(int)x];
@@ -85,10 +86,11 @@ void UpdateGamePhysics(void) {
     }
     if (player_stamina < max_stamina) {
         float stamina_floor = max_stamina * 0.30f;
-        if (player_stamina < stamina_floor || stamina_rest_timer >= STAMINA_REST_FRAMES_REQUIRED) {
-            player_stamina += (1.5f + stat_stamina * 0.1f);
-            if (player_stamina > max_stamina) player_stamina = max_stamina;
-        }
+        // Full recovery needs a short pause; while still swinging or running
+        // below 30% only a slow trickle comes back, so the hero does tire out.
+        if (stamina_rest_timer >= STAMINA_REST_FRAMES_REQUIRED) player_stamina += 1.5f + stat_stamina * 0.1f;
+        else if (player_stamina < stamina_floor) player_stamina += WINDED_STAMINA_REGEN;
+        if (player_stamina > max_stamina) player_stamina = max_stamina;
     }
 
     DWORD now_tick = GetTickCount();

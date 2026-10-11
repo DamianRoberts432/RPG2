@@ -53,7 +53,7 @@ void SpawnBloodMist(float x, float y) {
     // (rand()%100 spread over a 6400.0f divisor, re-centered by subtracting
     // the midpoint) and lifetime from 8-16 frames, both deliberately short
     // so specks fade before they can travel far or grow large on screen.
-    for (int i = 0; i < MAX_BLOOD_MIST; i++) {
+    for (int i = 0; i < MAX_BLOOD_MIST / 2; i++) {
         blood_mist[i].x = x; blood_mist[i].y = y;
         blood_mist[i].vx = ((rand() % 100) / 6400.0f - 0.0078f);
         blood_mist[i].vy = ((rand() % 100) / 6400.0f - 0.0078f);
@@ -66,6 +66,7 @@ void SpawnBloodMist(float x, float y) {
 // Heavy or critical hits spray 8-16 specks away from the hero.
 #define HEAVY_HIT_DAMAGE 2.0f
 #define SPEAR_REACH 2.6f
+#define MELEE_SWING_STAMINA 8.0f // every swing tires the hero; heavy weapons cost more
 #define SPEAR_THRUST_DOT 0.7f // narrower than a sword swing: a straight thrust
 void SpawnBloodBurst(float x, float y, float dir_x, float dir_y) {
     float d = (float)sqrt(dir_x * dir_x + dir_y * dir_y);
@@ -89,9 +90,10 @@ void SpawnBloodBurst(float x, float y, float dir_x, float dir_y) {
 void PerformMeleeAttack(void) {
     WeaponStats *weapon = GetEquippedWeaponStats();
     float damage = weapon ? (float)weapon->damage : 1.0f;
-    float stamina_cost = weapon ? weapon->stamina_cost : 0.0f;
+    float stamina_cost = MELEE_SWING_STAMINA + (weapon ? weapon->stamina_cost * 2.0f : 0.0f);
     if (player_stamina < stamina_cost) { strcpy(arpg_action_log, "Exhausted! Too tired to swing that weapon."); return; }
     player_stamina -= (float)stamina_cost;
+    stamina_rest_timer = 0;
     sword_swipe_frame = (weapon && weapon->attack_speed_mult < 1.0f) ? 14 : 10;
     SelectTargetEnemy();
     float m_dist = DistanceToEnemy();
@@ -110,6 +112,18 @@ void SpawnTreeDebris(float cx, float cy) {
     }
 }
 
+// Dirt clods kicked up when a summoned zombie or skeleton claws out of the ground.
+void SpawnDirtClods(float cx, float cy) {
+    int n = 0;
+    for (int i = 0; i < DEBRIS_MAX && n < 8; i++) {
+        if (twigs[i].active) continue;
+        twigs[i].x = cx; twigs[i].y = cy;
+        twigs[i].vx = (rand() % 100) / 2500.0f - 0.02f; twigs[i].vy = (rand() % 100) / 2500.0f - 0.02f;
+        twigs[i].life = 20 + rand() % 15; twigs[i].screen_id = current_screen_index; twigs[i].active = 1;
+        n++;
+    }
+}
+
 // Twigs/chips drift briefly outward from the chopped tree or mined rock, then
 // vanish shortly after - debris is no longer left permanently on the ground.
 void UpdateDebrisTwigs(void) {
@@ -120,7 +134,8 @@ void UpdateDebrisTwigs(void) {
     }
 }
 
-#define JUNK_DROP_RATE 0.9f
+#define JUNK_DROP_RATE 0.6f
+#define OVERKILL_BLOOD 1.0f // hearts of damage past zero that trigger an extra spray
 void HandleEnemyDamage(float dmg) {
     if (fabs(sin(day_night_cycle_accumulator)) < 0.35f) dmg *= 0.9f;
     int crit = dmg > 0.0f && rand() % 100 < 5 + 2 * stat_spent[4]; // each LCK point spent: +2% crit
@@ -133,10 +148,11 @@ void HandleEnemyDamage(float dmg) {
     
     if (enemy_hearts <= 0.0f) {
         SpawnBloodMist(enemy_x, enemy_y);
+        if (-enemy_hearts >= OVERKILL_BLOOD) { SpawnBloodBurst(enemy_x, enemy_y, k_dx, k_dy); SpawnBloodBurst(enemy_x, enemy_y, k_dx, k_dy); }
         int is_night = fabs(sin(day_night_cycle_accumulator)) < 0.35f;
         int gained_xp = (int)(((10 + rand() % 7 + (is_night ? 2 : 0)) * opt_xp_mult) * ((is_night && night_bonus_active) ? 1.25f : 1.0f));
         float loot_multiplier = opt_loot_mult * (is_night ? 1.5f : 1.0f);
-        // Ordinary (junk) drops are 10% rarer than they used to be.
+        // Ordinary (junk) drops are 40% rarer than they used to be, to cut ground clutter.
         int loot_chance = (int)(70.0f * JUNK_DROP_RATE * loot_multiplier) + 3 * stat_spent[4];
         if (loot_chance > 100) loot_chance = 100;
         if (rand() % 100 < loot_chance) {
@@ -299,7 +315,7 @@ void UpdateEnemySpawns(void) {
 #define BOW_AIM_CONE_DOT 0.5f
 // Holding the draw (RT / F) costs stamina every frame; once winded the
 // charge stops building, though the arrow can still be loosed.
-#define BOW_DRAW_STAMINA_PER_FRAME 0.5f
+#define BOW_DRAW_STAMINA_PER_FRAME 1.0f
 void ChargeBow(void) {
     if (player_stamina <= 0.0f) return;
     player_stamina -= BOW_DRAW_STAMINA_PER_FRAME;
@@ -485,6 +501,7 @@ void FireClassAbility(void) {
             summoned_zombie.hp = summon_hp[type]; summoned_zombie.timer = 900;
             summoned_zombie.raise_frame = 0; summoned_zombie.attack_cooldown = 0;
             summoned_zombie.active = 1;
+            if (type != SUMMON_GHOST) SpawnDirtClods(summoned_zombie.x, summoned_zombie.y + 0.3f);
             KarmaAdjust(0, 5, 0, 0);
             ability_visual_frame = SPELL_FLASH_FRAMES;
             player_mp -= CLASS_ABILITY_MP_COST; y_ability_cooldown_until = now + SPELL_COOLDOWN_MS;

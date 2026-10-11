@@ -27,7 +27,7 @@
 #define DEBRIS_MAX 16
 #define MAX_CRITTERS 4
 #define MERCH_ITEMS 17
-#define MAX_BLOOD_MIST 24
+#define MAX_BLOOD_MIST 48
 #define MAX_CAMPFIRES 8
 #define MAX_INVENTORY_ITEMS 100
 #define MAX_GROUND_LOOT 16
@@ -201,7 +201,7 @@ extern float player_mp, max_player_mp;
 #define CLASS_ABILITY_MP_COST (20.0f - (float)stat_spent[5]) // each INT point spent saves 1 MP
 #define STAT_COUNT 7            // STR DEX STA MAG LCK INT CHR (Hero tab order)
 #define STAT_CAP 10             // one jewel row
-#define STAT_POINTS_PER_LEVEL 2
+#define STAT_POINTS_PER_LEVEL 1
 extern int stat_points, stat_spent[STAT_COUNT], stat_cursor, stat_assign_mode;
 int *StatByIndex(int i);
 void SpendStatPoint(void);
