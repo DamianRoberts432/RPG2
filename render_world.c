@@ -140,13 +140,15 @@ static void DrawDeciduousCanopy(HDC hdc, int sx, int sy, int tile_seed) {
 void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
     static int sway_lut[32], sway_initialized = 0;
     if (!sway_initialized) {
-        for (int i = 0; i < 32; i++) sway_lut[i] = (int)(sin(i * 6.2831853f / 32.0f) * 3.0f);
+        for (int i = 0; i < 32; i++) sway_lut[i] = (int)(sin(i * 6.2831853f / 32.0f) * 2.0f);
         sway_initialized = 1;
     }
     int wind_strength = abs(wind_dir);
     int sway_phase = ((int)(world_tick * 2.0f) + tile_seed) & 31;
+    int root_x = sx; // the trunk stays rooted; only the canopy sways
     sx += sway_lut[sway_phase] * (3 + wind_strength) / 3;
-    POINT trunk[] = {{sx - 4, sy + 10}, {sx + 4, sy + 10}, {sx + 4, sy + 24}, {sx - 4, sy + 24}};
+    int lean = (sx - root_x) / 2;
+    POINT trunk[] = {{root_x - 4 + lean, sy + 10}, {root_x + 4 + lean, sy + 10}, {root_x + 4, sy + 24}, {root_x - 4, sy + 24}};
     HBRUSH b = CreateSolidBrush(RGB(130, 95, 70)); HGDIOBJ old = SelectObject(hdc, b); Polygon(hdc, trunk, 4); SelectObject(hdc, old); DeleteObject(b);
     
     int deciduous = IsDeciduousTree(tile_seed);
