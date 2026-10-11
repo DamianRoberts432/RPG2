@@ -53,6 +53,12 @@ void HandleVendorBuy(void) {
 // quarter of the hero's gold and lock them up until dawn.
 void HandleVendorSteal(void) {
     if (!IsNearMerchant() || sleep_fade_frame > 0) return;
+    // The Strategy Guide can only be browsed or bought, never stolen.
+    if (vendor_tab == 0 && strcmp(merchant_catalog[merchant_selection].name, "Strategy Guide") == 0) {
+        guide_flash_until = GetTickCount() + GUIDE_FLASH_MS;
+        strcpy(arpg_action_log, "You browse the A&D Strategy Guide. Buy it to keep it.");
+        return;
+    }
     int fine = gold_count / 4;
     gold_count -= fine;
     vendor_menu_open = 0;

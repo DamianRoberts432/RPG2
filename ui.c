@@ -205,7 +205,9 @@ void DrawVendorShopOverlay(HDC hdc) {
     SetTextColor(hdc, RGB(150, 220, 255));
     TextOut(hdc, box.left + 320, box.bottom - 30, "[ ESC/B ] Close shop", 20);
     SetTextColor(hdc, RGB(200, 90, 80));
-    TextOut(hdc, box.left + 320, box.bottom - 52, "[ T/Back ] Steal", 16);
+    int guide_row = vendor_tab == 0 && strcmp(merchant_catalog[merchant_selection].name, "Strategy Guide") == 0;
+    const char *t_hint = guide_row ? "[ T/Back ] Browse" : "[ T/Back ] Steal";
+    TextOut(hdc, box.left + 320, box.bottom - 52, t_hint, (int)strlen(t_hint));
     SetTextColor(hdc, RGB(150, 160, 170));
     TextOut(hdc, box.left + 20, box.bottom - 52, "UP/DOWN or [ ] / D-PAD: scroll", 30);
 }
