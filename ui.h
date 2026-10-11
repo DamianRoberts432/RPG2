@@ -8,5 +8,6 @@ void DrawStatJewels(HDC hdc, int x, int y, const char *label, int value);
 void DrawPlayerStatusHUD(HDC hdc);
 void DrawVendorShopOverlay(HDC hdc);
 void DrawTabbedMenuOverlay(HDC hdc);
+void DrawStrategyGuideFlash(HDC hdc);
 
 #endif // UI_H

@@ -210,6 +210,33 @@ void DrawVendorShopOverlay(HDC hdc) {
     TextOut(hdc, box.left + 20, box.bottom - 52, "UP/DOWN or [ ] / D-PAD: scroll", 30);
 }
 
+// Two-second peek at the secret card combos after reading the Strategy Guide.
+void DrawStrategyGuideFlash(HDC hdc) {
+    if ((long)(guide_flash_until - GetTickCount()) <= 0) return;
+    RECT box = { WINDOW_WIDTH / 2 - 330, WINDOW_HEIGHT / 2 - 110, WINDOW_WIDTH / 2 + 330, WINDOW_HEIGHT / 2 + 110 };
+    HBRUSH bg = CreateSolidBrush(RGB(40, 30, 20)); FillRect(hdc, &box, bg); DeleteObject(bg);
+    HPEN border = CreatePen(PS_SOLID, 3, RGB(220, 180, 90)); HGDIOBJ old_p = SelectObject(hdc, border);
+    HGDIOBJ old_b = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+    Rectangle(hdc, box.left, box.top, box.right, box.bottom);
+    SelectObject(hdc, old_b); SelectObject(hdc, old_p); DeleteObject(border);
+    SetBkMode(hdc, TRANSPARENT);
+    static const char *lines[] = {
+        "A&D STRATEGY GUIDE - SECRET CARD COMBOS",
+        "",
+        "Skeleton + Zombie + Dracula   ->  NIGHT TERROR",
+        "Yeti + Bigfoot + Satyr        ->  WILD HUNT",
+        "Sphinx + Bunyip + Goblin      ->  RIDDLE OF THE DEEP",
+    };
+    for (int i = 0; i < 5; i++) {
+        SetTextColor(hdc, i == 0 ? RGB(255, 215, 0) : RGB(235, 225, 205));
+        TextOut(hdc, box.left + 30, box.top + 24 + i * 24, lines[i], (int)strlen(lines[i]));
+    }
+    char buf[64];
+    sprintf(buf, "Your binder: %d / %d cards", CardCount(), CARD_COUNT);
+    SetTextColor(hdc, RGB(150, 220, 255));
+    TextOut(hdc, box.left + 30, box.bottom - 40, buf, (int)strlen(buf));
+}
+
 void DrawTabbedMenuOverlay(HDC hdc) {
     HBRUSH bg = CreateSolidBrush(RGB(22, 25, 32));
     RECT menu_box = { 60, 40, WINDOW_WIDTH - 60, WINDOW_HEIGHT - 60 };

@@ -26,7 +26,7 @@
 #define MAX_BUTTERFLIES 8
 #define DEBRIS_MAX 16
 #define MAX_CRITTERS 4
-#define MERCH_ITEMS 16
+#define MERCH_ITEMS 17
 #define MAX_BLOOD_MIST 24
 #define MAX_CAMPFIRES 8
 #define MAX_INVENTORY_ITEMS 100
@@ -185,6 +185,8 @@ extern int night_bonus_active;
 extern int wind_dir;
 extern int sleep_fade_frame;
 extern int jailed_tonight;
+#define GUIDE_FLASH_MS 2000
+extern DWORD guide_flash_until;
 extern int enemy_direction;
 extern float weather_next_change;
 extern int is_menu_open;

@@ -65,6 +65,9 @@ void HandleInventoryPrimaryAction(void) {
         HandleMenuLightFire();
     } else if (strcmp(item->name, "Wood") == 0 && AddWoodToNearbyFire()) {
         // handled inside AddWoodToNearbyFire()
+    } else if (strcmp(item->name, "Strategy Guide") == 0) {
+        guide_flash_until = GetTickCount() + GUIDE_FLASH_MS;
+        strcpy(arpg_action_log, "A&D STRATEGY GUIDE: secret card combos revealed!");
     } else if (strcmp(item->name, "Fish") == 0 || strcmp(item->name, "Apple") == 0) {
         ConsumeSelectedFood();
     } else if (strcmp(item->slot, "Weapon") == 0 || strcmp(item->slot, "Armor") == 0 || strcmp(item->slot, "Shield") == 0) {
@@ -125,6 +128,7 @@ float GetNamedItemWeight(const char *name) {
     if (strcmp(name, "Long Sword") == 0) return 5.0f;
     if (strcmp(name, "Axe") == 0) return 4.0f;
     if (strcmp(name, "Spear") == 0) return 3.0f;
+    if (strcmp(name, "Strategy Guide") == 0) return 0.5f;
     if (strcmp(name, "Rusty Sword") == 0) return 2.0f;
     if (strcmp(name, "Iron Sword") == 0) return 4.0f;
     if (strcmp(name, "Wooden Shield") == 0) return 3.0f;
