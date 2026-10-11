@@ -120,7 +120,7 @@ void UpdateDebrisTwigs(void) {
     }
 }
 
-#define JUNK_DROP_RATE 0.9f
+#define JUNK_DROP_RATE 0.6f
 void HandleEnemyDamage(float dmg) {
     if (fabs(sin(day_night_cycle_accumulator)) < 0.35f) dmg *= 0.9f;
     int crit = dmg > 0.0f && rand() % 100 < 5 + 2 * stat_spent[4]; // each LCK point spent: +2% crit
@@ -136,7 +136,7 @@ void HandleEnemyDamage(float dmg) {
         int is_night = fabs(sin(day_night_cycle_accumulator)) < 0.35f;
         int gained_xp = (int)(((10 + rand() % 7 + (is_night ? 2 : 0)) * opt_xp_mult) * ((is_night && night_bonus_active) ? 1.25f : 1.0f));
         float loot_multiplier = opt_loot_mult * (is_night ? 1.5f : 1.0f);
-        // Ordinary (junk) drops are 10% rarer than they used to be.
+        // Ordinary (junk) drops are 40% rarer than they used to be, to cut ground clutter.
         int loot_chance = (int)(70.0f * JUNK_DROP_RATE * loot_multiplier) + 3 * stat_spent[4];
         if (loot_chance > 100) loot_chance = 100;
         if (rand() % 100 < loot_chance) {
