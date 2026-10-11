@@ -264,7 +264,7 @@ extern MonsterType active_monster;
 #define MAX_ENEMIES 6           // night cap
 #define MAX_ENEMIES_DAY 4
 #define ENEMY_SPAWN_INTERVAL_MS 20000
-typedef struct { float x, y, hearts; MonsterType type; int direction; } EnemySlot;
+typedef struct { float x, y, hearts; MonsterType type; int direction; int angry; } EnemySlot;
 extern EnemySlot enemies[MAX_ENEMIES];
 extern int current_enemy;
 void SelectEnemy(int i);

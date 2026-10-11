@@ -123,6 +123,7 @@ void HandleEnemyDamage(float dmg) {
     int crit = dmg > 0.0f && rand() % 100 < 5 + 2 * stat_spent[4]; // each LCK point spent: +2% crit
     if (crit) dmg *= 2.0f;
     enemy_hearts -= dmg;
+    if (active_monster == MONSTER_YETI) enemies[current_enemy].angry = 1;
     float k_dx = enemy_x - player_x; float k_dy = enemy_y - player_y; float k_dist = (float)sqrt(k_dx * k_dx + k_dy * k_dy);
     if (crit || dmg >= HEAVY_HIT_DAMAGE) SpawnBloodBurst(enemy_x, enemy_y, k_dx, k_dy);
     if (k_dist > 0.01f) { enemy_x += (k_dx / k_dist) * 0.25f; enemy_y += (k_dy / k_dist) * 0.25f; }
@@ -256,7 +257,7 @@ static void SpawnEnemyInFreeSlot(void) {
     StoreEnemy();
     for (int i = 0; i < MAX_ENEMIES; i++) {
         if (enemies[i].hearts > 0.0f) continue;
-        SelectEnemy(i); TriggerMonsterRespawn(); enemy_direction = FACE_DOWN; StoreEnemy();
+        SelectEnemy(i); TriggerMonsterRespawn(); enemy_direction = FACE_DOWN; StoreEnemy(); enemies[i].angry = 0;
         return;
     }
 }

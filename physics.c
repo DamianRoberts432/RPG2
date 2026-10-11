@@ -1,6 +1,8 @@
 #include "game.h"
 
 #define PLAYER_COLLISION_RADIUS 0.3f
+#define YETI_AGGRO_RADIUS 3.0f
+#define YETI_CHARGE_SPEED 0.04f
 static int TileBlocksPlayer(float x, float y) {
     if (x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE) return 1;
     uint8_t t = VISUAL_MAP[(int)y][(int)x];
@@ -165,21 +167,28 @@ void UpdateGamePhysics(void) {
             float target_x = player_x, target_y = player_y;
             float pdx = player_x - enemy_x, pdy = player_y - enemy_y;
             float player_dist = (float)sqrt(pdx * pdx + pdy * pdy);
+            // Yeti: a calm wanderer until the hero comes close or strikes it.
+            int calm = 0;
+            if (active_monster == MONSTER_YETI && !enemies[e].angry) {
+                if (player_dist < YETI_AGGRO_RADIUS) { enemies[e].angry = 1; strcpy(arpg_action_log, "The Yeti roars and charges!"); }
+                else calm = 1;
+            }
             float zdx = summoned_zombie.x - enemy_x, zdy = summoned_zombie.y - enemy_y;
             float zombie_dist = summoned_zombie.active ? (float)sqrt(zdx * zdx + zdy * zdy) : 1000.0f;
             if (zombie_dist < player_dist) { target_x = summoned_zombie.x; target_y = summoned_zombie.y; }
             float s_dx = target_x - enemy_x, s_dy = target_y - enemy_y;
             float dist = (float)sqrt(s_dx * s_dx + s_dy * s_dy);
-            if (dist <= 8.0f && dist > 0.2f) {
+            if (!calm && dist <= 8.0f && dist > 0.2f) {
                 static const float speeds[] = { 0.0275f, 0.014f, 0.03f, 0.034f, 0.03f, 0.022f, 0.02f, 0.024f, 0.018f };
                 float speed = speeds[active_monster];
+                if (active_monster == MONSTER_YETI) speed = YETI_CHARGE_SPEED;
                 if (fabs(sin(day_night_cycle_accumulator)) < 0.35f) speed *= 1.2f;
                 if (VISUAL_MAP[(int)enemy_y][(int)enemy_x] == 12) speed *= 0.25f;
                 enemy_x += (s_dx / dist) * speed;
                 enemy_y += (s_dy / dist) * speed;
                 if (summoned_zombie.active && zombie_dist < player_dist && zombie_dist < 0.7f &&
                     world_frame % 40 == 0) summoned_zombie.hp -= 0.5f;
-            } else if (dist > 8.0f && world_frame % 10 == 0) {
+            } else if ((calm || dist > 8.0f) && world_frame % 10 == 0) {
                 static const int dir_lut[4][3] = {
                     { FACE_LEFT, FACE_DOWN, FACE_RIGHT }, { FACE_RIGHT, FACE_UP, FACE_LEFT },
                     { FACE_DOWN, FACE_LEFT, FACE_UP }, { FACE_UP, FACE_RIGHT, FACE_DOWN }
