@@ -8,6 +8,7 @@
 void RecordCurrentScreenOnMap(void);
 void MarkMapTreasureFound(int origin_cell);
 int IsMapTreasureFound(int origin_cell);
+int IsMapCastle(int gx, int gy);
 void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h);
 int SaveWorldMapState(void);
 int LoadWorldMapState(void);

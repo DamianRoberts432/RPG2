@@ -303,6 +303,8 @@ extern const char *villager_questions[];
 extern const char *traveler_barks[];
 extern const char *rumor_mill[];
 extern const char *fort_barks[];
+#define WORLD_HINT_COUNT 10
+extern const char *world_hints[WORLD_HINT_COUNT];
 extern int is_character_creation;
 extern int stat_strength, stat_dexterity, stat_stamina;
 extern int stat_magick, stat_luck, stat_intelligence, stat_charisma;

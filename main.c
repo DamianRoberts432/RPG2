@@ -53,6 +53,11 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                     } else {
                         if (leaving_castle) screens_until_town = 3 + (rand() % 8);
                         else screens_until_town--;
+                        // Known cells always look the way the map logged them: a
+                        // castle stays a castle, and a new castle only rises on
+                        // ground that hasn't been explored yet.
+                        if (IsMapCastle(new_gx, new_gy)) screens_until_town = 0;
+                        else if (screens_until_town <= 0 && GetVisitedBiomeAt(new_gx, new_gy) != -1) screens_until_town = 1;
                         screen_grid_x = new_gx; screen_grid_y = new_gy;
                         // Castle screens get their own id range (caves use 20000+)
                         // so they never share loot/campfires with an overworld cell.

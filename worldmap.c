@@ -29,6 +29,10 @@ void RecordCurrentScreenOnMap(void) {
     else map_poi[gy][gx] &= (uint8_t)~POI_VILLAGE;
 }
 
+int IsMapCastle(int gx, int gy) {
+    return CellInWorld(gx, gy) && (map_poi[gy][gx] & POI_CASTLE);
+}
+
 void MarkMapTreasureFound(int origin_cell) {
     int gx = origin_cell % META_GRID_SIZE, gy = origin_cell / META_GRID_SIZE;
     if (origin_cell >= 0 && CellInWorld(gx, gy)) map_poi[gy][gx] |= POI_TREASURE_FOUND;
@@ -66,6 +70,11 @@ int SaveWorldMapState(void) {
     ok = ok && fwrite(card_collection_bits, sizeof(card_collection_bits), 1, f) == 1 &&
          fwrite(deck_of_cards_bits, sizeof(deck_of_cards_bits), 1, f) == 1 &&
          fwrite(monster_card_links, sizeof(monster_card_links), 1, f) == 1;
+    // Backpack, purse and identity, so logging back in restores the same hero.
+    int32_t pack[4] = { gold_count, player_item_count, (int32_t)selected_race, (int32_t)selected_class };
+    ok = ok && fwrite(pack, sizeof(pack), 1, f) == 1 &&
+         fwrite(player_name, sizeof(player_name), 1, f) == 1 &&
+         fwrite(player_inventory, sizeof(InventoryItem), (size_t)player_item_count, f) == (size_t)player_item_count;
     ok = (fclose(f) == 0) && ok;
     if (!ok) { remove(SAVE_TEMP_NAME); return 0; }
     return MoveFileExA(SAVE_TEMP_NAME, SAVE_FILE_NAME, MOVEFILE_REPLACE_EXISTING) != 0;
@@ -92,6 +101,12 @@ int LoadWorldMapState(void) {
     MonsterCardLink links[MONSTER_TYPE_COUNT];
     int has_cards = has_karma && fread(cards, sizeof(cards), 1, f) == 1 && fread(deck, sizeof(deck), 1, f) == 1 &&
                     fread(links, sizeof(links), 1, f) == 1;
+    int32_t pack[4];
+    char name[sizeof(player_name)];
+    static InventoryItem items[MAX_INVENTORY_ITEMS];
+    int has_pack = has_cards && fread(pack, sizeof(pack), 1, f) == 1 && fread(name, sizeof(name), 1, f) == 1 &&
+                   pack[1] >= 0 && pack[1] <= MAX_INVENTORY_ITEMS &&
+                   fread(items, sizeof(InventoryItem), (size_t)pack[1], f) == (size_t)pack[1];
     fclose(f);
     if (!ok) return 0;
     memcpy(visited_biomes, biomes, sizeof(biomes));
@@ -107,6 +122,21 @@ int LoadWorldMapState(void) {
         memcpy(card_collection_bits, cards, sizeof(cards));
         memcpy(deck_of_cards_bits, deck, sizeof(deck));
         for (int i = 0; i < MONSTER_TYPE_COUNT; i++) monster_card_links[i].kills = links[i].kills;
+    }
+    if (has_pack) {
+        gold_count = pack[0] < 0 ? 0 : pack[0];
+        player_item_count = pack[1];
+        memcpy(player_inventory, items, sizeof(InventoryItem) * (size_t)pack[1]);
+        for (int i = 0; i < player_item_count; i++) {
+            player_inventory[i].name[sizeof(player_inventory[i].name) - 1] = 0;
+            player_inventory[i].slot[sizeof(player_inventory[i].slot) - 1] = 0;
+        }
+        if (selected_inv_index >= player_item_count) selected_inv_index = 0;
+        if (pack[2] >= 0 && pack[2] < 5) selected_race = (RaceType)pack[2];
+        if (pack[3] >= 0 && pack[3] < 5) selected_class = (ClassType)pack[3];
+        name[sizeof(name) - 1] = 0;
+        if (name[0]) strcpy(player_name, name);
+        RecalculateCarriedWeight();
     }
     return 1;
 }

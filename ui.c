@@ -119,7 +119,7 @@ static WeaponStats *FindWeaponStats(const char *name) {
 }
 
 static const char *ItemBlurb(const char *name) {
-    if (strcmp(name, "Strategy Guide") == 0) return "Secret card combos. T/Back to browse here, or buy it.";
+    if (strcmp(name, "Strategy Guide") == 0) return "Secret card combos. Browse it here, or buy it.";
     if (strcmp(name, "Matches") == 0) return "Light a campfire from the inventory (needs 2 Wood).";
     if (strcmp(name, "Fish") == 0 || strcmp(name, "Apple") == 0) return "Eat to restore health.";
     if (strcmp(name, "Pickaxe") == 0) return "Mine rocks with X.";
@@ -228,7 +228,7 @@ void DrawVendorShopOverlay(HDC hdc) {
         if (start > 0) TextOut(hdc, box.right - 70, box.top + 46, "^ more", 6);
         if (end < MERCH_ITEMS) TextOut(hdc, box.right - 70, box.top + 46 + (visible_rows - 1) * 20, "v more", 6);
         SetTextColor(hdc, RGB(150, 220, 255));
-        TextOut(hdc, box.left + 20, box.bottom - 30, "[ SPACE/A ] Buy selected item", 30);
+        TextOut(hdc, box.left + 20, box.bottom - 30, "[ SPACE/A ] Browse / Buy", 24);
     } else {
         if (player_item_count == 0) {
             SetTextColor(hdc, RGB(200, 200, 200));
@@ -267,10 +267,20 @@ void DrawVendorShopOverlay(HDC hdc) {
     }
     SetTextColor(hdc, RGB(150, 220, 255));
     TextOut(hdc, box.left + 320, box.bottom - 30, "[ ESC/B ] Close shop", 20);
-    SetTextColor(hdc, RGB(200, 90, 80));
-    int guide_row = vendor_tab == 0 && strcmp(merchant_catalog[merchant_selection].name, "Strategy Guide") == 0;
-    const char *t_hint = guide_row ? "[ T/Back ] Browse" : "[ T/Back ] Steal";
-    TextOut(hdc, box.left + 320, box.bottom - 52, t_hint, (int)strlen(t_hint));
+    if (vendor_tab == 0 && shop_action_menu) {
+        RECT menu = { box.left + 300, box.top + 130, box.left + 460, box.top + 230 };
+        HBRUSH mb = CreateSolidBrush(RGB(30, 34, 46)); FillRect(hdc, &menu, mb); DeleteObject(mb);
+        HPEN mp = CreatePen(PS_SOLID, 2, RGB(255, 235, 100)); HGDIOBJ op = SelectObject(hdc, mp);
+        HGDIOBJ ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+        Rectangle(hdc, menu.left, menu.top, menu.right, menu.bottom);
+        SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(mp);
+        static const char *opts[3] = { "Browse", "Buy", "Cancel" };
+        for (int i = 0; i < 3; i++) {
+            char opt[32]; sprintf(opt, "%s %s", i == shop_action_cursor ? ">" : " ", opts[i]);
+            SetTextColor(hdc, i == shop_action_cursor ? RGB(255, 255, 0) : RGB(210, 210, 210));
+            TextOut(hdc, menu.left + 20, menu.top + 14 + i * 26, opt, (int)strlen(opt));
+        }
+    }
     SetTextColor(hdc, RGB(150, 160, 170));
     TextOut(hdc, box.left + 20, box.bottom - 52, "UP/DOWN or [ ] / D-PAD: scroll", 30);
     DrawShopItemCard(hdc);

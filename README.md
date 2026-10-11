@@ -100,7 +100,7 @@ game.exe
 | **RB / 'E' Key (speaking to a merchant)** | — | Switch the shop UI to the **Sell** tab (your inventory items available to sell) |
 | **Up/Down Arrows / '[' / ']' Keys / DPAD Up-Down (shop open)** | — | Cycle the highlighted row within the active Buy/Sell tab |
 | **Space Bar / (A) Button (shop open)** | — | Confirm the buy or sell on the highlighted row |
-| **'T' Key / Back Button (shop open)** | — | Try to steal. It always fails: **Straight to Jail!** The guards take 25% of your gold, you spend the night in a cell, and Town Heat rises. |
+| **SPACE / A (shop open, Buy tab)** | — | Opens a Browse / Buy / Cancel menu; pick with up/down. There is no stealing. |
 | **Escape / (B) Button (shop open)** | — | Close the shop menu |
 
 ## World map and saving

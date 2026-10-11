@@ -4,7 +4,7 @@ void GenerateVillageNPCs(void) {
     village_npc_count = 0;
     int is_market = current_biome == BIOME_CASTLE;
     // Fewer settlements: only about one Prairie screen in three holds a village.
-    if (!is_market && !(current_biome == BIOME_PRAIRIE && screens_until_town > 2 && current_screen_index % 3 == 0)) return;
+    if (!is_market && !(current_biome == BIOME_PRAIRIE && current_screen_index % 3 == 0)) return;
     int shift = (current_screen_index % 3) - 1;
     const float village_x[4] = { 11.0f, 15.0f, 19.0f, 15.0f };
     const float village_y[4] = { 11.0f, 10.0f, 11.0f, 18.0f };
@@ -229,6 +229,10 @@ void GenerateProceduralScreen(int index) {
         grid_r >= 0 && grid_r < META_GRID_SIZE && grid_c >= 0 && grid_c < META_GRID_SIZE) {
         visited_biomes[grid_r][grid_c] = (uint8_t)(current_biome + 1);
     }
+    // Re-seed from the cell and its biome: the biome picker only rolls on a
+    // first visit, so without this a revisit would draw different tiles than
+    // the ones logged on the map.
+    srand((unsigned int)(0x51A7u + index * 313u) ^ ((unsigned int)current_biome * 2654435761u));
 
     for (int r = 0; r < MAP_SIZE; r++) {
         for (int c = 0; c < MAP_SIZE; c++) {
@@ -323,15 +327,19 @@ void GenerateProceduralScreen(int index) {
         torch_gate_x = -100; torch_gate_y = -100;
     }
 
+    int spawn_hour, spawn_minute; GetGameClock(&spawn_hour, &spawn_minute);
+    int spawn_night = spawn_hour >= 21 || spawn_hour < 6;
     for (int i = 0; i < MAX_CRITTERS; i++) {
         critters[i].x = (float)(5 + rand() % 20);
         critters[i].y = (float)(5 + rand() % 20);
         critters[i].base_x = critters[i].x;
         critters[i].base_y = critters[i].y;
-        critters[i].type = rand() % 3; // 0 bird, 1 squirrel (both diurnal), 2 owl (nocturnal)
+        // 0 bird, 1 squirrel (both diurnal), 2 owl (nocturnal). Day screens get
+        // birds and squirrels; owls only roost on screens entered at night.
+        critters[i].type = spawn_night && i < 2 ? 2 : i % 2;
         critters[i].state = 0;
         critters[i].active = 1;
-        critters[i].hidden = 0;
+        critters[i].hidden = spawn_night != (critters[i].type == 2);
     }
 
     for(int i = 13; i <= 17; i++) { for(int j = 13; j <= 17; j++) { VISUAL_MAP[i][j] = 0; } }
@@ -359,7 +367,7 @@ void UpdateVillageNPCs(void) {
             float dx = player_x - npc->x, dy = player_y - npc->y;
             npc->direction = fabs(dx) > fabs(dy) ? (dx < 0 ? FACE_LEFT : FACE_RIGHT) : (dy < 0 ? FACE_UP : FACE_DOWN);
             if (npc->dialogue_cooldown == 0) {
-                if (npc->type == 0) npc->dialogue = villager_greetings[rand() % 3];
+                if (npc->type == 0) npc->dialogue = rand() % 3 == 0 ? world_hints[rand() % WORLD_HINT_COUNT] : villager_greetings[rand() % 3];
                 else if (npc->type == 2) npc->dialogue = fort_barks[rand() % 3];
                 else npc->dialogue = "Welcome, adventurer!";
                 npc->dialogue_cooldown = 120 + rand() % 61;
@@ -379,11 +387,19 @@ void UpdateVillageNPCs(void) {
     }
 }
 
+int CritterAsleep(const CritterEntity *critter) {
+    int hour, minute; GetGameClock(&hour, &minute);
+    int night = hour >= 21 || hour < 6;
+    return night != (critter->type == 2);
+}
+
 void UpdateCritters(void) {
     if (world_frame % 30 != 0) return;
     for (int i = 0; i < MAX_CRITTERS; i++) {
         CritterEntity *critter = &critters[i];
         if (!critter->active) continue;
+        // Day animals sleep from 9 PM to 6 AM; the owl only comes out then.
+        if (CritterAsleep(critter)) { critter->hidden = 1; continue; }
         // Rain or snow sends nature to the nearest tree (or into a burrow if
         // there are none); it comes back out once the weather turns fair.
         if (IsAdverseWeather()) {
@@ -404,10 +420,6 @@ void UpdateCritters(void) {
             critter->hidden = 1;
             continue;
         }
-        // Day animals sleep from 9 PM to 6 AM; the owl only comes out then.
-        int hour, minute; GetGameClock(&hour, &minute);
-        int night = hour >= 21 || hour < 6;
-        if (night != (critter->type == 2)) { critter->hidden = 1; continue; }
         critter->hidden = 0;
         // Wildlife scatters from anything nearby, unless the hero is truly
         // virtuous and lucky enough that animals trust them.

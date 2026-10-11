@@ -200,16 +200,16 @@ MerchantItem merchant_catalog[MERCH_ITEMS] = {
     { "Apple",         "Food",     0,                  3, -1, 0, RARITY_COMMON, 0 },
     { "Spear",         "Weapon",   LOOT_SPEAR,        30, 2,  2, RARITY_COMMON, 0 },
     { "Dagger",        "Weapon",   LOOT_DAGGER,       10, 2,  2, RARITY_COMMON, 0 },
-    { "Mace",          "Weapon",   LOOT_MACE,         35, 1,  1, RARITY_UNCOMMON, 0 },
-    { "Long Bow",      "Weapon",   LOOT_LONG_BOW,     40, 1,  1, RARITY_UNCOMMON, 0 },
-    { "Night Vision Ring", "Ring", 0,                 60, 1,  1, RARITY_RARE, 0 },
+    { "Mace",          "Weapon",   LOOT_MACE,        600, 1,  1, RARITY_UNCOMMON, 0 },
+    { "Long Bow",      "Weapon",   LOOT_LONG_BOW,    750, 1,  1, RARITY_UNCOMMON, 0 },
+    { "Night Vision Ring", "Ring", 0,               3000, 1,  1, RARITY_RARE, 0 },
     { "Raft",          "Tool",     0,                 30, 1,  1, RARITY_COMMON, 0 },
-    { "Canoe",         "Tool",     0,                 60, 1,  1, RARITY_UNCOMMON, 0 },
-    { "Boat",          "Tool",     0,                 50, 1,  1, RARITY_RARE, 0 },
-    { "Long Sword",    "Weapon",   LOOT_LONG_SWORD,   35, 2,  2, RARITY_UNCOMMON, 0 },
-    { "Short Bow",     "Weapon",   LOOT_SHORT_BOW,    25, 2,  2, RARITY_UNCOMMON, 0 },
+    { "Canoe",         "Tool",     0,               1000, 1,  1, RARITY_UNCOMMON, 0 },
+    { "Boat",          "Tool",     0,               2400, 1,  1, RARITY_RARE, 0 },
+    { "Long Sword",    "Weapon",   LOOT_LONG_SWORD,  700, 2,  2, RARITY_UNCOMMON, 0 },
+    { "Short Bow",     "Weapon",   LOOT_SHORT_BOW,   500, 2,  2, RARITY_UNCOMMON, 0 },
     { "Strategy Guide", "Tool",    0,             200000, 1,  1, RARITY_RARE, 0 }, // 1,000,000 gold endgame luxury
-    { "Dragon Scale Armor", "Armor", 0,                40, 1,  1, RARITY_RARE, 0 }
+    { "Dragon Scale Armor", "Armor", 0,              5000, 1,  1, RARITY_RARE, 0 }
     // Legendary items are never sold; they only drop from bosses (see HandleEnemyDamage).
 };
 const char *villager_greetings[] = {
@@ -243,6 +243,19 @@ const char *fort_barks[] = {
     "Keep your eyes on the tree line.", "We watch this road day and night.",
     "The pass is clear for now.", "Rest here, traveler. The watch is strong.",
     "A merchant wagon passed through at dawn.", "No one crosses the camp without a greeting."
+};
+// Little truths about how the world works, shared now and then by villagers.
+const char *world_hints[WORLD_HINT_COUNT] = {
+    "Every second you spend here is a minute to us. A whole day passes in 24 of yours.",
+    "Each season lasts 30 days. Count them if you like.",
+    "Weather never jumps from fair to rain. The clouds always roll in first.",
+    "When clouds cover the sky, the sun and moon can't throw their beams down.",
+    "Birds and squirrels sleep from 9 at night until 6. The owls keep watch then.",
+    "Animals bolt from anyone close, unless your soul is pure and luck is on your side.",
+    "No foe carries more than 75 gold, though purses grow with your level and luck.",
+    "Two wood and a match from your pack will light a campfire.",
+    "Charm the merchant: every point of charisma takes 3 percent off his prices.",
+    "Carry a raft, canoe or boat and no river can stop you."
 };
 
 // Character Creation & Stats
