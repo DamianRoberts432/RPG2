@@ -324,6 +324,7 @@ void DrawNightEyes(HDC hdc) {
 
 void DrawSolitaireSunMoonBeam(HDC hdc) {
     if (current_biome == BIOME_CAVE) return;
+    if (current_weather != WEATHER_CLEAR) return; // clouds, rain and snow hide the sun and moon
 
     float ambient_intensity = (float)fabs(sin(day_night_cycle_accumulator));
     int is_night = (ambient_intensity < 0.35f);

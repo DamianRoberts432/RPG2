@@ -69,7 +69,7 @@ typedef enum {
     BIOME_CAVE, BIOME_CASTLE
 } BiomeType;
 extern const char *biome_names[];
-typedef enum { WEATHER_CLEAR, WEATHER_RAIN, WEATHER_SNOW } WeatherType;
+typedef enum { WEATHER_CLEAR, WEATHER_RAIN, WEATHER_SNOW, WEATHER_CLOUDY } WeatherType;
 
 typedef enum { RACE_ELF, RACE_HUMAN, RACE_DWARF, RACE_HALFLING, RACE_GNOME } RaceType;
 typedef enum { CLASS_NECROMANCER, CLASS_WIZARD, CLASS_KNIGHT, CLASS_WARRIOR, CLASS_ROGUE } ClassType;
