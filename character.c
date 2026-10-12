@@ -83,7 +83,7 @@ int HasCard(int id) { return id >= 0 && id < CARD_COUNT && ((card_collection_bit
 
 int CardCount(void) {
     int n = 0;
-    for (int i = 0; i < CARD_COUNT; i++) n += HasCard(i);
+    for (int i = 0; i < CARD_POOL; i++) n += HasCard(i);
     return n;
 }
 
@@ -91,12 +91,12 @@ int CardCount(void) {
 void TryCardDrop(int monster) {
     if (rand() % 100 >= CARD_DROP_PERCENT) return;
     int id = (monster >= 0 && rand() % 2 == 0) ? monster_card_links[monster].card_id
-             : MONSTER_TYPE_COUNT + rand() % (CARD_COUNT - MONSTER_TYPE_COUNT);
+             : MONSTER_TYPE_COUNT + rand() % (CARD_POOL - MONSTER_TYPE_COUNT);
     int is_new = !HasCard(id);
     card_collection_bits[id / 8] |= (uint8_t)(1u << (id % 8));
     size_t n = strlen(arpg_action_log);
     if (id < MONSTER_TYPE_COUNT) snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  |  CARD: %s card%s", MonsterName((MonsterType)id), is_new ? " (new!)" : "");
-    else snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  |  CARD: #%d%s", id + 1, is_new ? " (new!)" : "");
+    else { char nm[48]; CardName(id, nm, sizeof(nm)); snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  |  CARD: %s%s", nm, is_new ? " (new!)" : ""); }
 }
 
 float GetRaceSpeedMultiplier(void) {

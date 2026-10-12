@@ -69,29 +69,56 @@ int EquippedForgeBonus(void) {
 static int ForgeCost(int bonus) { return 1000 * (bonus + 1); }
 
 // --- Cards -----------------------------------------------------------------
-static const char *card_sets[6] = { "Bestiary", "Mesoamerican", "Egyptian Deities", "Solar Light", "Void Dark", "Eldritch Deep" };
-static const char *name_a[12] = { "Ember", "Jade", "Sun", "Moon", "Bone", "Storm", "Obsidian", "Feathered", "Sand", "Iron", "Void", "Tide" };
-static const char *name_b[14] = { "Serpent", "Priest", "Jackal", "Warden", "Golem", "Oracle", "Wyrm", "Scarab", "Knight", "Wraith", "Idol", "Leviathan", "Shaman", "Titan" };
+// Only three sets are in print while the card rules are being revised: Wild
+// Creatures (the bestiary monsters plus the animals you meet), Angels and the
+// Goetia demons. Every card is a 1/1, 2/2 or 3/3; anything more comes from an
+// ability. Ids 0-8 are the monster cards linked to the bestiary.
+enum { AB_NONE, AB_FIRST_STRIKE, AB_PUMP3, AB_CURSE, AB_BLESS_BOTH, AB_BLESS_STR, AB_BLESS_LIFE };
+typedef struct { const char *name; int set, pt, ability; } CardDef;
+static const char *card_sets[3] = { "Wild Creatures", "Angels", "Goetia Demons" };
+static const CardDef card_defs[CARD_POOL] = {
+    { "Skeleton", 0, 1, AB_NONE }, { "Zombie", 0, 2, AB_NONE }, { "Dracula", 0, 3, AB_FIRST_STRIKE },
+    { "Goblin", 0, 1, AB_FIRST_STRIKE }, { "Satyr", 0, 2, AB_FIRST_STRIKE }, { "Yeti", 0, 3, AB_PUMP3 },
+    { "Sphinx", 0, 3, AB_NONE }, { "Bigfoot", 0, 3, AB_PUMP3 }, { "Bunyip", 0, 2, AB_NONE },
+    { "Bluebird", 0, 1, AB_FIRST_STRIKE }, { "Squirrel", 0, 1, AB_NONE }, { "Owl", 0, 2, AB_FIRST_STRIKE }, { "Bat", 0, 1, AB_NONE },
+    { "Cherub", 1, 1, AB_BLESS_BOTH }, { "Guardian Angel", 1, 1, AB_BLESS_LIFE }, { "Herald Angel", 1, 1, AB_BLESS_STR },
+    { "Choir Angel", 1, 1, AB_BLESS_BOTH }, { "Virtue", 1, 2, AB_NONE }, { "Power", 1, 2, AB_FIRST_STRIKE },
+    { "Dominion", 1, 2, AB_NONE }, { "Principality", 1, 2, AB_NONE }, { "Throne", 1, 3, AB_NONE },
+    { "Seraph", 1, 3, AB_FIRST_STRIKE }, { "Gabriel", 1, 3, AB_NONE }, { "Michael", 1, 3, AB_FIRST_STRIKE },
+    { "Vassago", 2, 1, AB_CURSE }, { "Samigina", 2, 1, AB_CURSE }, { "Valefor", 2, 1, AB_CURSE },
+    { "Furfur", 2, 1, AB_CURSE }, { "Barbatos", 2, 2, AB_NONE }, { "Marbas", 2, 2, AB_FIRST_STRIKE },
+    { "Amon", 2, 2, AB_NONE }, { "Gusion", 2, 2, AB_NONE }, { "Paimon", 2, 3, AB_NONE },
+    { "Bael", 2, 3, AB_FIRST_STRIKE }, { "Asmoday", 2, 3, AB_NONE }, { "Belial", 2, 3, AB_FIRST_STRIKE },
+};
 static int card_offers[10], card_offer_screen = -1, card_offer_day = -1;
 
-void CardName(int id, char *out, size_t n) {
-    if (id < MONSTER_TYPE_COUNT) snprintf(out, n, "%s", MonsterName((MonsterType)id));
-    else snprintf(out, n, "%s %s", name_a[id % 12], name_b[(id / 12) % 14]);
-}
+static int PoolId(int id) { return id >= 0 && id < CARD_POOL ? id : 0; }
 
-static unsigned int CardHash(int id) { return (unsigned int)RainHash(id * 2654435 + 99); }
-static int CardRarity(int id) { unsigned int h = CardHash(id) % 100u; return h < 60 ? 0 : h < 90 ? 1 : 2; }
+void CardName(int id, char *out, size_t n) { snprintf(out, n, "%s", card_defs[PoolId(id)].name); }
+
+static int CardRarity(int id) { return card_defs[PoolId(id)].pt - 1; }
 static int CardPrice(int id) { static const int p[3] = { 600, 2500, 15000 }; return p[CardRarity(id)]; }
+static int CardAbility(int id) { return card_defs[PoolId(id)].ability; }
+static int CardBasePower(int id) { int c = PoolId(id); return card_defs[c].pt + (card_defs[c].ability == AB_PUMP3 ? 3 : 0); }
+
+static const char *AbilityText(int ab) {
+    switch (ab) {
+    case AB_FIRST_STRIKE: return "First Strike: deals its damage before a card without First Strike can hit back.";
+    case AB_PUMP3: return "Mighty: +3/+3 (fights as a 6/6).";
+    case AB_CURSE: return "Death curse: when it dies, the next enemy card gets -2/-2, which kills a 1/1 or 2/2 before it can fight.";
+    case AB_BLESS_BOTH: return "Death blessing: when it dies, your next card gets +1/+1.";
+    case AB_BLESS_STR: return "Death blessing: when it dies, your next card gets +2/+0.";
+    case AB_BLESS_LIFE: return "Death blessing: when it dies, your next card gets +0/+2.";
+    }
+    return "No ability.";
+}
 
 static void CardDetails(int id, char *out, size_t n) {
     static const char *rar[3] = { "Common", "Uncommon", "Rare" };
-    unsigned int h = CardHash(id);
-    int r = CardRarity(id);
-    int atk = 1 + (int)(h % 7u) + r * 2, def = 1 + (int)((h >> 5) % 7u) + r;
-    const char *set = id < MONSTER_TYPE_COUNT ? card_sets[0] : card_sets[1 + (id - MONSTER_TYPE_COUNT) % 5];
-    snprintf(out, n, "#%03d  %s  |  Set: %s  |  %s  |  ATK %d  DEF %d%s", id, rar[r], set,
-             id < MONSTER_TYPE_COUNT ? "Monster card: beat its kind to earn it too" : "Collector card",
-             atk, def, HasCard(id) ? "  |  (owned)" : "");
+    int c = PoolId(id), pt = card_defs[c].pt;
+    snprintf(out, n, "%s  |  %s  |  %s  |  %d/%d%s\n%s%s", card_defs[c].name, card_sets[card_defs[c].set], rar[pt - 1], pt, pt,
+             HasCard(c) ? "  |  (owned)" : "", AbilityText(card_defs[c].ability),
+             c < MONSTER_TYPE_COUNT ? "  Monster card: beat enough of its kind and it may drop." : "");
 }
 
 static void RollCardOffers(void) {
@@ -101,7 +128,7 @@ static void RollCardOffers(void) {
     for (int k = 0; k < 10; k++) {
         int id, dup, salt = 0;
         do {
-            id = (int)((unsigned int)RainHash(current_screen_index * 977 + day * 131 + k * 17 + salt++) % (unsigned int)CARD_COUNT);
+            id = (int)((unsigned int)RainHash(current_screen_index * 977 + day * 131 + k * 17 + salt++) % (unsigned int)CARD_POOL);
             dup = 0;
             for (int j = 0; j < k; j++) if (card_offers[j] == id) dup = 1;
         } while (dup);
@@ -110,49 +137,97 @@ static void RollCardOffers(void) {
 }
 
 static const char *kid_lines[] = {
-    "KID: Wanna learn? You build a deck from the cards in your collection.",
-    "KID: It's three on three. Lay three cards face down, flip them, and compare ATK against DEF.",
-    "KID: Higher ATK knocks the other card out. Ties go to the defender.",
+    "KID: Wanna learn? It's three on three. You pick the order you lay your three; I lead with mine as dealt.",
+    "KID: Every card is a 1/1, 2/2 or 3/3. Bigger numbers come from abilities - Yeti and Bigfoot are 3/3 with +3/+3.",
+    "KID: Both cards hit at the same time, like a real stack. Unless one has First Strike - then it hits first.",
+    "KID: Don't just lead with your biggest! A Demon 1/1 that dies curses my next card -2/-2. An Angel blesses yours.",
     "KID: Monster cards drop from the beasts themselves. Beat enough of one kind and you might get its card.",
     "KID: Some kids play for ante - each puts a card in the pot and the winner keeps both. Not me.",
-    "KID: I only play test sets, just for practice. When the card tables open, come find me!",
+    "KID: Right now it's just Angels, Goetia demons and the creatures out in the wild. More sets are coming!",
 };
 #define KID_LINE_COUNT ((int)(sizeof(kid_lines) / sizeof(kid_lines[0])))
 
 static void Say(const char *fmt, ...);
 
-// Practice hands with the card kid: no ante, ten rounds per visit.
+// Practice hands with the card kid: no ante, ten rounds per visit. Duels
+// resolve like a stack: damage lands at the same time unless one card has
+// First Strike, and a card's death mark lands on the next card to enter.
 #define KID_MAX_ROUNDS 10
-static int kid_rounds = 0, kid_round_screen = -1, kid_dealt = 0, my_hand[3], kid_hand[3];
+#define KID_LOG_LINES 14
+static int kid_rounds = 0, kid_round_screen = -1, kid_dealt = 0, kid_played = 0;
+static int my_hand[3], kid_hand[3], my_order[3] = { 0, 1, 2 }, duel_result[3];
 static const int hand_orders[6][3] = { {0,1,2}, {0,2,1}, {1,0,2}, {1,2,0}, {2,0,1}, {2,1,0} };
-static int CardAtk(int id) { return 1 + (int)(CardHash(id) % 7u) + CardRarity(id) * 2; }
-static int CardDef(int id) { return 1 + (int)((CardHash(id) >> 5) % 7u) + CardRarity(id); }
+static char kid_log[KID_LOG_LINES][110];
+static int kid_log_n = 0, pend_p[2], pend_t[2];
+
+static void KidLog(const char *fmt, ...) {
+    if (kid_log_n >= KID_LOG_LINES) return;
+    va_list ap; va_start(ap, fmt);
+    vsnprintf(kid_log[kid_log_n++], sizeof(kid_log[0]), fmt, ap);
+    va_end(ap);
+}
+
+static void DeathMark(int side, int id) {
+    char nm[48]; CardName(id, nm, sizeof(nm));
+    const char *who = side ? "His" : "Your";
+    int ab = CardAbility(id), bp = ab == AB_BLESS_STR ? 2 : ab == AB_BLESS_BOTH ? 1 : 0, bt = ab == AB_BLESS_LIFE ? 2 : ab == AB_BLESS_BOTH ? 1 : 0;
+    if (ab == AB_CURSE) {
+        pend_p[!side] -= 2; pend_t[!side] -= 2;
+        KidLog("   %s %s dies and curses %s next card -2/-2.", who, nm, side ? "your" : "his");
+    } else if (bp || bt) {
+        pend_p[side] += bp; pend_t[side] += bt;
+        KidLog("   %s %s dies and blesses %s next card +%d/+%d.", who, nm, side ? "his" : "your", bp, bt);
+    }
+}
+
+static void Duel(int k, int a, int b, int *mine, int *his) {
+    char an[48], bn[48]; CardName(a, an, sizeof(an)); CardName(b, bn, sizeof(bn));
+    int ap = CardBasePower(a) + pend_p[0], at = CardBasePower(a) + pend_t[0];
+    int bp = CardBasePower(b) + pend_p[1], bt = CardBasePower(b) + pend_t[1];
+    pend_p[0] = pend_t[0] = pend_p[1] = pend_t[1] = 0;
+    if (ap < 0) ap = 0;
+    if (bp < 0) bp = 0;
+    KidLog("%d. Your %s %d/%d  vs  his %s %d/%d", k + 1, an, ap, at, bn, bp, bt);
+    int adead = at <= 0, bdead = bt <= 0;
+    if (adead || bdead) {
+        if (adead) KidLog("   Your %s withers under the curse before it can fight.", an);
+        if (bdead) KidLog("   His %s withers under the curse before it can fight.", bn);
+    } else {
+        int afs = CardAbility(a) == AB_FIRST_STRIKE, bfs = CardAbility(b) == AB_FIRST_STRIKE;
+        if (afs && !bfs) { bt -= ap; if (bt > 0) at -= bp; KidLog("   Your %s strikes first.", an); }
+        else if (bfs && !afs) { at -= bp; if (at > 0) bt -= ap; KidLog("   His %s strikes first.", bn); }
+        else { at -= bp; bt -= ap; }
+        adead = at <= 0; bdead = bt <= 0;
+        KidLog("   %s", adead && bdead ? "Both cards fall." : adead ? "Your card falls." : bdead ? "His card falls." : "Both cards survive.");
+    }
+    if (adead) DeathMark(0, a);
+    if (bdead) DeathMark(1, b);
+    *mine += bdead; *his += adead;
+    duel_result[k] = bdead - adead;
+}
 
 static void PracticeHand(int order) {
-    if (kid_round_screen != current_screen_index) { kid_round_screen = current_screen_index; kid_rounds = 0; kid_dealt = 0; }
+    if (kid_round_screen != current_screen_index) { kid_round_screen = current_screen_index; kid_rounds = 0; kid_dealt = 0; kid_played = 0; }
     if (kid_rounds >= KID_MAX_ROUNDS) { Say("KID: That's ten - I gotta go home now. Mom's calling!"); return; }
     if (!order) {
         for (int k = 0; k < 3; k++) {
             int id, dup;
             do { id = card_offers[rand() % 10]; dup = 0; for (int j = 0; j < k; j++) if (my_hand[j] == id) dup = 1; } while (dup);
-            my_hand[k] = id; kid_hand[k] = rand() % CARD_COUNT;
+            my_hand[k] = id; kid_hand[k] = rand() % CARD_POOL; my_order[k] = k;
         }
-        kid_dealt = 1;
-        Say("KID: Here's a test hand from the counter. Pick the order you'll lay them - I always lead with my first card.");
+        kid_dealt = 1; kid_played = 0; kid_log_n = 0;
+        Say("KID: Here's a test hand from the counter. Pick the order you'll lay yours - I lead with mine left to right.");
         return;
     }
     const int *o = hand_orders[order - 1];
     int mine = 0, his = 0;
-    for (int k = 0; k < 3; k++) {
-        int a = my_hand[o[k]], b = kid_hand[k];
-        if (CardAtk(a) > CardDef(b)) mine++;
-        if (CardAtk(b) > CardDef(a)) his++;
-    }
-    kid_dealt = 0; kid_rounds++;
+    kid_log_n = 0; pend_p[0] = pend_p[1] = pend_t[0] = pend_t[1] = 0;
+    for (int k = 0; k < 3; k++) { my_order[k] = o[k]; Duel(k, my_hand[o[k]], kid_hand[k], &mine, &his); }
+    kid_dealt = 0; kid_played = 1; kid_rounds++;
     const char *end = kid_rounds >= KID_MAX_ROUNDS ? " That's ten rounds - I have to go home soon!" : "";
     if (mine > his) Say("KID: You knocked out %d to my %d - you win this one! Order matters, huh?%s", mine, his, end);
-    else if (mine < his) Say("KID: I knocked out %d to your %d. Try leading with a different card.%s", his, mine, end);
-    else Say("KID: %d to %d, a draw! Ties go to the defender.%s", mine, his, end);
+    else if (mine < his) Say("KID: I knocked out %d to your %d. Try a different order.%s", his, mine, end);
+    else Say("KID: %d to %d, a draw!%s", mine, his, end);
 }
 
 // --- Menu rows ---------------------------------------------------------------
@@ -213,10 +288,9 @@ static void BuildRows(void) {
         if (kid_dealt && kid_round_screen == current_screen_index) {
             for (int p = 0; p < 6; p++) {
                 const int *o = hand_orders[p];
-                snprintf(t, sizeof(t), "Lay: #%03d (%d/%d) > #%03d (%d/%d) > #%03d (%d/%d)",
-                         my_hand[o[0]], CardAtk(my_hand[o[0]]), CardDef(my_hand[o[0]]),
-                         my_hand[o[1]], CardAtk(my_hand[o[1]]), CardDef(my_hand[o[1]]),
-                         my_hand[o[2]], CardAtk(my_hand[o[2]]), CardDef(my_hand[o[2]]));
+                char n0[28], n1[28], n2[28];
+                CardName(my_hand[o[0]], n0, sizeof(n0)); CardName(my_hand[o[1]], n1, sizeof(n1)); CardName(my_hand[o[2]], n2, sizeof(n2));
+                snprintf(t, sizeof(t), "Lay: %s > %s > %s", n0, n1, n2);
                 AddRow(A_PRACTICE, 1 + p, t);
             }
         } else if (left > 0) {
@@ -274,9 +348,9 @@ static void RowInfo(const TownRow *r, char *out, size_t n) {
         snprintf(out, n, "Breaks the %s down into %s.", nm, strstr(nm, "Bow") ? "2 Wood and 1 String" :
                  strcmp(slot, "Armor") == 0 ? "2 Leather and 1 Iron" : strcmp(slot, "Shield") == 0 ? "2 Wood and 1 Rope" : "2 Iron and 1 Wood"); break; }
     case A_CARD: CardDetails(card_offers[r->arg], out, n); break;
-    case A_PACK: snprintf(out, n, "%d random cards. Collection: %d / %d.", r->arg, CardCount(), CARD_COUNT); break;
+    case A_PACK: snprintf(out, n, "%d random cards. Collection: %d / %d.", r->arg, CardCount(), CARD_POOL); break;
     case A_KID: snprintf(out, n, "A kid sits at the corner table shuffling a test deck. He won't play for ante."); break;
-    case A_PRACTICE: snprintf(out, n, "Three on three: your ATK vs his DEF, card by card. Each number pair is ATK/DEF. He leads with the same cards each time."); break;
+    case A_PRACTICE: snprintf(out, n, "Three duels, one card each. Both cards hit at once unless one has First Strike; death curses and blessings land on the next card. His cards and yours are on the right."); break;
     case A_PET: snprintf(out, n, "%s  |  %s  |  %s", familiars[r->arg].name, familiars[r->arg].nocturnal ? "Nocturnal" : "Diurnal", familiars[r->arg].trait); break;
     case A_KING: snprintf(out, n, "Legendary quests open at level %d. Quests completed: %d.", LEGENDARY_QUEST_LEVEL, legendary_quests_done); break;
     case A_DEPOSIT: case A_WITHDRAW: snprintf(out, n, "Vault balance: %d gold. Purse: %d gold.", bank_gold, gold_count); break;
@@ -338,11 +412,11 @@ static void BuyCardPack(int count) {
     gold_count -= price;
     int fresh = 0;
     for (int k = 0; k < count; k++) {
-        int id = rand() % CARD_COUNT;
+        int id = rand() % CARD_POOL;
         if (!HasCard(id)) fresh++;
         card_collection_bits[id / 8] |= (uint8_t)(1u << (id % 8));
     }
-    Say("CARD SHOP: Opened %d cards - %d new! (%d / %d)", count, fresh, CardCount(), CARD_COUNT);
+    Say("CARD SHOP: Opened %d cards - %d new! (%d / %d)", count, fresh, CardCount(), CARD_POOL);
 }
 
 static int TakeOffering(const char *a, const char *b, const char *c) {
@@ -430,7 +504,7 @@ void TownMenuConfirm(void) {
         if (gold_count < price) { Say("CARD SHOP: The %s card is %d gold.", nm, price); return; }
         gold_count -= price;
         card_collection_bits[id / 8] |= (uint8_t)(1u << (id % 8));
-        Say("CARD SHOP: Added %s to your collection. (%d / %d)", nm, CardCount(), CARD_COUNT);
+        Say("CARD SHOP: Added %s to your collection. (%d / %d)", nm, CardCount(), CARD_POOL);
         return; }
     case A_PACK: BuyCardPack(r.arg); return;
     case A_KID: kid_line = (kid_line + 1) % KID_LINE_COUNT; Say("%s", kid_lines[kid_line]); return;
@@ -700,6 +774,61 @@ void DrawInteriorBackdrop(HDC hdc, int menu) {
     DrawHeroAssetEx(hdc, 900, F + 40, 5.0f);
 }
 
+static int KidTableVisible(void) {
+    return town_menu == TM_CARDS && kid_round_screen == current_screen_index && (kid_dealt || kid_played);
+}
+
+static void DrawCard(HDC hdc, int x, int y, int id, int num, int result) {
+    static const COLORREF set_col[3] = { RGB(55, 95, 50), RGB(150, 135, 70), RGB(120, 35, 40) };
+    const CardDef *c = &card_defs[PoolId(id)];
+    static const char *rar[3] = { "Common", "Uncommon", "Rare" };
+    char buf[96];
+    int w = 330, h = 160, p = CardBasePower(id);
+    TwBox(hdc, x, y, x + w, y + h, RGB(24, 24, 30));
+    TwBox(hdc, x, y, x + w, y + 30, set_col[c->set]);
+    HPEN pen = CreatePen(PS_SOLID, 3, result > 0 ? RGB(90, 230, 110) : result < 0 ? RGB(230, 80, 70) : RGB(120, 120, 130));
+    HGDIOBJ op = SelectObject(hdc, pen), ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+    Rectangle(hdc, x, y, x + w, y + h);
+    SelectObject(hdc, op); SelectObject(hdc, ob); DeleteObject(pen);
+    SetTextColor(hdc, RGB(255, 235, 100));
+    snprintf(buf, sizeof(buf), "%d. %s", num, c->name);
+    TextOut(hdc, x + 10, y + 6, buf, (int)strlen(buf));
+    snprintf(buf, sizeof(buf), "%d/%d", p, p);
+    TextOut(hdc, x + w - 50, y + 6, buf, (int)strlen(buf));
+    SetTextColor(hdc, RGB(180, 180, 190));
+    snprintf(buf, sizeof(buf), "%s  -  %s  -  base %d/%d", card_sets[c->set], rar[c->pt - 1], c->pt, c->pt);
+    TextOut(hdc, x + 10, y + 36, buf, (int)strlen(buf));
+    RECT tr = { x + 10, y + 60, x + w - 10, y + h - 6 };
+    SetTextColor(hdc, RGB(170, 220, 255));
+    DrawText(hdc, AbilityText(c->ability), -1, &tr, DT_WORDBREAK | DT_LEFT);
+}
+
+// The practice table: your three cards (in the order laid) on top, the kid's
+// three below, and the play-by-play of the stack underneath.
+static void DrawCardTable(HDC hdc) {
+    int x0 = 780;
+    char buf[96];
+    TwBox(hdc, x0 - 10, 40, WINDOW_WIDTH - 14, 930, RGB(16, 18, 24));
+    SetTextColor(hdc, RGB(255, 235, 100));
+    snprintf(buf, sizeof(buf), "PRACTICE TABLE  -  round %d of %d", kid_rounds + (kid_dealt ? 1 : 0), KID_MAX_ROUNDS);
+    TextOut(hdc, x0, 48, buf, (int)strlen(buf));
+    SetTextColor(hdc, RGB(230, 230, 230));
+    const char *mine = kid_dealt ? "YOUR HAND - pick the order to lay them on the left" : "YOUR CARDS, in the order you laid them";
+    TextOut(hdc, x0, 74, mine, (int)strlen(mine));
+    for (int k = 0; k < 3; k++) DrawCard(hdc, x0 + k * 340, 98, my_hand[my_order[k]], k + 1, kid_played ? duel_result[k] : 0);
+    const char *his = "THE KID'S CARDS - he leads left to right";
+    SetTextColor(hdc, RGB(230, 230, 230));
+    TextOut(hdc, x0, 270, his, (int)strlen(his));
+    for (int k = 0; k < 3; k++) DrawCard(hdc, x0 + k * 340, 294, kid_hand[k], k + 1, kid_played ? -duel_result[k] : 0);
+    SetTextColor(hdc, RGB(160, 240, 170));
+    if (!kid_played) {
+        const char *t = "Damage lands at the same time unless a card has First Strike. A Demon 1/1 that dies curses the next enemy card -2/-2; an Angel 1/1 blesses your next card.";
+        RECT r = { x0, 474, WINDOW_WIDTH - 30, 560 };
+        DrawText(hdc, t, -1, &r, DT_WORDBREAK | DT_LEFT);
+    }
+    for (int i = 0; i < kid_log_n; i++) TextOut(hdc, x0, 474 + i * 26, kid_log[i], (int)strlen(kid_log[i]));
+}
+
 void DrawTownMenu(HDC hdc) {
     if (town_menu == TM_NONE) return;
     if (menu_screen != current_screen_index) { town_menu = TM_NONE; return; }
@@ -708,6 +837,8 @@ void DrawTownMenu(HDC hdc) {
     static const char *titles[9] = { "", "BLACKSMITH", "CARD SHOP", "PET SHOP", "THRONE ROOM", "TOWN BANK", "BEGGAR", "ALTAR", "CHEST" };
     RECT box = { 1100, 70, 1790, 910 };
     if (town_menu == TM_BEGGAR || town_menu == TM_CHEST) { box.left = 560; box.right = 1260; box.top = 200; box.bottom = 700; }
+    int table = KidTableVisible();
+    if (table) { box.left = 40; box.right = 760; }
     TwBox(hdc, box.left, box.top, box.right, box.bottom, RGB(18, 20, 28));
     HPEN pen = CreatePen(PS_SOLID, 2, RGB(90, 200, 170));
     HGDIOBJ op = SelectObject(hdc, pen), ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
@@ -751,6 +882,7 @@ void DrawTownMenu(HDC hdc) {
     const char *hint = "Up/Down choose    A / SPACE select    B / ESC leave";
     SetTextColor(hdc, RGB(150, 150, 160));
     TextOut(hdc, box.left + 20, box.bottom - 30, hint, (int)strlen(hint));
+    if (table) DrawCardTable(hdc);
 }
 
 // The familiar trots (or flies) behind the hero while awake; diurnal ones

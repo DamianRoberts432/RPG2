@@ -312,7 +312,7 @@ void DrawStrategyGuideFlash(HDC hdc) {
         TextOut(hdc, box.left + 30, box.top + 24 + i * 24, lines[i], (int)strlen(lines[i]));
     }
     char buf[64];
-    sprintf(buf, "Your binder: %d / %d cards", CardCount(), CARD_COUNT);
+    sprintf(buf, "Your binder: %d / %d cards", CardCount(), CARD_POOL);
     SetTextColor(hdc, RGB(150, 220, 255));
     TextOut(hdc, box.left + 30, box.bottom - 40, buf, (int)strlen(buf));
 }
@@ -391,7 +391,7 @@ void DrawTabbedMenuOverlay(HDC hdc) {
         if (karma.life_marks == 0) strcat(buf, " none yet (slay a boss)");
         TextOut(hdc, lore_x, 126, buf, (int)strlen(buf));
         SetTextColor(hdc, RGB(255, 215, 0));
-        sprintf(buf, "CARDS: %d / %d collected", CardCount(), CARD_COUNT);
+        sprintf(buf, "CARDS: %d / %d collected", CardCount(), CARD_POOL);
         TextOut(hdc, lore_x, 146, buf, (int)strlen(buf));
         prev_font = SelectObject(hdc, underline_font);
         SetTextColor(hdc, RGB(0, 230, 200));
