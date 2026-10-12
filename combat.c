@@ -171,11 +171,11 @@ void HandleEnemyDamage(float dmg) {
         }
         int hoard = 0;
         if (IS_BOSS_MONSTER(active_monster)) {
-            // Bosses carry the rare treasure: a gold hoard and a chance at Legendary loot.
+            // Bosses carry the rare treasure: a gold hoard. (Musashi's Blade only
+            // washes up on an eastern beach; see GenerateProceduralScreen.)
             hoard = 150 + rand() % 151;
             gold_count += hoard;
             gained_xp *= 4;
-            if (rand() % 100 < 40) DropGroundLoot(enemy_x, enemy_y, LOOT_MUSASHI_BLADE, 1);
         }
         player_xp += gained_xp;
         if (IS_BOSS_MONSTER(active_monster)) { karma.life_marks |= (uint16_t)(1u << active_monster); KarmaAdjust(5, 0, 0, 10); }

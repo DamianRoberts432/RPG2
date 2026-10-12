@@ -18,6 +18,8 @@ void DrawDebrisTwigs(HDC hdc);
 void DrawSummonedZombie(HDC hdc);
 void DrawMerchantStoreFront(HDC hdc);
 void DrawZeldaStyleVillager(HDC hdc, int sx, int sy, int npc_index, float scale);
+int BeginScaledDraw(HDC hdc, int sx, int sy, float k);
+void EndScaledDraw(HDC hdc, int old_mode);
 void DrawVillage(HDC hdc);
 
 #endif // RENDER_ENTITIES_H

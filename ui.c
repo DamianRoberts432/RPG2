@@ -491,3 +491,54 @@ void DrawTabbedMenuOverlay(HDC hdc) {
 
     SelectObject(hdc, old_p); DeleteObject(border_p); SelectObject(hdc, old_b);
 }
+
+// Standing on a drop shows what it holds in a see-through box, colored by
+// rarity: grey common, blue forged, green uncommon, yellow rare, purple legendary.
+static COLORREF LootRarityColor(const char *name, int legendary, int forged) {
+    if (legendary || strcmp(name, "Musashi's Blade") == 0) return RGB(190, 110, 255);
+    if (forged) return RGB(90, 160, 255);
+    if (!strcmp(name, "Katana") || !strcmp(name, "War Hammer") || !strcmp(name, "Great Axe")) return RGB(255, 235, 60);
+    for (int i = 0; i < MERCH_ITEMS; i++) {
+        if (strcmp(merchant_catalog[i].name, name) != 0) continue;
+        ItemRarity r = merchant_catalog[i].rarity;
+        return r >= RARITY_LEGENDARY ? RGB(190, 110, 255) : r >= RARITY_RARE ? RGB(255, 235, 60) :
+               r >= RARITY_UNCOMMON ? RGB(90, 210, 110) : RGB(175, 175, 175);
+    }
+    return RGB(175, 175, 175);
+}
+
+void DrawLootPreview(HDC hdc) {
+    char lines[8][64]; COLORREF cols[8]; int n = 0;
+    for (int i = 0; i < MAX_GROUND_LOOT && n < 8; i++) {
+        GroundLoot *g = &ground_loot[i];
+        if (!g->active || g->screen_id != current_screen_index || !IsNearPoint(g->x, g->y, 1.2f)) continue;
+        const char *nm = g->item_id >= LOOT_SHORT_SWORD && g->item_id <= LOOT_LAST_WEAPON ? weapon_catalog[g->item_id - 1].name :
+                         g->item_id == LOOT_FISH ? "Fish" : g->item_id == LOOT_APPLE ? "Apple" : "Treasure";
+        snprintf(lines[n], sizeof(lines[n]), "%s x%d", nm, g->quantity);
+        cols[n++] = LootRarityColor(nm, g->item_id == LOOT_MUSASHI_BLADE, 0);
+    }
+    for (int i = 0; i < MAX_DROPPED_ITEMS && n < 8; i++) {
+        DroppedInventoryItem *d = &dropped_items[i];
+        if (!d->active || d->screen_id != current_screen_index || !IsNearPoint(d->x, d->y, 1.2f)) continue;
+        int forged = 0;
+        for (int j = 0; j < WEAPON_CATALOG_COUNT; j++)
+            if (strcmp(d->item.name, weapon_catalog[j].name) == 0 && d->item.damage > weapon_catalog[j].damage) forged = 1;
+        snprintf(lines[n], sizeof(lines[n]), d->item.quantity > 1 ? "%s x%d" : "%s", d->item.name, d->item.quantity);
+        cols[n++] = LootRarityColor(d->item.name, d->legendary, forged);
+    }
+    if (n == 0) return;
+    int l = WINDOW_WIDTH / 2 + 40, t = WINDOW_HEIGHT / 2 - 90, w = 260, h = 36 + n * 20 + 22;
+    HDC mdc = CreateCompatibleDC(hdc);
+    HBITMAP px = CreateCompatibleBitmap(hdc, 1, 1);
+    HGDIOBJ ob = SelectObject(mdc, px);
+    SetPixel(mdc, 0, 0, RGB(0, 0, 0));
+    BLENDFUNCTION bf = { AC_SRC_OVER, 0, 153, 0 }; // 60% black, monsters still show through
+    AlphaBlend(hdc, l, t, w, h, mdc, 0, 0, 1, 1, bf);
+    SelectObject(mdc, ob); DeleteObject(px); DeleteDC(mdc);
+    SetBkMode(hdc, TRANSPARENT);
+    SetTextColor(hdc, RGB(235, 235, 235));
+    TextOut(hdc, l + 12, t + 8, "On the ground:", 14);
+    for (int k = 0; k < n; k++) { SetTextColor(hdc, cols[k]); TextOut(hdc, l + 18, t + 32 + k * 20, lines[k], (int)strlen(lines[k])); }
+    SetTextColor(hdc, RGB(150, 150, 150));
+    TextOut(hdc, l + 12, t + h - 20, "X / A to pick up", 16);
+}

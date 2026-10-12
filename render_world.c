@@ -242,6 +242,15 @@ void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed) {
         HBRUSH stone = CreateSolidBrush(RGB(100, 105, 115)); HGDIOBJ old = SelectObject(hdc, stone);
         POINT poly[] = {{sx - 6, sy + 2}, {sx + 8, sy}, {sx + 4, sy + 8}, {sx - 4, sy + 6}};
         Polygon(hdc, poly, 4); SelectObject(hdc, old); DeleteObject(stone);
+    } else if (type == 4) { // sand: dark specks and wind lines over the dunes
+        unsigned int h = (unsigned int)RainHash(seed * 7 + 3);
+        for (int k = 0; k < 3; k++)
+            SetPixel(hdc, sx - 12 + (int)((h >> (k * 4)) % 24u), sy + 2 + (int)((h >> (k * 3 + 8)) % 12u), RGB(95, 80, 40));
+        if (h % 3 == 0) {
+            HPEN p = CreatePen(PS_SOLID, 1, RGB(170, 140, 60)); HGDIOBJ op = SelectObject(hdc, p);
+            MoveToEx(hdc, sx - 10, sy + 6, NULL); LineTo(hdc, sx - 2, sy + 4); LineTo(hdc, sx + 9, sy + 7);
+            SelectObject(hdc, op); DeleteObject(p);
+        }
     } else if (type == 5) { // Tundra snow mound
         HBRUSH snow = CreateSolidBrush(RGB(235, 240, 250)); HGDIOBJ old = SelectObject(hdc, snow);
         Ellipse(hdc, sx - 6, sy + 1, sx + 6, sy + 9); SelectObject(hdc, old); DeleteObject(snow);
@@ -251,10 +260,13 @@ void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed) {
         static const int base_dx[5] = { -3, -1, 0, 2, 3 }, tip_dx[5] = { -5, -2, 0, 2, 5 }, height[5] = { 6, 9, 10, 8, 6 };
         for (int b = 0; b < 5; b++) { MoveToEx(hdc, sx + base_dx[b], sy + 9, NULL); LineTo(hdc, sx + tip_dx[b] + lean, sy + 9 - height[b]); }
         SelectObject(hdc, old); DeleteObject(blade);
-    } else if (type == 7) { // Desert/Oasis cactus
+    } else if (type == 7) { // Desert/Oasis saguaro cactus
         HBRUSH cactus = CreateSolidBrush(RGB(60, 140, 90)); HGDIOBJ old = SelectObject(hdc, cactus);
-        RECT stalk = { sx - 2, sy - 6, sx + 2, sy + 9 }, arm = { sx - 6, sy - 2, sx - 2, sy + 2 };
-        FillRect(hdc, &stalk, cactus); FillRect(hdc, &arm, cactus); SelectObject(hdc, old); DeleteObject(cactus);
+        HPEN edge = CreatePen(PS_SOLID, 1, RGB(35, 95, 60)); HGDIOBJ old_p = SelectObject(hdc, edge);
+        RoundRect(hdc, sx - 4, sy - 26, sx + 4, sy + 9, 8, 8);
+        RoundRect(hdc, sx - 12, sy - 6, sx - 3, sy - 1, 4, 4); RoundRect(hdc, sx - 12, sy - 18, sx - 7, sy - 3, 5, 5);
+        RoundRect(hdc, sx + 3, sy - 11, sx + 11, sy - 6, 4, 4); RoundRect(hdc, sx + 7, sy - 22, sx + 12, sy - 8, 5, 5);
+        SelectObject(hdc, old_p); DeleteObject(edge); SelectObject(hdc, old); DeleteObject(cactus);
     } else if (type == 8) { // Swamp/Forest reed
         HBRUSH reed = CreateSolidBrush(RGB(120, 130, 60)); HGDIOBJ old = SelectObject(hdc, reed);
         POINT poly[] = {{sx - 1, sy - 8}, {sx + 1, sy - 8}, {sx + 2, sy + 9}, {sx - 2, sy + 9}};
@@ -263,9 +275,9 @@ void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed) {
 }
 
 void DrawEnvironmentalCritters(HDC hdc) {
-    if (current_biome == BIOME_CAVE) return;
     for (int i = 0; i < MAX_CRITTERS; i++) {
         if (!critters[i].active) continue;
+        if (current_biome == BIOME_CAVE && critters[i].type != 3) continue;
         if (critters[i].hidden) {
             if (CritterAsleep(&critters[i])) continue; // sleeping animals stay out of sight
             int tree_x, tree_y; GetIsoCoords(critters[i].x, critters[i].y, &tree_x, &tree_y);
@@ -291,6 +303,14 @@ void DrawEnvironmentalCritters(HDC hdc) {
             HBRUSH eye = CreateSolidBrush(RGB(250, 210, 60));
             RECT el = { sx - 4, sy - 7, sx - 1, sy - 4 }, er = { sx + 1, sy - 7, sx + 4, sy - 4 };
             FillRect(hdc, &el, eye); FillRect(hdc, &er, eye); DeleteObject(eye);
+        } else if (critters[i].type == 3) { // bat
+            int flap = (int)(sin(world_tick * 18.0f + i) * 4.0f), by = sy - 14 + (int)(sin(world_tick * 3.0f + i) * 3.0f);
+            HBRUSH bat_b = CreateSolidBrush(RGB(45, 35, 50)); HGDIOBJ old = SelectObject(hdc, bat_b);
+            HPEN bat_p = CreatePen(PS_SOLID, 1, RGB(30, 22, 34)); HGDIOBJ old_p = SelectObject(hdc, bat_p);
+            POINT wing[] = {{sx - 9, by - 2 - flap}, {sx - 5, by + 1}, {sx - 2, by - 1}, {sx, by + 2}, {sx + 2, by - 1}, {sx + 5, by + 1}, {sx + 9, by - 2 - flap}, {sx, by - 3}};
+            Polygon(hdc, wing, 8); Ellipse(hdc, sx - 2, by - 4, sx + 3, by + 3);
+            SelectObject(hdc, old); SelectObject(hdc, old_p); DeleteObject(bat_b); DeleteObject(bat_p);
+            HBRUSH eye = CreateSolidBrush(RGB(230, 60, 60)); RECT e = { sx - 1, by - 2, sx + 2, by - 1 }; FillRect(hdc, &e, eye); DeleteObject(eye);
         } else { // squirrel: round body, head with an eye, little hands, bushy tail
             int y0 = sy - jump_bob;
             HBRUSH sq_b = CreateSolidBrush(RGB(210, 105, 30)); HGDIOBJ old = SelectObject(hdc, sq_b);
@@ -501,7 +521,7 @@ int RainHash(int value) {
 }
 
 // Blends a solid colour over the entire window (alpha 0..255).
-static void FillWindowAlpha(HDC hdc, COLORREF color, int alpha) {
+void FillWindowAlpha(HDC hdc, COLORREF color, int alpha) {
     if (alpha <= 0) return;
     RECT all = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
     HBRUSH b = CreateSolidBrush(color);

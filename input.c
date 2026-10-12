@@ -390,32 +390,6 @@ void ProcessGamepadInput(void) {
         if (!bow_equipped && active_weapon == WEAPON_SPEAR && !fishing_active && bow_key_down && !spear_key_was_down) ThrowSpear();
         spear_key_was_down = bow_key_down;
 
-        static int was_g_down = 0, was_fishing_held = 0;
-        int g_down = (GetAsyncKeyState('G') & 0x8000) != 0;
-        if (g_down && !was_g_down && HasInventoryItem("Fishing Pole")) {
-            if (IsFacingWater()) {
-                fishing_active = 1; fishing_power = 0; was_fishing_held = 0;
-                strcpy(arpg_action_log, "FISHING: Hold F, then release between 50-80%!");
-            } else strcpy(arpg_action_log, "FISHING: Face a water tile to cast.");
-        }
-        was_g_down = g_down;
-        if (fishing_active && active_weapon != WEAPON_BOW) {
-            int f_down = (GetAsyncKeyState('F') & 0x8000) != 0;
-            if (f_down) {
-                fishing_power += 2; if (fishing_power > 100) fishing_power = 100;
-                was_fishing_held = 1;
-            } else if (was_fishing_held) {
-                if (fishing_power >= 50 && fishing_power <= 80) {
-                    if (!IsFacingFishWater()) strcpy(arpg_action_log, "FISHING: No fish in this water.");
-                    else {
-                        int count = 1 + rand() % 3;
-                        if (AddLootToInventory(LOOT_FISH, count)) { sprintf(arpg_action_log, "FISHING: Caught %d fish!", count); TryCardDrop(-1); }
-                        else strcpy(arpg_action_log, "FISHING: Catch lost; inventory is too heavy.");
-                    }
-                } else strcpy(arpg_action_log, "FISHING: The fish got away.");
-                fishing_active = 0; was_fishing_held = 0;
-            }
-        }
 
         if (dx != 0.0f || dy != 0.0f) {
             is_running = 1; run_bob += 0.4f;

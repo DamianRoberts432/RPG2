@@ -379,7 +379,28 @@ static void DrawSnowfall(HDC hdc) {
 
 // Fall leaves are stateless: each leaf's position is a function of time, so
 // nothing is stored and they simply drift off screen like the birds do.
+// Deserts get blowing sand streaks and a dusty haze instead of leaves.
+static void DrawDesertDust(HDC hdc) {
+    float t = world_tick, gust = (float)fabs(wind_gust);
+    int dir = wind_dir < 0 ? -1 : 1;
+    float drift = 20.0f + abs(wind_dir) * 14.0f + gust * 90.0f;
+    FillWindowAlpha(hdc, RGB(205, 175, 110), 18 + (int)(gust * 50.0f));
+    HPEN light = CreatePen(PS_SOLID, 1, RGB(228, 204, 145)), dark = CreatePen(PS_SOLID, 1, RGB(186, 156, 100));
+    HGDIOBJ op = SelectObject(hdc, light);
+    int motes = 40 + (int)(gust * 120.0f);
+    for (int i = 0; i < motes; i++) {
+        int h = RainHash(i * 977 + 13);
+        float speed = 0.6f + (float)(h % 60) / 50.0f;
+        int x = WrapMod(h % WINDOW_WIDTH - cam_x + dir * (int)(t * drift * speed), WINDOW_WIDTH);
+        int y = WrapMod((h / 13) % WINDOW_HEIGHT - cam_y + (int)(sin(t * 2.1f + i) * 6.0f), WINDOW_HEIGHT);
+        SelectObject(hdc, (h & 1) ? light : dark);
+        MoveToEx(hdc, x, y, NULL); LineTo(hdc, x + dir * (2 + h % 5), y);
+    }
+    SelectObject(hdc, op); DeleteObject(light); DeleteObject(dark);
+}
+
 static void DrawFallingLeaves(HDC hdc) {
+    if (current_biome == BIOME_DESERT) { DrawDesertDust(hdc); return; }
     if (current_season != SEASON_FALL) return;
     static const COLORREF leaf_colors[] = { RGB(215, 120, 40), RGB(190, 65, 40), RGB(225, 180, 60), RGB(160, 95, 45) };
     int leaves = 14 + (int)(fabs(wind_gust) * 60.0f);

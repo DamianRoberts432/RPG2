@@ -157,6 +157,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 
                 COLORREF meadow_color = RGB(r_tone, g_tone, b_tone);
                 if (current_biome != BIOME_CAVE) meadow_color = ApplySeasonToGround(meadow_color);
+                if (current_biome == BIOME_DESERT) // pure yellow sand, dimmed at night
+                    meadow_color = RGB((int)(70 + ambient_intensity * 180), (int)(60 + ambient_intensity * 150), (int)(15 + ambient_intensity * 40));
                 HBRUSH live_ground = CreateSolidBrush(meadow_color); HGDIOBJ old_bg = SelectObject(memHDC, live_ground); PatBlt(memHDC, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, PATCOPY); SelectObject(memHDC, old_bg); DeleteObject(live_ground);
                 SelectObject(memHDC, clean_null_pen);
 
@@ -210,10 +212,10 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 }
                 DrawCampfires(memHDC); DrawBedroll(memHDC); DrawGroundLoot(memHDC); DrawDroppedItems(memHDC); DrawDebrisTwigs(memHDC); DrawSummonedZombie(memHDC);
                 DrawFlyingArrow(memHDC); DrawFlyingSpear(memHDC); DrawFlyingSpell(memHDC); DrawClassAbilityFX(memHDC); DrawButterflies(memHDC); DrawBloodMistFX(memHDC);
-                DrawEnvironmentalCritters(memHDC); DrawFamiliar(memHDC); DrawMerchantStoreFront(memHDC); DrawVillage(memHDC); DrawNightEyes(memHDC);
+                DrawEnvironmentalCritters(memHDC); DrawFamiliar(memHDC); DrawFishing(memHDC); DrawMerchantStoreFront(memHDC); DrawVillage(memHDC); DrawNightEyes(memHDC);
                 DrawWeatherEffects(memHDC); DrawSolitaireSunMoonBeam(memHDC);
                 ApplyCameraZoom(memHDC, view_zoom);
-                DrawPlayerStatusHUD(memHDC);
+                DrawPlayerStatusHUD(memHDC); DrawLootPreview(memHDC);
 
                 if (is_menu_open) DrawTabbedMenuOverlay(memHDC);
                 DrawStrategyGuideFlash(memHDC);

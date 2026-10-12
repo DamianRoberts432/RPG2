@@ -136,8 +136,11 @@ void UpdateGamePhysics(void) {
             } else if (summoned_zombie.attack_cooldown > 0) summoned_zombie.attack_cooldown--;
             else {
                 summoned_zombie.attack_cooldown = st == SUMMON_GHOST ? 24 : 30;
-                HandleEnemyDamage(summon_dmg[st]);
+                // Bigger races raise bigger dead: damage follows hero height, +-15%.
+                float race_k = player_height_m / 1.82f;
+                HandleEnemyDamage(summon_dmg[st] * (0.75f + 0.25f * race_k) * (0.85f + (rand() % 31) / 100.0f));
                 if (st == SUMMON_ZOMBIE) enemies[current_enemy].poison = 3;
+                else if (rand() % 100 < 15) enemies[current_enemy].poison = 2;
             }
         }
     }

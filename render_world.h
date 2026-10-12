@@ -16,6 +16,7 @@ void DrawEnvironmentalCritters(HDC hdc);
 void DrawSolitaireSunMoonBeam(HDC hdc);
 void DrawNightEyes(HDC hdc);
 int RainHash(int value);
+void FillWindowAlpha(HDC hdc, COLORREF color, int alpha);
 void ApplyCameraZoom(HDC hdc, float zoom);
 float UpdateAfkCamera(int input_active);
 void DrawRainZones(HDC hdc);
