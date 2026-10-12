@@ -2,6 +2,7 @@
 #define WORLDMAP_H
 
 #define POI_VILLAGE        0x01
+#define POI_TOWN_ALT 0x80 // town screen was generated as 30000 + cell
 #define POI_CASTLE         0x02
 #define POI_TREASURE_FOUND 0x04
 

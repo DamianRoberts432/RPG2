@@ -290,11 +290,39 @@ void DrawEnvironmentalCritters(HDC hdc) {
         }
         int sx, sy; GetIsoCoords(critters[i].x, critters[i].y, &sx, &sy);
         int jump_bob = (critters[i].state == 1) ? (int)(sin(world_tick * 8.0f) * 4.0f) : 0;
-        if (critters[i].type == 0) {
-            HBRUSH bird_b = CreateSolidBrush(RGB(50, 160, 240)); HGDIOBJ old = SelectObject(hdc, bird_b);
-            int flap = (int)(sin(world_tick * 12.0f + i) * 3.0f);
-            POINT wing[] = {{sx - 6, sy - 4 - flap}, {sx, sy + jump_bob}, {sx + 6, sy - 4 - flap}, {sx, sy - 2 + jump_bob}};
-            Polygon(hdc, wing, 4); SelectObject(hdc, old); DeleteObject(bird_b);
+        if (critters[i].type == 0) { // bluebird: hops on the ground, flaps when flying
+            int t = critters[i].timer, flying = critters[i].state == 2;
+            int lift = flying ? 22 : (t <= 8 ? (int)(sin(t * 3.14159f / 8.0f) * 6.0f) : 0);
+            int by = sy - 4 - lift;
+            int dir = flying ? (critters[i].base_x >= critters[i].x ? 1 : -1) : ((i & 1) ? 1 : -1);
+            HGDIOBJ old_p = SelectObject(hdc, GetStockObject(NULL_PEN));
+            HBRUSH shadow = CreateSolidBrush(RGB(35, 35, 35)), body = CreateSolidBrush(RGB(55, 115, 215));
+            HBRUSH belly = CreateSolidBrush(RGB(235, 140, 70)), beak = CreateSolidBrush(RGB(245, 200, 60));
+            HGDIOBJ old = SelectObject(hdc, shadow);
+            Ellipse(hdc, sx - 4, sy - 1, sx + 5, sy + 2);
+            SelectObject(hdc, body);
+            Ellipse(hdc, sx - 5, by - 4, sx + 5, by + 3);
+            Ellipse(hdc, sx + dir * 3 - 3, by - 8, sx + dir * 3 + 4, by - 2);
+            POINT tail[3] = { { sx - dir * 4, by - 1 }, { sx - dir * 9, by - 4 }, { sx - dir * 9, by + 1 } };
+            Polygon(hdc, tail, 3);
+            SelectObject(hdc, belly);
+            Ellipse(hdc, sx - 2 + dir, by - 1, sx + 3 + dir, by + 3);
+            SelectObject(hdc, beak);
+            POINT bk[3] = { { sx + dir * 6, by - 6 }, { sx + dir * 9, by - 5 }, { sx + dir * 6, by - 4 } };
+            Polygon(hdc, bk, 3);
+            SelectObject(hdc, old); SelectObject(hdc, old_p);
+            DeleteObject(shadow); DeleteObject(body); DeleteObject(belly); DeleteObject(beak);
+            SetPixel(hdc, sx + dir * 4, by - 6, RGB(10, 10, 10));
+            HPEN lp = CreatePen(PS_SOLID, flying ? 2 : 1, flying ? RGB(40, 90, 190) : RGB(90, 70, 50));
+            old_p = SelectObject(hdc, lp);
+            if (flying) {
+                int flap = (int)(sin(world_tick * 12.0f + i) * 6.0f);
+                MoveToEx(hdc, sx - 9, by - 2 - flap, NULL); LineTo(hdc, sx, by - 2); LineTo(hdc, sx + 9, by - 2 - flap);
+            } else {
+                MoveToEx(hdc, sx - 1, by + 3, NULL); LineTo(hdc, sx - 1, by + 6);
+                MoveToEx(hdc, sx + 2, by + 3, NULL); LineTo(hdc, sx + 2, by + 6);
+            }
+            SelectObject(hdc, old_p); DeleteObject(lp);
         } else if (critters[i].type == 2) { // owl
             HBRUSH owl_b = CreateSolidBrush(RGB(120, 90, 60)); HGDIOBJ old = SelectObject(hdc, owl_b);
             HPEN owl_p = CreatePen(PS_SOLID, 1, RGB(80, 60, 40)); HGDIOBJ old_p = SelectObject(hdc, owl_p);

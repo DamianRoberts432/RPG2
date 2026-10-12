@@ -7,7 +7,7 @@ int FindFreeCampfireSlot(void);
 void PlaceCampfireAt(int slot);
 #define CAMPFIRE_START_WOOD 2
 #define CAMPFIRE_MAX_WOOD 10
-#define CAMPFIRE_FRAMES_PER_WOOD 900.0f
+#define CAMPFIRE_FRAMES_PER_WOOD 3600.0f
 int CampfireWoodCount(int i);
 int FindNearbyCampfire(float radius);
 void AddWoodToFire(int i);

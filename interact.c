@@ -32,6 +32,7 @@ void HandleContextInteract(void) {
     if (town_menu) return;
     if (FishingActive()) { FishingPressX(); return; }
     if (OpenNearbyChest()) return;
+    if (TryPickupGroundLoot()) return;
     if (TryPickupDroppedItems()) return;
     if (in_cave && IsNearPoint(cave_treasure_x, cave_treasure_y, 1.2f)) {
         ClaimCaveTreasureAndExit();
@@ -140,6 +141,7 @@ void HandleContextInteract(void) {
             }
             VISUAL_MAP[target_y][target_x] = 0;
             sprintf(arpg_action_log, "CHOP: Felled a tree, +%d wood!", gained_wood);
+            if (BirdsFleeTree(target_x, target_y)) strcat(arpg_action_log, " Birds burst from the branches!");
         } else {
             strcpy(arpg_action_log, "CHOP: Need an Axe in inventory to chop trees!");
         }

@@ -25,7 +25,7 @@
 #define WORLD_GRID_SIZE (META_GRID_SIZE * META_GRID_SIZE)
 #define MAX_BUTTERFLIES 8
 #define DEBRIS_MAX 16
-#define MAX_CRITTERS 4
+#define MAX_CRITTERS 8
 #define MERCH_ITEMS 29
 #define MAX_BLOOD_MIST 48
 #define MAX_CAMPFIRES 8
@@ -80,7 +80,7 @@ typedef struct { float x, y, z; float timer; int active; int color_profile; } Bu
 typedef struct { float x, y; float vx, vy; int life; int screen_id; int active; } DebrisParticle;
 typedef struct { float x, y; float vx, vy; int life; int max_life; int active; } BloodParticle;
 typedef struct { float x, y; float timer; int active; int screen_id; } CampfireEntity;
-typedef struct { float x, y; int type; int state; float base_x, base_y; int active; int hidden; } CritterEntity;
+typedef struct { float x, y; int type; int state; float base_x, base_y; int active; int hidden; int timer; } CritterEntity;
 // Rarity tiers drive the merchant's price multiplier directly: the enum
 // value itself *is* the multiplier applied to base_price (Common=1x,
 // Uncommon=2x, Rare=5x, Legendary=10x+), per the catalog rarity scheme.
@@ -217,6 +217,7 @@ void KarmaAdjust(int soul, int miasma, int heat, int grapevine);
 // Card collection: two 21-byte bitmasks (168 bits) for 166 cards. Card ids
 // below MONSTER_TYPE_COUNT are monster cards, linked to the bestiary.
 #define CARD_COUNT 166
+#define CARD_POOL 37 // cards in print: Wild Creatures, Angels, Goetia Demons
 #define CARD_BYTES 21
 #define CARD_DROP_PERCENT 2
 #define MONSTER_TYPE_COUNT 9
@@ -293,7 +294,7 @@ extern int vendor_tab;
 
 // LOOT_* ids map 1:1 onto weapon_catalog[id - 1] for every entry up through
 // LOOT_SPEAR (kept contiguous on purpose - see LootWeight/AddLootToInventory).
-enum { LOOT_SHORT_SWORD = 1, LOOT_LONG_SWORD, LOOT_AXE, LOOT_SHORT_BOW, LOOT_RUSTY_SWORD, LOOT_MUSASHI_BLADE, LOOT_SPEAR, LOOT_LONG_BOW, LOOT_MACE, LOOT_DAGGER, LOOT_KATANA, LOOT_WAR_HAMMER, LOOT_GREAT_AXE, LOOT_FISH, LOOT_APPLE };
+enum { LOOT_SHORT_SWORD = 1, LOOT_LONG_SWORD, LOOT_AXE, LOOT_SHORT_BOW, LOOT_RUSTY_SWORD, LOOT_MUSASHI_BLADE, LOOT_SPEAR, LOOT_LONG_BOW, LOOT_MACE, LOOT_DAGGER, LOOT_KATANA, LOOT_WAR_HAMMER, LOOT_GREAT_AXE, LOOT_FISH, LOOT_APPLE, LOOT_GOLD };
 #define LOOT_LAST_WEAPON LOOT_GREAT_AXE
 extern WeaponStats weapon_catalog[13];
 #define WEAPON_CATALOG_COUNT ((int)(sizeof(weapon_catalog) / sizeof(weapon_catalog[0])))

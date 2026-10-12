@@ -33,9 +33,9 @@ void GenerateVillageNPCs(void) {
         // keepers only sometimes set up in town.
         village_npcs[1] = (NPCEntity){ 11.0f, 16.0f, 11.0f, 16.0f, 3, 0, FACE_DOWN, "Blacksmith: X to step into the forge.", 130 };
         village_npc_count = 2;
-        unsigned int roll = (unsigned int)RainHash(current_screen_index * 7919 + SeasonDay());
-        if (roll % 2) village_npcs[village_npc_count++] = (NPCEntity){ 19.0f, 16.0f, 19.0f, 16.0f, 4, 0, FACE_DOWN, "Pet shop: X to meet the familiars.", 160 };
-        if ((roll >> 3) % 2) village_npcs[village_npc_count++] = (NPCEntity){ 15.0f, 20.0f, 15.0f, 20.0f, 5, 0, FACE_DOWN, "Card shop: X to see today's ten cards.", 190 };
+        int shops = TownShopsToday(current_screen_index);
+        if (shops & 1) village_npcs[village_npc_count++] = (NPCEntity){ 19.0f, 16.0f, 19.0f, 16.0f, 4, 0, FACE_DOWN, "Pet shop: X to meet the familiars.", 160 };
+        if (shops & 2) village_npcs[village_npc_count++] = (NPCEntity){ 15.0f, 20.0f, 15.0f, 20.0f, 5, 0, FACE_DOWN, "Card shop: X to see today's ten cards.", 190 };
         merchant_x = village_npcs[0].x; merchant_y = village_npcs[0].y;
         // Castle hall, vault and shrine, plus a beggar in the square.
         float hall_x = 15.0f + shift, side_x = 19.0f + shift, shrine_x = 11.0f + shift;
@@ -373,8 +373,10 @@ void GenerateProceduralScreen(int index) {
         critters[i].base_x = critters[i].x;
         critters[i].base_y = critters[i].y;
         // 0 bird, 1 squirrel (both diurnal), 2 owl, 3 bat (nocturnal). Day screens
-        // get birds and squirrels, night screens an owl and a bat; caves only bats.
-        critters[i].type = current_biome == BIOME_CAVE ? 3 : spawn_night && i < 2 ? 2 + i : i % 2;
+        // get a flock of birds and a couple of squirrels, night screens an owl
+        // and a bat; caves only bats.
+        critters[i].type = current_biome == BIOME_CAVE ? 3 : spawn_night && i < 2 ? 2 + i : i % 3 == 2 ? 1 : 0;
+        critters[i].timer = rand() % 90;
         critters[i].state = 0;
         critters[i].active = 1;
         critters[i].hidden = CritterAsleep(&critters[i]);
@@ -452,11 +454,113 @@ int CritterAsleep(const CritterEntity *critter) {
     return night != (critter->type >= 2);
 }
 
+static int NearestTree(float x, float y, float *tx, float *ty) {
+    float best = 1e9f;
+    for (int yy = 1; yy < MAP_SIZE - 1; yy++) for (int xx = 1; xx < MAP_SIZE - 1; xx++) {
+        if (VISUAL_MAP[yy][xx] != 11) continue;
+        float dx = xx - x, dy = yy - y, d = dx * dx + dy * dy;
+        if (d < best) { best = d; *tx = (float)xx; *ty = (float)yy; }
+    }
+    return best < 1e9f;
+}
+
+static float ClampField(float v) { return v < 2.0f ? 2.0f : v > MAP_SIZE - 3 ? (float)(MAP_SIZE - 3) : v; }
+
+// Sends a bird flying away from (fx, fy) to land a few tiles off.
+static void BirdTakeOff(CritterEntity *b, float fx, float fy) {
+    float dx = b->x - fx, dy = b->y - fy, d = sqrtf(dx * dx + dy * dy);
+    if (d < 0.01f) { float a = (rand() % 628) / 100.0f; dx = cosf(a); dy = sinf(a); d = 1.0f; }
+    float dist = 6.0f + rand() % 5;
+    b->base_x = ClampField(b->x + dx / d * dist + (rand() % 5 - 2));
+    b->base_y = ClampField(b->y + dy / d * dist + (rand() % 5 - 2));
+    b->state = 2; b->hidden = 0;
+}
+
+// Birds (state 0 ground, 2 flying, 3 perched) hop about, burst into flight
+// as a flock when anything comes close, fly to the trees in rain or snow and
+// fly back out once it clears or the tree comes down.
+static void UpdateBirds(void) {
+    int bad = IsAdverseWeather() && current_biome != BIOME_CAVE;
+    int trusted = karma.soul >= 50 && stat_luck >= 8;
+    for (int i = 0; i < MAX_CRITTERS; i++) {
+        CritterEntity *b = &critters[i];
+        if (!b->active || b->type != 0) continue;
+        if (CritterAsleep(b)) { b->hidden = 1; b->state = 0; continue; }
+        if (b->state == 3) {
+            b->hidden = 1;
+            int tx = (int)(b->x + 0.5f), ty = (int)(b->y + 0.5f);
+            if (VISUAL_MAP[ty][tx] != 11) BirdTakeOff(b, player_x, player_y);
+            else if (!bad && rand() % 240 == 0) BirdTakeOff(b, b->x + 0.5f, b->y + 0.5f);
+            continue;
+        }
+        if (b->state == 2) {
+            float dx = b->base_x - b->x, dy = b->base_y - b->y, d = sqrtf(dx * dx + dy * dy);
+            if (d > 0.15f) { b->x += dx / d * 0.15f; b->y += dy / d * 0.15f; continue; }
+            b->x = b->base_x; b->y = b->base_y;
+            int tx = (int)(b->x + 0.5f), ty = (int)(b->y + 0.5f);
+            if (bad && VISUAL_MAP[ty][tx] == 11) { b->state = 3; b->hidden = 1; }
+            else { b->state = 0; b->timer = 30 + rand() % 60; }
+            continue;
+        }
+        b->hidden = 0;
+        if (bad) {
+            float tx, ty;
+            if (NearestTree(b->x, b->y, &tx, &ty)) { b->base_x = tx; b->base_y = ty; b->state = 2; }
+            else b->hidden = 1;
+            continue;
+        }
+        float near_d = 6.25f, fx = 0.0f, fy = 0.0f;
+        int scared = 0;
+        float pdx = b->x - player_x, pdy = b->y - player_y;
+        if (!trusted && pdx * pdx + pdy * pdy < near_d) { scared = 1; fx = player_x; fy = player_y; near_d = pdx * pdx + pdy * pdy; }
+        for (int e = 0; e < MAX_ENEMIES; e++) {
+            if (enemies[e].hearts <= 0.0f) continue;
+            float edx = b->x - enemies[e].x, edy = b->y - enemies[e].y;
+            if (edx * edx + edy * edy < near_d) { scared = 1; fx = enemies[e].x; fy = enemies[e].y; near_d = edx * edx + edy * edy; }
+        }
+        if (scared) {
+            for (int j = 0; j < MAX_CRITTERS; j++) {
+                CritterEntity *o = &critters[j];
+                if (o->type != 0 || !o->active || o->state != 0 || o->hidden) continue;
+                float odx = o->x - b->x, ody = o->y - b->y;
+                if (odx * odx + ody * ody < 16.0f) BirdTakeOff(o, fx, fy);
+            }
+            continue;
+        }
+        if (--b->timer <= 0) {
+            b->x = ClampField(b->x + (rand() % 3 - 1) * 0.3f);
+            b->y = ClampField(b->y + (rand() % 3 - 1) * 0.3f);
+            b->timer = 40 + rand() % 80;
+        }
+    }
+}
+
+// Chopping a tree flushes the birds sheltering in it, and now and then one
+// that was roosting there anyway. Returns how many flew out.
+int BirdsFleeTree(int x, int y) {
+    int flushed = 0;
+    for (int i = 0; i < MAX_CRITTERS; i++) {
+        CritterEntity *b = &critters[i];
+        if (b->type != 0 || !b->active || b->state != 3) continue;
+        if ((int)(b->x + 0.5f) == x && (int)(b->y + 0.5f) == y) { BirdTakeOff(b, player_x, player_y); flushed++; }
+    }
+    if (!flushed && rand() % 3 == 0) for (int i = 0; i < MAX_CRITTERS; i++) {
+        CritterEntity *b = &critters[i];
+        if (b->type != 0 || !b->active || CritterAsleep(b) || b->state == 2) continue;
+        b->x = (float)x; b->y = (float)y;
+        BirdTakeOff(b, player_x, player_y);
+        flushed++;
+        break;
+    }
+    return flushed;
+}
+
 void UpdateCritters(void) {
+    UpdateBirds();
     if (world_frame % 30 != 0) return;
     for (int i = 0; i < MAX_CRITTERS; i++) {
         CritterEntity *critter = &critters[i];
-        if (!critter->active) continue;
+        if (!critter->active || critter->type == 0) continue;
         // Day animals sleep from 9 PM to 6 AM; the owl only comes out then.
         if (CritterAsleep(critter)) { critter->hidden = 1; continue; }
         // Rain or snow sends nature to the nearest tree (or into a burrow if

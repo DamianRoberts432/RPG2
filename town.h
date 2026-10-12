@@ -38,6 +38,11 @@ float TownDamageMult(void);
 int EquippedForgeBonus(void);
 void NoteLegendaryKill(int monster);
 int TownDeity(void);
+int TownDeityAt(int screen);
+const char *DeityName(int d);
+const char *DeityKind(int d);
+void TownNameAt(int screen, char *out, size_t n);
+int TownShopsToday(int screen);
 void CardName(int id, char *out, size_t n);
 
 #endif

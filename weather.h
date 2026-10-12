@@ -17,7 +17,7 @@ extern char weather_source_label[96];
 
 void InitSeasonAndWeather(void);
 void UpdateSeasonAndWeather(void);
-void SleepUntilMorning(void);
+int SleepToNextPhase(void);
 int SeasonDay(void);
 const char *CalendarMonthName(void);
 void GetGameClock(int *hour, int *minute);

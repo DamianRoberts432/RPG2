@@ -167,14 +167,14 @@ void HandleEnemyDamage(float dmg) {
         if (rand() % 100 < 35 + 2 * stat_spent[4]) {
             coins = 1 + rand() % (3 + player_level + 2 * stat_spent[4]);
             if (coins > GOLD_DROP_CAP) coins = GOLD_DROP_CAP;
-            gold_count += coins;
+            DropGroundLoot(enemy_x + 0.4f, enemy_y, LOOT_GOLD, coins);
         }
         int hoard = 0;
         if (IS_BOSS_MONSTER(active_monster)) {
             // Bosses carry the rare treasure: a gold hoard. (Musashi's Blade only
             // washes up on an eastern beach; see GenerateProceduralScreen.)
             hoard = 150 + rand() % 151;
-            gold_count += hoard;
+            DropGroundLoot(enemy_x - 0.4f, enemy_y, LOOT_GOLD, hoard);
             gained_xp *= 4;
         }
         player_xp += gained_xp;
@@ -190,10 +190,10 @@ void HandleEnemyDamage(float dmg) {
             }
             sprintf(arpg_action_log, "LEVEL UP! Reached Level %d! %d attribute points to spend (Hero tab: Y / P).", player_level, stat_points);
         } else {
-            if (hoard) sprintf(arpg_action_log, "VICTORY: The %s falls! +%d XP, %d gold from its hoard!", MonsterName(active_monster), gained_xp, hoard);
+            if (hoard) sprintf(arpg_action_log, "VICTORY: The %s falls! +%d XP, its hoard of %d gold spills out!", MonsterName(active_monster), gained_xp, hoard);
             else sprintf(arpg_action_log, "VICTORY: %s slain! +%d XP", MonsterName(active_monster), gained_xp);
         }
-        if (coins) { size_t n = strlen(arpg_action_log); snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  +%d gold", coins); }
+        if (coins) { size_t n = strlen(arpg_action_log); snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  %d gold dropped", coins); }
         if (monster_card_links[active_monster].kills < 65535) monster_card_links[active_monster].kills++;
         TryCardDrop(active_monster);
         NoteLegendaryKill(active_monster);
