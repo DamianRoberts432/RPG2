@@ -293,7 +293,7 @@ extern int vendor_tab;
 
 // LOOT_* ids map 1:1 onto weapon_catalog[id - 1] for every entry up through
 // LOOT_SPEAR (kept contiguous on purpose - see LootWeight/AddLootToInventory).
-enum { LOOT_SHORT_SWORD = 1, LOOT_LONG_SWORD, LOOT_AXE, LOOT_SHORT_BOW, LOOT_RUSTY_SWORD, LOOT_MUSASHI_BLADE, LOOT_SPEAR, LOOT_LONG_BOW, LOOT_MACE, LOOT_DAGGER, LOOT_KATANA, LOOT_WAR_HAMMER, LOOT_GREAT_AXE, LOOT_FISH, LOOT_APPLE };
+enum { LOOT_SHORT_SWORD = 1, LOOT_LONG_SWORD, LOOT_AXE, LOOT_SHORT_BOW, LOOT_RUSTY_SWORD, LOOT_MUSASHI_BLADE, LOOT_SPEAR, LOOT_LONG_BOW, LOOT_MACE, LOOT_DAGGER, LOOT_KATANA, LOOT_WAR_HAMMER, LOOT_GREAT_AXE, LOOT_FISH, LOOT_APPLE, LOOT_GOLD };
 #define LOOT_LAST_WEAPON LOOT_GREAT_AXE
 extern WeaponStats weapon_catalog[13];
 #define WEAPON_CATALOG_COUNT ((int)(sizeof(weapon_catalog) / sizeof(weapon_catalog[0])))

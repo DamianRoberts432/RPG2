@@ -513,7 +513,7 @@ void DrawLootPreview(HDC hdc) {
         GroundLoot *g = &ground_loot[i];
         if (!g->active || g->screen_id != current_screen_index || !IsNearPoint(g->x, g->y, 1.2f)) continue;
         const char *nm = g->item_id >= LOOT_SHORT_SWORD && g->item_id <= LOOT_LAST_WEAPON ? weapon_catalog[g->item_id - 1].name :
-                         g->item_id == LOOT_FISH ? "Fish" : g->item_id == LOOT_APPLE ? "Apple" : "Treasure";
+                         g->item_id == LOOT_FISH ? "Fish" : g->item_id == LOOT_APPLE ? "Apple" : g->item_id == LOOT_GOLD ? "Gold" : "Treasure";
         snprintf(lines[n], sizeof(lines[n]), "%s x%d", nm, g->quantity);
         cols[n++] = LootRarityColor(nm, g->item_id == LOOT_MUSASHI_BLADE, 0);
     }

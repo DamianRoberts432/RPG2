@@ -356,10 +356,15 @@ void DropGroundLoot(float x, float y, int item_id, int quantity) {
     }
 }
 
-void TryPickupGroundLoot(void) {
+int TryPickupGroundLoot(void) {
     for (int i = 0; i < MAX_GROUND_LOOT; i++) {
         GroundLoot *loot = &ground_loot[i];
-        if (!loot->active || loot->screen_id != current_screen_index || !IsNearPoint(loot->x, loot->y, 0.7f)) continue;
+        if (!loot->active || loot->screen_id != current_screen_index || !IsNearPoint(loot->x, loot->y, 1.2f)) continue;
+        if (loot->item_id == LOOT_GOLD) {
+            gold_count += loot->quantity; loot->active = 0;
+            sprintf(arpg_action_log, "PICKUP: %d gold", loot->quantity);
+            return 1;
+        }
         if (AddLootToInventory(loot->item_id, loot->quantity)) {
             sprintf(arpg_action_log, "PICKUP: %s x%d", loot->item_id == LOOT_FISH ? "Fish" :
                 loot->item_id == LOOT_APPLE ? "Apple" : weapon_catalog[loot->item_id - 1].name, loot->quantity);
@@ -367,7 +372,9 @@ void TryPickupGroundLoot(void) {
         } else {
             sprintf(arpg_action_log, "Inventory full! (%.1f/%.1f weight)", current_payload_weight, CarryLimit());
         }
+        return 1;
     }
+    return 0;
 }
 
 int IsLegendaryItemName(const char *name) {
