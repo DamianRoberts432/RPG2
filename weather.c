@@ -33,17 +33,39 @@ static float WeatherRandom(void) {
     return (float)(weather_rng & 0xFFFFFF) / (float)0x1000000;
 }
 
+// Weather follows a plan in half-day blocks: a fair spell of 1-7 days (now and
+// then a partly cloudy half-day that dulls the colors), a windy half-day as a
+// storm blows in, overcast, 1-3 days of rain (snow in winter), then overcast
+// again before it clears. Each block is 12 game hours.
+enum { PLAN_FAIR, PLAN_WINDY, PLAN_CLOUD_IN, PLAN_STORM, PLAN_CLOUD_OUT };
+static int plan_phase = PLAN_CLOUD_OUT, plan_blocks_left = 0;
+static float storm_wind = 0.0f;      // extra breeze while a storm blows in
+static float since_rain = 1.0e9f;    // seconds since it last rained (fog follows rain)
+
 static void RollNextFront(void) {
-    static const float odds[4][3] = { // clear, rain, snow
-        { 0.55f, 0.40f, 0.05f }, { 0.70f, 0.30f, 0.00f },
-        { 0.55f, 0.35f, 0.10f }, { 0.35f, 0.20f, 0.45f } };
-    float r = WeatherRandom();
-    const float *p = odds[current_season];
-    target_weather = r < p[0] ? WEATHER_CLEAR : (r < p[0] + p[1] ? WEATHER_RAIN : WEATHER_SNOW);
-    target_intensity = target_weather == WEATHER_CLEAR ? 0.0f : 0.5f + 0.5f * WeatherRandom();
-    // Dry fronts are often just overcast, so fair weather doesn't flip straight to rain.
-    if (target_weather == WEATHER_CLEAR && WeatherRandom() < 0.35f) target_weather = WEATHER_CLOUDY;
-    front_seconds_left = 240.0f + 480.0f * WeatherRandom();
+    if (plan_blocks_left <= 0) {
+        plan_phase = (plan_phase + 1) % 5;
+        if (plan_phase == PLAN_FAIR) plan_blocks_left = 2 + (int)(WeatherRandom() * 12.0f);
+        else if (plan_phase == PLAN_WINDY) plan_blocks_left = 1;
+        else if (plan_phase == PLAN_CLOUD_IN) plan_blocks_left = 1 + (WeatherRandom() < 0.5f);
+        else if (plan_phase == PLAN_STORM) plan_blocks_left = 2 * (1 + (int)(WeatherRandom() * 3.0f));
+        else plan_blocks_left = 1 + (WeatherRandom() < 0.4f);
+    }
+    plan_blocks_left--;
+    storm_wind = plan_phase == PLAN_WINDY ? 1.0f : plan_phase == PLAN_CLOUD_IN ? 0.5f : 0.0f;
+    if (plan_phase == PLAN_FAIR || plan_phase == PLAN_WINDY) {
+        int partly = plan_phase == PLAN_FAIR && WeatherRandom() < 0.25f;
+        target_weather = partly ? WEATHER_CLOUDY : WEATHER_CLEAR;
+        target_intensity = partly ? 0.4f : 0.0f;
+    } else if (plan_phase == PLAN_STORM) {
+        float snow = current_season == SEASON_WINTER ? 0.6f : current_season == SEASON_SUMMER ? 0.0f : 0.1f;
+        target_weather = WeatherRandom() < snow ? WEATHER_SNOW : WEATHER_RAIN;
+        target_intensity = 0.5f + 0.5f * WeatherRandom();
+    } else {
+        target_weather = WEATHER_CLOUDY;
+        target_intensity = 0.8f;
+    }
+    front_seconds_left = GAME_HOUR_SECONDS * 12.0f;
 }
 
 static void SetSeasonFromDate(const SYSTEMTIME *t) {
@@ -324,7 +346,9 @@ void UpdateSeasonAndWeather(void) {
     UpdateGusts(dt);
     // The original gentle breeze is unchanged (just no longer re-phased per
     // screen); gusts are layered on top of it.
-    wind_dir = (int)(sin(world_tick * 0.01f) * 3.0f) + (int)(wind_gust * 6.0f);
+    float breeze = (float)sin(world_tick * 0.01f);
+    wind_dir = (int)(breeze * 3.0f) + (int)(wind_gust * 6.0f) + (int)(storm_wind * (breeze >= 0.0f ? 4.0f : -4.0f));
+    if (current_weather == WEATHER_RAIN && weather_intensity > 0.2f) since_rain = 0.0f; else since_rain += dt;
 }
 
 
@@ -397,6 +421,46 @@ static void DrawDesertDust(HDC hdc) {
         MoveToEx(hdc, x, y, NULL); LineTo(hdc, x + dir * (2 + h % 5), y);
     }
     SelectObject(hdc, op); DeleteObject(light); DeleteObject(dark);
+}
+
+// Fog: soft see-through patches on the ground around dawn and dusk, on some
+// days within a day of rain, in meadows, forests, swamps and by water; rarely
+// in the desert. Each patch is a cached radial alpha texture.
+static void DrawFogPatches(HDC hdc) {
+    static HDC fog_dc = NULL; static HBITMAP fog_bm = NULL;
+    const int FW = 160, FH = 80;
+    float hour = HourOfDay();
+    float strength = hour >= 4.0f && hour < 8.5f ? (hour < 6.5f ? 1.0f : (8.5f - hour) / 2.0f) :
+                     hour >= 18.5f && hour < 22.0f ? (hour < 20.0f ? (hour - 18.5f) / 1.5f : 1.0f) : 0.0f;
+    if (strength <= 0.0f || in_cave || current_weather == WEATHER_RAIN || current_weather == WEATHER_SNOW) return;
+    if (since_rain > DAY_LENGTH_SECONDS || (unsigned int)RainHash(SeasonDay() * 131 + current_season * 7) % 3u) return;
+    int ok = current_biome == BIOME_PRAIRIE || current_biome == BIOME_FOREST || current_biome == BIOME_SWAMP ||
+             current_biome == BIOME_LAKE || current_biome == BIOME_RIVER;
+    if (current_biome == BIOME_DESERT) ok = (unsigned int)RainHash(current_screen_index * 3 + SeasonDay()) % 20u == 0;
+    if (!ok) return;
+    if (!fog_dc) {
+        BITMAPINFO bi = { 0 };
+        bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER); bi.bmiHeader.biWidth = FW; bi.bmiHeader.biHeight = -FH;
+        bi.bmiHeader.biPlanes = 1; bi.bmiHeader.biBitCount = 32; bi.bmiHeader.biCompression = BI_RGB;
+        uint32_t *px = NULL;
+        fog_bm = CreateDIBSection(hdc, &bi, DIB_RGB_COLORS, (void **)&px, NULL, 0);
+        if (!fog_bm || !px) return;
+        for (int y = 0; y < FH; y++) for (int x = 0; x < FW; x++) {
+            float dx = (x - FW / 2.0f) / (FW / 2.0f), dy = (y - FH / 2.0f) / (FH / 2.0f), r2 = dx * dx + dy * dy;
+            int a = r2 >= 1.0f ? 0 : (int)(255.0f * (1.0f - r2) * (1.0f - r2));
+            px[y * FW + x] = ((uint32_t)a << 24) | ((uint32_t)(a * 225 / 255) << 16) | ((uint32_t)(a * 228 / 255) << 8) | (uint32_t)(a * 232 / 255);
+        }
+        fog_dc = CreateCompatibleDC(hdc);
+        SelectObject(fog_dc, fog_bm);
+    }
+    BLENDFUNCTION bf = { AC_SRC_OVER, 0, (BYTE)(150.0f * strength), AC_SRC_ALPHA };
+    for (int k = 0; k < 9; k++) {
+        unsigned int h = (unsigned int)RainHash(current_screen_index * 53 + k * 17);
+        int sx, sy; GetIsoCoords(3.0f + (float)(h % 26u), 3.0f + (float)((h >> 6) % 26u), &sx, &sy);
+        int w = 280 + (int)(h % 200u), ht = w / 2;
+        int drift = (int)(sin(world_tick * 0.05f + k) * 24.0f);
+        AlphaBlend(hdc, sx - w / 2 + drift, sy - ht / 2, w, ht, fog_dc, 0, 0, FW, FH, bf);
+    }
 }
 
 static void DrawFallingLeaves(HDC hdc) {
@@ -522,4 +586,5 @@ void DrawWeatherEffects(HDC hdc) {
     DrawRainZones(hdc);
     DrawSnowfall(hdc);
     DrawFallingLeaves(hdc);
+    DrawFogPatches(hdc);
 }
