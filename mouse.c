@@ -5,6 +5,7 @@ static volatile int m_x = 0, m_y = 0, m_lclick = 0, m_rclick = 0, m_wheel = 0, m
 static volatile DWORD last_mouse_event = 0;
 static int walk_active = 0, target_enemy = -1, belt_sel = 0;
 static float walk_x, walk_y;
+static DWORD walk_started = 0;
 static DWORD last_mouse_attack = 0;
 
 void MouseEvent(UINT msg, WPARAM wp, LPARAM lp) {
@@ -82,11 +83,12 @@ void UpdateMouseInput(float *dx, float *dy) {
             ScreenToWorld(m_x, m_y, &walk_x, &walk_y);
             StoreEnemy();
             target_enemy = EnemyAtPoint(walk_x, walk_y, 1.0f);
-            walk_active = 1;
+            walk_active = 1; walk_started = GetTickCount();
         }
     }
     if (*dx != 0.0f || *dy != 0.0f || busy) { walk_active = 0; return; }
     if (!walk_active) return;
+    if (GetTickCount() - walk_started > (target_enemy >= 0 ? 20000u : 6000u)) { walk_active = 0; return; } // blocked or gave up
     float tx = walk_x, ty = walk_y;
     if (target_enemy >= 0) {
         if (enemies[target_enemy].hearts <= 0.0f) { walk_active = 0; return; }
