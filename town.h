@@ -5,7 +5,18 @@
 // beggars and altars. Talking to a keeper opens a Zelda 2-style interior
 // with a menu picked with up/down.
 
-enum { TM_NONE, TM_SMITH, TM_CARDS, TM_PETS, TM_KING, TM_BANK, TM_BEGGAR, TM_ALTAR };
+enum { TM_NONE, TM_SMITH, TM_CARDS, TM_PETS, TM_KING, TM_BANK, TM_BEGGAR, TM_ALTAR, TM_CHEST };
+
+// Craftable storage chests (4 Wood) left in the world; saved with the hero.
+#define MAX_CHESTS 8
+#define CHEST_SLOTS 16
+typedef struct { int32_t active, screen_id, last_day, count; float x, y; InventoryItem items[CHEST_SLOTS]; } StashChest;
+extern StashChest chests[MAX_CHESTS];
+extern int open_chest;
+void BuildChest(void);
+int OpenNearbyChest(void);
+void CheckChestBreakIns(void);
+void DrawChests(HDC hdc);
 #define LEGENDARY_QUEST_LEVEL 25 // to be raised to 50 later
 #define FAMILIAR_UNLOCK_LEVEL 3
 #define MAX_FORGE_BONUS 10

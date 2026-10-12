@@ -31,6 +31,7 @@ void RememberChoppedAppleTree(int x, int y) {
 void HandleContextInteract(void) {
     if (town_menu) return;
     if (FishingActive()) { FishingPressX(); return; }
+    if (OpenNearbyChest()) return;
     if (TryPickupDroppedItems()) return;
     if (in_cave && IsNearPoint(cave_treasure_x, cave_treasure_y, 1.2f)) {
         ClaimCaveTreasureAndExit();

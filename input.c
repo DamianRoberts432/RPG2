@@ -286,6 +286,7 @@ void ProcessGamepadInput(void) {
             if (GetAsyncKeyState('3') & 0x8000) { HandleMenuLightFire(); last_tab_kb = GetTickCount(); }
             if (GetAsyncKeyState('4') & 0x8000) { DropSelectedItem(); last_tab_kb = GetTickCount(); }
             if (GetAsyncKeyState('5') & 0x8000) { SortInventory(); last_tab_kb = GetTickCount(); }
+            if (GetAsyncKeyState('6') & 0x8000) { BuildChest(); last_tab_kb = GetTickCount(); }
         } else if (current_menu_tab == 2) {
             if (GetAsyncKeyState('1') & 0x8000) { opt_xp_mult += 0.5f; if (opt_xp_mult > 3.0f) opt_xp_mult = 0.5f; last_tab_kb = GetTickCount(); }
             if (GetAsyncKeyState('2') & 0x8000) { opt_loot_mult += 0.5f; if (opt_loot_mult > 3.0f) opt_loot_mult = 0.5f; last_tab_kb = GetTickCount(); }
