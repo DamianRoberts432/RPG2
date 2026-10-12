@@ -24,6 +24,10 @@ static int CellInWorld(int gx, int gy) {
 void RecordCurrentScreenOnMap(void) {
     int gx = screen_grid_x, gy = screen_grid_y;
     if (in_cave || current_biome == BIOME_CAVE || !CellInWorld(gx, gy)) return;
+    if (current_biome == BIOME_CASTLE || village_npc_count > 0) {
+        if (current_screen_index >= 30000) map_poi[gy][gx] |= POI_TOWN_ALT;
+        else map_poi[gy][gx] &= (uint8_t)~POI_TOWN_ALT;
+    }
     if (current_biome == BIOME_CASTLE) { map_poi[gy][gx] |= POI_CASTLE; return; }
     if (village_npc_count > 0) map_poi[gy][gx] |= POI_VILLAGE;
     else map_poi[gy][gx] &= (uint8_t)~POI_VILLAGE;
@@ -225,6 +229,8 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
     HBRUSH sand = CreateSolidBrush(RGB(225, 205, 140));
     HBRUSH treasure = CreateSolidBrush(RGB(245, 200, 40));
     HBRUSH treasure_edge = CreateSolidBrush(RGB(90, 60, 15));
+    int town_gx[10], town_gy[10], town_n = 0, town_more = 0;
+    uint8_t town_poi[10];
 
     for (int gy = min_y; gy <= max_y; gy++) for (int gx = min_x; gx <= max_x; gx++) {
         int cx = left + (gx - min_x) * cs, cy = top + (gy - min_y) * cs;
@@ -256,6 +262,14 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
             FillSub(hdc, cx, cy, q, 3, 0, 1, 1, castle_tower);
             FillSub(hdc, cx, cy, q, 0, 3, 1, 1, castle_tower);
             FillSub(hdc, cx, cy, q, 3, 3, 1, 1, castle_tower);
+        }
+        if (poi & (POI_VILLAGE | POI_CASTLE)) {
+            if (town_n < 10) {
+                town_gx[town_n] = gx; town_gy[town_n] = gy; town_poi[town_n] = poi; town_n++;
+                char num[12]; snprintf(num, sizeof(num), "%d", town_n);
+                SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(255, 240, 120));
+                TextOut(hdc, cx + cs, cy - 4, num, (int)strlen(num));
+            } else town_more++;
         }
         // Some Mountain screens hide a cave; its treasure marker disappears
         // once that cave's treasure has been claimed.
@@ -292,4 +306,26 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
     DrawLegendSwatch(hdc, lx, ly + 162, RGB(125, 118, 110), "Mountain");
     DrawLegendSwatch(hdc, lx, ly + 182, RGB(215, 185, 110), "Desert");
     DrawLegendSwatch(hdc, lx, ly + 202, RGB(220, 228, 235), "Tundra");
+
+    // Towns you have found: name, patron god, and today's shops.
+    int ty = ly + 236;
+    char buf[128], name[32];
+    SetTextColor(hdc, RGB(220, 225, 230));
+    TextOut(hdc, lx, ty, "TOWNS", 5);
+    for (int i = 0; i < town_n; i++) {
+        int screen = town_gy[i] * META_GRID_SIZE + town_gx[i] + ((town_poi[i] & POI_TOWN_ALT) ? 30000 : 0);
+        int castle = (town_poi[i] & POI_CASTLE) != 0, d = TownDeityAt(screen), shops = castle ? TownShopsToday(screen) : 0;
+        TownNameAt(screen, name, sizeof(name));
+        snprintf(buf, sizeof(buf), "%d %s (%s) - %s, %s", i + 1, name, castle ? "castle town" : "village", DeityName(d), DeityKind(d));
+        SetTextColor(hdc, RGB(255, 240, 120));
+        TextOut(hdc, lx, ty + 22 + i * 38, buf, (int)strlen(buf));
+        snprintf(buf, sizeof(buf), "   Card shop: %s   Pet shop: %s", !castle ? "none" : (shops & 2) ? "open today" : "closed today",
+                 !castle ? "none" : (shops & 1) ? "open today" : "closed today");
+        SetTextColor(hdc, RGB(180, 200, 215));
+        TextOut(hdc, lx, ty + 40 + i * 38, buf, (int)strlen(buf));
+    }
+    if (town_more) {
+        snprintf(buf, sizeof(buf), "+%d more - zoom in to list them", town_more);
+        TextOut(hdc, lx, ty + 22 + town_n * 38, buf, (int)strlen(buf));
+    }
 }

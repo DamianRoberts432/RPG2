@@ -33,9 +33,9 @@ void GenerateVillageNPCs(void) {
         // keepers only sometimes set up in town.
         village_npcs[1] = (NPCEntity){ 11.0f, 16.0f, 11.0f, 16.0f, 3, 0, FACE_DOWN, "Blacksmith: X to step into the forge.", 130 };
         village_npc_count = 2;
-        unsigned int roll = (unsigned int)RainHash(current_screen_index * 7919 + SeasonDay());
-        if (roll % 2) village_npcs[village_npc_count++] = (NPCEntity){ 19.0f, 16.0f, 19.0f, 16.0f, 4, 0, FACE_DOWN, "Pet shop: X to meet the familiars.", 160 };
-        if ((roll >> 3) % 2) village_npcs[village_npc_count++] = (NPCEntity){ 15.0f, 20.0f, 15.0f, 20.0f, 5, 0, FACE_DOWN, "Card shop: X to see today's ten cards.", 190 };
+        int shops = TownShopsToday(current_screen_index);
+        if (shops & 1) village_npcs[village_npc_count++] = (NPCEntity){ 19.0f, 16.0f, 19.0f, 16.0f, 4, 0, FACE_DOWN, "Pet shop: X to meet the familiars.", 160 };
+        if (shops & 2) village_npcs[village_npc_count++] = (NPCEntity){ 15.0f, 20.0f, 15.0f, 20.0f, 5, 0, FACE_DOWN, "Card shop: X to see today's ten cards.", 190 };
         merchant_x = village_npcs[0].x; merchant_y = village_npcs[0].y;
         // Castle hall, vault and shrine, plus a beggar in the square.
         float hall_x = 15.0f + shift, side_x = 19.0f + shift, shrine_x = 11.0f + shift;
