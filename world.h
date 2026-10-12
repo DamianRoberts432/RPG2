@@ -12,6 +12,7 @@ BiomeType PickBiomeForScreen(int gx, int gy);
 void GenerateProceduralScreen(int index);
 void UpdateVillageNPCs(void);
 void UpdateCritters(void);
+int BirdsFleeTree(int x, int y);
 int CritterAsleep(const CritterEntity *critter);
 // Village campfires and torches: monsters mostly stay out of their light.
 typedef struct { float x, y; int torch; } VillageLight;

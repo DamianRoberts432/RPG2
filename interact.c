@@ -141,6 +141,7 @@ void HandleContextInteract(void) {
             }
             VISUAL_MAP[target_y][target_x] = 0;
             sprintf(arpg_action_log, "CHOP: Felled a tree, +%d wood!", gained_wood);
+            if (BirdsFleeTree(target_x, target_y)) strcat(arpg_action_log, " Birds burst from the branches!");
         } else {
             strcpy(arpg_action_log, "CHOP: Need an Axe in inventory to chop trees!");
         }

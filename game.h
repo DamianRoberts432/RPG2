@@ -25,7 +25,7 @@
 #define WORLD_GRID_SIZE (META_GRID_SIZE * META_GRID_SIZE)
 #define MAX_BUTTERFLIES 8
 #define DEBRIS_MAX 16
-#define MAX_CRITTERS 4
+#define MAX_CRITTERS 8
 #define MERCH_ITEMS 29
 #define MAX_BLOOD_MIST 48
 #define MAX_CAMPFIRES 8
@@ -80,7 +80,7 @@ typedef struct { float x, y, z; float timer; int active; int color_profile; } Bu
 typedef struct { float x, y; float vx, vy; int life; int screen_id; int active; } DebrisParticle;
 typedef struct { float x, y; float vx, vy; int life; int max_life; int active; } BloodParticle;
 typedef struct { float x, y; float timer; int active; int screen_id; } CampfireEntity;
-typedef struct { float x, y; int type; int state; float base_x, base_y; int active; int hidden; } CritterEntity;
+typedef struct { float x, y; int type; int state; float base_x, base_y; int active; int hidden; int timer; } CritterEntity;
 // Rarity tiers drive the merchant's price multiplier directly: the enum
 // value itself *is* the multiplier applied to base_price (Common=1x,
 // Uncommon=2x, Rare=5x, Legendary=10x+), per the catalog rarity scheme.
