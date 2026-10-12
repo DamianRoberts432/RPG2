@@ -391,6 +391,7 @@ void ProcessGamepadInput(void) {
         spear_key_was_down = bow_key_down;
 
 
+        UpdateMouseInput(&dx, &dy);
         if (dx != 0.0f || dy != 0.0f) {
             is_running = 1; run_bob += 0.4f;
             float race_mult = GetRaceSpeedMultiplier();
