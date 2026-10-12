@@ -430,6 +430,27 @@ void DrawEnemiesAtTile(HDC hdc, int c, int r) {
 
 static void DrawSummonedSkeleton(HDC hdc, int sx, int sy, int face_dir);
 
+// Scales everything drawn until EndScaledDraw by k about (sx, sy).
+int BeginScaledDraw(HDC hdc, int sx, int sy, float k) {
+    int old_mode = SetGraphicsMode(hdc, GM_ADVANCED);
+    XFORM sc = { k, 0.0f, 0.0f, k, sx * (1.0f - k), sy * (1.0f - k) };
+    ModifyWorldTransform(hdc, &sc, MWT_LEFTMULTIPLY);
+    return old_mode;
+}
+
+void EndScaledDraw(HDC hdc, int old_mode) {
+    ModifyWorldTransform(hdc, NULL, MWT_IDENTITY);
+    SetGraphicsMode(hdc, old_mode);
+}
+
+// Risen dead were once people of every race, so each one stands as tall as
+// the race it was (elf, human, dwarf, halfling or gnome).
+static float UndeadRaceScale(int seed) {
+    static const float heights[5] = { 1.95f, 1.82f, 1.42f, 1.15f, 0.98f };
+    float k = heights[(unsigned int)RainHash(seed) % 5u] / 1.82f;
+    return k < 0.55f ? 0.55f : k;
+}
+
 void DrawDynamicEnemy(HDC hdc) {
     if (enemy_hearts <= 0.0f) return;
     int sx, sy; GetIsoCoords(enemy_x, enemy_y, &sx, &sy);
@@ -440,7 +461,9 @@ void DrawDynamicEnemy(HDC hdc) {
     if (active_monster == MONSTER_ZOMBIE) {
         int seed = (int)(enemy_x * 13.0f + enemy_y * 7.0f);
         int arms_out = (((int)(world_tick * 0.3f) + seed) % 40) < 22; // reaches out some of the time
+        int mode = BeginScaledDraw(hdc, sx, sy + 16, UndeadRaceScale(current_screen_index * 7 + current_enemy));
         DrawZombieBody(hdc, sx, sy, seed, face_dir, arms_out, RGB(165, 185, 150));
+        EndScaledDraw(hdc, mode);
     } else if (active_monster == MONSTER_GOBLIN) {
         DrawGoblin(hdc, sx, sy, face_dir);
     } else if (active_monster == MONSTER_SATYR) {
@@ -448,7 +471,9 @@ void DrawDynamicEnemy(HDC hdc) {
     } else if (IS_MYTHIC_MONSTER(active_monster)) {
         DrawMythicBeast(hdc, sx, sy, face_dir);
     } else if (active_monster == MONSTER_SKELLY) {
+        int mode = BeginScaledDraw(hdc, sx, sy + 16, UndeadRaceScale(current_screen_index * 7 + current_enemy));
         DrawSummonedSkeleton(hdc, sx, sy, face_dir); // skull, ribs and bony limbs
+        EndScaledDraw(hdc, mode);
     } else {
         // Legs stride under the robe, then the robe and skull on top.
         int step = (int)(sin(world_tick * 6.0f) * 2.0f);
@@ -686,7 +711,11 @@ void DrawSummonedZombie(HDC hdc) {
     // reaching toward the enemy it is hunting (or ahead, if there is none).
     int face_dir = 1;
     if (enemy_hearts > 0.0f) { int ex, ey; GetIsoCoords(enemy_x, enemy_y, &ex, &ey); face_dir = (ex >= sx) ? 1 : -1; }
+    // Summons stand as tall as the hero's race (gnome dead are small, elves tall).
+    float k = player_height_m / 1.82f; if (k < 0.55f) k = 0.55f;
+    int old_mode = BeginScaledDraw(hdc, sx, sy + 16, k);
     if (summoned_zombie.type == SUMMON_SKELETON) DrawSummonedSkeleton(hdc, sx, sy, face_dir);
     else if (summoned_zombie.type == SUMMON_GHOST) DrawSummonedGhost(hdc, sx, sy, face_dir);
     else DrawZombieBody(hdc, sx, sy, (int)(summoned_zombie.x * 11.0f + summoned_zombie.y * 5.0f), face_dir, 1, RGB(150, 170, 130));
+    EndScaledDraw(hdc, old_mode);
 }

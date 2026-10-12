@@ -11,7 +11,7 @@ static char town_note[160] = "";
 
 typedef struct { char text[96]; int action, arg; } TownRow;
 enum { A_LEAVE, A_REPAIR, A_FORGE, A_RECYCLE, A_SMITH_BUY, A_CARD, A_PACK, A_KID, A_PET, A_KING,
-       A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER };
+       A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE };
 #define TOWN_ROWS 24
 static TownRow rows[TOWN_ROWS];
 static int row_count = 0;
@@ -119,6 +119,42 @@ static const char *kid_lines[] = {
 };
 #define KID_LINE_COUNT ((int)(sizeof(kid_lines) / sizeof(kid_lines[0])))
 
+static void Say(const char *fmt, ...);
+
+// Practice hands with the card kid: no ante, ten rounds per visit.
+#define KID_MAX_ROUNDS 10
+static int kid_rounds = 0, kid_round_screen = -1, kid_dealt = 0, my_hand[3], kid_hand[3];
+static const int hand_orders[6][3] = { {0,1,2}, {0,2,1}, {1,0,2}, {1,2,0}, {2,0,1}, {2,1,0} };
+static int CardAtk(int id) { return 1 + (int)(CardHash(id) % 7u) + CardRarity(id) * 2; }
+static int CardDef(int id) { return 1 + (int)((CardHash(id) >> 5) % 7u) + CardRarity(id); }
+
+static void PracticeHand(int order) {
+    if (kid_round_screen != current_screen_index) { kid_round_screen = current_screen_index; kid_rounds = 0; kid_dealt = 0; }
+    if (kid_rounds >= KID_MAX_ROUNDS) { Say("KID: That's ten - I gotta go home now. Mom's calling!"); return; }
+    if (!order) {
+        for (int k = 0; k < 3; k++) {
+            int id, dup;
+            do { id = card_offers[rand() % 10]; dup = 0; for (int j = 0; j < k; j++) if (my_hand[j] == id) dup = 1; } while (dup);
+            my_hand[k] = id; kid_hand[k] = rand() % CARD_COUNT;
+        }
+        kid_dealt = 1;
+        Say("KID: Here's a test hand from the counter. Pick the order you'll lay them - I always lead with my first card.");
+        return;
+    }
+    const int *o = hand_orders[order - 1];
+    int mine = 0, his = 0;
+    for (int k = 0; k < 3; k++) {
+        int a = my_hand[o[k]], b = kid_hand[k];
+        if (CardAtk(a) > CardDef(b)) mine++;
+        if (CardAtk(b) > CardDef(a)) his++;
+    }
+    kid_dealt = 0; kid_rounds++;
+    const char *end = kid_rounds >= KID_MAX_ROUNDS ? " That's ten rounds - I have to go home soon!" : "";
+    if (mine > his) Say("KID: You knocked out %d to my %d - you win this one! Order matters, huh?%s", mine, his, end);
+    else if (mine < his) Say("KID: I knocked out %d to your %d. Try leading with a different card.%s", his, mine, end);
+    else Say("KID: %d to %d, a draw! Ties go to the defender.%s", mine, his, end);
+}
+
 // --- Menu rows ---------------------------------------------------------------
 static void AddLeave(void) { row_count = row_count >= TOWN_ROWS ? TOWN_ROWS - 1 : row_count; AddRow(A_LEAVE, 0, "Leave"); }
 
@@ -173,6 +209,20 @@ static void BuildRows(void) {
         AddRow(A_PACK, 7, "7-card pack - 40,000 gold");
         AddRow(A_PACK, 60, "60-card box - 350,000 gold");
         AddRow(A_KID, 0, "Talk to the kid at the table");
+        int left = kid_round_screen == current_screen_index ? KID_MAX_ROUNDS - kid_rounds : KID_MAX_ROUNDS;
+        if (kid_dealt && kid_round_screen == current_screen_index) {
+            for (int p = 0; p < 6; p++) {
+                const int *o = hand_orders[p];
+                snprintf(t, sizeof(t), "Lay: #%03d (%d/%d) > #%03d (%d/%d) > #%03d (%d/%d)",
+                         my_hand[o[0]], CardAtk(my_hand[o[0]]), CardDef(my_hand[o[0]]),
+                         my_hand[o[1]], CardAtk(my_hand[o[1]]), CardDef(my_hand[o[1]]),
+                         my_hand[o[2]], CardAtk(my_hand[o[2]]), CardDef(my_hand[o[2]]));
+                AddRow(A_PRACTICE, 1 + p, t);
+            }
+        } else if (left > 0) {
+            snprintf(t, sizeof(t), "Play the kid a practice hand (%d of %d left, no ante)", left, KID_MAX_ROUNDS);
+            AddRow(A_PRACTICE, 0, t);
+        }
     } else if (town_menu == TM_PETS) {
         for (int k = 0; k < FAMILIAR_COUNT; k++) {
             snprintf(t, sizeof(t), "%s - %d gold%s", familiars[k].name, familiars[k].price,
@@ -194,6 +244,13 @@ static void BuildRows(void) {
         AddRow(A_ALMS_GOLD, 100, "Give 100 gold");
         AddRow(A_ALMS_FOOD, 0, "Give some food");
         AddRow(A_REFUSE, 0, "Refuse and walk on");
+    } else if (town_menu == TM_CHEST && open_chest >= 0) {
+        StashChest *c = &chests[open_chest];
+        for (int k = 0; k < c->count; k++) { snprintf(t, sizeof(t), "Take %s x%d", c->items[k].name, c->items[k].quantity); AddRow(A_TAKE, k, t); }
+        for (int i = 0; i < player_item_count && c->count < CHEST_SLOTS; i++) {
+            if (player_inventory[i].is_equipped) continue;
+            snprintf(t, sizeof(t), "Store %s x%d", player_inventory[i].name, player_inventory[i].quantity); AddRow(A_STORE, i, t);
+        }
     } else if (town_menu == TM_ALTAR) {
         static const char *offer[4] = { "Offer Incense", "Offer a Chaos Relic", "Offer Tarot Card, Rum Bottle and Cigar", "Offer a Fish from the deep" };
         int d = TownDeity();
@@ -219,6 +276,7 @@ static void RowInfo(const TownRow *r, char *out, size_t n) {
     case A_CARD: CardDetails(card_offers[r->arg], out, n); break;
     case A_PACK: snprintf(out, n, "%d random cards. Collection: %d / %d.", r->arg, CardCount(), CARD_COUNT); break;
     case A_KID: snprintf(out, n, "A kid sits at the corner table shuffling a test deck. He won't play for ante."); break;
+    case A_PRACTICE: snprintf(out, n, "Three on three: your ATK vs his DEF, card by card. Each number pair is ATK/DEF. He leads with the same cards each time."); break;
     case A_PET: snprintf(out, n, "%s  |  %s  |  %s", familiars[r->arg].name, familiars[r->arg].nocturnal ? "Nocturnal" : "Diurnal", familiars[r->arg].trait); break;
     case A_KING: snprintf(out, n, "Legendary quests open at level %d. Quests completed: %d.", LEGENDARY_QUEST_LEVEL, legendary_quests_done); break;
     case A_DEPOSIT: case A_WITHDRAW: snprintf(out, n, "Vault balance: %d gold. Purse: %d gold.", bank_gold, gold_count); break;
@@ -239,14 +297,15 @@ static void Say(const char *fmt, ...) {
     snprintf(arpg_action_log, sizeof(arpg_action_log), "%s", town_note);
 }
 
-static const char *greetings[8] = { "",
+static const char *greetings[9] = { "",
     "BLACKSMITH: Steel needs mending, or something finer? Pick a job.",
     "CARD SHOP: Ten fresh cards on the counter today. The kid at the table can teach you.",
     "PET SHOP: Every familiar here needs a seasoned keeper.",
     "KING: Approach, adventurer.",
     "BANKER: Your gold is safe in the vault.",
     "BEGGAR: Spare a coin or a crust, kind traveler?",
-    "" };
+    "",
+    "CHEST: Pick an item to take out, or something from your pack to store." };
 
 void OpenTownMenu(int menu) {
     town_menu = menu; town_cursor = 0; menu_screen = current_screen_index;
@@ -375,6 +434,7 @@ void TownMenuConfirm(void) {
         return; }
     case A_PACK: BuyCardPack(r.arg); return;
     case A_KID: kid_line = (kid_line + 1) % KID_LINE_COUNT; Say("%s", kid_lines[kid_line]); return;
+    case A_PRACTICE: PracticeHand(r.arg); return;
     case A_PET: {
         const FamiliarDef *f = &familiars[r.arg];
         if (player_level < FAMILIAR_UNLOCK_LEVEL) { Say("PET SHOP: Familiars only bond with heroes of level %d or higher.", FAMILIAR_UNLOCK_LEVEL); return; }
@@ -434,6 +494,24 @@ void TownMenuConfirm(void) {
         Say("ALTAR: You pray to %s. %s (favor %d)", deity_names[d], answer[d], deity_favor[d]);
         return; }
     case A_OFFER: Offer(r.arg); return;
+    case A_TAKE: {
+        StashChest *c = &chests[open_chest];
+        if (player_item_count >= MAX_INVENTORY_ITEMS) { Say("CHEST: Your pack is full."); return; }
+        InventoryItem it = c->items[r.arg];
+        if (IsStackableItem(it.name, it.slot)) { if (!AddStackableItem(it.name, it.slot, it.quantity)) { Say("CHEST: No room in your pack."); return; } }
+        else player_inventory[player_item_count++] = it;
+        c->items[r.arg] = c->items[--c->count];
+        RecalculateCarriedWeight();
+        Say("CHEST: Took %s.", it.name);
+        return; }
+    case A_STORE: {
+        StashChest *c = &chests[open_chest];
+        if (c->count >= CHEST_SLOTS) { Say("CHEST: The chest is full."); return; }
+        c->items[c->count++] = player_inventory[r.arg];
+        char nm[32]; snprintf(nm, sizeof(nm), "%s", player_inventory[r.arg].name);
+        RemoveItemAt(r.arg);
+        Say("CHEST: Stored %s.", nm);
+        return; }
     default: return;
     }
 }
@@ -522,7 +600,7 @@ static void DrawShelf(HDC hdc, int l, int r, int y, int seed) {
 }
 
 void DrawInteriorBackdrop(HDC hdc, int menu) {
-    if (menu == TM_BEGGAR) return;
+    if (menu == TM_BEGGAR || menu == TM_CHEST) return;
     const int W = WINDOW_WIDTH, H = WINDOW_HEIGHT, F = INT_FLOOR_Y;
     int stone = menu == TM_KING || menu == TM_BANK, shrine = menu == TM_ALTAR;
     COLORREF wall = shrine ? RGB(40, 30, 52) : stone ? RGB(96, 96, 104) : RGB(116, 78, 46);
@@ -627,9 +705,9 @@ void DrawTownMenu(HDC hdc) {
     if (menu_screen != current_screen_index) { town_menu = TM_NONE; return; }
     BuildRows();
     DrawInteriorBackdrop(hdc, town_menu);
-    static const char *titles[8] = { "", "BLACKSMITH", "CARD SHOP", "PET SHOP", "THRONE ROOM", "TOWN BANK", "BEGGAR", "ALTAR" };
+    static const char *titles[9] = { "", "BLACKSMITH", "CARD SHOP", "PET SHOP", "THRONE ROOM", "TOWN BANK", "BEGGAR", "ALTAR", "CHEST" };
     RECT box = { 1100, 70, 1790, 910 };
-    if (town_menu == TM_BEGGAR) { box.left = 560; box.right = 1260; box.top = 200; box.bottom = 700; }
+    if (town_menu == TM_BEGGAR || town_menu == TM_CHEST) { box.left = 560; box.right = 1260; box.top = 200; box.bottom = 700; }
     TwBox(hdc, box.left, box.top, box.right, box.bottom, RGB(18, 20, 28));
     HPEN pen = CreatePen(PS_SOLID, 2, RGB(90, 200, 170));
     HGDIOBJ op = SelectObject(hdc, pen), ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
@@ -718,5 +796,65 @@ void DrawFamiliar(HDC hdc) {
         TwDisc(hdc, sx, by, 5, 7, body);
         if (k == 4) { TwDisc(hdc, sx - 2, by - 3, 2, 2, RGB(250, 210, 60)); TwDisc(hdc, sx + 2, by - 3, 2, 2, RGB(250, 210, 60)); }
         else TwDisc(hdc, sx + 2, by - 4, 1, 1, RGB(10, 10, 10));
+    }
+}
+
+// --- Storage chests ----------------------------------------------------------
+StashChest chests[MAX_CHESTS];
+int open_chest = -1;
+
+static int ChestDay(void) { return (int)current_season * DAYS_PER_SEASON + SeasonDay(); }
+
+void BuildChest(void) {
+    if (GetMaterialCount("Wood") < 4) { strcpy(arpg_action_log, "CHEST: You need 4 Wood to build a chest."); return; }
+    int slot = -1;
+    for (int i = 0; i < MAX_CHESTS && slot < 0; i++) if (!chests[i].active) slot = i;
+    if (slot < 0) { strcpy(arpg_action_log, "CHEST: You already have 8 chests out in the world."); return; }
+    ConsumeMaterialFromInventory("Wood", 4); RecalculateCarriedWeight();
+    float x = player_x, y = player_y;
+    if (player_facing == FACE_UP) y -= 1.0f; else if (player_facing == FACE_DOWN) y += 1.0f;
+    else if (player_facing == FACE_LEFT) x -= 1.0f; else x += 1.0f;
+    memset(&chests[slot], 0, sizeof(chests[slot]));
+    chests[slot].active = 1; chests[slot].screen_id = current_screen_index; chests[slot].x = x; chests[slot].y = y;
+    chests[slot].last_day = ChestDay();
+    strcpy(arpg_action_log, "CHEST: Built a chest. Hide it among trees, away from paths, or thieves may find it.");
+}
+
+int OpenNearbyChest(void) {
+    CheckChestBreakIns();
+    for (int i = 0; i < MAX_CHESTS; i++) {
+        if (!chests[i].active || chests[i].screen_id != current_screen_index || !IsNearPoint(chests[i].x, chests[i].y, 1.3f)) continue;
+        open_chest = i; OpenTownMenu(TM_CHEST);
+        return 1;
+    }
+    return 0;
+}
+
+// A chest with few trees around it is in the open; each day there is a 1 in 4
+// chance someone breaks in and takes half of what's inside.
+void CheckChestBreakIns(void) {
+    for (int i = 0; i < MAX_CHESTS; i++) {
+        StashChest *c = &chests[i];
+        if (!c->active || c->screen_id != current_screen_index || c->last_day == ChestDay()) continue;
+        c->last_day = ChestDay();
+        int trees = 0;
+        for (int dy = -2; dy <= 2; dy++) for (int dx = -2; dx <= 2; dx++) {
+            int tx = (int)c->x + dx, ty = (int)c->y + dy;
+            if (tx >= 0 && tx < MAP_SIZE && ty >= 0 && ty < MAP_SIZE && VISUAL_MAP[ty][tx] == 11) trees++;
+        }
+        if (trees >= 3 || c->count == 0 || rand() % 4) continue;
+        int lose = (c->count + 1) / 2;
+        for (int k = 0; k < lose; k++) { int j = rand() % c->count; c->items[j] = c->items[--c->count]; }
+        strcpy(arpg_action_log, "CHEST: Your chest has been broken into! Some items are gone.");
+    }
+}
+
+void DrawChests(HDC hdc) {
+    for (int i = 0; i < MAX_CHESTS; i++) {
+        if (!chests[i].active || chests[i].screen_id != current_screen_index) continue;
+        int sx, sy; GetIsoCoords(chests[i].x, chests[i].y, &sx, &sy);
+        TwBox(hdc, sx - 11, sy - 4, sx + 11, sy + 10, RGB(120, 78, 40));
+        TwBox(hdc, sx - 12, sy - 9, sx + 12, sy - 3, RGB(150, 100, 52));
+        TwBox(hdc, sx - 2, sy - 4, sx + 2, sy + 2, RGB(220, 190, 70));
     }
 }

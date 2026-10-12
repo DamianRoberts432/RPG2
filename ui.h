@@ -4,6 +4,7 @@
 // HUD, inventory/map/options menu and vendor shop overlays
 
 HFONT GetMenuUnderlineFont(void);
+void DrawLootPreview(HDC hdc);
 void DrawStatJewels(HDC hdc, int x, int y, const char *label, int value);
 void DrawPlayerStatusHUD(HDC hdc);
 void DrawVendorShopOverlay(HDC hdc);

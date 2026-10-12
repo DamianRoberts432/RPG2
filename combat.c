@@ -171,11 +171,11 @@ void HandleEnemyDamage(float dmg) {
         }
         int hoard = 0;
         if (IS_BOSS_MONSTER(active_monster)) {
-            // Bosses carry the rare treasure: a gold hoard and a chance at Legendary loot.
+            // Bosses carry the rare treasure: a gold hoard. (Musashi's Blade only
+            // washes up on an eastern beach; see GenerateProceduralScreen.)
             hoard = 150 + rand() % 151;
             gold_count += hoard;
             gained_xp *= 4;
-            if (rand() % 100 < 40) DropGroundLoot(enemy_x, enemy_y, LOOT_MUSASHI_BLADE, 1);
         }
         player_xp += gained_xp;
         if (IS_BOSS_MONSTER(active_monster)) { karma.life_marks |= (uint16_t)(1u << active_monster); KarmaAdjust(5, 0, 0, 10); }
@@ -295,6 +295,7 @@ void SpawnScreenEnemies(void) {
     SelectEnemy(0);
     int cap = EnemyCap();
     int n = cap / 2 + rand() % (cap / 2 + 1); // day 2-4, night 3-6
+    if (village_light_count > 0) n /= 3; // villages are mostly safe
     for (int k = 0; k < n; k++) SpawnEnemyInFreeSlot();
 }
 
@@ -305,6 +306,7 @@ void UpdateEnemySpawns(void) {
     DWORD now = GetTickCount();
     if (now - last_spawn < ENEMY_SPAWN_INTERVAL_MS) return;
     last_spawn = now;
+    if (village_light_count > 0 && rand() % 3) return;
     StoreEnemy();
     int alive = 0, farthest = -1; float far_d = -1.0f;
     for (int i = 0; i < MAX_ENEMIES; i++) {

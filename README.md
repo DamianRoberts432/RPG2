@@ -95,6 +95,12 @@ game.exe
 | **'3' Key / (X) in Inventory Tab** | — | Light a Campfire — the ONLY way to place one. Uses 2 Wood + 1 Match and needs a free campfire slot; nothing is consumed unless all are available. |
 | **'4' Key / (Y) in Inventory Tab** | — | Drop the selected inventory item on the ground in front of the hero. Stand on it and press X to pick it up again (no auto-pickup). Ordinary drops vanish after 5 minutes. |
 | **'5' Key / Left Stick click in Inventory Tab** | — | Sort the inventory by type (weapons, armor, shields, tools, food, materials), equipped gear first. |
+| **'6' Key in Inventory Tab** | — | Build a **storage chest** from 4 Wood in front of you (up to 8 in the world). Press X next to it to store or take items. A chest out in the open (fewer than 3 trees around it) may be found broken into, with half its items gone. Chests are saved with your hero. |
+| **X facing water (Fishing Pole in pack)** | — | Cast. A bobber floats out; when it dips the controller rumbles gently - press X then to catch a fish (60%, sometimes 70%, plus 3% per LCK point, up to 90%). Walk away to reel in. |
+| **Mouse left click** | — | Walk to that spot, or walk up to a clicked monster and attack it. Clicking a belt slot uses it. |
+| **Mouse right click** | — | Class ability (same as Y). |
+| **Mouse wheel / side buttons** | — | Wheel picks a belt slot; back button taps the bow, forward button uses the picked belt item. |
+| **'1'-'0' Keys (no menu open)** | — | Use belt slots 1-10: the first ten weapons, food and tools in your pack, shown at the bottom of the screen. |
 | **'9' Key / Back in Options Tab** | — | Delete the save file (press twice within 3 seconds). Saving stays off until you restart. |
 | **LB / 'Q' Key (speaking to a merchant)** | — | Switch the shop UI to the **Buy** tab (merchant's items for sale) |
 | **RB / 'E' Key (speaking to a merchant)** | — | Switch the shop UI to the **Sell** tab (your inventory items available to sell) |
@@ -109,7 +115,7 @@ game.exe
 Talking to a shopkeeper takes you inside their building (merchant included).
 
 - **Blacksmith** (every town): repair any worn item, over-forge your weapon (+1 damage per forge up to +10, each forge costs 10% of its max durability), buy rare weapons (Katana, War Hammer, Great Axe) and recycle spare gear into Iron, Wood, Leather, String and Rope.
-- **Card shop** (some days): ten random cards with set, rarity and ATK/DEF, plus 3-card (20,000), 7-card (40,000) and 60-card (350,000) packs. The kid at the corner table explains how the game is played; he won't play for ante.
+- **Card shop** (some days): ten random cards with set, rarity and ATK/DEF, plus 3-card (20,000), 7-card (40,000) and 60-card (350,000) packs. The kid at the corner table explains how the game is played and plays up to 10 practice hands per visit (no ante): you get three cards from the counter, pick the order to lay them, and your ATK goes against his DEF card by card.
 - **Pet shop** (some days): familiars from level 3. Day familiars sleep in your pack from 9 PM to 6 AM, night ones by day.
 - **Castle towns** also have the **King** (Legendary quests from level 25: slay a mythic beast or Dracula, then report back for 10,000 gold), a **Bank** vault, a **beggar** and an **altar**. Villages have an altar and sometimes a beggar.
 - **Beggars**: giving gold or food raises Soul and lowers Town Heat; refusing does the opposite.
@@ -126,6 +132,17 @@ The **World Map** tab (M / Start, then tab 2) shows every screen you have explor
 One real second is one game minute, so a day lasts 24 real minutes and each 30-day season about 12 hours. The game starts in the season and time of day from your PC's clock (October = fall). Weather is the same everywhere in the world and changes gradually between fair, rain and snow; snow builds up on the ground during winter, leaves blow in fall, and occasional wind gusts (most often in fall) add to the normal breeze.
 
 **Optional real weather:** copy `weather.ini.example` to `weather.ini` next to `game.exe` and put your city (or latitude/longitude) in it. On start the game asks Open-Meteo (free, no API key) for your current weather, so if it is snowing outside the game starts snowing too. If there is no `weather.ini` or no internet, it just uses the clock.
+
+**Weather patterns:** fair spells last up to a week (sometimes partly cloudy), a windy half-day comes before a storm, then overcast, 1-3 days of rain or snow, and overcast again. Rain slants with the wind. Patches of fog drift in at dawn and dusk after rain in fields, forests and swamps (rarely deserts). Deserts are yellow sand with dunes, big saguaro cacti and blowing dust. New screens favour tundra near the north and south of the world and desert near the middle.
+
+## World details
+
+- **Villages** have a campfire and torches. Monsters seldom spawn near them and usually turn away from the light; villagers and guards gang up on any that get through.
+- **Loot preview:** stand near a drop to see what it holds. Grey = common, blue = forged, green = uncommon, yellow = rare, purple = legendary.
+- **Caves** only have bats. Outside, owls and bats only come out at night.
+- **Musashi's Blade** never breaks and is never dropped by bosses: it only washes up on a beach in the easternmost column of the map on summer day 13.
+- **Zombies and skeletons** are sized by race height (yours, for summons), hit a little harder when bigger, and summons sometimes poison.
+- **Sound:** the game runs with no sound files yet; Saturn-style synth voices and samples come later.
 
 ## Layout
 

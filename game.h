@@ -331,5 +331,7 @@ extern int cam_y;
 #include "worldmap.h"
 #include "weather.h"
 #include "town.h"
+#include "fishing.h"
+#include "mouse.h"
 
 #endif // GAME_H

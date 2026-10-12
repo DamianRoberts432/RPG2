@@ -2,7 +2,9 @@
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     if (uMsg == WM_CLOSE && !is_character_creation) { ClearLegendaryDrops(); SaveSaveFileToDisk(); }
-    if (uMsg == WM_DESTROY) { PostQuitMessage(0); return 0; } return DefWindowProc(hwnd, uMsg, wParam, lParam);
+    if (uMsg == WM_DESTROY) { PostQuitMessage(0); return 0; }
+    if (uMsg >= WM_MOUSEFIRST && uMsg <= WM_MOUSELAST) MouseEvent(uMsg, wParam, lParam);
+    return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
@@ -82,7 +84,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
             }
             
             cam_x = (int)((player_x - player_y) * (TILE_WIDTH / 2)); cam_y = (int)((player_x + player_y) * (TILE_HEIGHT / 2));
-            float view_zoom = UpdateAfkCamera(AnyPlayerInput() || is_menu_open || vendor_menu_open || town_menu ||
+            float view_zoom = UpdateAfkCamera(AnyPlayerInput() || MouseBusy() || is_menu_open || vendor_menu_open || town_menu ||
                                               is_character_creation || sleep_fade_frame > 0);
             HDC hdc = GetDC(hwnd); HDC memHDC = CreateCompatibleDC(hdc); HBITMAP memBitmap = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT); SelectObject(memHDC, memBitmap);
             
@@ -157,6 +159,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 
                 COLORREF meadow_color = RGB(r_tone, g_tone, b_tone);
                 if (current_biome != BIOME_CAVE) meadow_color = ApplySeasonToGround(meadow_color);
+                if (current_biome == BIOME_DESERT) // pure yellow sand, dimmed at night
+                    meadow_color = RGB((int)(70 + ambient_intensity * 180), (int)(60 + ambient_intensity * 150), (int)(15 + ambient_intensity * 40));
                 HBRUSH live_ground = CreateSolidBrush(meadow_color); HGDIOBJ old_bg = SelectObject(memHDC, live_ground); PatBlt(memHDC, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, PATCOPY); SelectObject(memHDC, old_bg); DeleteObject(live_ground);
                 SelectObject(memHDC, clean_null_pen);
 
@@ -208,12 +212,12 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                         DrawEnemiesAtTile(memHDC, c, r);
                     }
                 }
-                DrawCampfires(memHDC); DrawBedroll(memHDC); DrawGroundLoot(memHDC); DrawDroppedItems(memHDC); DrawDebrisTwigs(memHDC); DrawSummonedZombie(memHDC);
+                DrawCampfires(memHDC); DrawVillageLights(memHDC); DrawChests(memHDC); DrawBedroll(memHDC); DrawGroundLoot(memHDC); DrawDroppedItems(memHDC); DrawDebrisTwigs(memHDC); DrawSummonedZombie(memHDC);
                 DrawFlyingArrow(memHDC); DrawFlyingSpear(memHDC); DrawFlyingSpell(memHDC); DrawClassAbilityFX(memHDC); DrawButterflies(memHDC); DrawBloodMistFX(memHDC);
-                DrawEnvironmentalCritters(memHDC); DrawFamiliar(memHDC); DrawMerchantStoreFront(memHDC); DrawVillage(memHDC); DrawNightEyes(memHDC);
+                DrawEnvironmentalCritters(memHDC); DrawFamiliar(memHDC); DrawFishing(memHDC); DrawMerchantStoreFront(memHDC); DrawVillage(memHDC); DrawNightEyes(memHDC);
                 DrawWeatherEffects(memHDC); DrawSolitaireSunMoonBeam(memHDC);
                 ApplyCameraZoom(memHDC, view_zoom);
-                DrawPlayerStatusHUD(memHDC);
+                DrawPlayerStatusHUD(memHDC); DrawLootPreview(memHDC); DrawBelt(memHDC);
 
                 if (is_menu_open) DrawTabbedMenuOverlay(memHDC);
                 DrawStrategyGuideFlash(memHDC);

@@ -1,7 +1,20 @@
 #include "game.h"
 
+VillageLight village_lights[MAX_VILLAGE_LIGHTS];
+int village_light_count = 0;
+
+static void PlaceVillageLights(int shift) {
+    static const int lx[5] = { 15, 9, 21, 12, 18 }, ly[5] = { 14, 13, 13, 21, 21 };
+    for (int k = 0; k < 5; k++) {
+        int x = lx[k] + shift, y = ly[k];
+        for (int oy = -1; oy <= 1; oy++) for (int ox = -1; ox <= 1; ox++) if (k == 0 || (ox == 0 && oy == 0)) VISUAL_MAP[y + oy][x + ox] = 0;
+        village_lights[village_light_count++] = (VillageLight){ (float)x, (float)y, k != 0 };
+    }
+}
+
 void GenerateVillageNPCs(void) {
     village_npc_count = 0;
+    village_light_count = 0;
     int is_market = current_biome == BIOME_CASTLE;
     // Fewer settlements: only about one Prairie screen in three holds a village.
     if (!is_market && !(current_biome == BIOME_PRAIRIE && current_screen_index % 3 == 0)) return;
@@ -12,6 +25,7 @@ void GenerateVillageNPCs(void) {
         int x = (int)village_x[i] + shift, y = (int)village_y[i];
         for (int oy = -1; oy <= 1; oy++) for (int ox = -1; ox <= 1; ox++) VISUAL_MAP[y + oy][x + ox] = 0;
     }
+    PlaceVillageLights(shift);
     if (is_market) {
         RestockMerchant();
         village_npcs[0] = (NPCEntity){ 15.0f, 17.0f, 15.0f, 17.0f, 1, 0, FACE_DOWN, "Welcome, adventurer!", 90 };
@@ -136,7 +150,20 @@ int GetVisitedBiomeAt(int gx, int gy) {
 //     Oasis, which is the rarest tile and Desert-only.
 //   - Swamp clusters near Forest/Beach but stays uncommon; Tundra is the
 //     least frequent biome of all; River/Lake are deliberately uncommon.
+static BiomeType PickBiomeRaw(int gx, int gy);
+// Climate by latitude: tundra crowds the far north and south of the world and
+// desert the middle band; PickBiomeRaw's neighbour rules decide the rest.
 BiomeType PickBiomeForScreen(int gx, int gy) {
+    BiomeType b = PickBiomeRaw(gx, gy);
+    float lat = fabsf((gy + 0.5f) - META_GRID_SIZE / 2.0f) / (META_GRID_SIZE / 2.0f); // 0 equator .. 1 pole
+    if (b == BIOME_DESERT && lat > 0.5f) b = BIOME_PRAIRIE;
+    if (b == BIOME_TUNDRA && lat < 0.55f) b = BIOME_FOREST;
+    if (lat > 0.8f && (b == BIOME_PRAIRIE || b == BIOME_FOREST) && rand() % 100 < 65) b = BIOME_TUNDRA;
+    if (lat < 0.3f && b == BIOME_PRAIRIE && rand() % 100 < 30) b = BIOME_DESERT;
+    return b;
+}
+
+static BiomeType PickBiomeRaw(int gx, int gy) {
     int is_edge = (gx == 0 || gx == META_GRID_SIZE - 1 || gy == 0 || gy == META_GRID_SIZE - 1);
     int north = GetVisitedBiomeAt(gx, gy - 1);
     int south = GetVisitedBiomeAt(gx, gy + 1);
@@ -345,12 +372,12 @@ void GenerateProceduralScreen(int index) {
         critters[i].y = (float)(5 + rand() % 20);
         critters[i].base_x = critters[i].x;
         critters[i].base_y = critters[i].y;
-        // 0 bird, 1 squirrel (both diurnal), 2 owl (nocturnal). Day screens get
-        // birds and squirrels; owls only roost on screens entered at night.
-        critters[i].type = spawn_night && i < 2 ? 2 : i % 2;
+        // 0 bird, 1 squirrel (both diurnal), 2 owl, 3 bat (nocturnal). Day screens
+        // get birds and squirrels, night screens an owl and a bat; caves only bats.
+        critters[i].type = current_biome == BIOME_CAVE ? 3 : spawn_night && i < 2 ? 2 + i : i % 2;
         critters[i].state = 0;
         critters[i].active = 1;
-        critters[i].hidden = spawn_night != (critters[i].type == 2);
+        critters[i].hidden = CritterAsleep(&critters[i]);
     }
 
     for(int i = 13; i <= 17; i++) { for(int j = 13; j <= 17; j++) { VISUAL_MAP[i][j] = 0; } }
@@ -365,6 +392,13 @@ void GenerateProceduralScreen(int index) {
     GenerateVillageNPCs();
     if (current_biome == BIOME_SWAMP) { gator_x = 12.0f; gator_y = 12.0f; gator_active = 1; } else { gator_active = 0; }
     SpawnScreenEnemies();
+    // Musashi's Blade only washes up on a beach at the world's eastern edge,
+    // and only on summer day 13 (Musashi died on June 13, 1645).
+    if (current_biome == BIOME_BEACH && grid_c == META_GRID_SIZE - 1 && current_season == SEASON_SUMMER &&
+        SeasonDay() == 13 && !HasInventoryItem("Musashi's Blade")) {
+        float mx, my; FindDropSpot(16.0f, 16.0f, 1, &mx, &my);
+        DropGroundLoot(mx, my, LOOT_MUSASHI_BLADE, 1);
+    }
     RecordCurrentScreenOnMap();
     SaveSaveFileToDisk();
 }
@@ -374,6 +408,19 @@ void UpdateVillageNPCs(void) {
         NPCEntity *npc = &village_npcs[i];
         npc->idle_timer++;
         if (npc->dialogue_cooldown > 0) npc->dialogue_cooldown--;
+        // Townsfolk gang up on a monster that slips past the fires, then head home.
+        if ((npc->type == 0 || npc->type == 2) && SelectNearestEnemyTo(npc->x, npc->y) >= 0) {
+            float ex = enemy_x - npc->x, ey = enemy_y - npc->y, ed = (float)sqrt(ex * ex + ey * ey);
+            if (ed < 6.0f) {
+                if (ed > 0.8f) { npc->x += ex / ed * 0.04f; npc->y += ey / ed * 0.04f; }
+                else if ((world_frame + i * 9) % 45 == 0) { HandleEnemyDamage(0.3f); strcpy(arpg_action_log, "VILLAGERS: The townsfolk gang up on the intruder!"); }
+                continue;
+            }
+        }
+        {
+            float hx = npc->home_x - npc->x, hy = npc->home_y - npc->y, hd = (float)sqrt(hx * hx + hy * hy);
+            if (hd > 1.6f) { npc->x += hx / hd * 0.04f; npc->y += hy / hd * 0.04f; continue; }
+        }
         if (IsNearPoint(npc->x, npc->y, 3.0f)) {
             float dx = player_x - npc->x, dy = player_y - npc->y;
             npc->direction = fabs(dx) > fabs(dy) ? (dx < 0 ? FACE_LEFT : FACE_RIGHT) : (dy < 0 ? FACE_UP : FACE_DOWN);
@@ -401,7 +448,8 @@ void UpdateVillageNPCs(void) {
 int CritterAsleep(const CritterEntity *critter) {
     int hour, minute; GetGameClock(&hour, &minute);
     int night = hour >= 21 || hour < 6;
-    return night != (critter->type == 2);
+    if (critter->type == 3 && current_biome == BIOME_CAVE) return 0; // bats roost in caves at any hour
+    return night != (critter->type >= 2);
 }
 
 void UpdateCritters(void) {
@@ -413,7 +461,7 @@ void UpdateCritters(void) {
         if (CritterAsleep(critter)) { critter->hidden = 1; continue; }
         // Rain or snow sends nature to the nearest tree (or into a burrow if
         // there are none); it comes back out once the weather turns fair.
-        if (IsAdverseWeather()) {
+        if (IsAdverseWeather() && current_biome != BIOME_CAVE) {
             float best = 1000.0f, tx = critter->x, ty = critter->y;
             for (int y = 1; y < MAP_SIZE - 1; y++) for (int x = 1; x < MAP_SIZE - 1; x++) {
                 if (VISUAL_MAP[y][x] != 11) continue;
