@@ -11,7 +11,7 @@ static char town_note[160] = "";
 
 typedef struct { char text[96]; int action, arg; } TownRow;
 enum { A_LEAVE, A_REPAIR, A_FORGE, A_RECYCLE, A_SMITH_BUY, A_CARD, A_PACK, A_KID, A_PET, A_KING,
-       A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE };
+       A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE };
 #define TOWN_ROWS 24
 static TownRow rows[TOWN_ROWS];
 static int row_count = 0;
@@ -119,6 +119,42 @@ static const char *kid_lines[] = {
 };
 #define KID_LINE_COUNT ((int)(sizeof(kid_lines) / sizeof(kid_lines[0])))
 
+static void Say(const char *fmt, ...);
+
+// Practice hands with the card kid: no ante, ten rounds per visit.
+#define KID_MAX_ROUNDS 10
+static int kid_rounds = 0, kid_round_screen = -1, kid_dealt = 0, my_hand[3], kid_hand[3];
+static const int hand_orders[6][3] = { {0,1,2}, {0,2,1}, {1,0,2}, {1,2,0}, {2,0,1}, {2,1,0} };
+static int CardAtk(int id) { return 1 + (int)(CardHash(id) % 7u) + CardRarity(id) * 2; }
+static int CardDef(int id) { return 1 + (int)((CardHash(id) >> 5) % 7u) + CardRarity(id); }
+
+static void PracticeHand(int order) {
+    if (kid_round_screen != current_screen_index) { kid_round_screen = current_screen_index; kid_rounds = 0; kid_dealt = 0; }
+    if (kid_rounds >= KID_MAX_ROUNDS) { Say("KID: That's ten - I gotta go home now. Mom's calling!"); return; }
+    if (!order) {
+        for (int k = 0; k < 3; k++) {
+            int id, dup;
+            do { id = card_offers[rand() % 10]; dup = 0; for (int j = 0; j < k; j++) if (my_hand[j] == id) dup = 1; } while (dup);
+            my_hand[k] = id; kid_hand[k] = rand() % CARD_COUNT;
+        }
+        kid_dealt = 1;
+        Say("KID: Here's a test hand from the counter. Pick the order you'll lay them - I always lead with my first card.");
+        return;
+    }
+    const int *o = hand_orders[order - 1];
+    int mine = 0, his = 0;
+    for (int k = 0; k < 3; k++) {
+        int a = my_hand[o[k]], b = kid_hand[k];
+        if (CardAtk(a) > CardDef(b)) mine++;
+        if (CardAtk(b) > CardDef(a)) his++;
+    }
+    kid_dealt = 0; kid_rounds++;
+    const char *end = kid_rounds >= KID_MAX_ROUNDS ? " That's ten rounds - I have to go home soon!" : "";
+    if (mine > his) Say("KID: You knocked out %d to my %d - you win this one! Order matters, huh?%s", mine, his, end);
+    else if (mine < his) Say("KID: I knocked out %d to your %d. Try leading with a different card.%s", his, mine, end);
+    else Say("KID: %d to %d, a draw! Ties go to the defender.%s", mine, his, end);
+}
+
 // --- Menu rows ---------------------------------------------------------------
 static void AddLeave(void) { row_count = row_count >= TOWN_ROWS ? TOWN_ROWS - 1 : row_count; AddRow(A_LEAVE, 0, "Leave"); }
 
@@ -173,6 +209,20 @@ static void BuildRows(void) {
         AddRow(A_PACK, 7, "7-card pack - 40,000 gold");
         AddRow(A_PACK, 60, "60-card box - 350,000 gold");
         AddRow(A_KID, 0, "Talk to the kid at the table");
+        int left = kid_round_screen == current_screen_index ? KID_MAX_ROUNDS - kid_rounds : KID_MAX_ROUNDS;
+        if (kid_dealt && kid_round_screen == current_screen_index) {
+            for (int p = 0; p < 6; p++) {
+                const int *o = hand_orders[p];
+                snprintf(t, sizeof(t), "Lay: #%03d (%d/%d) > #%03d (%d/%d) > #%03d (%d/%d)",
+                         my_hand[o[0]], CardAtk(my_hand[o[0]]), CardDef(my_hand[o[0]]),
+                         my_hand[o[1]], CardAtk(my_hand[o[1]]), CardDef(my_hand[o[1]]),
+                         my_hand[o[2]], CardAtk(my_hand[o[2]]), CardDef(my_hand[o[2]]));
+                AddRow(A_PRACTICE, 1 + p, t);
+            }
+        } else if (left > 0) {
+            snprintf(t, sizeof(t), "Play the kid a practice hand (%d of %d left, no ante)", left, KID_MAX_ROUNDS);
+            AddRow(A_PRACTICE, 0, t);
+        }
     } else if (town_menu == TM_PETS) {
         for (int k = 0; k < FAMILIAR_COUNT; k++) {
             snprintf(t, sizeof(t), "%s - %d gold%s", familiars[k].name, familiars[k].price,
@@ -226,6 +276,7 @@ static void RowInfo(const TownRow *r, char *out, size_t n) {
     case A_CARD: CardDetails(card_offers[r->arg], out, n); break;
     case A_PACK: snprintf(out, n, "%d random cards. Collection: %d / %d.", r->arg, CardCount(), CARD_COUNT); break;
     case A_KID: snprintf(out, n, "A kid sits at the corner table shuffling a test deck. He won't play for ante."); break;
+    case A_PRACTICE: snprintf(out, n, "Three on three: your ATK vs his DEF, card by card. Each number pair is ATK/DEF. He leads with the same cards each time."); break;
     case A_PET: snprintf(out, n, "%s  |  %s  |  %s", familiars[r->arg].name, familiars[r->arg].nocturnal ? "Nocturnal" : "Diurnal", familiars[r->arg].trait); break;
     case A_KING: snprintf(out, n, "Legendary quests open at level %d. Quests completed: %d.", LEGENDARY_QUEST_LEVEL, legendary_quests_done); break;
     case A_DEPOSIT: case A_WITHDRAW: snprintf(out, n, "Vault balance: %d gold. Purse: %d gold.", bank_gold, gold_count); break;
@@ -383,6 +434,7 @@ void TownMenuConfirm(void) {
         return; }
     case A_PACK: BuyCardPack(r.arg); return;
     case A_KID: kid_line = (kid_line + 1) % KID_LINE_COUNT; Say("%s", kid_lines[kid_line]); return;
+    case A_PRACTICE: PracticeHand(r.arg); return;
     case A_PET: {
         const FamiliarDef *f = &familiars[r.arg];
         if (player_level < FAMILIAR_UNLOCK_LEVEL) { Say("PET SHOP: Familiars only bond with heroes of level %d or higher.", FAMILIAR_UNLOCK_LEVEL); return; }
