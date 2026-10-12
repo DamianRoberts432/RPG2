@@ -107,10 +107,14 @@ static void AdvanceClock(float seconds) {
     UpdateDaylightFromClock();
 }
 
-// Bedroll sleep always wakes at 6 AM on the next day.
-void SleepUntilMorning(void) {
+// Bedroll sleep skips to the next phase: by day you wake at 9 PM, by night
+// at 6 AM. Returns 1 when you wake at dawn.
+int SleepToNextPhase(void) {
     float day_start = floorf(season_elapsed / DAY_LENGTH_SECONDS) * DAY_LENGTH_SECONDS;
-    AdvanceClock(day_start + DAY_LENGTH_SECONDS + 6.0f * GAME_HOUR_SECONDS - season_elapsed);
+    float t = season_elapsed - day_start, dawn = 6.0f * GAME_HOUR_SECONDS, dusk = 21.0f * GAME_HOUR_SECONDS;
+    if (t >= dawn && t < dusk) { AdvanceClock(dusk - t); return 0; }
+    AdvanceClock((t < dawn ? dawn : DAY_LENGTH_SECONDS + dawn) - t);
+    return 1;
 }
 
 int SeasonDay(void) { return (int)(season_elapsed / DAY_LENGTH_SECONDS) + 1; }

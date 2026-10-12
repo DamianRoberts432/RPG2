@@ -49,8 +49,8 @@ void UpdateGamePhysics(void) {
         sleep_fade_frame++;
         if (sleep_fade_frame == 30) {
             player_hp = max_player_hp; player_stamina = max_stamina; player_mp = max_player_mp;
-            SleepUntilMorning();
-            sprintf(arpg_action_log, "You wake at dawn: %s, Day %d of %d (%s).", season_names[current_season],
+            int dawn = SleepToNextPhase();
+            sprintf(arpg_action_log, "You wake at %s: %s, Day %d of %d (%s).", dawn ? "dawn" : "dusk", season_names[current_season],
                     SeasonDay(), DAYS_PER_SEASON, CalendarMonthName());
             night_bonus_active = 1;
             RestockMerchant();
