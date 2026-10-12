@@ -1,7 +1,20 @@
 #include "game.h"
 
+VillageLight village_lights[MAX_VILLAGE_LIGHTS];
+int village_light_count = 0;
+
+static void PlaceVillageLights(int shift) {
+    static const int lx[5] = { 15, 9, 21, 12, 18 }, ly[5] = { 14, 13, 13, 21, 21 };
+    for (int k = 0; k < 5; k++) {
+        int x = lx[k] + shift, y = ly[k];
+        for (int oy = -1; oy <= 1; oy++) for (int ox = -1; ox <= 1; ox++) if (k == 0 || (ox == 0 && oy == 0)) VISUAL_MAP[y + oy][x + ox] = 0;
+        village_lights[village_light_count++] = (VillageLight){ (float)x, (float)y, k != 0 };
+    }
+}
+
 void GenerateVillageNPCs(void) {
     village_npc_count = 0;
+    village_light_count = 0;
     int is_market = current_biome == BIOME_CASTLE;
     // Fewer settlements: only about one Prairie screen in three holds a village.
     if (!is_market && !(current_biome == BIOME_PRAIRIE && current_screen_index % 3 == 0)) return;
@@ -12,6 +25,7 @@ void GenerateVillageNPCs(void) {
         int x = (int)village_x[i] + shift, y = (int)village_y[i];
         for (int oy = -1; oy <= 1; oy++) for (int ox = -1; ox <= 1; ox++) VISUAL_MAP[y + oy][x + ox] = 0;
     }
+    PlaceVillageLights(shift);
     if (is_market) {
         RestockMerchant();
         village_npcs[0] = (NPCEntity){ 15.0f, 17.0f, 15.0f, 17.0f, 1, 0, FACE_DOWN, "Welcome, adventurer!", 90 };
@@ -394,6 +408,19 @@ void UpdateVillageNPCs(void) {
         NPCEntity *npc = &village_npcs[i];
         npc->idle_timer++;
         if (npc->dialogue_cooldown > 0) npc->dialogue_cooldown--;
+        // Townsfolk gang up on a monster that slips past the fires, then head home.
+        if ((npc->type == 0 || npc->type == 2) && SelectNearestEnemyTo(npc->x, npc->y) >= 0) {
+            float ex = enemy_x - npc->x, ey = enemy_y - npc->y, ed = (float)sqrt(ex * ex + ey * ey);
+            if (ed < 6.0f) {
+                if (ed > 0.8f) { npc->x += ex / ed * 0.04f; npc->y += ey / ed * 0.04f; }
+                else if ((world_frame + i * 9) % 45 == 0) { HandleEnemyDamage(0.3f); strcpy(arpg_action_log, "VILLAGERS: The townsfolk gang up on the intruder!"); }
+                continue;
+            }
+        }
+        {
+            float hx = npc->home_x - npc->x, hy = npc->home_y - npc->y, hd = (float)sqrt(hx * hx + hy * hy);
+            if (hd > 1.6f) { npc->x += hx / hd * 0.04f; npc->y += hy / hd * 0.04f; continue; }
+        }
         if (IsNearPoint(npc->x, npc->y, 3.0f)) {
             float dx = player_x - npc->x, dy = player_y - npc->y;
             npc->direction = fabs(dx) > fabs(dy) ? (dx < 0 ? FACE_LEFT : FACE_RIGHT) : (dy < 0 ? FACE_UP : FACE_DOWN);

@@ -576,3 +576,32 @@ void DrawSleepFade(HDC hdc) {
     int coverage = sleep_fade_frame <= 30 ? sleep_fade_frame * 100 / 30 : (60 - sleep_fade_frame) * 100 / 30;
     FillWindowAlpha(hdc, RGB(0, 0, 0), coverage * 255 / 100);
 }
+
+static void DrawFlame(HDC hdc, int cx, int cy, int rx, int ry, COLORREF c) {
+    HBRUSH b = CreateSolidBrush(c); HGDIOBJ ob = SelectObject(hdc, b), op = SelectObject(hdc, GetStockObject(NULL_PEN));
+    Ellipse(hdc, cx - rx, cy - ry, cx + rx, cy + ry);
+    SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(b);
+}
+
+void DrawVillageLights(HDC hdc) {
+    for (int v = 0; v < village_light_count; v++) {
+        int sx, sy; GetIsoCoords(village_lights[v].x, village_lights[v].y, &sx, &sy);
+        int flick = (int)(world_tick * 10.0f + v * 3) % 3;
+        if (village_lights[v].torch) {
+            HPEN pole = CreatePen(PS_SOLID, 3, RGB(90, 60, 30)); HGDIOBJ op = SelectObject(hdc, pole);
+            MoveToEx(hdc, sx, sy + 10, NULL); LineTo(hdc, sx, sy - 28);
+            SelectObject(hdc, op); DeleteObject(pole);
+            DrawFlame(hdc, sx, sy - 33 - flick, 5, 8, RGB(255, 140, 40));
+            DrawFlame(hdc, sx, sy - 32 - flick, 3, 5, RGB(255, 225, 110));
+        } else {
+            HPEN log = CreatePen(PS_SOLID, 4, RGB(95, 60, 30)); HGDIOBJ op = SelectObject(hdc, log);
+            MoveToEx(hdc, sx - 12, sy + 10, NULL); LineTo(hdc, sx + 12, sy + 4);
+            MoveToEx(hdc, sx - 12, sy + 4, NULL); LineTo(hdc, sx + 12, sy + 10);
+            SelectObject(hdc, op); DeleteObject(log);
+            for (int k = 0; k < 6; k++) DrawFlame(hdc, sx - 15 + k * 6, sy + 12 - (k % 2) * 10, 3, 2, RGB(120, 120, 125));
+            DrawFlame(hdc, sx, sy - 2 - flick, 9, 13, RGB(255, 120, 30));
+            DrawFlame(hdc, sx - 3, sy + flick, 5, 8, RGB(255, 200, 70));
+            DrawFlame(hdc, sx + 4, sy + 1 - flick, 4, 6, RGB(255, 230, 120));
+        }
+    }
+}

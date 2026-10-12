@@ -175,6 +175,13 @@ void UpdateGamePhysics(void) {
             }
         }
 
+        // Village fires and torches keep most monsters out; about one in four braves the light.
+        if (!fleeing_from_fire && (e + current_screen_index) % 4 != 0) {
+            for (int v = 0; v < village_light_count; v++) {
+                float v_dx = enemy_x - village_lights[v].x, v_dy = enemy_y - village_lights[v].y;
+                if (v_dx * v_dx + v_dy * v_dy < (village_lights[v].torch ? 9.0f : 25.0f)) { fleeing_from_fire = 1; fire_fx = v_dx; fire_fy = v_dy; break; }
+            }
+        }
         if (fleeing_from_fire) {
             float f_dist = (float)sqrt(fire_fx * fire_fx + fire_fy * fire_fy);
             if (f_dist > 0.01f) {
