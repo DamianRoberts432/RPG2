@@ -17,12 +17,19 @@ void GenerateVillageNPCs(void) {
         village_npcs[0] = (NPCEntity){ 15.0f, 17.0f, 15.0f, 17.0f, 1, 0, FACE_DOWN, "Welcome, adventurer!", 90 };
         // Merchant and blacksmith are always here; the pet shop and card shop
         // keepers only sometimes set up in town.
-        village_npcs[1] = (NPCEntity){ 11.0f, 16.0f, 11.0f, 16.0f, 3, 0, FACE_DOWN, "Blacksmith: X to repair your weapon.", 130 };
+        village_npcs[1] = (NPCEntity){ 11.0f, 16.0f, 11.0f, 16.0f, 3, 0, FACE_DOWN, "Blacksmith: X to step into the forge.", 130 };
         village_npc_count = 2;
         unsigned int roll = (unsigned int)RainHash(current_screen_index * 7919 + SeasonDay());
-        if (roll % 2) village_npcs[village_npc_count++] = (NPCEntity){ 19.0f, 16.0f, 19.0f, 16.0f, 4, 0, FACE_DOWN, "Pet shop: companions arrive soon!", 160 };
-        if ((roll >> 3) % 2) village_npcs[village_npc_count++] = (NPCEntity){ 15.0f, 20.0f, 15.0f, 20.0f, 5, 0, FACE_DOWN, "Card shop: X buys a 3-card booster (20,000 gold).", 190 };
+        if (roll % 2) village_npcs[village_npc_count++] = (NPCEntity){ 19.0f, 16.0f, 19.0f, 16.0f, 4, 0, FACE_DOWN, "Pet shop: X to meet the familiars.", 160 };
+        if ((roll >> 3) % 2) village_npcs[village_npc_count++] = (NPCEntity){ 15.0f, 20.0f, 15.0f, 20.0f, 5, 0, FACE_DOWN, "Card shop: X to see today's ten cards.", 190 };
         merchant_x = village_npcs[0].x; merchant_y = village_npcs[0].y;
+        // Castle hall, vault and shrine, plus a beggar in the square.
+        float hall_x = 15.0f + shift, side_x = 19.0f + shift, shrine_x = 11.0f + shift;
+        village_npcs[village_npc_count++] = (NPCEntity){ hall_x, 10.0f, hall_x, 10.0f, 6, 0, FACE_DOWN, "King: Heroes of renown may seek Legendary quests. X to approach the throne.", 210 };
+        village_npcs[village_npc_count++] = (NPCEntity){ side_x, 11.0f, side_x, 11.0f, 9, 0, FACE_DOWN, "Banker: Gold in the vault stays safe. X to bank.", 150 };
+        village_npcs[village_npc_count++] = (NPCEntity){ shrine_x, 11.0f, shrine_x, 11.0f, 8, 0, FACE_DOWN, "An old altar hums with power. X to kneel.", 999 };
+        for (int oy = -1; oy <= 1; oy++) for (int ox = -1; ox <= 1; ox++) VISUAL_MAP[19 + oy][12 + ox] = 0;
+        village_npcs[village_npc_count++] = (NPCEntity){ 12.0f, 19.0f, 12.0f, 19.0f, 7, 0, FACE_DOWN, "Beggar: Spare a coin or a crust, kind traveler?", 140 };
     } else {
         for (int i = 0; i < 4; i++) {
             float nx = village_x[i] + shift + ((i & 1) ? 1.0f : -1.0f), ny = village_y[i] + 2.0f;
@@ -30,6 +37,10 @@ void GenerateVillageNPCs(void) {
                 villager_greetings[(current_screen_index + i) % 3], 100 + (i * 17) % 80 };
         }
         village_npc_count = 4;
+        float shrine_x = 15.0f + shift, beggar_x = 19.0f + shift;
+        village_npcs[village_npc_count++] = (NPCEntity){ shrine_x, 10.0f, shrine_x, 10.0f, 8, 0, FACE_DOWN, "A wayside altar hums with power. X to kneel.", 999 };
+        if (RainHash(current_screen_index * 31 + SeasonDay()) % 2)
+            village_npcs[village_npc_count++] = (NPCEntity){ beggar_x, 11.0f, beggar_x, 11.0f, 7, 0, FACE_DOWN, "Beggar: Spare a coin or a crust, kind traveler?", 140 };
     }
 }
 
@@ -369,11 +380,11 @@ void UpdateVillageNPCs(void) {
             if (npc->dialogue_cooldown == 0) {
                 if (npc->type == 0) npc->dialogue = rand() % 3 == 0 ? world_hints[rand() % WORLD_HINT_COUNT] : villager_greetings[rand() % 3];
                 else if (npc->type == 2) npc->dialogue = fort_barks[rand() % 3];
-                else npc->dialogue = "Welcome, adventurer!";
+                else if (npc->type == 1) npc->dialogue = "Welcome, adventurer!";
                 npc->dialogue_cooldown = 120 + rand() % 61;
                 if (IsNearPoint(npc->x, npc->y, 2.0f)) strcpy(arpg_action_log, npc->dialogue);
             }
-        } else if (world_frame % 45 == (i * 7) % 45) {
+        } else if (npc->type != 7 && npc->type != 8 && world_frame % 45 == (i * 7) % 45) {
             int direction = rand() % 4;
             float dx[] = { 0, 0, -1, 1 }, dy[] = { 1, -1, 0, 0 };
             float nx = npc->x + dx[direction] * 0.12f, ny = npc->y + dy[direction] * 0.12f;

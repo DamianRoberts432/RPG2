@@ -75,34 +75,6 @@ void ShopConfirm(void) {
 }
 
 // Blacksmith: restores the equipped melee weapon to full durability for 1 gold per point.
-void RepairEquippedWeapon(void) {
-    for (int i = 0; i < player_item_count; i++) {
-        InventoryItem *it = &player_inventory[i];
-        if (!it->is_equipped || strcmp(it->slot, "Weapon") != 0 || it->durability_max <= 0) continue;
-        int missing = it->durability_max - it->durability_current;
-        if (missing <= 0) { sprintf(arpg_action_log, "BLACKSMITH: Your %s is in perfect shape.", it->name); return; }
-        int cost = ShopPrice(missing);
-        if (gold_count < cost) { sprintf(arpg_action_log, "BLACKSMITH: Repairing that costs %d gold.", cost); return; }
-        gold_count -= cost; it->durability_current = it->durability_max;
-        sprintf(arpg_action_log, "BLACKSMITH: %s repaired for %d gold.", it->name, cost);
-        return;
-    }
-    strcpy(arpg_action_log, "BLACKSMITH: Equip a weapon and I'll mend it.");
-}
-
-// Card shop: a 3-card booster pack of random cards for 20,000 gold.
-void BuyCardBooster(void) {
-    if (gold_count < CARD_BOOSTER_PRICE) { sprintf(arpg_action_log, "CARD SHOP: A booster costs %d gold.", CARD_BOOSTER_PRICE); return; }
-    gold_count -= CARD_BOOSTER_PRICE;
-    int fresh = 0;
-    for (int k = 0; k < 3; k++) {
-        int id = rand() % CARD_COUNT;
-        if (!HasCard(id)) fresh++;
-        card_collection_bits[id / 8] |= (uint8_t)(1u << (id % 8));
-    }
-    sprintf(arpg_action_log, "CARD SHOP: Opened a booster - %d new card%s! (%d / %d)", fresh, fresh == 1 ? "" : "s", CardCount(), CARD_COUNT);
-}
-
 void HandleVendorSell(void) {
     if (!IsNearMerchant() || player_item_count == 0) { strcpy(arpg_action_log, "MARKET: No vendor or item available."); return; }
     InventoryItem *item = &player_inventory[selected_inv_index];

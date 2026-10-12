@@ -75,6 +75,9 @@ int SaveWorldMapState(void) {
     ok = ok && fwrite(pack, sizeof(pack), 1, f) == 1 &&
          fwrite(player_name, sizeof(player_name), 1, f) == 1 &&
          fwrite(player_inventory, sizeof(InventoryItem), (size_t)player_item_count, f) == (size_t)player_item_count;
+    // Town state: bank vault, Legendary quest and deity favor.
+    int32_t town[8] = { bank_gold, legendary_quest, legendary_quests_done, deity_favor[0], deity_favor[1], deity_favor[2], deity_favor[3], 0 };
+    ok = ok && fwrite(town, sizeof(town), 1, f) == 1;
     ok = (fclose(f) == 0) && ok;
     if (!ok) { remove(SAVE_TEMP_NAME); return 0; }
     return MoveFileExA(SAVE_TEMP_NAME, SAVE_FILE_NAME, MOVEFILE_REPLACE_EXISTING) != 0;
@@ -107,6 +110,8 @@ int LoadWorldMapState(void) {
     int has_pack = has_cards && fread(pack, sizeof(pack), 1, f) == 1 && fread(name, sizeof(name), 1, f) == 1 &&
                    pack[1] >= 0 && pack[1] <= MAX_INVENTORY_ITEMS &&
                    fread(items, sizeof(InventoryItem), (size_t)pack[1], f) == (size_t)pack[1];
+    int32_t town[8];
+    int has_town = has_pack && fread(town, sizeof(town), 1, f) == 1;
     fclose(f);
     if (!ok) return 0;
     memcpy(visited_biomes, biomes, sizeof(biomes));
@@ -137,6 +142,12 @@ int LoadWorldMapState(void) {
         name[sizeof(name) - 1] = 0;
         if (name[0]) strcpy(player_name, name);
         RecalculateCarriedWeight();
+    }
+    if (has_town) {
+        bank_gold = town[0] < 0 ? 0 : town[0];
+        legendary_quest = (town[1] >= 0 && town[1] <= 2) ? town[1] : 0;
+        legendary_quests_done = town[2] < 0 ? 0 : town[2];
+        for (int i = 0; i < 4; i++) deity_favor[i] = town[3 + i];
     }
     return 1;
 }

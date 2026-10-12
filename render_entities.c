@@ -620,7 +620,10 @@ void DrawVillage(HDC hdc) {
         int look = i;
         if (village_npcs[i].type == 1) look = 3;          // merchant: gold tunic
         else if (village_npcs[i].type == 2) look = 2 + 4 * i; // guards: blue tunic
-        DrawZeldaStyleVillager(hdc, sx, sy, look, NPC_SCALE);
+        else if (village_npcs[i].type >= 6) look = village_npcs[i].type; // king, beggar, banker
+        if (village_npcs[i].type == 8) DrawAltar(hdc, sx, sy, TownDeity());
+        else DrawZeldaStyleVillager(hdc, sx, sy, look, NPC_SCALE);
+        if (village_npcs[i].type == 6) DrawCrown(hdc, sx, sy - (int)(19 * NPC_SCALE) - 2, 6);
         if (IsNearPoint(village_npcs[i].x, village_npcs[i].y, 2.0f)) {
             int top = sy - (int)(19 * NPC_SCALE) - 20;
             HBRUSH white = CreateSolidBrush(RGB(245, 240, 215)); HGDIOBJ old_b = SelectObject(hdc, white);

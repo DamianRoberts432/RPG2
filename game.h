@@ -26,7 +26,7 @@
 #define MAX_BUTTERFLIES 8
 #define DEBRIS_MAX 16
 #define MAX_CRITTERS 4
-#define MERCH_ITEMS 24
+#define MERCH_ITEMS 29
 #define MAX_BLOOD_MIST 48
 #define MAX_CAMPFIRES 8
 #define MAX_INVENTORY_ITEMS 100
@@ -293,9 +293,9 @@ extern int vendor_tab;
 
 // LOOT_* ids map 1:1 onto weapon_catalog[id - 1] for every entry up through
 // LOOT_SPEAR (kept contiguous on purpose - see LootWeight/AddLootToInventory).
-enum { LOOT_SHORT_SWORD = 1, LOOT_LONG_SWORD, LOOT_AXE, LOOT_SHORT_BOW, LOOT_RUSTY_SWORD, LOOT_MUSASHI_BLADE, LOOT_SPEAR, LOOT_LONG_BOW, LOOT_MACE, LOOT_DAGGER, LOOT_FISH, LOOT_APPLE };
-#define LOOT_LAST_WEAPON LOOT_DAGGER
-extern WeaponStats weapon_catalog[10];
+enum { LOOT_SHORT_SWORD = 1, LOOT_LONG_SWORD, LOOT_AXE, LOOT_SHORT_BOW, LOOT_RUSTY_SWORD, LOOT_MUSASHI_BLADE, LOOT_SPEAR, LOOT_LONG_BOW, LOOT_MACE, LOOT_DAGGER, LOOT_KATANA, LOOT_WAR_HAMMER, LOOT_GREAT_AXE, LOOT_FISH, LOOT_APPLE };
+#define LOOT_LAST_WEAPON LOOT_GREAT_AXE
+extern WeaponStats weapon_catalog[13];
 #define WEAPON_CATALOG_COUNT ((int)(sizeof(weapon_catalog) / sizeof(weapon_catalog[0])))
 extern MerchantItem merchant_catalog[MERCH_ITEMS];
 extern const char *villager_greetings[];
@@ -330,5 +330,6 @@ extern int cam_y;
 #include "input.h"
 #include "worldmap.h"
 #include "weather.h"
+#include "town.h"
 
 #endif // GAME_H

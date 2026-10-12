@@ -88,7 +88,7 @@ void SpawnBloodBurst(float x, float y, float dir_x, float dir_y) {
 
 void PerformMeleeAttack(void) {
     WeaponStats *weapon = GetEquippedWeaponStats();
-    float damage = weapon ? (float)weapon->damage : 1.0f;
+    float damage = (weapon ? (float)(weapon->damage + EquippedForgeBonus()) : 1.0f) * TownDamageMult();
     float stamina_cost = MELEE_SWING_STAMINA + (weapon ? weapon->stamina_cost * 2.0f : 0.0f);
     if (player_stamina < stamina_cost) { strcpy(arpg_action_log, "Exhausted! Too tired to swing that weapon."); return; }
     player_stamina -= (float)stamina_cost;
@@ -196,6 +196,7 @@ void HandleEnemyDamage(float dmg) {
         if (coins) { size_t n = strlen(arpg_action_log); snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  +%d gold", coins); }
         if (monster_card_links[active_monster].kills < 65535) monster_card_links[active_monster].kills++;
         TryCardDrop(active_monster);
+        NoteLegendaryKill(active_monster);
     } else {
         sprintf(arpg_action_log, "%s: Hit for %.1f DMG! Remainder: %.1f", crit ? "CRITICAL" : "STRIKE", dmg, enemy_hearts);
     }

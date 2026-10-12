@@ -176,6 +176,9 @@ static void DrawShopItemCard(HDC hdc) {
 }
 
 void DrawVendorShopOverlay(HDC hdc) {
+    DrawInteriorBackdrop(hdc, TM_NONE);
+    SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(255, 255, 255));
+    TextOut(hdc, 40, WINDOW_HEIGHT - 70, arpg_action_log, (int)strlen(arpg_action_log));
     RECT box = { 160, 90, 640, 420 };
     HBRUSH bg = CreateSolidBrush(RGB(18, 20, 28)); FillRect(hdc, &box, bg); DeleteObject(bg);
     HPEN border_p = CreatePen(PS_SOLID, 2, RGB(90, 200, 170)); HGDIOBJ old_p = SelectObject(hdc, border_p);
