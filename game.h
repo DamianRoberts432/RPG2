@@ -78,7 +78,7 @@ typedef enum { CLASS_NECROMANCER, CLASS_WIZARD, CLASS_KNIGHT, CLASS_WARRIOR, CLA
 typedef struct { float x, y, z; float vx, vy, vz; int active; float damage; int origin_tx, origin_ty; } ArrowProjectile;
 typedef struct { float x, y, z; float timer; int active; int color_profile; } ButterflyParticle;
 typedef struct { float x, y; float vx, vy; int life; int screen_id; int active; } DebrisParticle;
-typedef struct { float x, y; float vx, vy; int life; int max_life; int active; } BloodParticle;
+typedef struct { float x, y; float vx, vy; int life; int max_life; int active; uint32_t color; } BloodParticle;
 typedef struct { float x, y; float timer; int active; int screen_id; } CampfireEntity;
 typedef struct { float x, y; int type; int state; float base_x, base_y; int active; int hidden; int timer; } CritterEntity;
 // Rarity tiers drive the merchant's price multiplier directly: the enum
@@ -169,6 +169,7 @@ extern int is_sneaking;
 extern ButterflyParticle butterflies[MAX_BUTTERFLIES];
 extern DebrisParticle twigs[DEBRIS_MAX];
 extern BloodParticle blood_mist[MAX_BLOOD_MIST];
+extern uint32_t hit_splash_color; // tint for the next hit's splash (class abilities); 0 = plain blood
 extern CampfireEntity campfires[MAX_CAMPFIRES];
 extern CritterEntity critters[MAX_CRITTERS];
 extern GroundLoot ground_loot[MAX_GROUND_LOOT];

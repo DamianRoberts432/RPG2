@@ -223,15 +223,14 @@ void DrawButterflies(HDC hdc) {
 }
 
 void DrawBloodMistFX(HDC hdc) {
-    HBRUSH blood_b = CreateSolidBrush(RGB(200, 25, 25)); HGDIOBJ old = SelectObject(hdc, blood_b);
     for (int i = 0; i < MAX_BLOOD_MIST; i++) {
         if (!blood_mist[i].active) continue;
         int bsx, bsy; GetIsoCoords(blood_mist[i].x, blood_mist[i].y, &bsx, &bsy);
         int sz = (blood_mist[i].life > blood_mist[i].max_life - 3) ? 2 : 1;
         RECT r = { bsx - sz, bsy - sz, bsx + sz + 1, bsy + sz + 1 };
-        FillRect(hdc, &r, blood_b);
+        HBRUSH b = CreateSolidBrush(blood_mist[i].color ? (COLORREF)blood_mist[i].color : RGB(200, 25, 25));
+        FillRect(hdc, &r, b); DeleteObject(b);
     }
-    SelectObject(hdc, old); DeleteObject(blood_b);
 }
 
 // Shared zombie renderer (hostile zombie + necromancer's summoned minion).

@@ -46,6 +46,8 @@ void TriggerMonsterRespawn(void) {
     }
 }
 
+uint32_t hit_splash_color = 0;
+
 void SpawnBloodMist(float x, float y) {
     // Tight, compact speck burst: small velocities/lifetimes so blood reads as
     // mostly one-pixel specks instead of an oversized expanding splatter.
@@ -60,6 +62,7 @@ void SpawnBloodMist(float x, float y) {
         blood_mist[i].life = 8 + rand() % 9;
         blood_mist[i].max_life = blood_mist[i].life;
         blood_mist[i].active = 1;
+        blood_mist[i].color = RGB(200, 25, 25);
     }
 }
 
@@ -67,7 +70,7 @@ void SpawnBloodMist(float x, float y) {
 #define HEAVY_HIT_DAMAGE 2.0f
 #define SPEAR_REACH 2.6f
 #define SPEAR_THRUST_DOT 0.7f // narrower than a sword swing: a straight thrust
-void SpawnBloodBurst(float x, float y, float dir_x, float dir_y) {
+static void SpawnTintedBurst(float x, float y, float dir_x, float dir_y, uint32_t color) {
     float d = (float)sqrt(dir_x * dir_x + dir_y * dir_y);
     if (d < 0.001f) { dir_x = 0.0f; dir_y = 1.0f; d = 1.0f; }
     dir_x /= d; dir_y /= d;
@@ -82,11 +85,15 @@ void SpawnBloodBurst(float x, float y, float dir_x, float dir_y) {
         blood_mist[i].life = 10 + rand() % 9;
         blood_mist[i].max_life = blood_mist[i].life;
         blood_mist[i].active = 1;
+        blood_mist[i].color = color;
         spawned++;
     }
 }
 
+void SpawnBloodBurst(float x, float y, float dir_x, float dir_y) { SpawnTintedBurst(x, y, dir_x, dir_y, RGB(200, 25, 25)); }
+
 void PerformMeleeAttack(void) {
+    hit_splash_color = 0;
     WeaponStats *weapon = GetEquippedWeaponStats();
     float damage = (weapon ? (float)(weapon->damage + EquippedForgeBonus()) : 1.0f) * TownDamageMult();
     if (active_monster == MONSTER_DRACULA && SilverWeaponEquipped()) damage *= 2.0f;
@@ -142,6 +149,9 @@ void HandleEnemyDamage(float dmg) {
     int crit = dmg > 0.0f && rand() % 100 < 5 + 2 * stat_spent[4]; // each LCK point spent: +2% crit
     if (crit) dmg *= 2.0f;
     enemy_hearts -= dmg;
+    // Class abilities splash their own colour: green venom, blue arcane, gold counter...
+    if (!hit_splash_color && selected_class == CLASS_ROGUE && is_sneaking) hit_splash_color = RGB(90, 200, 60);
+    if (hit_splash_color) { SpawnTintedBurst(enemy_x, enemy_y, enemy_x - player_x, enemy_y - player_y, hit_splash_color); hit_splash_color = 0; }
     if (active_monster == MONSTER_YETI) enemies[current_enemy].angry = 1;
     float k_dx = enemy_x - player_x; float k_dy = enemy_y - player_y; float k_dist = (float)sqrt(k_dx * k_dx + k_dy * k_dy);
     if (crit || dmg >= HEAVY_HIT_DAMAGE) SpawnBloodBurst(enemy_x, enemy_y, k_dx, k_dy);
@@ -579,6 +589,7 @@ void FireClassAbility(void) {
         float m_dist = DistanceToEnemy();
         if (enemy_hearts > 0.0f && m_dist < 2.0f && IsFacingEnemy()) {
             sword_swipe_frame = 10;
+            hit_splash_color = RGB(255, 210, 60);
             HandleEnemyDamage(1.0f + 1.0f * stage);
             strcpy(arpg_action_log, "DEFENSIVE BACKSTEP: Countered with a heavy strike!");
         } else {
