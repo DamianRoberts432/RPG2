@@ -361,12 +361,15 @@ void UpdateEnemySpawns(void) {
 // Holding the draw (RT / F) costs stamina every frame; once winded the
 // charge stops building, though the arrow can still be loosed.
 #define BOW_DRAW_STAMINA_PER_FRAME 1.0f
+#define BOW_TIRED_MS 10000
+DWORD bow_stamina_lock_until = 0;
 void ChargeBow(void) {
     if (player_stamina <= 0.0f) return;
     player_stamina -= BOW_DRAW_STAMINA_PER_FRAME;
     if (player_stamina < 0.0f) player_stamina = 0.0f;
     bow_charge_time += 0.05f;
     if (bow_charge_time > 1.0f) bow_charge_time = 1.0f;
+    if (bow_charge_time >= 1.0f) bow_stamina_lock_until = GetTickCount() + BOW_TIRED_MS; // held too long: arms are spent
 }
 
 void FirePlayerArrow(int is_tap) {

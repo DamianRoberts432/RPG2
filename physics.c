@@ -84,7 +84,7 @@ void UpdateGamePhysics(void) {
         player_mp += 0.06f + (stat_magick + stat_intelligence) * 0.01f; // MAG and INT both speed MP regen
         if (player_mp > max_player_mp) player_mp = max_player_mp;
     }
-    if (player_stamina < max_stamina) {
+    if (player_stamina < max_stamina && GetTickCount() >= bow_stamina_lock_until) {
         float stamina_floor = max_stamina * 0.30f;
         // Full recovery needs a short pause; while still swinging or running
         // below 30% only a slow trickle comes back, so the hero does tire out.
