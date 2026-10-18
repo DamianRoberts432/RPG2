@@ -415,7 +415,7 @@ void UpdateVillageNPCs(void) {
             float ex = enemy_x - npc->x, ey = enemy_y - npc->y, ed = (float)sqrt(ex * ex + ey * ey);
             if (ed < 6.0f) {
                 if (ed > 0.8f) { npc->x += ex / ed * 0.04f; npc->y += ey / ed * 0.04f; }
-                else if ((world_frame + i * 9) % 45 == 0) { HandleEnemyDamage(0.3f); strcpy(arpg_action_log, "VILLAGERS: The townsfolk gang up on the intruder!"); }
+                else if ((world_frame + i * 9) % 45 == 0) { village_kill = 1; HandleEnemyDamage(0.3f); village_kill = 0; strcpy(arpg_action_log, "VILLAGERS: The townsfolk gang up on the intruder!"); }
                 continue;
             }
         }

@@ -68,6 +68,7 @@ void TriggerMonsterRespawn(void) {
 }
 
 uint32_t hit_splash_color = 0;
+int village_kill = 0; // set while villagers land the blow: their kills drop no loot or gold
 
 void SpawnBloodMist(float x, float y) {
     // Tight, compact speck burst: small velocities/lifetimes so blood reads as
@@ -162,7 +163,7 @@ void UpdateDebrisTwigs(void) {
     }
 }
 
-#define JUNK_DROP_RATE 0.4f
+#define JUNK_DROP_RATE 0.25f
 #define GOLD_DROP_CAP 75
 #define OVERKILL_BLOOD 1.0f // hearts of damage past zero that trigger an extra spray
 void HandleEnemyDamage(float dmg) {
@@ -187,7 +188,7 @@ void HandleEnemyDamage(float dmg) {
         // Ordinary (junk) drops are 60% rarer than they used to be, to cut ground clutter.
         int loot_chance = (int)(70.0f * JUNK_DROP_RATE * loot_multiplier) + 3 * stat_spent[4];
         if (loot_chance > 100) loot_chance = 100;
-        if (rand() % 100 < loot_chance) {
+        if (!village_kill && rand() % 100 < loot_chance) {
             int loot_id = LOOT_SHORT_SWORD + rand() % 5;
             int loot_quantity = (int)loot_multiplier;
             if (loot_quantity < 1) loot_quantity = 1;
@@ -196,7 +197,7 @@ void HandleEnemyDamage(float dmg) {
         }
         // A little gold, more with level and luck, never more than GOLD_DROP_CAP.
         int coins = 0;
-        if (rand() % 100 < 35 + 2 * stat_spent[4]) {
+        if (!village_kill && rand() % 100 < 35 + 2 * stat_spent[4]) {
             coins = 1 + rand() % (3 + player_level + 2 * stat_spent[4]);
             if (coins > GOLD_DROP_CAP) coins = GOLD_DROP_CAP;
             DropGroundLoot(enemy_x + 0.4f, enemy_y, LOOT_GOLD, coins);

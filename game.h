@@ -33,8 +33,8 @@ extern int merch_item_count;
 #define MAX_BLOOD_MIST 48
 #define MAX_CAMPFIRES 8
 #define MAX_INVENTORY_ITEMS 100
-#define MAX_GROUND_LOOT 16
-#define MAX_DROPPED_ITEMS 16
+#define MAX_GROUND_LOOT 32
+#define MAX_DROPPED_ITEMS 32
 #define MAX_NPCS 8
 #define MAX_APPLE_TREES 8
 
