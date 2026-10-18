@@ -99,6 +99,7 @@ game.exe
 | **X facing water (Fishing Pole in pack)** | — | Cast. A bobber floats out; when it dips the controller rumbles gently - press X then to catch a fish (60%, sometimes 70%, plus 3% per LCK point, up to 90%). Walk away to reel in. |
 | **Mouse left click** | — | Walk to that spot, or walk up to a clicked monster and attack it. Clicking a belt slot uses it. |
 | **Mouse right click** | — | Class ability (same as Y). |
+| **'V' Key / Right Stick click** | — | Step the camera through three zoom levels: wide, normal, close. |
 | **Mouse wheel / side buttons** | — | Wheel picks a belt slot; back button taps the bow, forward button uses the picked belt item. |
 | **'1'-'0' Keys (no menu open)** | — | Use belt slots 1-10: the first ten weapons, food and tools in your pack, shown at the bottom of the screen. |
 | **'9' Key / Back in Options Tab** | — | Delete the save file (press twice within 3 seconds). Saving stays off until you restart. |
@@ -151,6 +152,12 @@ One real second is one game minute, so a day lasts 24 real minutes and each 30-d
 - **Farming:** buy a **Hoe** and **Seeds** from the merchant. X with the Hoe on bare grass tills a plot (up to 48); X with Seeds plants turnips, which grow one stage a day and are ripe on day 3; X on a ripe plot harvests 2-3 **Turnips** (eat to heal) plus 3-4 Seeds per turnip, so you only buy Seeds once. Plots are saved.
 - **Footpaths:** grass you walk over often turns to a dirt path, and grows back a little each day you leave it alone. Paths are saved.
 - **Villager quests:** villagers sometimes ask you to slay a few monsters or bring them Wood, Stone, Fish or Apples, scaled to your level. One job at a time; any villager pays you when it's done. Talk to a villager to see your progress.
+- **Hit splashes:** class abilities splash their own colour - green for Rogue venom (hits while sneaking) and zombie bites, blue for the Wizard's bolt, gold for the Knight/Warrior counter, bone-white for skeletons and pale blue for ghosts.
+- **AFK night sky:** stand idle at night and, as the camera drifts in, stars, the moon (its phase follows the 30-day season) and shooting stars fade in.
+- **Grass** bends aside as you walk through it, and **foam** laps at every shoreline.
+- **Barrels** stand by the homes in towns and in caves. X smashes one for a little gold, an apple or wood (2% card chance). They are back the next day.
+- **Zombies** near rivers and marshes rise out of the water's edge.
+- **Peyote:** some desert cacti are small round peyote buttons with a pink flower. Two arrows split one open, X gathers it, and eating it melts the colours on screen for 30 seconds.
 - **Update folder:** see `Update/README.md` to change items, villager lines and quests with a text file, no recompiling.
 - **Sound:** the game runs with no sound files yet; Saturn-style synth voices and samples come later.
 
