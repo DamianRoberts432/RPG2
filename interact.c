@@ -80,6 +80,7 @@ void HandleContextInteract(void) {
     else if (player_facing == FACE_DOWN) fy += 1;
     else if (player_facing == FACE_LEFT) fx -= 1;
     else if (player_facing == FACE_RIGHT) fx += 1;
+    if (!in_cave && (TryFarmPlot(fx, fy) || TryFarmPlot(px, py))) return;
 
     int target_x = -1, target_y = -1;
     uint8_t target_tile = 0;
@@ -160,6 +161,8 @@ void HandleContextInteract(void) {
         }
         return;
     }
+
+    if (!in_cave && TryTillGround(fx, fy)) return;
 
     // X/C never lights a new campfire (that is done from the inventory menu via
     // HandleMenuLightFire() to avoid accidental wood loss); it only feeds one.

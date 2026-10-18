@@ -26,7 +26,7 @@
 #define MAX_BUTTERFLIES 8
 #define DEBRIS_MAX 16
 #define MAX_CRITTERS 6
-#define MERCH_ITEMS 31
+#define MERCH_ITEMS 34
 #define MAX_BLOOD_MIST 48
 #define MAX_CAMPFIRES 8
 #define MAX_INVENTORY_ITEMS 100
@@ -334,5 +334,6 @@ extern int cam_y;
 #include "town.h"
 #include "fishing.h"
 #include "mouse.h"
+#include "farming.h"
 
 #endif // GAME_H

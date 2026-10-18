@@ -222,7 +222,11 @@ MerchantItem merchant_catalog[MERCH_ITEMS] = {
     { "Chaos Relic", "Material", 0, 600,  2, 2, RARITY_UNCOMMON, 0 },
     // Dracula wards (see TriggerMonsterRespawn and PerformMeleeAttack).
     { "Garlic",        "Material", 0,                  8, -1, 0, RARITY_COMMON, 0 },
-    { "Silver Dagger", "Weapon",   0,                900, 1,  1, RARITY_UNCOMMON, 0 }
+    { "Silver Dagger", "Weapon",   0,                900, 1,  1, RARITY_UNCOMMON, 0 },
+    // Farming (see farming.c).
+    { "Hoe",           "Tool",     0,                 12, 1,  1, RARITY_COMMON, 0 },
+    { "Seeds",         "Material", 0,                  2, -1, 0, RARITY_COMMON, 0 },
+    { "Turnip",        "Food",     0,                  4, -1, 0, RARITY_COMMON, 0 }
     // Legendary items are never sold; they only drop from bosses (see HandleEnemyDamage).
 };
 const char *villager_greetings[] = {

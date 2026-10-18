@@ -122,7 +122,9 @@ static WeaponStats *FindWeaponStats(const char *name) {
 static const char *ItemBlurb(const char *name) {
     if (strcmp(name, "Strategy Guide") == 0) return "Secret card combos. Browse it here, or buy it.";
     if (strcmp(name, "Matches") == 0) return "Light a campfire from the inventory (needs 2 Wood).";
-    if (strcmp(name, "Fish") == 0 || strcmp(name, "Apple") == 0) return "Eat to restore health.";
+    if (strcmp(name, "Fish") == 0 || strcmp(name, "Apple") == 0 || strcmp(name, "Turnip") == 0) return "Eat to restore health.";
+    if (strcmp(name, "Hoe") == 0) return "X on bare grass tills a farm plot.";
+    if (strcmp(name, "Seeds") == 0) return "X on tilled soil plants turnips; ripe in 3 days.";
     if (strcmp(name, "Pickaxe") == 0) return "Mine rocks with X.";
     if (strcmp(name, "Axe") == 0) return "Chop trees with X; also a heavy weapon.";
     if (strcmp(name, "Fishing Pole") == 0) return "G to cast at water, hold F and release at 50-80%.";
