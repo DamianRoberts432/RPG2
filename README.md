@@ -115,7 +115,7 @@ game.exe
 Talking to a shopkeeper takes you inside their building (merchant included).
 
 - **Blacksmith** (every town): repair any worn item, over-forge your weapon (+1 damage per forge up to +10, each forge costs 10% of its max durability), buy rare weapons (Katana, War Hammer, Great Axe) and recycle spare gear into Iron, Wood, Leather, String and Rope.
-- **Card shop** (some days): ten random cards, plus 3-card (20,000), 7-card (40,000) and 60-card (350,000) packs. Selecting a card shows its set, rarity, power/toughness and what its ability does.
+- **Card shop** (some days): ten random cards, plus 3-card (20,000), 7-card (40,000) and 60-card (350,000) packs, and the **Master Base Box** (1,000,000) with one of every card in print. Packs and card drops favor small cards: 70% 1/1, 25% 2/2, 5% 3/3. Selecting a card shows its set, rarity, power/toughness and what its ability does.
   - Only three sets are in print for now: **Wild Creatures** (the bestiary monsters plus bluebird, squirrel, owl, bat), **Angels** and **Goetia Demons** - 37 cards.
   - Every card is a 1/1, 2/2 or 3/3. Abilities make the difference: **First Strike** hits before a card without it; **Mighty** (Yeti, Bigfoot) is +3/+3, so they fight as 6/6; a Demon 1/1's **death curse** gives the next enemy card -2/-2; an Angel 1/1's **death blessing** gives your next card +1/+1, +2/+0 or +0/+2.
   - The kid at the corner table plays up to 10 practice hands per visit (no ante). You get three cards from the counter and pick the order to lay them; he leads with his left to right. The practice table on the right shows your three cards and his with their text, then the play-by-play: both cards deal damage at the same time unless one has First Strike, and death marks land on the next card in.
@@ -145,6 +145,13 @@ One real second is one game minute, so a day lasts 24 real minutes and each 30-d
 - **Caves** only have bats. Outside, owls and bats only come out at night.
 - **Musashi's Blade** never breaks and is never dropped by bosses: it only washes up on a beach in the easternmost column of the map on summer day 13.
 - **Zombies and skeletons** are sized by race height (yours, for summons), hit a little harder when bigger, and summons sometimes poison.
+- **Wildlife:** at most 6 animals per screen.
+- **Dark vision:** Dwarves and Gnomes see further at night and in caves.
+- **Dracula:** carry **Garlic** (merchant) and he won't come for you; a **Silver Dagger** (merchant) does double damage to him.
+- **Farming:** buy a **Hoe** and **Seeds** from the merchant. X with the Hoe on bare grass tills a plot (up to 48); X with Seeds plants turnips, which grow one stage a day and are ripe on day 3; X on a ripe plot harvests 2-3 **Turnips** (eat to heal). Plots are saved.
+- **Footpaths:** grass you walk over often turns to a dirt path, and grows back a little each day you leave it alone. Paths are saved.
+- **Villager quests:** villagers sometimes ask you to slay a few monsters or bring them Wood, Stone, Fish or Apples, scaled to your level. One job at a time; any villager pays you when it's done. Talk to a villager to see your progress.
+- **Update folder:** see `Update/README.md` to change items, villager lines and quests with a text file, no recompiling.
 - **Sound:** the game runs with no sound files yet; Saturn-style synth voices and samples come later.
 
 ## Layout
@@ -169,5 +176,9 @@ One real second is one game minute, so a day lasts 24 real minutes and each 30-d
 | ui.c | HUD, inventory/map/options menu, vendor shop overlay |
 | worldmap.c | Explored-world map (biomes, villages, castles, water, treasure) and the save file |
 | weather.c | Seasons, world-wide weather, wind gusts, snow, fall leaves, optional real-world weather |
+| farming.c | Tilled plots, planting, crop growth and harvest |
+| paths.c | Worn footpaths that grow back |
+| quests.c | Everyday villager kill/fetch quests |
+| update.c | Reads the Update folder's text files at launch |
 
 Each module has a matching .h with its function prototypes.
