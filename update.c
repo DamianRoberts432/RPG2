@@ -104,12 +104,68 @@ static int NewCardLine(char *cur) {
     return AddRuntimeCard(f[0], atoi(f[1]), atoi(f[2]), atoi(f[3]), atoi(f[4]), f[5] ? atoi(f[5]) : 0);
 }
 
+static char new_item_names[MERCH_CAPACITY - MERCH_BASE_ITEMS][32];
+static struct { char name[32]; int heal; } food_heals[MERCH_CAPACITY - MERCH_BASE_ITEMS];
+static int food_heal_count;
+
+int UpdatedFoodHeal(const char *name) {
+    for (int i = 0; i < food_heal_count; i++) if (strcmp(food_heals[i].name, name) == 0) return food_heals[i].heal;
+    return 0;
+}
+
+// NewItem,ItemID,Name,Type,Value[,Stackable,Weight,EffectID]: a new merchant item.
+// Type is Food, Material or Tool; for Food, EffectID is the health it restores.
+static int NewItemLine(char *cur) {
+    char *f[6] = { 0 };
+    for (int i = 0; i < 6 && cur; i++) f[i] = NextField(&cur);
+    if (!f[2] || cur || !f[0][0] || atoi(f[2]) < 0) return 0;
+    const char *slot = _stricmp(f[1], "Food") == 0 ? "Food" : _stricmp(f[1], "Material") == 0 ? "Material" : _stricmp(f[1], "Tool") == 0 ? "Tool" : NULL;
+    if (!slot) return 0;
+    MerchantItem *m = FindMerchantItem(f[0]);
+    if (!m) {
+        if (merch_item_count >= MERCH_CAPACITY) return 0;
+        char *nm = new_item_names[merch_item_count - MERCH_BASE_ITEMS];
+        snprintf(nm, 32, "%s", f[0]);
+        m = &merchant_catalog[merch_item_count++];
+        *m = (MerchantItem){ nm, slot, 0, atoi(f[2]), -1, 0, RARITY_COMMON, 0 };
+    } else m->base_price = atoi(f[2]);
+    if (f[4] && f[4][0] && !EditItemField(m->name, "Weight", f[4])) return 0;
+    if (slot[0] == 'F' && f[5] && atoi(f[5]) > 0 && food_heal_count < MERCH_CAPACITY - MERCH_BASE_ITEMS) {
+        snprintf(food_heals[food_heal_count].name, sizeof(food_heals[0].name), "%s", m->name);
+        food_heals[food_heal_count++].heal = atoi(f[5]);
+    }
+    return 1;
+}
+
+// NewDialogue,DialogueID,NPCID,Speaker,Text[,NextDialogueID]: villagers say "Speaker: Text".
+static int NewDialogueLine(char *cur) {
+    char *f[4] = { 0 };
+    for (int i = 0; i < 4 && cur; i++) f[i] = NextField(&cur);
+    if (!f[2] || cur || !f[2][0]) return 0;
+    char line[160];
+    if (f[1][0]) snprintf(line, sizeof(line), "%s: %s", f[1], f[2]);
+    else snprintf(line, sizeof(line), "%s", f[2]);
+    return EditNpcField("Villager", "Dialogue", line);
+}
+
+// NewQuest,QuestID,Taxonomy,Name,GiverNPCID,RewardGold[,PrereqQuestID]
+static int NewQuestLine(int n, char *cur) {
+    char *f[5] = { 0 };
+    for (int i = 0; i < 5 && cur; i++) f[i] = NextField(&cur);
+    if (!f[3] || cur) return 0;
+    if (_stricmp(f[0], "queststory") != 0 && _stricmp(f[0], "questgeneric") != 0 && _stricmp(f[0], "questking") != 0) return 0;
+    return NewQuestTemplate(n, f[1], atoi(f[3]));
+}
+
 // Applies one line; returns 1 when every field in it was understood.
 static int ApplyUpdateLine(char *line) {
     char *cur = line;
     char *cmd = NextField(&cur), *id = NextField(&cur);
     if (!cmd || !id || !cur) return 0;
     if (_stricmp(cmd, "NewCard") == 0) return NewCardLine(cur);
+    if (_stricmp(cmd, "NewItem") == 0) return NewItemLine(cur);
+    if (_stricmp(cmd, "NewDialogue") == 0) return NewDialogueLine(cur);
+    if (_stricmp(cmd, "NewQuest") == 0) return NewQuestLine(atoi(_strnicmp(id, "quest_id_", 9) == 0 ? id + 9 : id), cur);
     int quest = 0;
     if (_stricmp(cmd, "EditQuest") == 0) quest = atoi(_strnicmp(id, "quest_id_", 9) == 0 ? id + 9 : id);
     else if (_stricmp(cmd, "EditItem") != 0 && _stricmp(cmd, "EditNPC") != 0) return 0;

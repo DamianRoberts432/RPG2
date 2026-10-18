@@ -26,7 +26,10 @@
 #define MAX_BUTTERFLIES 8
 #define DEBRIS_MAX 16
 #define MAX_CRITTERS 6
-#define MERCH_ITEMS 34
+#define MERCH_BASE_ITEMS 34
+#define MERCH_CAPACITY 50 // room for NewItem lines from the Update folder
+#define MERCH_ITEMS merch_item_count
+extern int merch_item_count;
 #define MAX_BLOOD_MIST 48
 #define MAX_CAMPFIRES 8
 #define MAX_INVENTORY_ITEMS 100
@@ -301,7 +304,7 @@ enum { LOOT_SHORT_SWORD = 1, LOOT_LONG_SWORD, LOOT_AXE, LOOT_SHORT_BOW, LOOT_RUS
 #define LOOT_LAST_WEAPON LOOT_GREAT_AXE
 extern WeaponStats weapon_catalog[13];
 #define WEAPON_CATALOG_COUNT ((int)(sizeof(weapon_catalog) / sizeof(weapon_catalog[0])))
-extern MerchantItem merchant_catalog[MERCH_ITEMS];
+extern MerchantItem merchant_catalog[MERCH_CAPACITY];
 extern const char *villager_greetings[];
 extern const char *villager_questions[];
 extern const char *traveler_barks[];

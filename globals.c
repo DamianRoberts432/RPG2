@@ -189,7 +189,8 @@ WeaponStats weapon_catalog[] = {
 // base_price * rarity (see DrawVendorShopOverlay/HandleVendorBuy). Rare/
 // Legendary stock is intentionally tiny (1-3 / 1) and only partially restocks
 // after each day/night cycle (see RestockMerchant).
-MerchantItem merchant_catalog[MERCH_ITEMS] = {
+int merch_item_count = MERCH_BASE_ITEMS;
+MerchantItem merchant_catalog[MERCH_CAPACITY] = {
     { "Short Sword",   "Weapon",   LOOT_SHORT_SWORD,  20, 1,  1, RARITY_COMMON, 0 },
     { "Axe",           "Weapon",   LOOT_AXE,          25, 1,  1, RARITY_COMMON, 0 },
     { "Iron Sword",    "Weapon",   0,                 22, 1,  1, RARITY_COMMON, 0 },

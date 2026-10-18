@@ -94,7 +94,8 @@ void HandleInventoryPrimaryAction(void) {
         strcpy(arpg_action_log, "A&D STRATEGY GUIDE: secret card combos revealed!");
     } else if (strcmp(item->name, "Peyote") == 0) {
         EatPeyote();
-    } else if (strcmp(item->name, "Fish") == 0 || strcmp(item->name, "Apple") == 0 || strcmp(item->name, "Turnip") == 0) {
+    } else if (strcmp(item->name, "Fish") == 0 || strcmp(item->name, "Apple") == 0 || strcmp(item->name, "Turnip") == 0 ||
+               UpdatedFoodHeal(item->name) > 0) {
         ConsumeSelectedFood();
     } else if (strcmp(item->slot, "Weapon") == 0 || strcmp(item->slot, "Armor") == 0 || strcmp(item->slot, "Shield") == 0 ||
                strcmp(item->slot, "Ring") == 0) {
@@ -502,6 +503,7 @@ void ConsumeSelectedFood(void) {
     if (player_item_count <= 0) return;
     InventoryItem *item = &player_inventory[selected_inv_index];
     int heal = strcmp(item->name, "Fish") == 0 ? 10 : strcmp(item->name, "Apple") == 0 ? 15 : strcmp(item->name, "Turnip") == 0 ? 12 : 0;
+    if (heal == 0) heal = UpdatedFoodHeal(item->name);
     if (heal == 0) { strcpy(arpg_action_log, "Use a fish or apple to restore health."); return; }
     player_hp += (float)heal;
     if (player_hp > max_player_hp) player_hp = max_player_hp;

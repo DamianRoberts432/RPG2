@@ -6,5 +6,6 @@
 void IngestUpdates(void);
 float UpdatedItemWeight(const char *name);
 const char *CustomVillagerLine(void);
+int UpdatedFoodHeal(const char *name);
 
 #endif

@@ -171,7 +171,7 @@ int LoadWorldMapState(void) {
     }
     if (has_farm) memcpy(farm_plots, saved_plots, sizeof(farm_plots));
     if (has_paths) memcpy(worn_tiles, saved_worn, sizeof(worn_tiles));
-    if (has_quest && saved_quest[1] >= 0 && saved_quest[1] < QUEST_TEMPLATE_COUNT) memcpy(village_quest, saved_quest, sizeof(village_quest));
+    if (has_quest && saved_quest[1] >= 0 && saved_quest[1] < QUEST_TEMPLATE_MAX) memcpy(village_quest, saved_quest, sizeof(village_quest));
     return 1;
 }
 
