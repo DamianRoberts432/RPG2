@@ -568,6 +568,20 @@ void UpdateCritters(void) {
         if (!critter->active || critter->type == 0) continue;
         // Day animals sleep from 9 PM to 6 AM; the owl only comes out then.
         if (CritterAsleep(critter)) { critter->hidden = 1; continue; }
+        if (critter->type == 2 && current_biome != BIOME_CAVE) { // owls perch in trees and fly to another when disturbed
+            float pdx = critter->x - player_x, pdy = critter->y - player_y;
+            int perched = VISUAL_MAP[(int)critter->base_y][(int)critter->base_x] == 11;
+            if (!perched || pdx * pdx + pdy * pdy < 9.0f)
+                for (int tries = 0; tries < 60; tries++) {
+                    int x = 1 + rand() % (MAP_SIZE - 2), y = 1 + rand() % (MAP_SIZE - 2);
+                    float ddx = x - player_x, ddy = y - player_y;
+                    if (VISUAL_MAP[y][x] == 11 && ddx * ddx + ddy * ddy > 25.0f) { critter->base_x = (float)x; critter->base_y = (float)y; break; }
+                }
+            critter->x += (critter->base_x - critter->x) * 0.25f; critter->y += (critter->base_y - critter->y) * 0.25f;
+            critter->state = fabsf(critter->base_x - critter->x) + fabsf(critter->base_y - critter->y) > 0.3f; // 1 = flying
+            critter->hidden = 0;
+            continue;
+        }
         // Rain or snow sends nature to the nearest tree (or into a burrow if
         // there are none); it comes back out once the weather turns fair.
         if (IsAdverseWeather() && current_biome != BIOME_CAVE) {

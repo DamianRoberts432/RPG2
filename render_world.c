@@ -349,7 +349,15 @@ void DrawEnvironmentalCritters(HDC hdc) {
                 MoveToEx(hdc, sx + 2, by + 3, NULL); LineTo(hdc, sx + 2, by + 6);
             }
             SelectObject(hdc, old_p); DeleteObject(lp);
-        } else if (critters[i].type == 2) { // owl
+        } else if (critters[i].type == 2) { // owl: perched up in a canopy, wings out while flying between trees
+            if (current_biome != BIOME_CAVE) sy -= 38;
+            if (critters[i].state) {
+                int flap = (world_frame / 6) % 2 ? -6 : 3;
+                HPEN wing = CreatePen(PS_SOLID, 3, RGB(110, 85, 55)); HGDIOBJ ow = SelectObject(hdc, wing);
+                MoveToEx(hdc, sx - 4, sy - 5, NULL); LineTo(hdc, sx - 15, sy - 5 + flap);
+                MoveToEx(hdc, sx + 4, sy - 5, NULL); LineTo(hdc, sx + 15, sy - 5 + flap);
+                SelectObject(hdc, ow); DeleteObject(wing);
+            }
             HBRUSH owl_b = CreateSolidBrush(RGB(120, 90, 60)); HGDIOBJ old = SelectObject(hdc, owl_b);
             HPEN owl_p = CreatePen(PS_SOLID, 1, RGB(80, 60, 40)); HGDIOBJ old_p = SelectObject(hdc, owl_p);
             Ellipse(hdc, sx - 5, sy - 10, sx + 5, sy + 3);
