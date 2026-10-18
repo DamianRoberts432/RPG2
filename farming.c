@@ -42,10 +42,13 @@ int TryFarmPlot(int x, int y) {
     }
     if (stage < RIPE_STAGE) { sprintf(arpg_action_log, "FARM: The turnips are growing (stage %d of %d).", stage, RIPE_STAGE); return 1; }
     int n = 2 + rand() % 2;
+    int seeds = 0;
+    for (int k = 0; k < n; k++) seeds += 3 + rand() % 2; // each turnip gives back 3-4 seeds
     AddStackableItem("Turnip", "Food", n);
+    AddStackableItem("Seeds", "Material", seeds);
     RecalculateCarriedWeight();
     p->planted = 0;
-    sprintf(arpg_action_log, "FARM: Harvested %d turnips! The soil is ready for more seeds.", n);
+    sprintf(arpg_action_log, "FARM: Harvested %d turnips and saved %d seeds!", n, seeds);
     return 1;
 }
 

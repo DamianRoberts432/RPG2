@@ -148,7 +148,7 @@ One real second is one game minute, so a day lasts 24 real minutes and each 30-d
 - **Wildlife:** at most 6 animals per screen.
 - **Dark vision:** Dwarves and Gnomes see further at night and in caves.
 - **Dracula:** carry **Garlic** (merchant) and he won't come for you; a **Silver Dagger** (merchant) does double damage to him.
-- **Farming:** buy a **Hoe** and **Seeds** from the merchant. X with the Hoe on bare grass tills a plot (up to 48); X with Seeds plants turnips, which grow one stage a day and are ripe on day 3; X on a ripe plot harvests 2-3 **Turnips** (eat to heal). Plots are saved.
+- **Farming:** buy a **Hoe** and **Seeds** from the merchant. X with the Hoe on bare grass tills a plot (up to 48); X with Seeds plants turnips, which grow one stage a day and are ripe on day 3; X on a ripe plot harvests 2-3 **Turnips** (eat to heal) plus 3-4 Seeds per turnip, so you only buy Seeds once. Plots are saved.
 - **Footpaths:** grass you walk over often turns to a dirt path, and grows back a little each day you leave it alone. Paths are saved.
 - **Villager quests:** villagers sometimes ask you to slay a few monsters or bring them Wood, Stone, Fish or Apples, scaled to your level. One job at a time; any villager pays you when it's done. Talk to a villager to see your progress.
 - **Update folder:** see `Update/README.md` to change items, villager lines and quests with a text file, no recompiling.
