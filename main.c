@@ -168,6 +168,11 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 SelectObject(memHDC, clean_null_pen);
 
                 for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) {
+                    if (VISUAL_MAP[r][c] == 10 && current_biome != BIOME_CAVE) { // sand patches lie flat, drawn with the ground
+                        int sx, sy; GetIsoCoords((float)c, (float)r, &sx, &sy);
+                        POINT top[] = {{sx, sy}, {sx + TILE_WIDTH / 2, sy + TILE_HEIGHT / 2}, {sx, sy + TILE_HEIGHT}, {sx - TILE_WIDTH / 2, sy + TILE_HEIGHT / 2}};
+                        HBRUSH b = CreateSolidBrush(GetTileColor(10, 0)); HGDIOBJ ob = SelectObject(memHDC, b); Polygon(memHDC, top, 4); SelectObject(memHDC, ob); DeleteObject(b);
+                    }
                     if (VISUAL_MAP[r][c] == 12) {
                         int sx, sy; GetIsoCoords((float)c, (float)r, &sx, &sy);
                         if (sx >= -TILE_WIDTH && sx <= WINDOW_WIDTH + TILE_WIDTH) { DrawFlowingRiver(memHDC, sx, sy, r * MAP_SIZE + c); DrawShoreFoam(memHDC, c, r, sx, sy); }
@@ -180,7 +185,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                     for (int c = 0; c < MAP_SIZE; c++) {
                         int sx, sy; GetIsoCoords((float)c, (float)r, &sx, &sy); if (sx < -TILE_WIDTH * 2 || sx > WINDOW_WIDTH + TILE_WIDTH * 2) continue;
                         uint8_t t_id = VISUAL_MAP[r][c];
-                        if (t_id == 1 || t_id == 10) {
+                        if (t_id == 1 || (t_id == 10 && current_biome == BIOME_CAVE)) {
                             if (current_biome == BIOME_CAVE) { DrawSubterraneanGeology(memHDC, sx, sy, (r * MAP_SIZE + c)); }
                             else {
                                 int thick = (t_id == 1) ? 24 : 0; int drawing_sy = sy - thick;
