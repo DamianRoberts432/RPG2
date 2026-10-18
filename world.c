@@ -378,7 +378,7 @@ void GenerateProceduralScreen(int index) {
         // 0 bird, 1 squirrel (both diurnal), 2 owl, 3 bat (nocturnal). Day screens
         // get a flock of birds and a couple of squirrels, night screens an owl
         // and a bat; caves only bats.
-        critters[i].type = current_biome == BIOME_CAVE ? 3 : spawn_night && i < 2 ? 2 + i : i % 3 == 2 ? 1 : 0;
+        critters[i].type = current_biome == BIOME_CAVE ? 3 : current_biome == BIOME_DESERT && i < 2 ? 4 : spawn_night && i < 2 ? 2 + i : i % 3 == 2 ? 1 : 0;
         critters[i].timer = rand() % 90;
         critters[i].state = 0;
         critters[i].active = 1;

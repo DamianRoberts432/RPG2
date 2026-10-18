@@ -365,6 +365,14 @@ void DrawEnvironmentalCritters(HDC hdc) {
             HBRUSH eye = CreateSolidBrush(RGB(250, 210, 60));
             RECT el = { sx - 4, sy - 7, sx - 1, sy - 4 }, er = { sx + 1, sy - 7, sx + 4, sy - 4 };
             FillRect(hdc, &el, eye); FillRect(hdc, &er, eye); DeleteObject(eye);
+        } else if (critters[i].type == 4) { // tiny desert scorpion: body, pincers and a curled tail
+            HBRUSH sc = CreateSolidBrush(RGB(70, 45, 25)); HGDIOBJ os = SelectObject(hdc, sc);
+            HPEN sp = CreatePen(PS_SOLID, 1, RGB(50, 30, 15)); HGDIOBJ osp = SelectObject(hdc, sp);
+            int step = (world_frame / 5) % 2;
+            Ellipse(hdc, sx - 4, sy - 2, sx + 4, sy + 3);
+            MoveToEx(hdc, sx - 3, sy, NULL); LineTo(hdc, sx - 7, sy - 2 + step); MoveToEx(hdc, sx + 3, sy, NULL); LineTo(hdc, sx + 7, sy - 2 + step);
+            MoveToEx(hdc, sx, sy + 2, NULL); LineTo(hdc, sx + 1, sy + 6); LineTo(hdc, sx + 4, sy + 4); LineTo(hdc, sx + 4, sy + 1);
+            SelectObject(hdc, osp); SelectObject(hdc, os); DeleteObject(sp); DeleteObject(sc);
         } else if (critters[i].type == 3) { // bat
             int flap = (int)(sin(world_tick * 18.0f + i) * 4.0f), by = sy - 14 + (int)(sin(world_tick * 3.0f + i) * 3.0f);
             HBRUSH bat_b = CreateSolidBrush(RGB(45, 35, 50)); HGDIOBJ old = SelectObject(hdc, bat_b);
