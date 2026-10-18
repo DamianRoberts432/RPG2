@@ -8,6 +8,11 @@
 static int TileBlocksPlayer(float x, float y) {
     if (x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE) return 1;
     uint8_t t = VISUAL_MAP[(int)y][(int)x];
+    if (village_npc_count > 0 && !in_cave) { // village homes are solid
+        static const int hx[4] = { 11, 15, 19, 15 }, hy[4] = { 11, 10, 11, 18 };
+        int shift = (current_screen_index % 3) - 1;
+        for (int i = 0; i < 4; i++) if (fabsf(x - (hx[i] + shift + 0.5f)) < 1.1f && fabsf(y - (hy[i] + 0.5f)) < 0.9f) return 1;
+    }
     return t == 1 || (t == 12 && !HasInventoryItem("Raft") && !HasInventoryItem("Canoe") && !HasInventoryItem("Boat"));
 }
 

@@ -600,7 +600,7 @@ void DrawVillage(HDC hdc) {
         const float HOME_SCALE = 3.2f;
         for (int i = 0; i < 4; i++) {
             int sx, sy; GetIsoCoords((float)(hx[i] + shift), (float)hy[i], &sx, &sy);
-            int ax = sx, ay = sy + 8;
+            int ax = sx, ay = sy + TILE_HEIGHT / 2 + 6; // planted on the tile centre, not floating above it
             int hw = (int)(14 * HOME_SCALE), hh = (int)(20 * HOME_SCALE);
             RECT body = { ax - hw, ay - hh, ax + hw, ay };
             FillRect(hdc, &body, hut);
