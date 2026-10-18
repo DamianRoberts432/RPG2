@@ -509,7 +509,17 @@ void DrawBedroll(HDC hdc) {
 }
 
 // Very slight zoom-in of the gameplay view (HUD is drawn afterwards, unscaled).
-#define CAMERA_ZOOM 1.08f
+static const float zoom_levels[3] = { 1.0f, 1.08f, 1.3f };
+static int zoom_index = 1;
+#define CAMERA_ZOOM zoom_levels[zoom_index]
+static float afk_amount; // 0..1 while the AFK camera has eased in
+
+// V / right-stick click steps through the three zoom levels.
+void CycleCameraZoom(void) {
+    static const char *names[3] = { "Wide", "Normal", "Close" };
+    zoom_index = (zoom_index + 1) % 3;
+    sprintf(arpg_action_log, "VIEW: %s zoom.", names[zoom_index]);
+}
 void ApplyCameraZoom(HDC hdc, float zoom) {
     HDC copy_dc = CreateCompatibleDC(hdc);
     HBITMAP copy_bmp = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -532,14 +542,65 @@ float UpdateAfkCamera(int input_active) {
     DWORD now = GetTickCount();
     if (input_active || last_input == 0) last_input = now;
     DWORD idle = now - last_input;
-    if (idle < AFK_DELAY_MS) return CAMERA_ZOOM;
+    if (idle < AFK_DELAY_MS) { afk_amount = 0.0f; return CAMERA_ZOOM; }
     float t = (float)(idle - AFK_DELAY_MS) / AFK_EASE_MS;
     if (t > 1.0f) t = 1.0f;
     t = t * t * (3.0f - 2.0f * t);
+    afk_amount = t;
     float a = (float)(idle - AFK_DELAY_MS) / 12000.0f;
     cam_x += (int)(sinf(a) * 140.0f * t);
     cam_y += (int)(sinf(a * 0.7f) * 70.0f * t);
     return CAMERA_ZOOM + 0.22f * t;
+}
+
+void FillRectAlpha(HDC hdc, int x, int y, int w, int h, COLORREF color, int alpha) {
+    if (alpha <= 0 || w <= 0 || h <= 0) return;
+    HDC src = CreateCompatibleDC(hdc);
+    HBITMAP bmp = CreateCompatibleBitmap(hdc, 1, 1);
+    HGDIOBJ old = SelectObject(src, bmp);
+    SetPixel(src, 0, 0, color);
+    BLENDFUNCTION bf = { AC_SRC_OVER, 0, (BYTE)(alpha > 255 ? 255 : alpha), 0 };
+    AlphaBlend(hdc, x, y, w, h, src, 0, 0, 1, 1, bf);
+    SelectObject(src, old); DeleteObject(bmp); DeleteDC(src);
+}
+
+// AFK night sky: once the idle camera has drifted in at night, a starry sky
+// fades in over the top of the view, with the moon (its phase follows the
+// 30-day season) and the odd shooting star.
+void DrawAfkNightSky(HDC hdc) {
+    if (afk_amount <= 0.0f || in_cave || current_biome == BIOME_CAVE) return;
+    if (fabs(sin(day_night_cycle_accumulator)) >= 0.35f) return;
+    float k = afk_amount;
+    int sky_h = WINDOW_HEIGHT * 2 / 5;
+    for (int band = 0; band < 8; band++)
+        FillRectAlpha(hdc, 0, band * sky_h / 8, WINDOW_WIDTH, sky_h / 8 + 1, RGB(8, 12, 32), (int)((220 - band * 24) * k));
+    DWORD now = GetTickCount();
+    for (int i = 0; i < 70; i++) {
+        int h = RainHash(i * 7919 + 13);
+        int x = h % WINDOW_WIDTH, y = (h / WINDOW_WIDTH) % sky_h, sz = i % 9 == 0 ? 2 : 1;
+        int lum = (int)((150.0f + 105.0f * (0.5f + 0.5f * sinf(now / 700.0f + i))) * k * (1.0f - 0.6f * y / sky_h));
+        HBRUSH b = CreateSolidBrush(RGB(lum, lum, lum));
+        RECT r = { x, y, x + sz, y + sz };
+        FillRect(hdc, &r, b); DeleteObject(b);
+    }
+    float phase = (SeasonDay() % 30) / 30.0f; // 0 = new moon, 0.5 = full
+    int mx = WINDOW_WIDTH * 3 / 4, my = sky_h / 3, mr = 16, moon = (int)(230 * k);
+    HBRUSH lit = CreateSolidBrush(RGB(moon, moon, moon * 9 / 10)), dark = CreateSolidBrush(RGB(8, 12, 32));
+    HGDIOBJ ob = SelectObject(hdc, lit), op = SelectObject(hdc, GetStockObject(NULL_PEN));
+    Ellipse(hdc, mx - mr, my - mr, mx + mr, my + mr);
+    int off = phase <= 0.5f ? (int)(phase * 4.0f * mr) : -(int)((1.0f - phase) * 4.0f * mr);
+    if (off < 2 * mr && off > -2 * mr) { SelectObject(hdc, dark); Ellipse(hdc, mx - mr + off, my - mr, mx + mr + off, my + mr); }
+    SelectObject(hdc, op); SelectObject(hdc, ob); DeleteObject(lit); DeleteObject(dark);
+    DWORD cycle = now / 6000, t = now % 6000;
+    if (t < 700) {
+        int h = RainHash((int)cycle * 31 + 5);
+        float p = t / 700.0f;
+        int x1 = h % (WINDOW_WIDTH / 2) + WINDOW_WIDTH / 8 + (int)(p * 220), y1 = (h / 7) % (sky_h / 2) + (int)(p * 80);
+        HPEN pen = CreatePen(PS_SOLID, 2, RGB((int)(255 * k), (int)(255 * k), (int)(230 * k)));
+        HGDIOBJ old = SelectObject(hdc, pen);
+        MoveToEx(hdc, x1 - 34, y1 - 12, NULL); LineTo(hdc, x1, y1);
+        SelectObject(hdc, old); DeleteObject(pen);
+    }
 }
 
 int RainHash(int value) {
