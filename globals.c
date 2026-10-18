@@ -213,7 +213,6 @@ MerchantItem merchant_catalog[MERCH_CAPACITY] = {
     { "Boat",          "Tool",     0,               2400, 1,  1, RARITY_RARE, 0 },
     { "Long Sword",    "Weapon",   LOOT_LONG_SWORD,  700, 2,  2, RARITY_UNCOMMON, 0 },
     { "Short Bow",     "Weapon",   LOOT_SHORT_BOW,   500, 2,  2, RARITY_UNCOMMON, 0 },
-    { "Strategy Guide", "Tool",    0,             200000, 1,  1, RARITY_RARE, 0 }, // 1,000,000 gold endgame luxury
     { "Dragon Scale Armor", "Armor", 0,              5000, 1,  1, RARITY_RARE, 0 },
     // Altar offerings (see town.c).
     { "Incense",     "Material", 0, 30,  -1, 0, RARITY_COMMON, 0 },

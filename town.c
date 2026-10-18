@@ -11,7 +11,7 @@ static char town_note[160] = "";
 
 typedef struct { char text[96]; int action, arg; } TownRow;
 enum { A_LEAVE, A_REPAIR, A_FORGE, A_RECYCLE, A_SMITH_BUY, A_CARD, A_PACK, A_KID, A_PET, A_KING,
-       A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE };
+       A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE, A_GUIDE };
 #define TOWN_ROWS 24
 static TownRow rows[TOWN_ROWS];
 static int row_count = 0;
@@ -326,6 +326,7 @@ static void BuildRows(void) {
         AddRow(A_PACK, 60, "60-card box - 350,000 gold");
         snprintf(t, sizeof(t), "Master Base Box (all %d cards) - 1,000,000 gold", CARD_POOL);
         AddRow(A_PACK, 0, t);
+        AddRow(A_GUIDE, 0, "A&D Ultimate Strategy Guide - 1,000,000 gold");
         AddRow(A_KID, 0, "Talk to the kid at the table");
         int left = kid_round_screen == current_screen_index ? KID_MAX_ROUNDS - kid_rounds : KID_MAX_ROUNDS;
         if (kid_dealt && kid_round_screen == current_screen_index) {
@@ -395,6 +396,7 @@ static void RowInfo(const TownRow *r, char *out, size_t n) {
         if (r->arg == 0) snprintf(out, n, "One of every card in print. Completes your binder. Collection: %d / %d.", CardCount(), CARD_POOL);
         else snprintf(out, n, "%d random cards. Collection: %d / %d.", r->arg, CardCount(), CARD_POOL);
         break;
+    case A_GUIDE: snprintf(out, n, "Secret card combos: read it from your pack for a 2-second peek. Stealing it means jail."); break;
     case A_KID: snprintf(out, n, "A kid sits at the corner table shuffling a test deck. He won't play for ante."); break;
     case A_PRACTICE: snprintf(out, n, "Three duels, one card each. Both cards hit at once unless one has First Strike; death curses and blessings land on the next card. His cards and yours are on the right."); break;
     case A_PET: snprintf(out, n, "%s  |  %s  |  %s", familiars[r->arg].name, familiars[r->arg].nocturnal ? "Nocturnal" : "Diurnal", familiars[r->arg].trait); break;
@@ -562,6 +564,14 @@ void TownMenuConfirm(void) {
         Say("CARD SHOP: Added %s to your collection. (%d / %d)", nm, CardCount(), CARD_POOL);
         return; }
     case A_PACK: BuyCardPack(r.arg); return;
+    case A_GUIDE:
+        if (HasInventoryItem("Strategy Guide")) { Say("CARD SHOP: You already own the A&D Strategy Guide."); return; }
+        if (gold_count < 1000000) { Say("CARD SHOP: The A&D Strategy Guide costs 1,000,000 gold."); return; }
+        gold_count -= 1000000;
+        AddStackableItem("Strategy Guide", "Tool", 1); RecalculateCarriedWeight();
+        guide_flash_until = GetTickCount() + GUIDE_FLASH_MS;
+        Say("CARD SHOP: The A&D Ultimate Strategy Guide is yours. Read it from your pack.");
+        return;
     case A_KID: kid_line = (kid_line + 1) % KID_LINE_COUNT; Say("%s", kid_lines[kid_line]); return;
     case A_PRACTICE: PracticeHand(r.arg); return;
     case A_PET: {
