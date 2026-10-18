@@ -560,9 +560,30 @@ int BirdsFleeTree(int x, int y) {
     return flushed;
 }
 
+// Two birds or two squirrels sheltering in the same tree raise one baby:
+// at most one per screen per day, and only into a free critter slot.
+static void NestBabies(void) {
+    static int nest_screen = -1, nest_day = -1;
+    int day = GameDayOfYear();
+    if (nest_screen == current_screen_index && nest_day == day) return;
+    for (int i = 0; i < MAX_CRITTERS; i++) for (int j = i + 1; j < MAX_CRITTERS; j++) {
+        CritterEntity *a = &critters[i], *b = &critters[j];
+        if (!a->active || !b->active || a->type != b->type || a->type > 1 || !a->hidden || !b->hidden) continue;
+        if ((int)(a->x + 0.5f) != (int)(b->x + 0.5f) || (int)(a->y + 0.5f) != (int)(b->y + 0.5f)) continue;
+        for (int k = 0; k < MAX_CRITTERS; k++) if (!critters[k].active) {
+            critters[k] = *a; critters[k].x += 0.3f; critters[k].state = 0; critters[k].hidden = 0;
+            nest_screen = current_screen_index; nest_day = day;
+            sprintf(arpg_action_log, "NATURE: A baby %s peeks out of the tree.", a->type == 0 ? "bird" : "squirrel");
+            return;
+        }
+        return;
+    }
+}
+
 void UpdateCritters(void) {
     UpdateBirds();
     if (world_frame % 30 != 0) return;
+    NestBabies();
     for (int i = 0; i < MAX_CRITTERS; i++) {
         CritterEntity *critter = &critters[i];
         if (!critter->active || critter->type == 0) continue;
