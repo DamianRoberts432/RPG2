@@ -90,7 +90,8 @@ static int ForgeCost(int bonus) { return 1000 * (bonus + 1); }
 enum { AB_NONE, AB_FIRST_STRIKE, AB_PUMP3, AB_CURSE, AB_BLESS_BOTH, AB_BLESS_STR, AB_BLESS_LIFE };
 typedef struct { const char *name; int set, pt, ability; } CardDef;
 static const char *card_sets[3] = { "Wild Creatures", "Angels", "Goetia Demons" };
-static const CardDef card_defs[CARD_POOL] = {
+int card_pool_size = CARD_PRINTED;
+static CardDef card_defs[CARD_COUNT] = {
     { "Skeleton", 0, 1, AB_NONE }, { "Zombie", 0, 2, AB_NONE }, { "Dracula", 0, 3, AB_FIRST_STRIKE },
     { "Goblin", 0, 1, AB_FIRST_STRIKE }, { "Satyr", 0, 2, AB_FIRST_STRIKE }, { "Yeti", 0, 3, AB_PUMP3 },
     { "Sphinx", 0, 3, AB_NONE }, { "Bigfoot", 0, 3, AB_PUMP3 }, { "Bunyip", 0, 2, AB_NONE },
@@ -107,6 +108,23 @@ static const CardDef card_defs[CARD_POOL] = {
 static int card_offers[10], card_offer_screen = -1, card_offer_day = -1;
 
 static int PoolId(int id) { return id >= 0 && id < CARD_POOL ? id : 0; }
+
+// NewCard lines from the Update folder. Stats are clamped to the rarity cap
+// (1 = 1/1, 2 = 2/2, 3 = 3/3) so new cards can't outclass the base set.
+int AddRuntimeCard(const char *name, int set, int rarity, int atk, int hp, int ability) {
+    static char names[CARD_COUNT - CARD_PRINTED][32];
+    if (!name[0]) return 0;
+    for (int i = 0; i < card_pool_size; i++) if (_stricmp(card_defs[i].name, name) == 0) return 1;
+    if (card_pool_size >= CARD_COUNT) return 0;
+    int cap = rarity < 1 ? 1 : rarity > 3 ? 3 : rarity;
+    int pt = atk > hp ? atk : hp;
+    if (pt > cap) pt = cap;
+    if (pt < 1) pt = 1;
+    char *slot = names[card_pool_size - CARD_PRINTED];
+    snprintf(slot, 32, "%s", name);
+    card_defs[card_pool_size++] = (CardDef){ slot, set < 0 || set > 2 ? 0 : set, pt, ability < 0 || ability > AB_BLESS_LIFE ? AB_NONE : ability };
+    return 1;
+}
 
 void CardName(int id, char *out, size_t n) { snprintf(out, n, "%s", card_defs[PoolId(id)].name); }
 

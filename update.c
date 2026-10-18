@@ -95,11 +95,21 @@ static int EditNpcField(const char *id, const char *field, const char *val) {
     return 1;
 }
 
+// NewCard,CardID,Name,Set(0 wild/1 angel/2 demon),Rarity(1-3),Atk,Hp[,Ability]
+// Stats are clamped to the rarity cap: 1/1, 2/2 or 3/3.
+static int NewCardLine(char *cur) {
+    char *f[6] = { 0 };
+    for (int i = 0; i < 6 && cur; i++) f[i] = NextField(&cur);
+    if (!f[4] || cur) return 0;
+    return AddRuntimeCard(f[0], atoi(f[1]), atoi(f[2]), atoi(f[3]), atoi(f[4]), f[5] ? atoi(f[5]) : 0);
+}
+
 // Applies one line; returns 1 when every field in it was understood.
 static int ApplyUpdateLine(char *line) {
     char *cur = line;
     char *cmd = NextField(&cur), *id = NextField(&cur);
     if (!cmd || !id || !cur) return 0;
+    if (_stricmp(cmd, "NewCard") == 0) return NewCardLine(cur);
     int quest = 0;
     if (_stricmp(cmd, "EditQuest") == 0) quest = atoi(_strnicmp(id, "quest_id_", 9) == 0 ? id + 9 : id);
     else if (_stricmp(cmd, "EditItem") != 0 && _stricmp(cmd, "EditNPC") != 0) return 0;

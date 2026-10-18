@@ -218,7 +218,9 @@ void KarmaAdjust(int soul, int miasma, int heat, int grapevine);
 // Card collection: two 21-byte bitmasks (168 bits) for 166 cards. Card ids
 // below MONSTER_TYPE_COUNT are monster cards, linked to the bestiary.
 #define CARD_COUNT 166
-#define CARD_POOL 37 // cards in print: Wild Creatures, Angels, Goetia Demons
+#define CARD_PRINTED 37 // cards in print: Wild Creatures, Angels, Goetia Demons
+#define CARD_POOL card_pool_size // CARD_PRINTED plus any NewCard lines from the Update folder
+extern int card_pool_size;
 #define CARD_BYTES 21
 #define CARD_DROP_PERCENT 2
 #define MONSTER_TYPE_COUNT 9
