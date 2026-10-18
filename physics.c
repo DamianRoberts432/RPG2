@@ -93,6 +93,13 @@ void UpdateGamePhysics(void) {
         if (player_stamina > max_stamina) player_stamina = max_stamina;
     }
 
+    // Resting by a lit campfire slowly refills HP, MP and stamina (sleeping refills them all).
+    if (FindNearbyCampfire(2.5f) >= 0) {
+        if (player_hp < max_player_hp) { player_hp += 0.02f; if (player_hp > max_player_hp) player_hp = max_player_hp; }
+        if (player_mp < max_player_mp) { player_mp += 0.05f; if (player_mp > max_player_mp) player_mp = max_player_mp; }
+        if (player_stamina < max_stamina) { player_stamina += 0.5f; if (player_stamina > max_stamina) player_stamina = max_stamina; }
+    }
+
     DWORD now_tick = GetTickCount();
     // Signed-subtraction comparisons keep these correct across GetTickCount()
     // wraparound (~49.7 days uptime), consistent with FireClassAbility().
