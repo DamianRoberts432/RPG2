@@ -18,6 +18,7 @@ void DrawNightEyes(HDC hdc);
 int RainHash(int value);
 void FillWindowAlpha(HDC hdc, COLORREF color, int alpha);
 void ApplyCameraZoom(HDC hdc, float zoom);
+void DrawShoreFoam(HDC hdc, int c, int r, int sx, int sy);
 float UpdateAfkCamera(int input_active);
 void CycleCameraZoom(void);
 void DrawAfkNightSky(HDC hdc);

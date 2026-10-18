@@ -52,6 +52,22 @@ void DrawFlowingRiver(HDC hdc, int sx, int sy, int tile_seed) {
     }
 }
 
+// Two-frame foam along every edge where water meets land.
+void DrawShoreFoam(HDC hdc, int c, int r, int sx, int sy) {
+    int frame = (GetTickCount() / 450) & 1, in = frame ? 4 : 2;
+    POINT top = { sx, sy + in }, right = { sx + TILE_WIDTH / 2 - in * 2, sy + TILE_HEIGHT / 2 };
+    POINT bottom = { sx, sy + TILE_HEIGHT - in }, left = { sx - TILE_WIDTH / 2 + in * 2, sy + TILE_HEIGHT / 2 };
+    struct { int dc, dr; POINT a, b; } edge[4] = { { 0, -1, top, right }, { -1, 0, left, top }, { 0, 1, bottom, left }, { 1, 0, right, bottom } };
+    HPEN pen = CreatePen(frame ? PS_DOT : PS_SOLID, 1, RGB(230, 245, 255)); HGDIOBJ old = SelectObject(hdc, pen);
+    int bk = SetBkMode(hdc, TRANSPARENT);
+    for (int i = 0; i < 4; i++) {
+        int nc = c + edge[i].dc, nr = r + edge[i].dr;
+        if (nc < 0 || nr < 0 || nc >= MAP_SIZE || nr >= MAP_SIZE || VISUAL_MAP[nr][nc] == 12) continue;
+        MoveToEx(hdc, edge[i].a.x, edge[i].a.y, NULL); LineTo(hdc, edge[i].b.x, edge[i].b.y);
+    }
+    SetBkMode(hdc, bk); SelectObject(hdc, old); DeleteObject(pen);
+}
+
 void InjectDynamicGlowPass(HDC hdc, int hx, int hy, int radius, COLORREF light_color) {
     HBRUSH glow_brush = CreateSolidBrush(light_color); HGDIOBJ old_brush = SelectObject(hdc, glow_brush);
     HRGN glow_region = CreateEllipticRgn(hx - radius, hy - radius / 2, hx + radius, hy + radius / 2);

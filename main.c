@@ -170,7 +170,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) {
                     if (VISUAL_MAP[r][c] == 12) {
                         int sx, sy; GetIsoCoords((float)c, (float)r, &sx, &sy);
-                        if (sx >= -TILE_WIDTH && sx <= WINDOW_WIDTH + TILE_WIDTH) DrawFlowingRiver(memHDC, sx, sy, r * MAP_SIZE + c);
+                        if (sx >= -TILE_WIDTH && sx <= WINDOW_WIDTH + TILE_WIDTH) { DrawFlowingRiver(memHDC, sx, sy, r * MAP_SIZE + c); DrawShoreFoam(memHDC, c, r, sx, sy); }
                     }
                 }
                 DrawSeasonalGroundCover(memHDC);
