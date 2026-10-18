@@ -20,7 +20,7 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
     COLORREF body_color = RGB(245, 225, 195);
     COLORREF hat_color  = RGB(55, 185, 90);
 
-    if (selected_class == CLASS_NECROMANCER) { body_color = RGB(80, 50, 110); hat_color = RGB(40, 20, 60); }
+    if (selected_class == CLASS_NECROMANCER) { body_color = RGB(26, 22, 30); hat_color = RGB(14, 12, 18); } // black cloak and hood
     else if (selected_class == CLASS_WARRIOR) { body_color = RGB(160, 40, 30); hat_color = RGB(90, 20, 20); }
     else if (selected_class == CLASS_WIZARD) { body_color = RGB(30, 80, 180); hat_color = RGB(15, 40, 120); }
 
@@ -110,6 +110,15 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         HBRUSH gnome_hat = CreateSolidBrush(RGB(220, 40, 40)); HGDIOBJ prev_hat = SelectObject(hdc, gnome_hat);
         POINT cap[] = {{sx, sy - (int)(32 * scale)}, {sx + (int)(7 * scale), sy + (int)(4 * scale)}, {sx - (int)(7 * scale), sy + (int)(4 * scale)}};
         Polygon(hdc, cap, 3); SelectObject(hdc, prev_hat); DeleteObject(gnome_hat);
+    } else if (selected_class == CLASS_NECROMANCER) {
+        // Black hood: a cowl over the head with the face in shadow inside it.
+        HBRUSH hood = CreateSolidBrush(hat_color); HGDIOBJ prev_hood = SelectObject(hdc, hood);
+        POINT cowl[] = {{sx, sy - (int)(12 * scale)}, {sx + (int)(9 * scale), sy - (int)(2 * scale)}, {sx + (int)(8 * scale), sy + (int)(8 * scale)},
+                        {sx - (int)(8 * scale), sy + (int)(8 * scale)}, {sx - (int)(9 * scale), sy - (int)(2 * scale)}};
+        Polygon(hdc, cowl, 5); SelectObject(hdc, prev_hood); DeleteObject(hood);
+        HBRUSH face = CreateSolidBrush(RGB(150, 130, 115)); HGDIOBJ prev_face = SelectObject(hdc, face);
+        Ellipse(hdc, sx - (int)(4 * scale), sy - (int)(4 * scale), sx + (int)(4 * scale), sy + (int)(5 * scale));
+        SelectObject(hdc, prev_face); DeleteObject(face);
     } else {
         HBRUSH hat_b = CreateSolidBrush(hat_color); HGDIOBJ prev_hat = SelectObject(hdc, hat_b);
         POINT hat[] = {{sx, sy - (int)(14 * scale)}, {sx + (int)(9 * scale), sy + (int)(4 * scale)}, {sx, sy + (int)(8 * scale)}, {sx - (int)(9 * scale), sy + (int)(4 * scale)}};
