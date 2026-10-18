@@ -110,6 +110,7 @@ WeaponStats *GetEquippedWeaponStats(void) {
         if (IsBowItem(&player_inventory[i])) continue;
         for (int j = 0; j < WEAPON_CATALOG_COUNT; j++) if (strcmp(player_inventory[i].name, weapon_catalog[j].name) == 0) return &weapon_catalog[j];
         if (strcmp(player_inventory[i].name, "Iron Sword") == 0) return &weapon_catalog[0];
+        if (strcmp(player_inventory[i].name, "Silver Dagger") == 0) return &weapon_catalog[LOOT_DAGGER - 1];
         if (strcmp(player_inventory[i].name, "Axe") == 0) return &weapon_catalog[2];
     }
     return NULL;
@@ -149,7 +150,8 @@ float GetNamedItemWeight(const char *name) {
     if (strcmp(name, "Short Sword") == 0) return 2.0f;
     if (strcmp(name, "Long Bow") == 0) return 2.0f;
     if (strcmp(name, "Short Bow") == 0) return 1.5f;
-    if (strcmp(name, "Dagger") == 0) return 1.0f;
+    if (strcmp(name, "Dagger") == 0 || strcmp(name, "Silver Dagger") == 0) return 1.0f;
+    if (strcmp(name, "Garlic") == 0) return 0.2f;
     if (strcmp(name, "Long Sword") == 0) return 5.0f;
     if (strcmp(name, "Axe") == 0) return 4.0f;
     if (strcmp(name, "Spear") == 0) return 3.0f;
@@ -467,6 +469,13 @@ float WeightSpeedFactor(void) {
     if (load <= 0.75f) return 1.0f;
     if (load >= 1.0f) return 0.0f;
     return (1.0f - load) / 0.25f;
+}
+
+// Silver bites the undead: double melee damage against Dracula.
+int SilverWeaponEquipped(void) {
+    for (int i = 0; i < player_item_count; i++)
+        if (player_inventory[i].is_equipped && strncmp(player_inventory[i].name, "Silver", 6) == 0) return 1;
+    return 0;
 }
 
 // Worn Night Vision Ring: the night is drawn much brighter.

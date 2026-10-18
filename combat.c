@@ -29,7 +29,7 @@ void TriggerMonsterRespawn(void) {
     else { enemy_x = (float)(rand() % 24 + 4); enemy_y = 29.0f; }
     int mythic = MythicForCurrentLand();
     if (mythic >= 0 && rand() % 100 < MYTHIC_SPAWN_CHANCE * (is_night ? 2 : 1)) active_monster = (MonsterType)mythic;
-    else if (is_night && rand() % 100 < 4) active_monster = MONSTER_DRACULA;
+    else if (is_night && rand() % 100 < 4 && GetMaterialCount("Garlic") == 0) active_monster = MONSTER_DRACULA;
     else {
         // Satyr cultists keep to the wild Greek-style country: woods, meadows and hills.
         int satyr_land = current_biome == BIOME_FOREST || current_biome == BIOME_GRASSLANDS ||
@@ -89,6 +89,7 @@ void SpawnBloodBurst(float x, float y, float dir_x, float dir_y) {
 void PerformMeleeAttack(void) {
     WeaponStats *weapon = GetEquippedWeaponStats();
     float damage = (weapon ? (float)(weapon->damage + EquippedForgeBonus()) : 1.0f) * TownDamageMult();
+    if (active_monster == MONSTER_DRACULA && SilverWeaponEquipped()) damage *= 2.0f;
     float stamina_cost = MELEE_SWING_STAMINA + (weapon ? weapon->stamina_cost * 2.0f : 0.0f);
     if (player_stamina < stamina_cost) { strcpy(arpg_action_log, "Exhausted! Too tired to swing that weapon."); return; }
     player_stamina -= (float)stamina_cost;

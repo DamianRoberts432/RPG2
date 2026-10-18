@@ -219,7 +219,10 @@ MerchantItem merchant_catalog[MERCH_ITEMS] = {
     { "Tarot Card",  "Material", 0, 40,  -1, 0, RARITY_COMMON, 0 },
     { "Rum Bottle",  "Material", 0, 25,  -1, 0, RARITY_COMMON, 0 },
     { "Cigar",       "Material", 0, 15,  -1, 0, RARITY_COMMON, 0 },
-    { "Chaos Relic", "Material", 0, 600,  2, 2, RARITY_UNCOMMON, 0 }
+    { "Chaos Relic", "Material", 0, 600,  2, 2, RARITY_UNCOMMON, 0 },
+    // Dracula wards (see TriggerMonsterRespawn and PerformMeleeAttack).
+    { "Garlic",        "Material", 0,                  8, -1, 0, RARITY_COMMON, 0 },
+    { "Silver Dagger", "Weapon",   0,                900, 1,  1, RARITY_UNCOMMON, 0 }
     // Legendary items are never sold; they only drop from bosses (see HandleEnemyDamage).
 };
 const char *villager_greetings[] = {

@@ -115,6 +115,7 @@ void DrawPlayerStatusHUD(HDC hdc) {
 static WeaponStats *FindWeaponStats(const char *name) {
     for (int i = 0; i < WEAPON_CATALOG_COUNT; i++) if (strcmp(weapon_catalog[i].name, name) == 0) return &weapon_catalog[i];
     if (strcmp(name, "Iron Sword") == 0) return &weapon_catalog[0];
+    if (strcmp(name, "Silver Dagger") == 0) return &weapon_catalog[LOOT_DAGGER - 1];
     return NULL;
 }
 
@@ -127,6 +128,8 @@ static const char *ItemBlurb(const char *name) {
     if (strcmp(name, "Fishing Pole") == 0) return "G to cast at water, hold F and release at 50-80%.";
     if (strcmp(name, "Spear") == 0) return "Long thrust; RT/F throws it.";
     if (strcmp(name, "Night Vision Ring") == 0) return "Worn: the night looks much brighter.";
+    if (strcmp(name, "Garlic") == 0) return "Carried: Dracula won't come for you.";
+    if (strcmp(name, "Silver Dagger") == 0) return "Silver: double damage to Dracula.";
     if (strcmp(name, "Canoe") == 0 || strcmp(name, "Raft") == 0 || strcmp(name, "Boat") == 0) return "Carry it to paddle across water.";
     return "";
 }
