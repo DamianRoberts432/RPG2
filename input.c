@@ -113,6 +113,10 @@ void ProcessGamepadInput(void) {
                 FireClassAbility();
             }
             y_button_was_down = y_down_gp;
+            static int rs_was_down = 0;
+            int rs_down_gp = (buttons & XINPUT_GAMEPAD_RIGHT_THUMB) != 0;
+            if (rs_down_gp && !rs_was_down) CycleCameraZoom();
+            rs_was_down = rs_down_gp;
 
             int shopping = vendor_menu_open && IsNearMerchant();
             if (!shopping && !town_menu) {
@@ -305,6 +309,10 @@ void ProcessGamepadInput(void) {
             FireClassAbility();
         }
         y_key_was_down = y_down_kb;
+        static int v_key_was_down = 0;
+        int v_down_kb = (GetAsyncKeyState('V') & 0x8000) != 0;
+        if (v_down_kb && !v_key_was_down) CycleCameraZoom();
+        v_key_was_down = v_down_kb;
 
         static DWORD last_vendor_kb = 0;
         int shopping_kb = vendor_menu_open && IsNearMerchant();

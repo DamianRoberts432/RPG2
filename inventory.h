@@ -34,6 +34,7 @@ void ExpireDroppedItems(void);
 void ClearLegendaryDrops(void);
 int HasInventoryItem(const char *name);
 int NightVisionActive(void);
+int SilverWeaponEquipped(void);
 void ConsumeSelectedFood(void);
 
 #endif // INVENTORY_H

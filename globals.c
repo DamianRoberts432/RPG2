@@ -189,7 +189,8 @@ WeaponStats weapon_catalog[] = {
 // base_price * rarity (see DrawVendorShopOverlay/HandleVendorBuy). Rare/
 // Legendary stock is intentionally tiny (1-3 / 1) and only partially restocks
 // after each day/night cycle (see RestockMerchant).
-MerchantItem merchant_catalog[MERCH_ITEMS] = {
+int merch_item_count = MERCH_BASE_ITEMS;
+MerchantItem merchant_catalog[MERCH_CAPACITY] = {
     { "Short Sword",   "Weapon",   LOOT_SHORT_SWORD,  20, 1,  1, RARITY_COMMON, 0 },
     { "Axe",           "Weapon",   LOOT_AXE,          25, 1,  1, RARITY_COMMON, 0 },
     { "Iron Sword",    "Weapon",   0,                 22, 1,  1, RARITY_COMMON, 0 },
@@ -219,7 +220,14 @@ MerchantItem merchant_catalog[MERCH_ITEMS] = {
     { "Tarot Card",  "Material", 0, 40,  -1, 0, RARITY_COMMON, 0 },
     { "Rum Bottle",  "Material", 0, 25,  -1, 0, RARITY_COMMON, 0 },
     { "Cigar",       "Material", 0, 15,  -1, 0, RARITY_COMMON, 0 },
-    { "Chaos Relic", "Material", 0, 600,  2, 2, RARITY_UNCOMMON, 0 }
+    { "Chaos Relic", "Material", 0, 600,  2, 2, RARITY_UNCOMMON, 0 },
+    // Dracula wards (see TriggerMonsterRespawn and PerformMeleeAttack).
+    { "Garlic",        "Material", 0,                  8, -1, 0, RARITY_COMMON, 0 },
+    { "Silver Dagger", "Weapon",   0,                900, 1,  1, RARITY_UNCOMMON, 0 },
+    // Farming (see farming.c).
+    { "Hoe",           "Tool",     0,                 12, 1,  1, RARITY_COMMON, 0 },
+    { "Seeds",         "Material", 0,                  2, -1, 0, RARITY_COMMON, 0 },
+    { "Turnip",        "Food",     0,                  4, -1, 0, RARITY_COMMON, 0 }
     // Legendary items are never sold; they only drop from bosses (see HandleEnemyDamage).
 };
 const char *villager_greetings[] = {

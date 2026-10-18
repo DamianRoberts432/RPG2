@@ -71,6 +71,7 @@ void UpdateGamePhysics(void) {
     }
     UpdateVillageNPCs();
     UpdateCritters();
+    UpdateFootpaths();
     ExpireDroppedItems();
     UpdateIceSlide();
     UpdateDebrisTwigs();
@@ -114,7 +115,7 @@ void UpdateGamePhysics(void) {
         player_spell.x += player_spell.vx;
         player_spell.y += player_spell.vy;
         if (EnemyAtPoint(player_spell.x, player_spell.y, 0.5f) >= 0) {
-            player_spell.active = 0; HandleEnemyDamage(player_spell.damage);
+            player_spell.active = 0; hit_splash_color = selected_class == CLASS_WIZARD ? RGB(80, 150, 255) : RGB(170, 80, 230); HandleEnemyDamage(player_spell.damage);
         } else if (player_spell.x < 0 || player_spell.x >= MAP_SIZE || player_spell.y < 0 || player_spell.y >= MAP_SIZE) {
             player_spell.active = 0;
         }
@@ -137,6 +138,7 @@ void UpdateGamePhysics(void) {
                 summoned_zombie.attack_cooldown = st == SUMMON_GHOST ? 24 : 30;
                 // Bigger races raise bigger dead: damage follows hero height, +-15%.
                 float race_k = player_height_m / 1.82f;
+                hit_splash_color = st == SUMMON_ZOMBIE ? RGB(90, 200, 60) : st == SUMMON_GHOST ? RGB(170, 240, 255) : RGB(235, 230, 210);
                 HandleEnemyDamage(summon_dmg[st] * (0.75f + 0.25f * race_k) * (0.85f + (rand() % 31) / 100.0f));
                 if (st == SUMMON_ZOMBIE) enemies[current_enemy].poison = 3;
                 else if (rand() % 100 < 15) enemies[current_enemy].poison = 2;

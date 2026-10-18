@@ -17,6 +17,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
     grass_brush = CreateSolidBrush(RGB(105, 185, 85)); creation_bg = CreateSolidBrush(RGB(15, 18, 24)); clean_null_pen = CreatePen(PS_NULL, 0, RGB(0,0,0));
     RecalculateCarriedWeight();
     LoadWorldMapState();
+    IngestUpdates();
     InitSeasonAndWeather();
     ApplyClassAndRaceStats(); GenerateProceduralScreen(screen_grid_y * META_GRID_SIZE + screen_grid_x);
 
@@ -153,6 +154,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
             } else {
                 float ambient_intensity = (float)fabs(sin(day_night_cycle_accumulator));
                 if (NightVisionActive() && ambient_intensity < 0.6f) ambient_intensity = 0.6f;
+                // Dark vision: Dwarves and Gnomes, born underground, see further at night and in caves.
+                if ((selected_race == RACE_DWARF || selected_race == RACE_GNOME) && ambient_intensity < 0.4f) ambient_intensity = 0.4f;
                 int r_tone = (int)(25.0f + ambient_intensity * 80.0f);
                 int g_tone = (int)(30.0f + ambient_intensity * 155.0f);
                 int b_tone = (int)(40.0f + ambient_intensity * 45.0f);
@@ -167,10 +170,12 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) {
                     if (VISUAL_MAP[r][c] == 12) {
                         int sx, sy; GetIsoCoords((float)c, (float)r, &sx, &sy);
-                        if (sx >= -TILE_WIDTH && sx <= WINDOW_WIDTH + TILE_WIDTH) DrawFlowingRiver(memHDC, sx, sy, r * MAP_SIZE + c);
+                        if (sx >= -TILE_WIDTH && sx <= WINDOW_WIDTH + TILE_WIDTH) { DrawFlowingRiver(memHDC, sx, sy, r * MAP_SIZE + c); DrawShoreFoam(memHDC, c, r, sx, sy); }
                     }
                 }
                 DrawSeasonalGroundCover(memHDC);
+                DrawFootpaths(memHDC);
+                DrawFarmPlots(memHDC);
                 for (int r = 0; r < MAP_SIZE; r++) {
                     for (int c = 0; c < MAP_SIZE; c++) {
                         int sx, sy; GetIsoCoords((float)c, (float)r, &sx, &sy); if (sx < -TILE_WIDTH * 2 || sx > WINDOW_WIDTH + TILE_WIDTH * 2) continue;
@@ -212,11 +217,13 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                         DrawEnemiesAtTile(memHDC, c, r);
                     }
                 }
-                DrawCampfires(memHDC); DrawVillageLights(memHDC); DrawChests(memHDC); DrawBedroll(memHDC); DrawGroundLoot(memHDC); DrawDroppedItems(memHDC); DrawDebrisTwigs(memHDC); DrawSummonedZombie(memHDC);
+                DrawCampfires(memHDC); DrawVillageLights(memHDC); DrawChests(memHDC); DrawBarrels(memHDC); DrawBedroll(memHDC); DrawGroundLoot(memHDC); DrawDroppedItems(memHDC); DrawDebrisTwigs(memHDC); DrawSummonedZombie(memHDC);
                 DrawFlyingArrow(memHDC); DrawFlyingSpear(memHDC); DrawFlyingSpell(memHDC); DrawClassAbilityFX(memHDC); DrawButterflies(memHDC); DrawBloodMistFX(memHDC);
                 DrawEnvironmentalCritters(memHDC); DrawFamiliar(memHDC); DrawFishing(memHDC); DrawMerchantStoreFront(memHDC); DrawVillage(memHDC); DrawNightEyes(memHDC);
                 DrawWeatherEffects(memHDC); DrawSolitaireSunMoonBeam(memHDC);
                 ApplyCameraZoom(memHDC, view_zoom);
+                DrawAfkNightSky(memHDC);
+                DrawPeyoteMelt(memHDC);
                 DrawPlayerStatusHUD(memHDC); DrawLootPreview(memHDC); DrawBelt(memHDC);
 
                 if (is_menu_open) DrawTabbedMenuOverlay(memHDC);

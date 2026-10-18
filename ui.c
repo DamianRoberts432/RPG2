@@ -115,18 +115,24 @@ void DrawPlayerStatusHUD(HDC hdc) {
 static WeaponStats *FindWeaponStats(const char *name) {
     for (int i = 0; i < WEAPON_CATALOG_COUNT; i++) if (strcmp(weapon_catalog[i].name, name) == 0) return &weapon_catalog[i];
     if (strcmp(name, "Iron Sword") == 0) return &weapon_catalog[0];
+    if (strcmp(name, "Silver Dagger") == 0) return &weapon_catalog[LOOT_DAGGER - 1];
     return NULL;
 }
 
 static const char *ItemBlurb(const char *name) {
     if (strcmp(name, "Strategy Guide") == 0) return "Secret card combos. Browse it here, or buy it.";
     if (strcmp(name, "Matches") == 0) return "Light a campfire from the inventory (needs 2 Wood).";
-    if (strcmp(name, "Fish") == 0 || strcmp(name, "Apple") == 0) return "Eat to restore health.";
+    if (strcmp(name, "Fish") == 0 || strcmp(name, "Apple") == 0 || strcmp(name, "Turnip") == 0) return "Eat to restore health.";
+    if (strcmp(name, "Hoe") == 0) return "X on bare grass tills a farm plot.";
+    if (strcmp(name, "Seeds") == 0) return "X on tilled soil plants turnips; ripe in 3 days.";
     if (strcmp(name, "Pickaxe") == 0) return "Mine rocks with X.";
     if (strcmp(name, "Axe") == 0) return "Chop trees with X; also a heavy weapon.";
     if (strcmp(name, "Fishing Pole") == 0) return "G to cast at water, hold F and release at 50-80%.";
     if (strcmp(name, "Spear") == 0) return "Long thrust; RT/F throws it.";
     if (strcmp(name, "Night Vision Ring") == 0) return "Worn: the night looks much brighter.";
+    if (strcmp(name, "Peyote") == 0) return "Eat it and the colours melt for 30 seconds.";
+    if (strcmp(name, "Garlic") == 0) return "Carried: Dracula won't come for you.";
+    if (strcmp(name, "Silver Dagger") == 0) return "Silver: double damage to Dracula.";
     if (strcmp(name, "Canoe") == 0 || strcmp(name, "Raft") == 0 || strcmp(name, "Boat") == 0) return "Carry it to paddle across water.";
     return "";
 }

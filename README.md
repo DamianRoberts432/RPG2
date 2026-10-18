@@ -99,6 +99,7 @@ game.exe
 | **X facing water (Fishing Pole in pack)** | — | Cast. A bobber floats out; when it dips the controller rumbles gently - press X then to catch a fish (60%, sometimes 70%, plus 3% per LCK point, up to 90%). Walk away to reel in. |
 | **Mouse left click** | — | Walk to that spot, or walk up to a clicked monster and attack it. Clicking a belt slot uses it. |
 | **Mouse right click** | — | Class ability (same as Y). |
+| **'V' Key / Right Stick click** | — | Step the camera through three zoom levels: wide, normal, close. |
 | **Mouse wheel / side buttons** | — | Wheel picks a belt slot; back button taps the bow, forward button uses the picked belt item. |
 | **'1'-'0' Keys (no menu open)** | — | Use belt slots 1-10: the first ten weapons, food and tools in your pack, shown at the bottom of the screen. |
 | **'9' Key / Back in Options Tab** | — | Delete the save file (press twice within 3 seconds). Saving stays off until you restart. |
@@ -115,7 +116,7 @@ game.exe
 Talking to a shopkeeper takes you inside their building (merchant included).
 
 - **Blacksmith** (every town): repair any worn item, over-forge your weapon (+1 damage per forge up to +10, each forge costs 10% of its max durability), buy rare weapons (Katana, War Hammer, Great Axe) and recycle spare gear into Iron, Wood, Leather, String and Rope.
-- **Card shop** (some days): ten random cards, plus 3-card (20,000), 7-card (40,000) and 60-card (350,000) packs. Selecting a card shows its set, rarity, power/toughness and what its ability does.
+- **Card shop** (some days): ten random cards, plus 3-card (20,000), 7-card (40,000) and 60-card (350,000) packs, and the **Master Base Box** (1,000,000) with one of every card in print. Packs and card drops favor small cards: 70% 1/1, 25% 2/2, 5% 3/3. Selecting a card shows its set, rarity, power/toughness and what its ability does.
   - Only three sets are in print for now: **Wild Creatures** (the bestiary monsters plus bluebird, squirrel, owl, bat), **Angels** and **Goetia Demons** - 37 cards.
   - Every card is a 1/1, 2/2 or 3/3. Abilities make the difference: **First Strike** hits before a card without it; **Mighty** (Yeti, Bigfoot) is +3/+3, so they fight as 6/6; a Demon 1/1's **death curse** gives the next enemy card -2/-2; an Angel 1/1's **death blessing** gives your next card +1/+1, +2/+0 or +0/+2.
   - The kid at the corner table plays up to 10 practice hands per visit (no ante). You get three cards from the counter and pick the order to lay them; he leads with his left to right. The practice table on the right shows your three cards and his with their text, then the play-by-play: both cards deal damage at the same time unless one has First Strike, and death marks land on the next card in.
@@ -145,6 +146,19 @@ One real second is one game minute, so a day lasts 24 real minutes and each 30-d
 - **Caves** only have bats. Outside, owls and bats only come out at night.
 - **Musashi's Blade** never breaks and is never dropped by bosses: it only washes up on a beach in the easternmost column of the map on summer day 13.
 - **Zombies and skeletons** are sized by race height (yours, for summons), hit a little harder when bigger, and summons sometimes poison.
+- **Wildlife:** at most 6 animals per screen.
+- **Dark vision:** Dwarves and Gnomes see further at night and in caves.
+- **Dracula:** carry **Garlic** (merchant) and he won't come for you; a **Silver Dagger** (merchant) does double damage to him.
+- **Farming:** buy a **Hoe** and **Seeds** from the merchant. X with the Hoe on bare grass tills a plot (up to 48); X with Seeds plants turnips, which grow one stage a day and are ripe on day 3; X on a ripe plot harvests 2-3 **Turnips** (eat to heal) plus 3-4 Seeds per turnip, so you only buy Seeds once. Plots are saved.
+- **Footpaths:** grass you walk over often turns to a dirt path, and grows back a little each day you leave it alone. Paths are saved.
+- **Villager quests:** villagers sometimes ask you to slay a few monsters or bring them Wood, Stone, Fish or Apples, scaled to your level. One job at a time; any villager pays you when it's done. Talk to a villager to see your progress.
+- **Hit splashes:** class abilities splash their own colour - green for Rogue venom (hits while sneaking) and zombie bites, blue for the Wizard's bolt, gold for the Knight/Warrior counter, bone-white for skeletons and pale blue for ghosts.
+- **AFK night sky:** stand idle at night and, as the camera drifts in, stars, the moon (its phase follows the 30-day season) and shooting stars fade in.
+- **Grass** bends aside as you walk through it, and **foam** laps at every shoreline.
+- **Barrels** stand by the homes in towns and in caves. X smashes one for a little gold, an apple or wood (2% card chance). They are back the next day.
+- **Zombies** near rivers and marshes rise out of the water's edge.
+- **Peyote:** some desert cacti are small round peyote buttons with a pink flower. Two arrows split one open, X gathers it, and eating it melts the colours on screen for 30 seconds.
+- **Update folder:** see `Update/README.md` to change items, villager lines and quests with a text file, no recompiling.
 - **Sound:** the game runs with no sound files yet; Saturn-style synth voices and samples come later.
 
 ## Layout
@@ -169,5 +183,9 @@ One real second is one game minute, so a day lasts 24 real minutes and each 30-d
 | ui.c | HUD, inventory/map/options menu, vendor shop overlay |
 | worldmap.c | Explored-world map (biomes, villages, castles, water, treasure) and the save file |
 | weather.c | Seasons, world-wide weather, wind gusts, snow, fall leaves, optional real-world weather |
+| farming.c | Tilled plots, planting, crop growth and harvest |
+| paths.c | Worn footpaths that grow back |
+| quests.c | Everyday villager kill/fetch quests |
+| update.c | Reads the Update folder's text files at launch |
 
 Each module has a matching .h with its function prototypes.

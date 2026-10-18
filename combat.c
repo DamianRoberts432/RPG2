@@ -20,6 +20,26 @@ static int MythicForCurrentLand(void) {
 }
 
 #define MYTHIC_SPAWN_CHANCE 4 // percent per spawn in its home land, doubled at night
+static void SpawnTintedBurst(float x, float y, float dir_x, float dir_y, uint32_t color);
+
+// Zombies near rivers and marshes rise out of the water's edge 4-10 tiles
+// from the hero instead of walking in from the screen edge.
+static void ZombieRisesFromWater(void) {
+    int best = -1; float best_d = 101.0f;
+    for (int r = 1; r < MAP_SIZE - 1; r++) for (int c = 1; c < MAP_SIZE - 1; c++) {
+        if (VISUAL_MAP[r][c] != 0) continue;
+        if (VISUAL_MAP[r - 1][c] != 12 && VISUAL_MAP[r + 1][c] != 12 && VISUAL_MAP[r][c - 1] != 12 && VISUAL_MAP[r][c + 1] != 12) continue;
+        float dx = c - player_x, dy = r - player_y, d = dx * dx + dy * dy;
+        if (d < 16.0f || d >= best_d) continue;
+        best_d = d; best = r * MAP_SIZE + c;
+    }
+    if (best < 0) return;
+    enemy_x = (float)(best % MAP_SIZE); enemy_y = (float)(best / MAP_SIZE);
+    SpawnTintedBurst(enemy_x, enemy_y, 0.0f, -1.0f, RGB(120, 190, 255));
+    size_t n = strlen(arpg_action_log);
+    snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  |  A zombie rises out of the water!");
+}
+
 void TriggerMonsterRespawn(void) {
     int is_night = fabs(sin(day_night_cycle_accumulator)) < 0.35f;
     int spawn_side = rand() % 4;
@@ -29,7 +49,7 @@ void TriggerMonsterRespawn(void) {
     else { enemy_x = (float)(rand() % 24 + 4); enemy_y = 29.0f; }
     int mythic = MythicForCurrentLand();
     if (mythic >= 0 && rand() % 100 < MYTHIC_SPAWN_CHANCE * (is_night ? 2 : 1)) active_monster = (MonsterType)mythic;
-    else if (is_night && rand() % 100 < 4) active_monster = MONSTER_DRACULA;
+    else if (is_night && rand() % 100 < 4 && GetMaterialCount("Garlic") == 0) active_monster = MONSTER_DRACULA;
     else {
         // Satyr cultists keep to the wild Greek-style country: woods, meadows and hills.
         int satyr_land = current_biome == BIOME_FOREST || current_biome == BIOME_GRASSLANDS ||
@@ -38,6 +58,7 @@ void TriggerMonsterRespawn(void) {
         active_monster = r < 32 ? MONSTER_SKELLY : r < 64 ? MONSTER_ZOMBIE :
                          (r < 82 || !satyr_land) ? MONSTER_GOBLIN : MONSTER_SATYR;
     }
+    if (active_monster == MONSTER_ZOMBIE && !in_cave) ZombieRisesFromWater();
     static const float base_hearts[] = { 3.0f, 3.0f, 6.0f, 2.0f, 3.5f, 9.0f, 9.0f, 8.0f, 8.0f };
     enemy_hearts = base_hearts[active_monster] + (is_night ? 0.5f : 0.0f);
     if (IS_MYTHIC_MONSTER(active_monster)) {
@@ -45,6 +66,8 @@ void TriggerMonsterRespawn(void) {
         snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  |  A %s roams this land!", MonsterName(active_monster));
     }
 }
+
+uint32_t hit_splash_color = 0;
 
 void SpawnBloodMist(float x, float y) {
     // Tight, compact speck burst: small velocities/lifetimes so blood reads as
@@ -60,6 +83,7 @@ void SpawnBloodMist(float x, float y) {
         blood_mist[i].life = 8 + rand() % 9;
         blood_mist[i].max_life = blood_mist[i].life;
         blood_mist[i].active = 1;
+        blood_mist[i].color = RGB(200, 25, 25);
     }
 }
 
@@ -67,7 +91,7 @@ void SpawnBloodMist(float x, float y) {
 #define HEAVY_HIT_DAMAGE 2.0f
 #define SPEAR_REACH 2.6f
 #define SPEAR_THRUST_DOT 0.7f // narrower than a sword swing: a straight thrust
-void SpawnBloodBurst(float x, float y, float dir_x, float dir_y) {
+static void SpawnTintedBurst(float x, float y, float dir_x, float dir_y, uint32_t color) {
     float d = (float)sqrt(dir_x * dir_x + dir_y * dir_y);
     if (d < 0.001f) { dir_x = 0.0f; dir_y = 1.0f; d = 1.0f; }
     dir_x /= d; dir_y /= d;
@@ -82,13 +106,18 @@ void SpawnBloodBurst(float x, float y, float dir_x, float dir_y) {
         blood_mist[i].life = 10 + rand() % 9;
         blood_mist[i].max_life = blood_mist[i].life;
         blood_mist[i].active = 1;
+        blood_mist[i].color = color;
         spawned++;
     }
 }
 
+void SpawnBloodBurst(float x, float y, float dir_x, float dir_y) { SpawnTintedBurst(x, y, dir_x, dir_y, RGB(200, 25, 25)); }
+
 void PerformMeleeAttack(void) {
+    hit_splash_color = 0;
     WeaponStats *weapon = GetEquippedWeaponStats();
     float damage = (weapon ? (float)(weapon->damage + EquippedForgeBonus()) : 1.0f) * TownDamageMult();
+    if (active_monster == MONSTER_DRACULA && SilverWeaponEquipped()) damage *= 2.0f;
     float stamina_cost = MELEE_SWING_STAMINA + (weapon ? weapon->stamina_cost * 2.0f : 0.0f);
     if (player_stamina < stamina_cost) { strcpy(arpg_action_log, "Exhausted! Too tired to swing that weapon."); return; }
     player_stamina -= (float)stamina_cost;
@@ -141,6 +170,9 @@ void HandleEnemyDamage(float dmg) {
     int crit = dmg > 0.0f && rand() % 100 < 5 + 2 * stat_spent[4]; // each LCK point spent: +2% crit
     if (crit) dmg *= 2.0f;
     enemy_hearts -= dmg;
+    // Class abilities splash their own colour: green venom, blue arcane, gold counter...
+    if (!hit_splash_color && selected_class == CLASS_ROGUE && is_sneaking) hit_splash_color = RGB(90, 200, 60);
+    if (hit_splash_color) { SpawnTintedBurst(enemy_x, enemy_y, enemy_x - player_x, enemy_y - player_y, hit_splash_color); hit_splash_color = 0; }
     if (active_monster == MONSTER_YETI) enemies[current_enemy].angry = 1;
     float k_dx = enemy_x - player_x; float k_dy = enemy_y - player_y; float k_dist = (float)sqrt(k_dx * k_dx + k_dy * k_dy);
     if (crit || dmg >= HEAVY_HIT_DAMAGE) SpawnBloodBurst(enemy_x, enemy_y, k_dx, k_dy);
@@ -197,6 +229,7 @@ void HandleEnemyDamage(float dmg) {
         if (monster_card_links[active_monster].kills < 65535) monster_card_links[active_monster].kills++;
         TryCardDrop(active_monster);
         NoteLegendaryKill(active_monster);
+        NoteQuestKill(active_monster);
     } else {
         sprintf(arpg_action_log, "%s: Hit for %.1f DMG! Remainder: %.1f", crit ? "CRITICAL" : "STRIKE", dmg, enemy_hearts);
     }
@@ -372,6 +405,7 @@ static int ArrowBlockedAt(float x, float y) {
     int tx = (int)x, ty = (int)y;
     if (tx == player_arrow.origin_tx && ty == player_arrow.origin_ty) return 0;
     uint8_t t = VISUAL_MAP[ty][tx];
+    if (PeyoteAt(tx, ty)) { HitPeyote(tx, ty); return 1; }
     return t == 11 || t == 1 || t == 3;
 }
 
@@ -577,6 +611,7 @@ void FireClassAbility(void) {
         float m_dist = DistanceToEnemy();
         if (enemy_hearts > 0.0f && m_dist < 2.0f && IsFacingEnemy()) {
             sword_swipe_frame = 10;
+            hit_splash_color = RGB(255, 210, 60);
             HandleEnemyDamage(1.0f + 1.0f * stage);
             strcpy(arpg_action_log, "DEFENSIVE BACKSTEP: Countered with a heavy strike!");
         } else {

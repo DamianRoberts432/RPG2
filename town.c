@@ -90,7 +90,8 @@ static int ForgeCost(int bonus) { return 1000 * (bonus + 1); }
 enum { AB_NONE, AB_FIRST_STRIKE, AB_PUMP3, AB_CURSE, AB_BLESS_BOTH, AB_BLESS_STR, AB_BLESS_LIFE };
 typedef struct { const char *name; int set, pt, ability; } CardDef;
 static const char *card_sets[3] = { "Wild Creatures", "Angels", "Goetia Demons" };
-static const CardDef card_defs[CARD_POOL] = {
+int card_pool_size = CARD_PRINTED;
+static CardDef card_defs[CARD_COUNT] = {
     { "Skeleton", 0, 1, AB_NONE }, { "Zombie", 0, 2, AB_NONE }, { "Dracula", 0, 3, AB_FIRST_STRIKE },
     { "Goblin", 0, 1, AB_FIRST_STRIKE }, { "Satyr", 0, 2, AB_FIRST_STRIKE }, { "Yeti", 0, 3, AB_PUMP3 },
     { "Sphinx", 0, 3, AB_NONE }, { "Bigfoot", 0, 3, AB_PUMP3 }, { "Bunyip", 0, 2, AB_NONE },
@@ -108,11 +109,37 @@ static int card_offers[10], card_offer_screen = -1, card_offer_day = -1;
 
 static int PoolId(int id) { return id >= 0 && id < CARD_POOL ? id : 0; }
 
+// NewCard lines from the Update folder. Stats are clamped to the rarity cap
+// (1 = 1/1, 2 = 2/2, 3 = 3/3) so new cards can't outclass the base set.
+int AddRuntimeCard(const char *name, int set, int rarity, int atk, int hp, int ability) {
+    static char names[CARD_COUNT - CARD_PRINTED][32];
+    if (!name[0]) return 0;
+    for (int i = 0; i < card_pool_size; i++) if (_stricmp(card_defs[i].name, name) == 0) return 1;
+    if (card_pool_size >= CARD_COUNT) return 0;
+    int cap = rarity < 1 ? 1 : rarity > 3 ? 3 : rarity;
+    int pt = atk > hp ? atk : hp;
+    if (pt > cap) pt = cap;
+    if (pt < 1) pt = 1;
+    char *slot = names[card_pool_size - CARD_PRINTED];
+    snprintf(slot, 32, "%s", name);
+    card_defs[card_pool_size++] = (CardDef){ slot, set < 0 || set > 2 ? 0 : set, pt, ability < 0 || ability > AB_BLESS_LIFE ? AB_NONE : ability };
+    return 1;
+}
+
 void CardName(int id, char *out, size_t n) { snprintf(out, n, "%s", card_defs[PoolId(id)].name); }
 
 static int CardRarity(int id) { return card_defs[PoolId(id)].pt - 1; }
 static int CardPrice(int id) { static const int p[3] = { 600, 2500, 15000 }; return p[CardRarity(id)]; }
 static int CardAbility(int id) { return card_defs[PoolId(id)].ability; }
+// Drops and packs favor small cards: 70% 1/1, 25% 2/2, 5% 3/3.
+int RandomPoolCard(int first) {
+    int roll = rand() % 100, pt = roll < 70 ? 1 : roll < 95 ? 2 : 3, n = 0;
+    for (int i = first; i < CARD_POOL; i++) n += card_defs[i].pt == pt;
+    if (n == 0) return first + rand() % (CARD_POOL - first);
+    int k = rand() % n;
+    for (int i = first; i < CARD_POOL; i++) if (card_defs[i].pt == pt && k-- == 0) return i;
+    return first;
+}
 static int CardBasePower(int id) { int c = PoolId(id); return card_defs[c].pt + (card_defs[c].ability == AB_PUMP3 ? 3 : 0); }
 
 static const char *AbilityText(int ab) {
@@ -297,6 +324,8 @@ static void BuildRows(void) {
         AddRow(A_PACK, 3, "3-card booster - 20,000 gold");
         AddRow(A_PACK, 7, "7-card pack - 40,000 gold");
         AddRow(A_PACK, 60, "60-card box - 350,000 gold");
+        snprintf(t, sizeof(t), "Master Base Box (all %d cards) - 1,000,000 gold", CARD_POOL);
+        AddRow(A_PACK, 0, t);
         AddRow(A_KID, 0, "Talk to the kid at the table");
         int left = kid_round_screen == current_screen_index ? KID_MAX_ROUNDS - kid_rounds : KID_MAX_ROUNDS;
         if (kid_dealt && kid_round_screen == current_screen_index) {
@@ -362,7 +391,10 @@ static void RowInfo(const TownRow *r, char *out, size_t n) {
         snprintf(out, n, "Breaks the %s down into %s.", nm, strstr(nm, "Bow") ? "2 Wood and 1 String" :
                  strcmp(slot, "Armor") == 0 ? "2 Leather and 1 Iron" : strcmp(slot, "Shield") == 0 ? "2 Wood and 1 Rope" : "2 Iron and 1 Wood"); break; }
     case A_CARD: CardDetails(card_offers[r->arg], out, n); break;
-    case A_PACK: snprintf(out, n, "%d random cards. Collection: %d / %d.", r->arg, CardCount(), CARD_POOL); break;
+    case A_PACK:
+        if (r->arg == 0) snprintf(out, n, "One of every card in print. Completes your binder. Collection: %d / %d.", CardCount(), CARD_POOL);
+        else snprintf(out, n, "%d random cards. Collection: %d / %d.", r->arg, CardCount(), CARD_POOL);
+        break;
     case A_KID: snprintf(out, n, "A kid sits at the corner table shuffling a test deck. He won't play for ante."); break;
     case A_PRACTICE: snprintf(out, n, "Three duels, one card each. Both cards hit at once unless one has First Strike; death curses and blessings land on the next card. His cards and yours are on the right."); break;
     case A_PET: snprintf(out, n, "%s  |  %s  |  %s", familiars[r->arg].name, familiars[r->arg].nocturnal ? "Nocturnal" : "Diurnal", familiars[r->arg].trait); break;
@@ -420,13 +452,22 @@ void NoteLegendaryKill(int monster) {
     snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  |  LEGENDARY: Return to the King!");
 }
 
+#define MASTER_BOX_PRICE 1000000
 static void BuyCardPack(int count) {
+    if (count == 0) {
+        if (CardCount() >= CARD_POOL) { Say("CARD SHOP: You already own every card in print."); return; }
+        if (gold_count < MASTER_BOX_PRICE) { Say("CARD SHOP: The Master Base Box costs %d gold.", MASTER_BOX_PRICE); return; }
+        gold_count -= MASTER_BOX_PRICE;
+        for (int id = 0; id < CARD_POOL; id++) card_collection_bits[id / 8] |= (uint8_t)(1u << (id % 8));
+        Say("CARD SHOP: The Master Base Box! Your binder is complete (%d / %d).", CardCount(), CARD_POOL);
+        return;
+    }
     int price = count == 3 ? CARD_BOOSTER_PRICE : count == 7 ? 40000 : 350000;
     if (gold_count < price) { Say("CARD SHOP: That costs %d gold.", price); return; }
     gold_count -= price;
     int fresh = 0;
     for (int k = 0; k < count; k++) {
-        int id = rand() % CARD_POOL;
+        int id = RandomPoolCard(0);
         if (!HasCard(id)) fresh++;
         card_collection_bits[id / 8] |= (uint8_t)(1u << (id % 8));
     }

@@ -25,8 +25,11 @@
 #define WORLD_GRID_SIZE (META_GRID_SIZE * META_GRID_SIZE)
 #define MAX_BUTTERFLIES 8
 #define DEBRIS_MAX 16
-#define MAX_CRITTERS 8
-#define MERCH_ITEMS 29
+#define MAX_CRITTERS 6
+#define MERCH_BASE_ITEMS 34
+#define MERCH_CAPACITY 50 // room for NewItem lines from the Update folder
+#define MERCH_ITEMS merch_item_count
+extern int merch_item_count;
 #define MAX_BLOOD_MIST 48
 #define MAX_CAMPFIRES 8
 #define MAX_INVENTORY_ITEMS 100
@@ -78,7 +81,7 @@ typedef enum { CLASS_NECROMANCER, CLASS_WIZARD, CLASS_KNIGHT, CLASS_WARRIOR, CLA
 typedef struct { float x, y, z; float vx, vy, vz; int active; float damage; int origin_tx, origin_ty; } ArrowProjectile;
 typedef struct { float x, y, z; float timer; int active; int color_profile; } ButterflyParticle;
 typedef struct { float x, y; float vx, vy; int life; int screen_id; int active; } DebrisParticle;
-typedef struct { float x, y; float vx, vy; int life; int max_life; int active; } BloodParticle;
+typedef struct { float x, y; float vx, vy; int life; int max_life; int active; uint32_t color; } BloodParticle;
 typedef struct { float x, y; float timer; int active; int screen_id; } CampfireEntity;
 typedef struct { float x, y; int type; int state; float base_x, base_y; int active; int hidden; int timer; } CritterEntity;
 // Rarity tiers drive the merchant's price multiplier directly: the enum
@@ -169,6 +172,7 @@ extern int is_sneaking;
 extern ButterflyParticle butterflies[MAX_BUTTERFLIES];
 extern DebrisParticle twigs[DEBRIS_MAX];
 extern BloodParticle blood_mist[MAX_BLOOD_MIST];
+extern uint32_t hit_splash_color; // tint for the next hit's splash (class abilities); 0 = plain blood
 extern CampfireEntity campfires[MAX_CAMPFIRES];
 extern CritterEntity critters[MAX_CRITTERS];
 extern GroundLoot ground_loot[MAX_GROUND_LOOT];
@@ -217,7 +221,9 @@ void KarmaAdjust(int soul, int miasma, int heat, int grapevine);
 // Card collection: two 21-byte bitmasks (168 bits) for 166 cards. Card ids
 // below MONSTER_TYPE_COUNT are monster cards, linked to the bestiary.
 #define CARD_COUNT 166
-#define CARD_POOL 37 // cards in print: Wild Creatures, Angels, Goetia Demons
+#define CARD_PRINTED 37 // cards in print: Wild Creatures, Angels, Goetia Demons
+#define CARD_POOL card_pool_size // CARD_PRINTED plus any NewCard lines from the Update folder
+extern int card_pool_size;
 #define CARD_BYTES 21
 #define CARD_DROP_PERCENT 2
 #define MONSTER_TYPE_COUNT 9
@@ -298,7 +304,7 @@ enum { LOOT_SHORT_SWORD = 1, LOOT_LONG_SWORD, LOOT_AXE, LOOT_SHORT_BOW, LOOT_RUS
 #define LOOT_LAST_WEAPON LOOT_GREAT_AXE
 extern WeaponStats weapon_catalog[13];
 #define WEAPON_CATALOG_COUNT ((int)(sizeof(weapon_catalog) / sizeof(weapon_catalog[0])))
-extern MerchantItem merchant_catalog[MERCH_ITEMS];
+extern MerchantItem merchant_catalog[MERCH_CAPACITY];
 extern const char *villager_greetings[];
 extern const char *villager_questions[];
 extern const char *traveler_barks[];
@@ -334,5 +340,10 @@ extern int cam_y;
 #include "town.h"
 #include "fishing.h"
 #include "mouse.h"
+#include "farming.h"
+#include "barrels.h"
+#include "peyote.h"
+#include "quests.h"
+#include "update.h"
 
 #endif // GAME_H

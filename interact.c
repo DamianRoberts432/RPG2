@@ -34,6 +34,8 @@ void HandleContextInteract(void) {
     if (OpenNearbyChest()) return;
     if (TryPickupGroundLoot()) return;
     if (TryPickupDroppedItems()) return;
+    if (TryBreakBarrel()) return;
+    if (TryGatherPeyote()) return;
     if (in_cave && IsNearPoint(cave_treasure_x, cave_treasure_y, 1.2f)) {
         ClaimCaveTreasureAndExit();
         return;
@@ -67,7 +69,7 @@ void HandleContextInteract(void) {
         } else if (village_npcs[i].type >= 3 && village_npcs[i].type <= 9) {
             static const int menus[7] = { TM_SMITH, TM_PETS, TM_CARDS, TM_KING, TM_BEGGAR, TM_ALTAR, TM_BANK };
             OpenTownMenu(menus[village_npcs[i].type - 3]);
-        } else strcpy(arpg_action_log, village_npcs[i].dialogue);
+        } else if (village_npcs[i].type != 0 || !VillagerQuestTalk()) strcpy(arpg_action_log, village_npcs[i].dialogue);
         return;
     }
     if (HasInventoryItem("Fishing Pole") && IsFacingWater()) { CastFishingLine(); return; }
@@ -80,6 +82,7 @@ void HandleContextInteract(void) {
     else if (player_facing == FACE_DOWN) fy += 1;
     else if (player_facing == FACE_LEFT) fx -= 1;
     else if (player_facing == FACE_RIGHT) fx += 1;
+    if (!in_cave && (TryFarmPlot(fx, fy) || TryFarmPlot(px, py))) return;
 
     int target_x = -1, target_y = -1;
     uint8_t target_tile = 0;
@@ -160,6 +163,8 @@ void HandleContextInteract(void) {
         }
         return;
     }
+
+    if (!in_cave && TryTillGround(fx, fy)) return;
 
     // X/C never lights a new campfire (that is done from the inventory menu via
     // HandleMenuLightFire() to avoid accidental wood loss); it only feeds one.

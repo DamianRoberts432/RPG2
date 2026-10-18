@@ -91,7 +91,7 @@ int CardCount(void) {
 void TryCardDrop(int monster) {
     if (rand() % 100 >= CARD_DROP_PERCENT) return;
     int id = (monster >= 0 && rand() % 2 == 0) ? monster_card_links[monster].card_id
-             : MONSTER_TYPE_COUNT + rand() % (CARD_POOL - MONSTER_TYPE_COUNT);
+             : RandomPoolCard(MONSTER_TYPE_COUNT);
     int is_new = !HasCard(id);
     card_collection_bits[id / 8] |= (uint8_t)(1u << (id % 8));
     size_t n = strlen(arpg_action_log);
