@@ -9,8 +9,8 @@
 // on every later launch), failed lines go to Update\errors.txt, and the
 // source file is deleted.
 #define UPDATE_DIR "Update"
-#define UPDATE_CACHE UPDATE_DIR "\applied.txt"
-#define UPDATE_ERRORS UPDATE_DIR "\errors.txt"
+#define UPDATE_CACHE UPDATE_DIR "\\applied.txt"
+#define UPDATE_ERRORS UPDATE_DIR "\\errors.txt"
 #define MAX_WEIGHT_EDITS 32
 #define MAX_VILLAGER_LINES 16
 
@@ -138,14 +138,14 @@ void IngestUpdates(void) {
     CreateDirectoryA(UPDATE_DIR, NULL);
     ApplyUpdateFile(UPDATE_CACHE, NULL, NULL, NULL);
     WIN32_FIND_DATAA fd;
-    HANDLE h = FindFirstFileA(UPDATE_DIR "\*.txt", &fd);
+    HANDLE h = FindFirstFileA(UPDATE_DIR "\\*.txt", &fd);
     if (h == INVALID_HANDLE_VALUE) return;
     int files = 0, applied = 0, failed = 0;
     do {
         if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || _stricmp(fd.cFileName, "applied.txt") == 0 ||
             _stricmp(fd.cFileName, "errors.txt") == 0) continue;
-        char path[MAX_PATH];
-        snprintf(path, sizeof(path), UPDATE_DIR "\%s", fd.cFileName);
+        char path[MAX_PATH + 16];
+        snprintf(path, sizeof(path), UPDATE_DIR "\\%s", fd.cFileName);
         FILE *keep = fopen(UPDATE_CACHE, "a"), *errors = fopen(UPDATE_ERRORS, "a");
         int n = ApplyUpdateFile(path, keep, errors, &failed);
         if (keep) fclose(keep);
