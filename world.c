@@ -152,14 +152,17 @@ int GetVisitedBiomeAt(int gx, int gy) {
 //     least frequent biome of all; River/Lake are deliberately uncommon.
 static BiomeType PickBiomeRaw(int gx, int gy);
 // Climate by latitude: tundra crowds the far north and south of the world and
-// desert the middle band; PickBiomeRaw's neighbour rules decide the rest.
+// desert the middle band (mostly far east and west); PickBiomeRaw's neighbour rules decide the rest.
 BiomeType PickBiomeForScreen(int gx, int gy) {
     BiomeType b = PickBiomeRaw(gx, gy);
     float lat = fabsf((gy + 0.5f) - META_GRID_SIZE / 2.0f) / (META_GRID_SIZE / 2.0f); // 0 equator .. 1 pole
     if (b == BIOME_DESERT && lat > 0.5f) b = BIOME_PRAIRIE;
     if (b == BIOME_TUNDRA && lat < 0.55f) b = BIOME_FOREST;
     if (lat > 0.8f && (b == BIOME_PRAIRIE || b == BIOME_FOREST) && rand() % 100 < 65) b = BIOME_TUNDRA;
-    if (lat < 0.3f && b == BIOME_PRAIRIE && rand() % 100 < 30) b = BIOME_DESERT;
+    // Deserts sit in the middle band, mostly toward the far east and far west.
+    float lon = fabsf((gx + 0.5f) - META_GRID_SIZE / 2.0f) / (META_GRID_SIZE / 2.0f); // 0 centre .. 1 east/west edge
+    if (b == BIOME_DESERT && lon < 0.4f && rand() % 100 < 70) b = BIOME_PRAIRIE;
+    if (lat < 0.3f && b == BIOME_PRAIRIE && rand() % 100 < (lon > 0.6f ? 45 : 8)) b = BIOME_DESERT;
     return b;
 }
 

@@ -528,6 +528,8 @@ void DrawBedroll(HDC hdc) {
     // can visibly share the same bedroll (future-proofing for multiplayer).
     POINT mattress[] = { {sx - 18, sy}, {sx, sy - 8}, {sx + 18, sy}, {sx, sy + 8} };
     Polygon(hdc, mattress, 4); SelectObject(hdc, old); DeleteObject(roll);
+    HBRUSH pillow = CreateSolidBrush(RGB(235, 230, 215)); old = SelectObject(hdc, pillow); // pillow at the head (top) end
+    Ellipse(hdc, sx - 7, sy - 8, sx + 7, sy - 2); SelectObject(hdc, old); DeleteObject(pillow);
     if (sleep_fade_frame > 0 && sleep_fade_frame < 30) {
         SetTextColor(hdc, RGB(255, 255, 255)); SetBkMode(hdc, TRANSPARENT);
         TextOut(hdc, sx - 6, sy - 28, "Zzz", 3);
