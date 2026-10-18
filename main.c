@@ -230,7 +230,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 DrawStrategyGuideFlash(memHDC);
 
                 SetTextColor(memHDC, RGB(255, 255, 255)); SetBkMode(memHDC, TRANSPARENT);
-                TextOut(memHDC, 20, HUD_LOG_Y, arpg_action_log, (int)strlen(arpg_action_log));
+                if (!AfkViewActive()) TextOut(memHDC, 20, HUD_LOG_Y, arpg_action_log, (int)strlen(arpg_action_log));
                 if (vendor_menu_open && IsNearMerchant()) {
                     DrawVendorShopOverlay(memHDC);
                 }

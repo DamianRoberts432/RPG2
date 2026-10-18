@@ -187,6 +187,7 @@ static void DrawThing(HDC hdc, const FpThing *t, float lit) {
     int sx, sy; float d;
     if (!Project(t->x, t->y, t->z, &sx, &sy, &d)) return;
     float u = focal / d; // pixels per tile at this distance
+    if (u > WINDOW_HEIGHT * 0.6f && t->kind != FP_BOBBER) return; // too close to the eye: it would fill the view
     int U = (int)u;
     DWORD now = GetTickCount();
     switch (t->kind) {
