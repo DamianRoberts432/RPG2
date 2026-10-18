@@ -257,6 +257,8 @@ void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed) {
     } else if (type == 6) { // Grasslands tall grass tuft: single blades that lean a little in the wind
         HPEN blade = CreatePen(PS_SOLID, 1, RGB(150, 210, 90)); HGDIOBJ old = SelectObject(hdc, blade);
         int lean = (int)(sin(world_tick * 1.5f + sx * 0.1f) * 1.5f);
+        int hx, hy; GetIsoCoords(player_x, player_y, &hx, &hy);
+        if (abs(sx - hx) < 22 && abs(sy - hy) < 16) lean += sx >= hx ? 4 : -4; // pushed aside as the hero walks through
         static const int base_dx[5] = { -3, -1, 0, 2, 3 }, tip_dx[5] = { -5, -2, 0, 2, 5 }, height[5] = { 6, 9, 10, 8, 6 };
         for (int b = 0; b < 5; b++) { MoveToEx(hdc, sx + base_dx[b], sy + 9, NULL); LineTo(hdc, sx + tip_dx[b] + lean, sy + 9 - height[b]); }
         SelectObject(hdc, old); DeleteObject(blade);
