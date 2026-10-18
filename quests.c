@@ -52,8 +52,9 @@ int VillagerQuestTalk(void) {
     sprintf(arpg_action_log, "QUEST: \"Could you %s %d %s for me? I'll pay %d gold.\" (Any villager will pay.)",
             t->fetch ? "bring me" : "slay", need, Target(t, need), reward);
     if (t->name[0]) {
-        char buf[sizeof(arpg_action_log)];
+        char buf[sizeof(arpg_action_log) + 48];
         snprintf(buf, sizeof(buf), "%s - %s", t->name, arpg_action_log);
+        buf[sizeof(arpg_action_log) - 1] = 0;
         strcpy(arpg_action_log, buf);
     }
     return 1;
