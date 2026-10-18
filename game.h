@@ -336,5 +336,6 @@ extern int cam_y;
 #include "mouse.h"
 #include "farming.h"
 #include "quests.h"
+#include "update.h"
 
 #endif // GAME_H

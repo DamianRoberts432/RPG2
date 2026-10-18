@@ -150,6 +150,8 @@ float GetNamedItemWeight(const char *name) {
     if (strcmp(name, "Short Sword") == 0) return 2.0f;
     if (strcmp(name, "Long Bow") == 0) return 2.0f;
     if (strcmp(name, "Short Bow") == 0) return 1.5f;
+    float edited = UpdatedItemWeight(name);
+    if (edited >= 0.0f) return edited;
     if (strcmp(name, "Dagger") == 0 || strcmp(name, "Silver Dagger") == 0) return 1.0f;
     if (strcmp(name, "Garlic") == 0) return 0.2f;
     if (strcmp(name, "Hoe") == 0) return 2.0f;
