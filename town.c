@@ -602,12 +602,12 @@ void TownMenuConfirm(void) {
         Say("BANKER: %s %d gold. Vault: %d   Purse: %d", dep ? "Deposited" : "Withdrew", amt, bank_gold, gold_count);
         return; }
     case A_ALMS_GOLD: case A_ALMS_FOOD: case A_REFUSE:
-        if (alms_screen == current_screen_index && alms_day == SeasonDay()) { Say("BEGGAR: You've made your choice today. Safe travels."); return; }
+      { // Give as often as you like; karma and favor count once a day per town.
+        int rewarded = alms_screen == current_screen_index && alms_day == SeasonDay();
         if (r.action == A_ALMS_GOLD) {
             if (gold_count < r.arg) { Say("BEGGAR: You haven't that much to spare, friend."); return; }
             gold_count -= r.arg;
-            KarmaAdjust(r.arg >= 100 ? 3 : 1, 0, r.arg >= 100 ? -3 : -1, 1);
-            deity_favor[0] += r.arg >= 100 ? 2 : 1;
+            if (!rewarded) { KarmaAdjust(r.arg >= 100 ? 3 : 1, 0, r.arg >= 100 ? -3 : -1, 1); deity_favor[0] += r.arg >= 100 ? 2 : 1; }
             Say("BEGGAR: Bless you, traveler! This town will remember your kindness.");
         } else if (r.action == A_ALMS_FOOD) {
             int fi = -1;
@@ -615,14 +615,14 @@ void TownMenuConfirm(void) {
             if (fi < 0) { Say("BEGGAR: You've no food on you. Bless you for the thought."); return; }
             char nm[32]; snprintf(nm, sizeof(nm), "%s", player_inventory[fi].name);
             ConsumeMaterialFromInventory(nm, 1); RecalculateCarriedWeight();
-            KarmaAdjust(2, 0, -2, 1); deity_favor[0]++;
+            if (!rewarded) { KarmaAdjust(2, 0, -2, 1); deity_favor[0]++; }
             Say("BEGGAR: A %s! Bless you - I haven't eaten in days.", nm);
         } else {
-            KarmaAdjust(-1, 1, 2, 0); deity_favor[1]++;
+            if (!rewarded) { KarmaAdjust(-1, 1, 2, 0); deity_favor[1]++; }
             Say("BEGGAR: ...I see. The townsfolk watching mutter and look away.");
         }
         alms_screen = current_screen_index; alms_day = SeasonDay();
-        return;
+        return; }
     case A_PRAY: {
         int d = r.arg;
         if (prayed_screen == current_screen_index && pray_day == SeasonDay()) { Say("ALTAR: %s has already heard you today.", deity_names[d]); return; }
