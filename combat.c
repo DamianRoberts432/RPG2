@@ -198,6 +198,7 @@ void HandleEnemyDamage(float dmg) {
         if (monster_card_links[active_monster].kills < 65535) monster_card_links[active_monster].kills++;
         TryCardDrop(active_monster);
         NoteLegendaryKill(active_monster);
+        NoteQuestKill(active_monster);
     } else {
         sprintf(arpg_action_log, "%s: Hit for %.1f DMG! Remainder: %.1f", crit ? "CRITICAL" : "STRIKE", dmg, enemy_hearts);
     }

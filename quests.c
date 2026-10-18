@@ -1,0 +1,79 @@
+#include "game.h"
+
+typedef struct { int fetch, monster; char item[24]; int count, reward; } QuestTemplate;
+static QuestTemplate quest_templates[QUEST_TEMPLATE_COUNT] = {
+    { 0, MONSTER_SKELLY, "", 3, 60 }, { 0, MONSTER_ZOMBIE, "", 3, 70 },
+    { 0, MONSTER_GOBLIN, "", 4, 60 }, { 0, MONSTER_SATYR, "", 2, 90 },
+    { 1, 0, "Wood", 8, 40 }, { 1, 0, "Stone", 6, 45 }, { 1, 0, "Fish", 3, 50 }, { 1, 0, "Apple", 4, 35 },
+};
+int32_t village_quest[5];
+
+#define QUEST_OFFER_PERCENT 35
+
+static const char *Plural(const char *name, int n) {
+    static char buf[40];
+    int no_s = n == 1 || strcmp(name, "Wood") == 0 || strcmp(name, "Stone") == 0 || strcmp(name, "Fish") == 0;
+    snprintf(buf, sizeof(buf), "%s%s", name, no_s ? "" : "s");
+    return buf;
+}
+
+static const char *Target(const QuestTemplate *t, int n) {
+    return Plural(t->fetch ? t->item : MonsterName((MonsterType)t->monster), n);
+}
+
+static void PayQuest(void) {
+    gold_count += village_quest[4];
+    sprintf(arpg_action_log, "QUEST DONE: \"Thank you, friend!\" The villager pays you %d gold.", village_quest[4]);
+    village_quest[0] = 0;
+}
+
+// Talking to a villager: pay out, report progress, or (sometimes) offer a job.
+int VillagerQuestTalk(void) {
+    if (village_quest[0]) {
+        if (village_quest[1] < 0 || village_quest[1] >= QUEST_TEMPLATE_COUNT) { village_quest[0] = 0; return 0; }
+        QuestTemplate *t = &quest_templates[village_quest[1]];
+        int need = village_quest[2];
+        if (t->fetch) {
+            int have = GetMaterialCount(t->item);
+            if (have >= need) { ConsumeMaterialFromInventory(t->item, need); RecalculateCarriedWeight(); PayQuest(); }
+            else sprintf(arpg_action_log, "QUEST: \"Bring me %d %s.\" You have %d.", need, Target(t, need), have);
+        } else if (village_quest[3] >= need) PayQuest();
+        else sprintf(arpg_action_log, "QUEST: %d of %d %s slain. Keep at it!", village_quest[3], need, Target(t, need));
+        return 1;
+    }
+    if (rand() % 100 >= QUEST_OFFER_PERCENT) return 0;
+    int k = rand() % QUEST_TEMPLATE_COUNT;
+    QuestTemplate *t = &quest_templates[k];
+    int need = t->count + player_level / 5;
+    int reward = t->reward * (10 + player_level) / 10;
+    village_quest[0] = 1; village_quest[1] = k; village_quest[2] = need; village_quest[3] = 0; village_quest[4] = reward;
+    sprintf(arpg_action_log, "QUEST: \"Could you %s %d %s for me? I'll pay %d gold.\" (Any villager will pay.)",
+            t->fetch ? "bring me" : "slay", need, Target(t, need), reward);
+    return 1;
+}
+
+void NoteQuestKill(int monster) {
+    if (!village_quest[0] || village_quest[1] < 0 || village_quest[1] >= QUEST_TEMPLATE_COUNT) return;
+    QuestTemplate *t = &quest_templates[village_quest[1]];
+    if (t->fetch || t->monster != monster || village_quest[3] >= village_quest[2]) return;
+    village_quest[3]++;
+    size_t n = strlen(arpg_action_log);
+    if (village_quest[3] >= village_quest[2]) snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  |  QUEST: done! Tell a villager.");
+    else snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  |  QUEST: %d / %d", village_quest[3], village_quest[2]);
+}
+
+// EditQuest lines from the Update folder (see update.c). n is 1-based.
+int EditQuestTemplate(int n, const char *field, const char *val) {
+    if (n < 1 || n > QUEST_TEMPLATE_COUNT) return 0;
+    QuestTemplate *t = &quest_templates[n - 1];
+    if (_stricmp(field, "Type") == 0) { t->fetch = _stricmp(val, "fetch") == 0; return 1; }
+    if (_stricmp(field, "TargetEntity") == 0) {
+        for (int m = 0; m < MONSTER_TYPE_COUNT; m++)
+            if (_stricmp(MonsterName((MonsterType)m), val) == 0) { t->fetch = 0; t->monster = m; return 1; }
+        t->fetch = 1; snprintf(t->item, sizeof(t->item), "%s", val);
+        return 1;
+    }
+    if (_stricmp(field, "TargetCount") == 0 && atoi(val) > 0) { t->count = atoi(val); return 1; }
+    if (_stricmp(field, "RewardGold") == 0 && atoi(val) >= 0) { t->reward = atoi(val); return 1; }
+    return 0;
+}

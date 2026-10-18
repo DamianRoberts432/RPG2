@@ -67,7 +67,7 @@ void HandleContextInteract(void) {
         } else if (village_npcs[i].type >= 3 && village_npcs[i].type <= 9) {
             static const int menus[7] = { TM_SMITH, TM_PETS, TM_CARDS, TM_KING, TM_BEGGAR, TM_ALTAR, TM_BANK };
             OpenTownMenu(menus[village_npcs[i].type - 3]);
-        } else strcpy(arpg_action_log, village_npcs[i].dialogue);
+        } else if (village_npcs[i].type != 0 || !VillagerQuestTalk()) strcpy(arpg_action_log, village_npcs[i].dialogue);
         return;
     }
     if (HasInventoryItem("Fishing Pole") && IsFacingWater()) { CastFishingLine(); return; }
