@@ -44,5 +44,6 @@ const char *DeityKind(int d);
 void TownNameAt(int screen, char *out, size_t n);
 int TownShopsToday(int screen);
 void CardName(int id, char *out, size_t n);
+int RandomPoolCard(int first);
 
 #endif

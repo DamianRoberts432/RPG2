@@ -113,6 +113,15 @@ void CardName(int id, char *out, size_t n) { snprintf(out, n, "%s", card_defs[Po
 static int CardRarity(int id) { return card_defs[PoolId(id)].pt - 1; }
 static int CardPrice(int id) { static const int p[3] = { 600, 2500, 15000 }; return p[CardRarity(id)]; }
 static int CardAbility(int id) { return card_defs[PoolId(id)].ability; }
+// Drops and packs favor small cards: 70% 1/1, 25% 2/2, 5% 3/3.
+int RandomPoolCard(int first) {
+    int roll = rand() % 100, pt = roll < 70 ? 1 : roll < 95 ? 2 : 3, n = 0;
+    for (int i = first; i < CARD_POOL; i++) n += card_defs[i].pt == pt;
+    if (n == 0) return first + rand() % (CARD_POOL - first);
+    int k = rand() % n;
+    for (int i = first; i < CARD_POOL; i++) if (card_defs[i].pt == pt && k-- == 0) return i;
+    return first;
+}
 static int CardBasePower(int id) { int c = PoolId(id); return card_defs[c].pt + (card_defs[c].ability == AB_PUMP3 ? 3 : 0); }
 
 static const char *AbilityText(int ab) {
@@ -426,7 +435,7 @@ static void BuyCardPack(int count) {
     gold_count -= price;
     int fresh = 0;
     for (int k = 0; k < count; k++) {
-        int id = rand() % CARD_POOL;
+        int id = RandomPoolCard(0);
         if (!HasCard(id)) fresh++;
         card_collection_bits[id / 8] |= (uint8_t)(1u << (id % 8));
     }
