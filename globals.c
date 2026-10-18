@@ -37,7 +37,7 @@ int player_level = 1;
 int player_xp = 0;
 int player_next_level_xp = 100;
 int is_poisoned = 0;
-char quest_log_text[128] = "Main Quest: Reach Townsville Castle Perimeter.";
+char quest_log_text[128] = "Main Quest: Find a castle town.";
 
 // Game Dynamic Options
 float opt_xp_mult = 1.0f;

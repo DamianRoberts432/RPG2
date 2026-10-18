@@ -248,7 +248,7 @@ void GenerateProceduralScreen(int index) {
         pending_forced_biome = -1;
     } else if (screens_until_town == 0) {
         current_biome = BIOME_CASTLE;
-        sprintf(arpg_action_log, "DISCOVERY: Arrived at Townsville Castle perimeter gates!");
+        { char town[48]; TownNameAt(30000 + screen_grid_y * META_GRID_SIZE + screen_grid_x, town, sizeof(town)); sprintf(arpg_action_log, "DISCOVERY: Arrived at the gates of %s!", town); }
     } else {
         int recalled = GetVisitedBiomeAt(grid_c, grid_r);
         if (recalled != -1) {

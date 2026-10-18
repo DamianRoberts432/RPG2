@@ -497,7 +497,7 @@ static void Offer(int d) {
     } else if (d == 2) {
         if (!TakeOffering("Tarot Card", "Rum Bottle", "Cigar")) { Say("ALTAR: The Baron wants a Tarot Card, a Rum Bottle and a Cigar."); return; }
         Bless(2); KarmaAdjust(0, 0, 0, 2);
-        Say("ALTAR: Ghost Whisperer! The Baron grins and the spirits guide your hand (+25%% damage for 5 minutes). They whisper: '%s'", hint);
+        Say("ALTAR: Baron Samedi appears behind you with a toothy grin. Ghost Whisperer: +25%% damage for 5 min. '%s'", hint);
     } else {
         if (!TakeOffering("Fish", NULL, NULL)) { Say("ALTAR: The Drowned One hungers for a Fish from the deep."); return; }
         KarmaAdjust(0, 1, 0, 0);
