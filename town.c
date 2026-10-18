@@ -306,6 +306,8 @@ static void BuildRows(void) {
         AddRow(A_PACK, 3, "3-card booster - 20,000 gold");
         AddRow(A_PACK, 7, "7-card pack - 40,000 gold");
         AddRow(A_PACK, 60, "60-card box - 350,000 gold");
+        snprintf(t, sizeof(t), "Master Base Box (all %d cards) - 1,000,000 gold", CARD_POOL);
+        AddRow(A_PACK, 0, t);
         AddRow(A_KID, 0, "Talk to the kid at the table");
         int left = kid_round_screen == current_screen_index ? KID_MAX_ROUNDS - kid_rounds : KID_MAX_ROUNDS;
         if (kid_dealt && kid_round_screen == current_screen_index) {
@@ -371,7 +373,10 @@ static void RowInfo(const TownRow *r, char *out, size_t n) {
         snprintf(out, n, "Breaks the %s down into %s.", nm, strstr(nm, "Bow") ? "2 Wood and 1 String" :
                  strcmp(slot, "Armor") == 0 ? "2 Leather and 1 Iron" : strcmp(slot, "Shield") == 0 ? "2 Wood and 1 Rope" : "2 Iron and 1 Wood"); break; }
     case A_CARD: CardDetails(card_offers[r->arg], out, n); break;
-    case A_PACK: snprintf(out, n, "%d random cards. Collection: %d / %d.", r->arg, CardCount(), CARD_POOL); break;
+    case A_PACK:
+        if (r->arg == 0) snprintf(out, n, "One of every card in print. Completes your binder. Collection: %d / %d.", CardCount(), CARD_POOL);
+        else snprintf(out, n, "%d random cards. Collection: %d / %d.", r->arg, CardCount(), CARD_POOL);
+        break;
     case A_KID: snprintf(out, n, "A kid sits at the corner table shuffling a test deck. He won't play for ante."); break;
     case A_PRACTICE: snprintf(out, n, "Three duels, one card each. Both cards hit at once unless one has First Strike; death curses and blessings land on the next card. His cards and yours are on the right."); break;
     case A_PET: snprintf(out, n, "%s  |  %s  |  %s", familiars[r->arg].name, familiars[r->arg].nocturnal ? "Nocturnal" : "Diurnal", familiars[r->arg].trait); break;
@@ -429,7 +434,16 @@ void NoteLegendaryKill(int monster) {
     snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  |  LEGENDARY: Return to the King!");
 }
 
+#define MASTER_BOX_PRICE 1000000
 static void BuyCardPack(int count) {
+    if (count == 0) {
+        if (CardCount() >= CARD_POOL) { Say("CARD SHOP: You already own every card in print."); return; }
+        if (gold_count < MASTER_BOX_PRICE) { Say("CARD SHOP: The Master Base Box costs %d gold.", MASTER_BOX_PRICE); return; }
+        gold_count -= MASTER_BOX_PRICE;
+        for (int id = 0; id < CARD_POOL; id++) card_collection_bits[id / 8] |= (uint8_t)(1u << (id % 8));
+        Say("CARD SHOP: The Master Base Box! Your binder is complete (%d / %d).", CardCount(), CARD_POOL);
+        return;
+    }
     int price = count == 3 ? CARD_BOOSTER_PRICE : count == 7 ? 40000 : 350000;
     if (gold_count < price) { Say("CARD SHOP: That costs %d gold.", price); return; }
     gold_count -= price;
