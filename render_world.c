@@ -535,14 +535,14 @@ void DrawBedroll(HDC hdc) {
 }
 
 // Very slight zoom-in of the gameplay view (HUD is drawn afterwards, unscaled).
-static const float zoom_levels[3] = { 1.0f, 1.08f, 1.3f };
-static int zoom_index = 1;
+static const float zoom_levels[3] = { 1.08f, 1.18f, 1.30f }; // far (default), closer, closest
+static int zoom_index = 0;
 #define CAMERA_ZOOM zoom_levels[zoom_index]
 static float afk_amount; // 0..1 while the AFK camera has eased in
 
 // V / right-stick click steps through the three zoom levels.
 void CycleCameraZoom(void) {
-    static const char *names[3] = { "Wide", "Normal", "Close" };
+    static const char *names[3] = { "Far", "Closer", "Closest" };
     zoom_index = (zoom_index + 1) % 3;
     sprintf(arpg_action_log, "VIEW: %s zoom.", names[zoom_index]);
 }
