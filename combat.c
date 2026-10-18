@@ -20,6 +20,26 @@ static int MythicForCurrentLand(void) {
 }
 
 #define MYTHIC_SPAWN_CHANCE 4 // percent per spawn in its home land, doubled at night
+static void SpawnTintedBurst(float x, float y, float dir_x, float dir_y, uint32_t color);
+
+// Zombies near rivers and marshes rise out of the water's edge 4-10 tiles
+// from the hero instead of walking in from the screen edge.
+static void ZombieRisesFromWater(void) {
+    int best = -1; float best_d = 101.0f;
+    for (int r = 1; r < MAP_SIZE - 1; r++) for (int c = 1; c < MAP_SIZE - 1; c++) {
+        if (VISUAL_MAP[r][c] != 0) continue;
+        if (VISUAL_MAP[r - 1][c] != 12 && VISUAL_MAP[r + 1][c] != 12 && VISUAL_MAP[r][c - 1] != 12 && VISUAL_MAP[r][c + 1] != 12) continue;
+        float dx = c - player_x, dy = r - player_y, d = dx * dx + dy * dy;
+        if (d < 16.0f || d >= best_d) continue;
+        best_d = d; best = r * MAP_SIZE + c;
+    }
+    if (best < 0) return;
+    enemy_x = (float)(best % MAP_SIZE); enemy_y = (float)(best / MAP_SIZE);
+    SpawnTintedBurst(enemy_x, enemy_y, 0.0f, -1.0f, RGB(120, 190, 255));
+    size_t n = strlen(arpg_action_log);
+    snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  |  A zombie rises out of the water!");
+}
+
 void TriggerMonsterRespawn(void) {
     int is_night = fabs(sin(day_night_cycle_accumulator)) < 0.35f;
     int spawn_side = rand() % 4;
@@ -38,6 +58,7 @@ void TriggerMonsterRespawn(void) {
         active_monster = r < 32 ? MONSTER_SKELLY : r < 64 ? MONSTER_ZOMBIE :
                          (r < 82 || !satyr_land) ? MONSTER_GOBLIN : MONSTER_SATYR;
     }
+    if (active_monster == MONSTER_ZOMBIE && !in_cave) ZombieRisesFromWater();
     static const float base_hearts[] = { 3.0f, 3.0f, 6.0f, 2.0f, 3.5f, 9.0f, 9.0f, 8.0f, 8.0f };
     enemy_hearts = base_hearts[active_monster] + (is_night ? 0.5f : 0.0f);
     if (IS_MYTHIC_MONSTER(active_monster)) {
