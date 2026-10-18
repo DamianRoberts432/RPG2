@@ -173,6 +173,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                     }
                 }
                 DrawSeasonalGroundCover(memHDC);
+                DrawFootpaths(memHDC);
                 DrawFarmPlots(memHDC);
                 for (int r = 0; r < MAP_SIZE; r++) {
                     for (int c = 0; c < MAP_SIZE; c++) {

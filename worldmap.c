@@ -84,6 +84,7 @@ int SaveWorldMapState(void) {
     ok = ok && fwrite(town, sizeof(town), 1, f) == 1;
     ok = ok && fwrite(chests, sizeof(chests), 1, f) == 1;
     ok = ok && fwrite(farm_plots, sizeof(farm_plots), 1, f) == 1;
+    ok = ok && fwrite(worn_tiles, sizeof(worn_tiles), 1, f) == 1;
     ok = (fclose(f) == 0) && ok;
     if (!ok) { remove(SAVE_TEMP_NAME); return 0; }
     return MoveFileExA(SAVE_TEMP_NAME, SAVE_FILE_NAME, MOVEFILE_REPLACE_EXISTING) != 0;
@@ -122,6 +123,8 @@ int LoadWorldMapState(void) {
     int has_chests = has_town && fread(saved_chests, sizeof(saved_chests), 1, f) == 1;
     static FarmPlot saved_plots[MAX_FARM_PLOTS];
     int has_farm = has_chests && fread(saved_plots, sizeof(saved_plots), 1, f) == 1;
+    static WornTile saved_worn[MAX_WORN_TILES];
+    int has_paths = has_farm && fread(saved_worn, sizeof(saved_worn), 1, f) == 1;
     fclose(f);
     if (!ok) return 0;
     memcpy(visited_biomes, biomes, sizeof(biomes));
@@ -164,6 +167,7 @@ int LoadWorldMapState(void) {
         for (int i = 0; i < MAX_CHESTS; i++) if (chests[i].count < 0 || chests[i].count > CHEST_SLOTS) chests[i].active = chests[i].count = 0;
     }
     if (has_farm) memcpy(farm_plots, saved_plots, sizeof(farm_plots));
+    if (has_paths) memcpy(worn_tiles, saved_worn, sizeof(worn_tiles));
     return 1;
 }
 

@@ -71,6 +71,7 @@ void UpdateGamePhysics(void) {
     }
     UpdateVillageNPCs();
     UpdateCritters();
+    UpdateFootpaths();
     ExpireDroppedItems();
     UpdateIceSlide();
     UpdateDebrisTwigs();
