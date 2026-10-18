@@ -153,6 +153,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
             } else {
                 float ambient_intensity = (float)fabs(sin(day_night_cycle_accumulator));
                 if (NightVisionActive() && ambient_intensity < 0.6f) ambient_intensity = 0.6f;
+                // Dark vision: Dwarves and Gnomes, born underground, see further at night and in caves.
+                if ((selected_race == RACE_DWARF || selected_race == RACE_GNOME) && ambient_intensity < 0.4f) ambient_intensity = 0.4f;
                 int r_tone = (int)(25.0f + ambient_intensity * 80.0f);
                 int g_tone = (int)(30.0f + ambient_intensity * 155.0f);
                 int b_tone = (int)(40.0f + ambient_intensity * 45.0f);
