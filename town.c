@@ -955,6 +955,7 @@ void DrawTownMenu(HDC hdc) {
 void DrawFamiliar(HDC hdc) {
     static float fx = -100.0f, fy = -100.0f;
     static int was_asleep = -1;
+    familiar_visible = 0;
     int slot = OwnedFamiliarSlot();
     if (slot < 0) { was_asleep = -1; return; }
     int k = FamiliarIndex(player_inventory[slot].name);
@@ -968,6 +969,7 @@ void DrawFamiliar(HDC hdc) {
     float tx = player_x - 0.9f, ty = player_y + 0.6f;
     if (fabsf(fx - tx) > 5.0f || fabsf(fy - ty) > 5.0f) { fx = tx; fy = ty; }
     fx += (tx - fx) * 0.05f; fy += (ty - fy) * 0.05f;
+    familiar_world_x = fx; familiar_world_y = fy; familiar_visible = k + 1;
     int sx, sy; GetIsoCoords(fx, fy, &sx, &sy);
     DWORD t = GetTickCount();
     int bob = (int)(sin(t / 180.0) * 3.0);
@@ -997,6 +999,9 @@ void DrawFamiliar(HDC hdc) {
 }
 
 // --- Storage chests ----------------------------------------------------------
+float familiar_world_x, familiar_world_y;
+int familiar_visible; // familiar index + 1 while it is out walking, else 0
+
 StashChest chests[MAX_CHESTS];
 int open_chest = -1;
 

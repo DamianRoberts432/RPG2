@@ -13,6 +13,12 @@ static void Rumble(int on) {
 
 int FishingActive(void) { return fish_state != 0; }
 
+int FishingBobberPos(float *x, float *y, int *nibble) {
+    if (!fish_state) return 0;
+    *x = bobber_x; *y = bobber_y; *nibble = fish_state == 2;
+    return 1;
+}
+
 static void EndFishing(const char *msg) {
     fish_state = 0; fishing_active = 0;
     if (rumble_until) { Rumble(0); rumble_until = 0; }

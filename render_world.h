@@ -21,7 +21,7 @@ void ApplyCameraZoom(HDC hdc, float zoom);
 void DrawShoreFoam(HDC hdc, int c, int r, int sx, int sy);
 float UpdateAfkCamera(int input_active);
 void CycleCameraZoom(void);
-void DrawAfkNightSky(HDC hdc);
+int AfkViewMs(void);
 void FillRectAlpha(HDC hdc, int x, int y, int w, int h, COLORREF color, int alpha);
 void DrawRainZones(HDC hdc);
 void DrawSleepFade(HDC hdc);

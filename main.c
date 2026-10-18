@@ -222,9 +222,9 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 DrawEnvironmentalCritters(memHDC); DrawFamiliar(memHDC); DrawFishing(memHDC); DrawMerchantStoreFront(memHDC); DrawVillage(memHDC); DrawNightEyes(memHDC);
                 DrawWeatherEffects(memHDC); DrawSolitaireSunMoonBeam(memHDC);
                 ApplyCameraZoom(memHDC, view_zoom);
-                DrawAfkNightSky(memHDC);
+                DrawAfkView(memHDC);
                 DrawPeyoteMelt(memHDC);
-                DrawPlayerStatusHUD(memHDC); DrawLootPreview(memHDC); DrawBelt(memHDC);
+                if (!AfkViewActive()) { DrawPlayerStatusHUD(memHDC); DrawLootPreview(memHDC); DrawBelt(memHDC); }
 
                 if (is_menu_open) DrawTabbedMenuOverlay(memHDC);
                 DrawStrategyGuideFlash(memHDC);

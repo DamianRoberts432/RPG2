@@ -32,6 +32,8 @@ void TownMenuBack(void);
 void DrawInteriorBackdrop(HDC hdc, int menu);
 void DrawTownMenu(HDC hdc);
 void DrawFamiliar(HDC hdc);
+extern float familiar_world_x, familiar_world_y;
+extern int familiar_visible;
 void DrawAltar(HDC hdc, int sx, int sy, int deity);
 void DrawCrown(HDC hdc, int cx, int top, int w);
 float TownDamageMult(void);

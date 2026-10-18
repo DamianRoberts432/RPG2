@@ -343,6 +343,7 @@ extern int cam_y;
 #include "farming.h"
 #include "barrels.h"
 #include "peyote.h"
+#include "afkview.h"
 #include "quests.h"
 #include "update.h"
 
