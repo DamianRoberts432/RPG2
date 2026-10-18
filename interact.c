@@ -34,6 +34,7 @@ void HandleContextInteract(void) {
     if (OpenNearbyChest()) return;
     if (TryPickupGroundLoot()) return;
     if (TryPickupDroppedItems()) return;
+    if (TryBreakBarrel()) return;
     if (in_cave && IsNearPoint(cave_treasure_x, cave_treasure_y, 1.2f)) {
         ClaimCaveTreasureAndExit();
         return;
