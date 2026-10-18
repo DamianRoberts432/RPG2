@@ -279,6 +279,14 @@ void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed) {
         for (int b = 0; b < 5; b++) { MoveToEx(hdc, sx + base_dx[b], sy + 9, NULL); LineTo(hdc, sx + tip_dx[b] + lean, sy + 9 - height[b]); }
         SelectObject(hdc, old); DeleteObject(blade);
     } else if (type == 7) { // Desert/Oasis saguaro cactus
+        if (IsPeyoteSeed(seed)) { // small round peyote button; split in two after two arrows
+            HBRUSH g = CreateSolidBrush(RGB(110, 150, 120)); HGDIOBJ og = SelectObject(hdc, g);
+            if (PeyoteBroken(seed)) { Ellipse(hdc, sx - 9, sy + 3, sx - 1, sy + 9); Ellipse(hdc, sx + 1, sy + 3, sx + 9, sy + 9); }
+            else Ellipse(hdc, sx - 7, sy + 1, sx + 7, sy + 9);
+            SelectObject(hdc, og); DeleteObject(g);
+            if (!PeyoteBroken(seed)) { HBRUSH f = CreateSolidBrush(RGB(245, 120, 190)); RECT fr = { sx - 2, sy - 1, sx + 2, sy + 3 }; FillRect(hdc, &fr, f); DeleteObject(f); }
+            return;
+        }
         HBRUSH cactus = CreateSolidBrush(RGB(60, 140, 90)); HGDIOBJ old = SelectObject(hdc, cactus);
         HPEN edge = CreatePen(PS_SOLID, 1, RGB(35, 95, 60)); HGDIOBJ old_p = SelectObject(hdc, edge);
         RoundRect(hdc, sx - 4, sy - 26, sx + 4, sy + 9, 8, 8);

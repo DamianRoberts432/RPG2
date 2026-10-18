@@ -130,6 +130,7 @@ static const char *ItemBlurb(const char *name) {
     if (strcmp(name, "Fishing Pole") == 0) return "G to cast at water, hold F and release at 50-80%.";
     if (strcmp(name, "Spear") == 0) return "Long thrust; RT/F throws it.";
     if (strcmp(name, "Night Vision Ring") == 0) return "Worn: the night looks much brighter.";
+    if (strcmp(name, "Peyote") == 0) return "Eat it and the colours melt for 30 seconds.";
     if (strcmp(name, "Garlic") == 0) return "Carried: Dracula won't come for you.";
     if (strcmp(name, "Silver Dagger") == 0) return "Silver: double damage to Dracula.";
     if (strcmp(name, "Canoe") == 0 || strcmp(name, "Raft") == 0 || strcmp(name, "Boat") == 0) return "Carry it to paddle across water.";

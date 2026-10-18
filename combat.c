@@ -405,6 +405,7 @@ static int ArrowBlockedAt(float x, float y) {
     int tx = (int)x, ty = (int)y;
     if (tx == player_arrow.origin_tx && ty == player_arrow.origin_ty) return 0;
     uint8_t t = VISUAL_MAP[ty][tx];
+    if (PeyoteAt(tx, ty)) { HitPeyote(tx, ty); return 1; }
     return t == 11 || t == 1 || t == 3;
 }
 

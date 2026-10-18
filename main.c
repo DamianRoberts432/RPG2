@@ -223,6 +223,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 DrawWeatherEffects(memHDC); DrawSolitaireSunMoonBeam(memHDC);
                 ApplyCameraZoom(memHDC, view_zoom);
                 DrawAfkNightSky(memHDC);
+                DrawPeyoteMelt(memHDC);
                 DrawPlayerStatusHUD(memHDC); DrawLootPreview(memHDC); DrawBelt(memHDC);
 
                 if (is_menu_open) DrawTabbedMenuOverlay(memHDC);

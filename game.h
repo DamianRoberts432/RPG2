@@ -339,6 +339,7 @@ extern int cam_y;
 #include "mouse.h"
 #include "farming.h"
 #include "barrels.h"
+#include "peyote.h"
 #include "quests.h"
 #include "update.h"
 
