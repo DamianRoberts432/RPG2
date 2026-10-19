@@ -3,15 +3,37 @@
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     if (uMsg == WM_CLOSE && !is_character_creation) { ClearLegendaryDrops(); SaveSaveFileToDisk(); }
     if (uMsg == WM_DESTROY) { PostQuitMessage(0); return 0; }
-    if (uMsg >= WM_MOUSEFIRST && uMsg <= WM_MOUSELAST) MouseEvent(uMsg, wParam, lParam);
+    if (uMsg >= WM_MOUSEFIRST && uMsg <= WM_MOUSELAST) {
+        RECT cr; GetClientRect(hwnd, &cr); // the frame is scaled to the window, so scale the mouse back
+        if (uMsg != WM_MOUSEWHEEL && cr.right > 0 && cr.bottom > 0)
+            lParam = MAKELPARAM((short)LOWORD(lParam) * WINDOW_WIDTH / cr.right, (short)HIWORD(lParam) * WINDOW_HEIGHT / cr.bottom);
+        MouseEvent(uMsg, wParam, lParam);
+    }
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
+
+// The game draws a WINDOW_WIDTH x WINDOW_HEIGHT frame and scales it to the
+// window, so the HUD bars along the bottom are never cut off on smaller screens.
+static void PresentFrame(HWND hwnd, HDC hdc, HDC frame) {
+    RECT cr; GetClientRect(hwnd, &cr);
+    if (cr.right == WINDOW_WIDTH && cr.bottom == WINDOW_HEIGHT) { BitBlt(hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, frame, 0, 0, SRCCOPY); return; }
+    SetStretchBltMode(hdc, COLORONCOLOR);
+    StretchBlt(hdc, 0, 0, cr.right, cr.bottom, frame, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SRCCOPY);
 }
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
     WNDCLASS wc = {0}; MSG msg; HBRUSH grass_brush, creation_bg; HPEN clean_null_pen;
     
     wc.lpfnWndProc = WindowProc; wc.hInstance = hInst; wc.lpszClassName = "SaturnParallelEngine"; RegisterClass(&wc);
-    HWND hwnd = CreateWindow("SaturnParallelEngine", "Low-Poly ARPG Engine", WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, WINDOW_WIDTH, WINDOW_HEIGHT, NULL, NULL, hInst, NULL);
+    // Fit the whole frame (client area, not counting the title bar) on the screen.
+    RECT work; SystemParametersInfo(SPI_GETWORKAREA, 0, &work, 0);
+    RECT frame = { 0, 0, 100, 100 }; AdjustWindowRect(&frame, WS_OVERLAPPEDWINDOW, FALSE);
+    int extra_w = (frame.right - frame.left) - 100, extra_h = (frame.bottom - frame.top) - 100;
+    float fit = 1.0f, fw = (float)(work.right - work.left - extra_w) / WINDOW_WIDTH, fh = (float)(work.bottom - work.top - extra_h) / WINDOW_HEIGHT;
+    if (fw < fit) fit = fw;
+    if (fh < fit) fit = fh;
+    int win_w = (int)(WINDOW_WIDTH * fit) + extra_w, win_h = (int)(WINDOW_HEIGHT * fit) + extra_h;
+    HWND hwnd = CreateWindow("SaturnParallelEngine", "Low-Poly ARPG Engine", WS_OVERLAPPEDWINDOW | WS_VISIBLE, work.left, work.top, win_w, win_h, NULL, NULL, hInst, NULL);
     SecureZeroMemory(&msg, sizeof(MSG));
     
     grass_brush = CreateSolidBrush(RGB(105, 185, 85)); creation_bg = CreateSolidBrush(RGB(15, 18, 24)); clean_null_pen = CreatePen(PS_NULL, 0, RGB(0,0,0));
@@ -242,7 +264,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 DrawTownMenu(memHDC);
                 DrawSleepFade(memHDC);
             }
-            BitBlt(hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, memHDC, 0, 0, SRCCOPY); DeleteObject(memBitmap); DeleteDC(memHDC); ReleaseDC(hwnd, hdc); Sleep(16);
+            PresentFrame(hwnd, hdc, memHDC); DeleteObject(memBitmap); DeleteDC(memHDC); ReleaseDC(hwnd, hdc); Sleep(16);
         }
     }
     DeleteObject(grass_brush); DeleteObject(creation_bg); DeleteObject(clean_null_pen); return 0;
