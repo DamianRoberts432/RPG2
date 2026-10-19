@@ -125,7 +125,7 @@ Talking to a shopkeeper takes you inside their building (merchant included).
 - **Pet shop** (some days): familiars from level 3. Day familiars sleep in your pack from 9 PM to 6 AM, night ones by day.
 - **Castle towns** also have the **King** (Legendary quests from level 25: slay a mythic beast or a Vampire, then report back for 10,000 gold), a **Bank** vault, a **beggar** and an **altar**. Villages have an altar and sometimes a beggar.
 - **Beggars**: giving gold or food raises Soul and lowers Town Heat; refusing does the opposite.
-- **Altars** belong to one of four gods: Solara (Light, Incense heals you), Nyx (Dark, a Chaos Relic gives +50% damage for 5 minutes), Baron Samedi (Voodoo, Tarot Card + Rum Bottle + Cigar gives Ghost Whisperer, +25% damage) or the Drowned One (Eldritch, offer a Fish). The merchant sells the offerings. Pray once a day for favor.
+- **Altars** belong to one of four gods: Solara (Light, Incense heals you), Nyx (Dark, a Chaos Relic gives +50% damage for 5 minutes), Baron Samedi (Voodoo, Tarot Card + Rum Bottle + Cigar gives Ghost Whisperer, +25% damage) or the Drowned One (Eldritch, offer a Fish). The merchant sells the offerings. Pray once a day for favor. A blessing shows on screen: Solara pours a sunbeam on you, Nyx draws a veil of stars, Baron Samedi rises in the corner and grins, the Drowned One raises deep water and bubbles.
 
 ## Homes, clothes and world memory
 
@@ -168,7 +168,8 @@ One real second is one game minute, so a day lasts 24 real minutes and each 30-d
 - **Homes** sit on the ground and you can't walk through them. Sand lies flat with the ground.
 - **Loot:** fewer drops, and monsters killed by villagers or town defenders drop nothing, so gold doesn't pile up while you are away.
 - **Attacks:** monsters lunge at you up close, and your minions lunge each time they land a blow. Fishing shows the rod in your hand, the bobber flying out in an arc, a sagging line and the rod bending on a nibble.
-- **Dark vision:** Dwarves and Gnomes see further at night and in caves.
+- **Dark vision:** at night (and in caves) the dark closes in beyond what your race can see: Human 5.5 tiles, Halfling 6, Elf 7.5, Dwarf and Gnome 8.5, Night Vision 10. The AFK view fogs in to the same distance. Campfires and village lamps push the dark back with a warm glow on trees, the hero, villagers and monsters.
+- **Campfire edge:** monsters kept out by a fire take turns lurking at the edge of the light, hiding on the dark side of a nearby tree, or stalking a nearby animal.
 - **Vampires** (formerly Dracula): carry **Garlic** (merchant) and they won't come for you; a **Silver Dagger** (merchant) does double damage to them.
 - **Farming:** buy a **Hoe** and **Seeds** from the merchant. X with the Hoe on bare grass tills a plot (up to 48); X with Seeds plants turnips, which grow one stage a day and are ripe on day 3; X on a ripe plot harvests 2-3 **Turnips** (eat to heal) plus 3-4 Seeds per turnip, so you only buy Seeds once. Plots are saved.
 - **Footpaths:** grass you walk over often turns to a dirt path, and grows back a little each day you leave it alone. Paths are saved.
