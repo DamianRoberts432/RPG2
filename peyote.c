@@ -49,14 +49,21 @@ void EatPeyote(void) {
     strcpy(arpg_action_log, "PEYOTE: The colours begin to melt...");
 }
 
+// Heat-mirage melt: the finished frame is copied, then laid back in thin
+// bands, each slid sideways and up or down by the same crossing swells as the
+// water (WaveAt), under a slow colour wash. Works in the AFK view too.
 void DrawPeyoteMelt(HDC hdc) {
     DWORD now = GetTickCount();
     if (!peyote_until || now >= peyote_until) return;
-    float fade = (peyote_until - now) < 4000 ? (peyote_until - now) / 4000.0f : 1.0f;
-    for (int band = 0; band < 12; band++) {
-        float h = now / 900.0f + band * 0.5f;
-        COLORREF c = RGB((int)(127 + 127 * sinf(h)), (int)(127 + 127 * sinf(h + 2.1f)), (int)(127 + 127 * sinf(h + 4.2f)));
-        int y = band * WINDOW_HEIGHT / 12 + (int)(sinf(now / 400.0f + band) * 6.0f);
-        FillRectAlpha(hdc, 0, y, WINDOW_WIDTH, WINDOW_HEIGHT / 12 + 6, c, (int)(80 * fade));
+    float fade = (peyote_until - now) < 8000 ? (peyote_until - now) / 8000.0f : 1.0f, t = now / 1000.0f;
+    static HDC copy; static HBITMAP bmp;
+    if (!copy) { copy = CreateCompatibleDC(hdc); bmp = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT); SelectObject(copy, bmp); }
+    BitBlt(copy, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, hdc, 0, 0, SRCCOPY);
+    for (int y = 0; y < WINDOW_HEIGHT; y += 4) {
+        int dx = (int)(WaveAt(y * 0.02f, 0.0f, t) * 14.0f * fade), dy = (int)(WaveAt(0.0f, y * 0.03f, t * 0.7f) * 3.0f * fade);
+        BitBlt(hdc, dx, y, WINDOW_WIDTH, 4, copy, 0, y + dy, SRCCOPY);
     }
+    float h = t * 0.4f;
+    COLORREF c = RGB((int)(127 + 127 * sinf(h)), (int)(127 + 127 * sinf(h + 2.1f)), (int)(127 + 127 * sinf(h + 4.2f)));
+    FillRectAlpha(hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, c, (int)(30 * fade));
 }
