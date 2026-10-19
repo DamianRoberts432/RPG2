@@ -464,6 +464,12 @@ void DrawDynamicEnemy(HDC hdc) {
     int sx, sy; GetIsoCoords(enemy_x, enemy_y, &sx, &sy);
     int px, py; GetIsoCoords(player_x, player_y, &px, &py);
     int face_dir = (px >= sx) ? 1 : -1;
+    // Attack lunge: up close the monster lunges at the hero in a short rhythm.
+    float adx = player_x - enemy_x, ady = player_y - enemy_y;
+    if (adx * adx + ady * ady < 2.6f) {
+        float ph = fmodf((float)world_tick * 2.2f, 1.0f);
+        if (ph < 0.3f) { int l = (int)(sinf(ph / 0.3f * 3.14159f) * 7.0f); sx += face_dir * l; sy -= l / 2; }
+    }
     int sw = IS_MYTHIC_MONSTER(active_monster) ? 20 : 9;
     HBRUSH b1 = CreateSolidBrush(RGB(15, 20, 26)); HGDIOBJ old = SelectObject(hdc, b1); Ellipse(hdc, sx - sw, sy + 16, sx + sw, sy + 22); SelectObject(hdc, old); DeleteObject(b1);
     if (active_monster == MONSTER_ZOMBIE) {
@@ -719,6 +725,9 @@ void DrawSummonedZombie(HDC hdc) {
     // reaching toward the enemy it is hunting (or ahead, if there is none).
     int face_dir = 1;
     if (enemy_hearts > 0.0f) { int ex, ey; GetIsoCoords(enemy_x, enemy_y, &ex, &ey); face_dir = (ex >= sx) ? 1 : -1; }
+    // Attack lunge for the first few frames after each blow it lands.
+    int full = summoned_zombie.type == SUMMON_GHOST ? 24 : 30, since = full - summoned_zombie.attack_cooldown;
+    if (summoned_zombie.attack_cooldown > 0 && since < 8) sx += face_dir * (since < 4 ? since : 8 - since) * 3;
     // Summons stand as tall as the hero's race (gnome dead are small, elves tall).
     float k = player_height_m / 1.82f; if (k < 0.55f) k = 0.55f;
     int old_mode = BeginScaledDraw(hdc, sx, sy + 16, k);
