@@ -62,6 +62,13 @@ int TryBreakBarrel(void) {
     return 0;
 }
 
+int BarrelInfo(int i, float *x, float *y, int *intact) {
+    if (i == 0) RefreshBarrels();
+    if (i < 0 || i >= barrel_count) return 0;
+    *x = barrels[i].x; *y = barrels[i].y; *intact = barrels[i].intact;
+    return 1;
+}
+
 void DrawBarrels(HDC hdc) {
     RefreshBarrels();
     HBRUSH wood = CreateSolidBrush(RGB(140, 90, 45)); HPEN hoop = CreatePen(PS_SOLID, 1, RGB(60, 40, 25));
