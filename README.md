@@ -97,8 +97,8 @@ game.exe
 | **'5' Key / Left Stick click in Inventory Tab** | — | Sort the inventory by type (weapons, armor, shields, tools, food, materials), equipped gear first. |
 | **'6' Key in Inventory Tab** | — | Build a **storage chest** from 4 Wood in front of you (up to 8 in the world). Press X next to it to store or take items. A chest out in the open (fewer than 3 trees around it) may be found broken into, with half its items gone. Chests are saved with your hero. |
 | **X facing water (Fishing Pole in pack)** | — | Cast. A bobber floats out; when it dips the controller rumbles gently - press X then to catch a fish (60%, sometimes 70%, plus 3% per LCK point, up to 90%). Walk away to reel in. |
-| **Mouse left click** | — | Walk to that spot, or walk up to a clicked monster and attack it. Clicking a belt slot uses it. |
-| **Mouse right click** | — | Class ability (same as Y). |
+| **Mouse left click** | — | Walk to that spot, or walk up to a clicked monster and attack it. Click loot or a villager to walk over and pick it up / talk. In a shop, click a row to pick it and click it again to buy, sell or confirm; click the Buy/Sell tabs to switch; the wheel scrolls a shop menu. On the World Map tab, click a tile to put the white cursor on it. Clicking a belt slot uses it. |
+| **Mouse right click** | — | Class ability (same as Y). In a shop it backs out. |
 | **'V' Key / Right Stick click** | — | Step the camera through three zoom levels: wide, normal, close. |
 | **Mouse wheel / side buttons** | — | Wheel picks a belt slot; back button taps the bow, forward button uses the picked belt item. |
 | **'1'-'0' Keys (no menu open)** | — | Use belt slots 1-10: the first ten weapons, food and tools in your pack, shown at the bottom of the screen. |
@@ -131,6 +131,8 @@ The **Hero** tab also shows your **Karma** (Soul, Miasma from dark magic, Town H
 
 The **World Map** tab (M / Start, then tab 2) shows every screen you have explored: biome colours, brown squares for village homes, grey squares for castles, blue for rivers, lakes and sea, and a gold square for cave treasure you have not claimed yet. Each town you have found gets a number, and the **TOWNS** list beside the map gives its name, its patron god (Light, Dark, Voodoo or Eldritch) and whether its card shop and pet shop are open today. The game auto-saves the map to `rpg2_save.dat` (next to `game.exe`) every time you change screens, and loads it on start. Delete that file to start with a blank map.
 
+**Map cursor:** on the World Map tab, the arrow keys, D-pad or a mouse click move a white cursor. The line under the map names the town there (castle town or village, its god, and whether its card shop and pet shop are open today) or the kind of land. Zoom in (+ / RT) far enough and town names are written on their tiles.
+
 ## Seasons and weather
 
 One real second is one game minute, so a day lasts 24 real minutes and each 30-day season about 12 hours. The game starts in the season and time of day from your PC's clock (October = fall). Weather is the same everywhere in the world and changes gradually between fair, rain and snow; snow builds up on the ground during winter, leaves blow in fall, and occasional wind gusts (most often in fall) add to the normal breeze.
@@ -147,13 +149,22 @@ One real second is one game minute, so a day lasts 24 real minutes and each 30-d
 - **Musashi's Blade** never breaks and is never dropped by bosses: it only washes up on a beach in the easternmost column of the map on summer day 13.
 - **Zombies and skeletons** are sized by race height (yours, for summons), hit a little harder when bigger, and summons sometimes poison.
 - **Wildlife:** at most 6 animals per screen.
+- **Owls** perch in trees and fly to another tree if you come close. **Scorpions** scuttle about in deserts.
+- **Babies:** when two birds or two squirrels shelter in the same tree, a baby can appear (at most one per screen per day, and the 6-animal cap still holds).
+- **Familiars** face the way they walk. When you are AFK a dog chases squirrels and a cat chases butterflies or birds, then comes back; they never catch anything. Asleep, they curl up by a campfire if one is near, otherwise they ride in your pack and weigh 2. At the pet shop you can pick small, medium or large and one of 4 coats (this choice is not saved yet and resets when you reload).
+- **Campfires** slowly refill HP, MP and stamina while you stand near one; sleeping refills all three.
+- **Bow:** holding a full draw tires you out: stamina stops coming back for 10 seconds.
+- **Beggars:** give as often as you like; the karma reward comes once a day.
+- **Homes** sit on the ground and you can't walk through them. Sand lies flat with the ground.
+- **Loot:** fewer drops, and monsters killed by villagers or town defenders drop nothing, so gold doesn't pile up while you are away.
+- **Attacks:** monsters lunge at you up close, and your minions lunge each time they land a blow. Fishing shows the rod in your hand, the bobber flying out in an arc, a sagging line and the rod bending on a nibble.
 - **Dark vision:** Dwarves and Gnomes see further at night and in caves.
 - **Dracula:** carry **Garlic** (merchant) and he won't come for you; a **Silver Dagger** (merchant) does double damage to him.
 - **Farming:** buy a **Hoe** and **Seeds** from the merchant. X with the Hoe on bare grass tills a plot (up to 48); X with Seeds plants turnips, which grow one stage a day and are ripe on day 3; X on a ripe plot harvests 2-3 **Turnips** (eat to heal) plus 3-4 Seeds per turnip, so you only buy Seeds once. Plots are saved.
 - **Footpaths:** grass you walk over often turns to a dirt path, and grows back a little each day you leave it alone. Paths are saved.
 - **Villager quests:** villagers sometimes ask you to slay a few monsters or bring them Wood, Stone, Fish or Apples, scaled to your level. One job at a time; any villager pays you when it's done. Talk to a villager to see your progress.
 - **Hit splashes:** class abilities splash their own colour - green for Rogue venom (hits while sneaking) and zombie bites, blue for the Wizard's bolt, gold for the Knight/Warrior counter, bone-white for skeletons and pale blue for ghosts.
-- **AFK night sky:** stand idle at night and, as the camera drifts in, stars, the moon (its phase follows the 30-day season) and shooting stars fade in.
+- **AFK view:** stand idle and the camera eases into the hero's head. You see the world through their eyes: sky (stars, the moon with its phase, shooting stars at night), ground, trees, homes, butterflies and critters, your familiar, the campfire, and your rod and bobber if you are fishing. The gaze slowly moves between nearby things. Touch any control and it snaps straight back to normal play.
 - **Grass** bends aside as you walk through it, and **foam** laps at every shoreline.
 - **Barrels** stand by the homes in towns and in caves. X smashes one for a little gold, an apple or wood (2% card chance). They are back the next day.
 - **Zombies** near rivers and marshes rise out of the water's edge.
