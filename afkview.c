@@ -468,7 +468,8 @@ static void AnimalMesh(const FpThing *t) {
         Eyes(x, y, 0.273f * S, 0.03f * S, 0.33f * S, 0.012f * S, cat ? RGB(110, 190, 60) : black);
         return;
     }
-    if (kind == FP_BUTTERFLY) {
+    if (kind == FP_BUTTERFLY) { // a lazy looping drift on top of its real path
+        x += 0.04f * sinf(now / 700.0f + idx); y += 0.03f * cosf(now / 900.0f + idx * 1.7f); z += 0.03f * sinf(now / 380.0f + idx * 2.3f);
         static const COLORREF wing[4] = { RGB(250, 200, 60), RGB(240, 120, 180), RGB(120, 180, 250), RGB(250, 250, 250) };
         COLORREF c = wing[butterflies[idx].color_profile & 3];
         float f = 0.2f + 1.1f * fabsf(sinf(now / 90.0f + idx));
@@ -652,12 +653,14 @@ static void HumanMesh(const FpThing *t) {
 static void TreeMesh(const FpThing *t) {
     int s = t->seed, snow = snow_cover > 0.5f;
     float x = t->x + ((s * 37) % 21 - 10) / 100.0f, y = t->y + ((s * 53) % 21 - 10) / 100.0f;
-    float h = 0.85f + (s * 29 % 30) / 100.0f, rot = (s % 7) * 0.4f;
-    Prism(x, y, 0.0f, 0.5f * h, 0.09f, 0.075f, 5, rot, RGB(110, 75, 45));
+    float h = 0.85f + (s * 29 % 30) / 100.0f, rot = (s % 7) * 0.4f, W = 1.0f;
+    if (IsBigTree(s)) { h *= 1.9f; W = 1.6f; } // old giants: their crowns close over part of the sky
+    Prism(x, y, 0.0f, 0.5f * h, 0.09f * W, 0.075f * W, 5, rot, RGB(110, 75, 45));
+    { float sw = (0.02f + 0.01f * abs(wind_dir)) * sinf(GetTickCount() / 1300.0f + s * 0.7f); x += sw; y += sw * 0.4f; } // canopy sways, trunk stays
     if (IsDeciduousTree(s)) { // round broadleaf, the same trees as in play
         COLORREF leaf = snow ? RGB(205, 215, 225) : current_season == SEASON_FALL ? (s % 2 ? RGB(210, 120, 40) : RGB(220, 175, 50)) : RGB(80, 160, 60);
-        Prism(x, y, 0.4f * h, 0.98f * h, 0.32f, 0.6f, 7, rot, leaf); // same ring at the seam, overlapped, so no gap
-        Prism(x, y, 0.95f * h, 1.5f * h, 0.61f, 0.28f, 7, rot, leaf);
+        Prism(x, y, 0.4f * h, 0.98f * h, 0.32f * W, 0.6f * W, 7, rot, leaf); // same ring at the seam, overlapped, so no gap
+        Prism(x, y, 0.95f * h, 1.5f * h, 0.61f * W, 0.28f * W, 7, rot, leaf);
         if (TreeHasApples(s)) // the apples really on this tree
             for (int a = 0; a < 6; a++) {
                 float an = rot + a * 1.05f, rr = 0.58f - (a % 2) * 0.12f;
@@ -665,8 +668,8 @@ static void TreeMesh(const FpThing *t) {
             }
     } else { // two-tier pine
         COLORREF needle = RGB(35, 115, 55);
-        Prism(x, y, 0.3f * h, 1.15f * h, 0.62f, 0.22f, 7, rot, needle); // flat-topped skirt growing into the top cone
-        Prism(x, y, 0.9f * h, 2.0f * h, 0.45f, 0.0f, 7, rot + 0.2f, snow ? RGB(225, 232, 240) : needle);
+        Prism(x, y, 0.3f * h, 1.15f * h, 0.62f * W, 0.22f * W, 7, rot, needle); // flat-topped skirt growing into the top cone
+        Prism(x, y, 0.9f * h, 2.0f * h, 0.45f * W, 0.0f, 7, rot + 0.2f, snow ? RGB(225, 232, 240) : needle);
     }
 }
 
@@ -763,10 +766,24 @@ static void GroundMesh(void) {
             if (r < 0 || c < 0 || r >= MAP_SIZE || c >= MAP_SIZE) continue;
             int t = VISUAL_MAP[r][c];
             COLORREF col = t == 12 ? RGB(50, 120, 210) : (t == 10 && !in_cave) ? GetTileColor(10, 0) : g;
-            if (t == 12 && (r * 7 + c * 3 + (int)(GetTickCount() / 500)) % 9 == 0) col = RGB(75, 145, 225);
-            else if (t != 12) col = Dim(col, 0.96f + (abs(RainHash(r * 977 + c * 131)) % 5) * 0.01f);
+            if (t == 12) { // water colours bleed slowly into each other, like wet watercolour
+                float now = GetTickCount() / 1000.0f, w = sinf(now * 1.1f + r * 0.9f + c * 0.6f) + sinf(now * 0.7f - r * 0.4f + c * 1.1f);
+                col = RGB(52 + (int)(w * 9.0f), 122 + (int)(w * 11.0f), 212 + (int)(w * 6.0f));
+            }
+            else col = Dim(col, 0.96f + (abs(RainHash(r * 977 + c * 131)) % 5) * 0.01f);
             float v[4][3] = { { (float)c, (float)r, 0 }, { c + 1.0f, (float)r, 0 }, { c + 1.0f, r + 1.0f, 0 }, { (float)c, r + 1.0f, 0 } };
             AddFace(v, 4, col, NULL, 1);
+            float fdx = c + 0.5f - player_x, fdy = r + 0.5f - player_y;
+            if (t != 1 && t != 10 && t != 11 && t != 12 && !in_cave && snow_cover < 0.5f && fdx * fdx + fdy * fdy < 64.0f &&
+                (current_biome == BIOME_GRASSLANDS || current_biome == BIOME_FOREST || current_biome == BIOME_PRAIRIE || current_biome == BIOME_OASIS) &&
+                abs(RainHash(r * 613 + c * 37)) % 7 == 0) { // a flower nodding in the breeze
+                static const COLORREF petal[4] = { RGB(240, 90, 120), RGB(250, 215, 70), RGB(170, 120, 240), RGB(250, 250, 245) };
+                int hsh = abs(RainHash(r * 31 + c * 7));
+                float nod = 0.02f * sinf(GetTickCount() / 900.0f + r * 0.8f + c * 0.5f), fx = c + 0.2f + (hsh % 60) / 100.0f, fy = r + 0.2f + (hsh / 60 % 60) / 100.0f;
+                hcos = 1.0f; hsin = 0.0f;
+                OBox(fx, fy, 0.0f, 0.0f, 0.0f, 0.13f, 0.006f, 0.006f, RGB(60, 130, 50));
+                OBox(fx + nod, fy, 0.0f, 0.0f, 0.13f, 0.16f, 0.03f, 0.03f, petal[hsh % 4]);
+            }
         }
 }
 

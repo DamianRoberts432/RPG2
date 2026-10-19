@@ -138,6 +138,12 @@ extern const char *cloth_names[], *trim_names[];
 COLORREF HeroClothColor(COLORREF class_colour);
 COLORREF HeroTrimColor(void); // CLOTH_UNKNOWN when no trim
 int BarrelInfo(int i, float *x, float *y, int *intact);
+enum { NPC_IDLE, NPC_SWEEP, NPC_FARM, NPC_WATER, NPC_NATURE, NPC_HAMMER, NPC_INSPECT };
+int NpcActivity(int i);
+int NpcAtWork(int i);
+void NoteBarrelBroken(float x, float y);
+int IsBigTree(int tile_seed);
+void DrawBigCrown(HDC hdc, int sx, int sy, int tile_seed);
 extern const char *sex_names[], *beard_names[], *eye_names[], *hair_names[];
 void CycleCreationField(int field, int dir);
 // Clothes: "Head", "Cloak" and "Clothes" slots, wearable by every class.
