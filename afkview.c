@@ -747,14 +747,17 @@ static void DrawWeather(HDC hdc) {
     if (in_cave || current_biome == BIOME_CAVE) return;
     DWORD now = GetTickCount();
     float wx, wy, across = WindAcross(&wx, &wy);
+    // Particles hang in the world: turning or tilting the gaze slides them
+    // across the screen instead of dragging them along with the camera.
+    int pan = (int)(yaw / FP_FOV * WINDOW_WIDTH), tilt = WINDOW_HEIGHT / 2 - horizon;
     if (IsAdverseWeather()) {
         int snow = current_season == SEASON_WINTER || current_biome == BIOME_TUNDRA, n = 80 + (int)(weather_intensity * 120.0f);
         for (int i = 0; i < n; i++) {
-            int hsh = RainHash(i * 613 + 9);
-            int x = (int)(((hsh % WINDOW_WIDTH) + (int)(now * across / (snow ? 40.0f : 12.0f)) + 100 * WINDOW_WIDTH) % WINDOW_WIDTH);
-            int y = (int)((hsh / 3 % WINDOW_HEIGHT + now / (snow ? 12 : 2) * (2 + i % 3)) % WINDOW_HEIGHT);
-            if (snow) Box(hdc, x, y, x + 2, y + 2, RGB(240, 240, 245));
-            else Stroke(hdc, x, y, x + (int)(across * 2.0f), y + 14, 1, RGB(170, 185, 210));
+            int hsh = RainHash(i * 613 + 9), z = i % 3; // z: 0 far and small .. 2 near and big
+            int x = (int)(((hsh % WINDOW_WIDTH) + (int)(now * across * (1 + z) / (snow ? 80.0f : 24.0f)) - pan + 100 * WINDOW_WIDTH) % WINDOW_WIDTH);
+            int y = (int)(((hsh / 3 % WINDOW_HEIGHT) + (int)(now / (snow ? 12 : 2)) * (1 + z) - tilt + 100 * WINDOW_HEIGHT) % WINDOW_HEIGHT);
+            if (snow) Box(hdc, x, y, x + 1 + z * 2, y + 1 + z * 2, RGB(240 - (2 - z) * 25, 240 - (2 - z) * 22, 245 - (2 - z) * 15));
+            else Stroke(hdc, x, y, x + (int)(across * (1 + z)), y + 7 + z * 8, z == 2 ? 2 : 1, z ? RGB(170, 185, 210) : RGB(140, 155, 180));
         }
     }
     int trees = 0;
@@ -762,12 +765,12 @@ static void DrawWeather(HDC hdc) {
     if (!trees || (current_season != SEASON_FALL && abs(wind_dir) < 4) || snow_cover > 0.5f) return;
     COLORREF lc[3] = { RGB(210, 120, 40), RGB(220, 175, 50), RGB(90, 150, 55) };
     for (int i = 0; i < 26; i++) {
-        int hsh = RainHash(i * 311 + 77);
-        float fall = now / (35.0f + hsh % 20);
-        int x = (int)(((hsh % WINDOW_WIDTH) + (int)(now * across / 9.0f) + (int)(sinf(fall / 20.0f + i) * 30.0f) + 100 * WINDOW_WIDTH) % WINDOW_WIDTH);
-        int y = (int)((hsh / 7 % WINDOW_HEIGHT + (int)fall) % WINDOW_HEIGHT);
-        int f = (int)(sinf(now / 150.0f + i) * 4.0f);
-        POINT p[4] = { { x - 4, y }, { x, y - 2 + f / 2 }, { x + 4, y }, { x, y + 2 - f / 2 } };
+        int hsh = RainHash(i * 311 + 77), z = i % 3, s = 2 + z * 2;
+        float fall = now * (1 + z) / (70.0f + hsh % 40);
+        int x = (int)(((hsh % WINDOW_WIDTH) + (int)(now * across * (1 + z) / 18.0f) + (int)(sinf(fall / 20.0f + i) * 30.0f) - pan + 100 * WINDOW_WIDTH) % WINDOW_WIDTH);
+        int y = (int)(((hsh / 7 % WINDOW_HEIGHT) + (int)fall - tilt + 100 * WINDOW_HEIGHT) % WINDOW_HEIGHT);
+        int f = (int)(sinf(now / 150.0f + i) * s);
+        POINT p[4] = { { x - s, y }, { x, y - s / 2 + f / 2 }, { x + s, y }, { x, y + s / 2 - f / 2 } };
         Shape(hdc, p, 4, lc[current_season == SEASON_FALL ? i % 2 : 2]);
     }
 }
