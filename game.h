@@ -200,6 +200,7 @@ int InDeck(int id);
 int DeckCount(void);
 void GainCard(int id);
 void FillEmptyDeck(void);
+int MountainIsPeak(int cell);
 COLORREF HeroEyeColor(void);
 COLORREF HeroHairColor(void);
 extern ClassType selected_class;

@@ -225,6 +225,90 @@ static BiomeType PickBiomeRaw(int gx, int gy) {
     return BIOME_PRAIRIE;
 }
 
+// Mountains: cliff walls along the screen edges that you have to walk around,
+// open only where a mountain path comes in (two sides per mountain, picked by
+// cell) or where the range carries on into another mountain screen. Screens
+// beside a mountain show its cliff face along the shared edge, with a gap
+// where its path comes down. One mountain in three is a peak: two rings of
+// crags round a snowy summit, reached by a winding path, where Yeti roam.
+static int MountainPathSides(int cell) { // bits: 1 north, 2 east, 4 south, 8 west
+    static const int pairs[6] = { 1 | 4, 2 | 8, 1 | 2, 2 | 4, 4 | 8, 8 | 1 };
+    return pairs[((unsigned int)cell * 2246822519u >> 11) % 6u];
+}
+
+int MountainIsPeak(int cell) { return ((unsigned int)cell * 3266489917u >> 15) % 3u == 0 && !MountainHasCave(cell); }
+
+static void CliffEdge(int side, int gap, int depth) {
+    for (int k = 0; k < MAP_SIZE; k++) {
+        if (gap && k >= 13 && k <= 18) continue;
+        for (int d = 0; d < depth; d++) {
+            if (d == depth - 1 && RainHash(k * 31 + side) % 3 == 0) continue; // ragged foot of the cliff
+            int r = side == 1 ? d : side == 4 ? MAP_SIZE - 1 - d : k, c = side == 8 ? d : side == 2 ? MAP_SIZE - 1 - d : k;
+            VISUAL_MAP[r][c] = 1;
+        }
+    }
+}
+
+static void ShapeMountains(int gc, int gr) {
+    static const int dx[4] = { 0, 1, 0, -1 }, dy[4] = { -1, 0, 1, 0 };
+    if (current_biome == BIOME_CASTLE || current_biome == BIOME_OCEAN || current_biome == BIOME_ISLAND) return;
+    int cell = gr * META_GRID_SIZE + gc;
+    for (int s = 0; s < 4; s++) {
+        int side = 1 << s, nx = gc + dx[s], ny = gr + dy[s];
+        if (nx < 0 || ny < 0 || nx >= META_GRID_SIZE || ny >= META_GRID_SIZE) continue;
+        int nb = GetVisitedBiomeAt(nx, ny), facing = 1 << ((s + 2) % 4);
+        if (current_biome == BIOME_MOUNTAIN) { if (nb != BIOME_MOUNTAIN) CliffEdge(side, MountainPathSides(cell) & side, 3); }
+        else if (nb == BIOME_MOUNTAIN) CliffEdge(side, MountainPathSides(ny * META_GRID_SIZE + nx) & facing, 2);
+    }
+    if (current_biome != BIOME_MOUNTAIN) return;
+    for (int r = 4; r < MAP_SIZE - 4; r++) for (int c = 4; c < MAP_SIZE - 4; c++) // fewer loose boulders: easier to cross
+        if (VISUAL_MAP[r][c] == 1 && RainHash(r * 41 + c * 7) % 3 != 0) VISUAL_MAP[r][c] = 0;
+    if (!MountainIsPeak(cell)) return;
+    for (int r = 3; r < MAP_SIZE - 3; r++) for (int c = 3; c < MAP_SIZE - 3; c++) {
+        float ddx = c - 15.5f, ddy = r - 15.5f, d = sqrtf(ddx * ddx + ddy * ddy), a = atan2f(ddy, ddx);
+        if (d >= 9.5f && d < 10.6f) VISUAL_MAP[r][c] = (a < -2.6f || a > 2.6f) ? 0 : 1;      // outer crags, path in from the west
+        else if (d >= 6.0f && d < 7.2f) VISUAL_MAP[r][c] = (a > 0.25f && a < 0.85f) ? 0 : 1; // inner crags, path on round to the south-east
+        else if (d < 6.0f) VISUAL_MAP[r][c] = d > 2.5f && RainHash(r * 13 + c) % 9 == 0 ? 1 : 5; // the snowy summit
+    }
+}
+
+// Caves: a real cavern system grown by cellular automaton, trimmed to the
+// part you can reach from where you come down, with the treasure at the far end.
+static void CarveCave(int index) {
+    static uint8_t a[MAP_SIZE][MAP_SIZE], b[MAP_SIZE][MAP_SIZE];
+    static int dist[MAP_SIZE][MAP_SIZE], qx[MAP_SIZE * MAP_SIZE], qy[MAP_SIZE * MAP_SIZE];
+    for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++)
+        a[r][c] = (r < 1 || c < 1 || r >= MAP_SIZE - 1 || c >= MAP_SIZE - 1) ? 1 : abs(RainHash(index * 7919 + r * 37 + c * 1013)) % 100 < 46;
+    for (int it = 0; it < 4; it++) {
+        for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) {
+            if (r < 1 || c < 1 || r >= MAP_SIZE - 1 || c >= MAP_SIZE - 1) { b[r][c] = 1; continue; }
+            int n = 0;
+            for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) if (y || x) n += a[r + y][c + x];
+            b[r][c] = n > 4 ? 1 : n < 4 ? 0 : a[r][c];
+        }
+        memcpy(a, b, sizeof(a));
+    }
+    for (int r = 13; r <= 17; r++) for (int c = 13; c <= 17; c++) a[r][c] = 0;
+    for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) dist[r][c] = -1;
+    int head = 0, tail = 0, far_x = 15, far_y = 15;
+    dist[15][15] = 0; qx[tail] = 15; qy[tail++] = 15;
+    while (head < tail) {
+        int x = qx[head], y = qy[head++];
+        if (dist[y][x] > dist[far_y][far_x]) { far_x = x; far_y = y; }
+        for (int n = 0; n < 4; n++) {
+            int nx = x + (n == 0) - (n == 1), ny = y + (n == 2) - (n == 3);
+            if (a[ny][nx] || dist[ny][nx] >= 0) continue;
+            dist[ny][nx] = dist[y][x] + 1; qx[tail] = nx; qy[tail++] = ny;
+        }
+    }
+    for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) {
+        if (a[r][c] || dist[r][c] < 0) { VISUAL_MAP[r][c] = 1; continue; } // rock, and sealed-off pockets
+        int walls = a[r - 1][c] + a[r + 1][c] + a[r][c - 1] + a[r][c + 1];
+        VISUAL_MAP[r][c] = walls >= 2 && abs(RainHash(r * 59 + c * 17 + index)) % 6 == 0 ? 3 : 0; // rubble along the walls
+    }
+    cave_treasure_x = (float)far_x; cave_treasure_y = (float)far_y;
+}
+
 void GenerateProceduralScreen(int index) {
     RememberLeavingScreen(index);
     srand((unsigned int)(0x51A7u + index * 313u));
@@ -359,6 +443,8 @@ void GenerateProceduralScreen(int index) {
             tree->active = 0;
         } else VISUAL_MAP[tree->y][tree->x] = 0;
     }
+
+    if (current_biome == BIOME_CAVE) CarveCave(index); else ShapeMountains(grid_c, grid_r);
 
     // Cave entrances are only ever found on Mountain tiles, as a crevice
     // flanked by torches; stepping onto the crevice no longer auto-teleports
