@@ -17,13 +17,16 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 static void PresentFrame(HWND hwnd, HDC hdc, HDC frame) {
     RECT cr; GetClientRect(hwnd, &cr);
     if (cr.right == WINDOW_WIDTH && cr.bottom == WINDOW_HEIGHT) { BitBlt(hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, frame, 0, 0, SRCCOPY); return; }
-    SetStretchBltMode(hdc, COLORONCOLOR);
+    SetStretchBltMode(hdc, HALFTONE); SetBrushOrgEx(hdc, 0, 0, NULL);
     StretchBlt(hdc, 0, 0, cr.right, cr.bottom, frame, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SRCCOPY);
 }
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
     WNDCLASS wc = {0}; MSG msg; HBRUSH grass_brush, creation_bg; HPEN clean_null_pen;
     
+    // Ask Windows for real pixels; otherwise display scaling (125%, 150%) stretches the window and blurs the text.
+    BOOL (WINAPI *set_dpi_aware)(void) = (BOOL (WINAPI *)(void))GetProcAddress(GetModuleHandle("user32.dll"), "SetProcessDPIAware");
+    if (set_dpi_aware) set_dpi_aware();
     wc.lpfnWndProc = WindowProc; wc.hInstance = hInst; wc.lpszClassName = "SaturnParallelEngine"; RegisterClass(&wc);
     // Fit the whole frame (client area, not counting the title bar) on the screen.
     RECT work; SystemParametersInfo(SPI_GETWORKAREA, 0, &work, 0);
