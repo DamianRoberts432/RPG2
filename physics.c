@@ -237,6 +237,43 @@ void UpdateGamePhysics(void) {
                 if (fabs(sin(day_night_cycle_accumulator)) < 0.35f) speed *= 1.2f;
                 if (VISUAL_MAP[(int)enemy_y][(int)enemy_x] == 12) speed *= 0.25f;
                 float nx = enemy_x + (s_dx / dist) * speed, ny = enemy_y + (s_dy / dist) * speed;
+                int fi = -1; // is the hero sheltering in a fire's light?
+                for (int i = 0; i < MAX_CAMPFIRES; i++)
+                    if (campfires[i].active && campfires[i].screen_id == current_screen_index &&
+                        (target_x - campfires[i].x) * (target_x - campfires[i].x) + (target_y - campfires[i].y) * (target_y - campfires[i].y) < 4.2f * 4.2f) fi = i;
+                if (fi >= 0) { // wait it out: lurk at the edge, hide behind a tree, or stalk wildlife when bored
+                    int mood = (e + (int)(world_tick / 40.0f)) % 3;
+                    float fx0 = campfires[fi].x, fy0 = campfires[fi].y, ex = enemy_x - fx0, ey = enemy_y - fy0, ed = sqrtf(ex * ex + ey * ey);
+                    float gx = fx0 + (ed > 0.01f ? ex / ed : 1.0f) * 4.5f, gy = fy0 + (ed > 0.01f ? ey / ed : 0.0f) * 4.5f, best;
+                    if (mood == 1) {
+                        best = 36.0f;
+                        for (int ty = (int)enemy_y - 5; ty <= (int)enemy_y + 5; ty++) for (int tx = (int)enemy_x - 5; tx <= (int)enemy_x + 5; tx++) {
+                            if (tx < 0 || ty < 0 || tx >= MAP_SIZE || ty >= MAP_SIZE || VISUAL_MAP[ty][tx] != 11) continue;
+                            float tfx = tx + 0.5f - fx0, tfy = ty + 0.5f - fy0, tfd = sqrtf(tfx * tfx + tfy * tfy);
+                            if (tfd < 4.0f) continue;
+                            float hx = tx + 0.5f + tfx / tfd * 0.9f, hy = ty + 0.5f + tfy / tfd * 0.9f; // the tree's dark side
+                            float dd = (hx - enemy_x) * (hx - enemy_x) + (hy - enemy_y) * (hy - enemy_y);
+                            if (dd < best) { best = dd; gx = hx; gy = hy; }
+                        }
+                    } else if (mood == 2) {
+                        best = 49.0f;
+                        for (int c = 0; c < MAX_CRITTERS; c++) {
+                            if (!critters[c].active || critters[c].hidden) continue;
+                            float cfx = critters[c].x - fx0, cfy = critters[c].y - fy0;
+                            if (cfx * cfx + cfy * cfy < 4.5f * 4.5f) continue;
+                            float dd = (critters[c].x - enemy_x) * (critters[c].x - enemy_x) + (critters[c].y - enemy_y) * (critters[c].y - enemy_y);
+                            if (dd < best) { best = dd; gx = critters[c].x; gy = critters[c].y; }
+                        }
+                    }
+                    float gdx = gx - enemy_x, gdy = gy - enemy_y, gd = sqrtf(gdx * gdx + gdy * gdy);
+                    float mx = gd > 0.15f ? enemy_x + gdx / gd * speed * 0.7f : enemy_x, my = gd > 0.15f ? enemy_y + gdy / gd * speed * 0.7f : enemy_y;
+                    int ok = gd > 0.15f && mx >= 0 && my >= 0 && mx < MAP_SIZE && my < MAP_SIZE &&
+                             VISUAL_MAP[(int)my][(int)mx] != 1 && VISUAL_MAP[(int)my][(int)mx] != 12 &&
+                             (mx - fx0) * (mx - fx0) + (my - fy0) * (my - fy0) >= 4.2f * 4.2f;
+                    if (ok) { enemy_x = mx; enemy_y = my; }
+                    else { enemy_x += sinf(world_tick * 0.9f + e * 1.7f) * 0.004f; enemy_y += cosf(world_tick * 0.7f + e) * 0.003f; }
+                    nx = enemy_x; ny = enemy_y;
+                }
                 int at_fire_edge = 0; // don't step back into the light: wait at its edge instead of jittering in and out
                 for (int i = 0; i < MAX_CAMPFIRES; i++)
                     if (campfires[i].active && (nx - campfires[i].x) * (nx - campfires[i].x) + (ny - campfires[i].y) * (ny - campfires[i].y) < 4.2f * 4.2f) at_fire_edge = 1;
