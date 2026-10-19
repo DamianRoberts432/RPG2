@@ -35,15 +35,26 @@ COLORREF GetTileColor(uint8_t id, int side) {
     return side ? RGB(85, 155, 70)   : RGB(105, 185, 85);
 }
 
+// Gentle water: two slow sine swells crossing at different angles and speeds.
+// Each tile is tinted a touch lighter or darker by the swell under it and a
+// faint crest rides the high points. The peyote mirage reuses WaveAt.
+float WaveAt(float x, float y, float t) {
+    return 0.5f * sinf(x * 0.9f + y * 0.4f + t * 1.3f) + 0.5f * sinf(-x * 0.35f + y * 1.1f + t * 0.8f);
+}
+
 void DrawFlowingRiver(HDC hdc, int sx, int sy, int tile_seed) {
-    HBRUSH b = CreateSolidBrush(RGB(40, 140, 235)); HGDIOBJ old = SelectObject(hdc, b);
+    float t = GetTickCount() / 1000.0f;
+    int c = tile_seed % MAP_SIZE, r = tile_seed / MAP_SIZE, k = (int)(WaveAt((float)c, (float)r, t) * 10.0f);
+    HBRUSH b = CreateSolidBrush(RGB(40 + k, 140 + k, 235 + k / 2)); HGDIOBJ old = SelectObject(hdc, b);
     POINT water[] = { {sx, sy}, {sx + TILE_WIDTH / 2, sy + TILE_HEIGHT / 2}, {sx, sy + TILE_HEIGHT}, {sx - TILE_WIDTH / 2, sy + TILE_HEIGHT / 2} };
     Polygon(hdc, water, 4);
     SelectObject(hdc, old); DeleteObject(b);
-    if ((tile_seed + (int)world_tick) % 3 == 0) {
-        HPEN shine = CreatePen(PS_SOLID, 1, RGB(130, 215, 255)); HGDIOBJ prev = SelectObject(hdc, shine);
-        MoveToEx(hdc, sx - 9, sy + 16, NULL); LineTo(hdc, sx + 8, sy + 16);
-        SelectObject(hdc, prev); DeleteObject(shine);
+    if (k >= 6) { // soft crest, just a shade lighter than the water
+        int dy = (int)(sinf(t * 1.1f + c * 0.7f) * 3.0f);
+        HPEN crest = CreatePen(PS_SOLID, 1, RGB(85, 175, 245)); HGDIOBJ prev = SelectObject(hdc, crest);
+        POINT arc[3] = { { sx - 10, sy + 17 + dy }, { sx, sy + 14 + dy }, { sx + 10, sy + 17 + dy } };
+        Polyline(hdc, arc, 3);
+        SelectObject(hdc, prev); DeleteObject(crest);
     }
     if ((tile_seed + current_screen_index * 17) % 3 == 0) {
         HBRUSH fish = CreateSolidBrush(RGB(230, 220, 150)); HGDIOBJ prev = SelectObject(hdc, fish);
@@ -52,20 +63,19 @@ void DrawFlowingRiver(HDC hdc, int sx, int sy, int tile_seed) {
     }
 }
 
-// Two-frame foam along every edge where water meets land.
+// Soft foam along every edge where water meets land, easing in and out with the swell.
 void DrawShoreFoam(HDC hdc, int c, int r, int sx, int sy) {
-    int frame = (GetTickCount() / 450) & 1, in = frame ? 4 : 2;
+    int in = 3 + (int)(1.5f * sinf(GetTickCount() / 700.0f + c * 0.8f + r * 0.5f));
     POINT top = { sx, sy + in }, right = { sx + TILE_WIDTH / 2 - in * 2, sy + TILE_HEIGHT / 2 };
     POINT bottom = { sx, sy + TILE_HEIGHT - in }, left = { sx - TILE_WIDTH / 2 + in * 2, sy + TILE_HEIGHT / 2 };
     struct { int dc, dr; POINT a, b; } edge[4] = { { 0, -1, top, right }, { -1, 0, left, top }, { 0, 1, bottom, left }, { 1, 0, right, bottom } };
-    HPEN pen = CreatePen(frame ? PS_DOT : PS_SOLID, 1, RGB(230, 245, 255)); HGDIOBJ old = SelectObject(hdc, pen);
-    int bk = SetBkMode(hdc, TRANSPARENT);
+    HPEN pen = CreatePen(PS_SOLID, 1, RGB(150, 205, 245)); HGDIOBJ old = SelectObject(hdc, pen);
     for (int i = 0; i < 4; i++) {
         int nc = c + edge[i].dc, nr = r + edge[i].dr;
         if (nc < 0 || nr < 0 || nc >= MAP_SIZE || nr >= MAP_SIZE || VISUAL_MAP[nr][nc] == 12) continue;
         MoveToEx(hdc, edge[i].a.x, edge[i].a.y, NULL); LineTo(hdc, edge[i].b.x, edge[i].b.y);
     }
-    SetBkMode(hdc, bk); SelectObject(hdc, old); DeleteObject(pen);
+    SelectObject(hdc, old); DeleteObject(pen);
 }
 
 void InjectDynamicGlowPass(HDC hdc, int hx, int hy, int radius, COLORREF light_color) {
