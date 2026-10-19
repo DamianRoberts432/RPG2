@@ -47,6 +47,11 @@ static const char *Target(const QuestTemplate *t, int n) {
 static void PayQuest(const char *who) {
     gold_count += village_quest[4];
     sprintf(arpg_action_log, "QUEST DONE: \"Thank you, friend!\" %s pays you %d gold.", who, village_quest[4]);
+    const QuestTemplate *t = &quest_templates[village_quest[1]];
+    if (t->fetch && t->fetch != Q_DELIVER && (strcmp(t->item, "Wood") == 0 || strcmp(t->item, "Stone") == 0) && !player_home[0] && !HasInventoryItem("House Supplies")) {
+        AddStackableItem("House Supplies", "Material", 1);
+        strcat(arpg_action_log, " The merchant adds House Supplies to help build you a home.");
+    }
     village_quest[0] = 0;
 }
 

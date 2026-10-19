@@ -55,7 +55,7 @@ void HandleContextInteract(void) {
             return;
         }
     }
-    if (HomeInteract()) return;
+    if (HomeBuildInteract() || HomeInteract()) return;
     if (IsNearBedroll()) {
         sleep_fade_frame = 1;
         strcpy(arpg_action_log, "Rested and recovered! You feel the night air...");

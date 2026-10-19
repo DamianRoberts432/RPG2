@@ -162,6 +162,19 @@ void LeaveHome(void);
 int InteriorBlocks(float x, float y);
 void DrawHomeInterior(HDC hdc);
 void DrawShopRoom(HDC hdc, int stone, int shrine, int floor_y);
+// The player's own house (home.c).
+#define HOME_ROOFS 4
+#define HOME_WALLS 3
+#define HOME_FRONTS (HOME_ROOFS * HOME_WALLS)
+#define FURNITURE_KINDS 6
+extern int32_t player_home[8];
+extern const char *furniture_names[FURNITURE_KINDS];
+int PlayerHomeCentre(float *x, float *y);
+COLORREF HomeRoofColor(int front);
+COLORREF HomeWallColor(int front);
+int HomeBuildInteract(void);
+void UpdatePlayerHome(void);
+int PlaceFurniture(void);
 COLORREF HeroEyeColor(void);
 COLORREF HeroHairColor(void);
 extern ClassType selected_class;

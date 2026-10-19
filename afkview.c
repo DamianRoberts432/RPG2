@@ -86,7 +86,7 @@ static void GatherThings(void) {
             if (VISUAL_MAP[r][c] == 11) AddThing(c + 0.5f, r + 0.5f, 0.0f, FP_TREE, r * MAP_SIZE + c);
             else if (VISUAL_MAP[r][c] == 1) AddThing(c + 0.5f, r + 0.5f, 0.0f, FP_ROCK, r * MAP_SIZE + c);
         }
-    for (int i = 0; i < 4; i++) { // homes sit where they block the hero
+    for (int i = 0; i < 5; i++) { // homes sit where they block the hero
         float hx, hy;
         if (VillageHomeCentre(i, &hx, &hy)) AddThing(hx - HOME_FEET_OFFSET, hy - HOME_FEET_OFFSET, 0.0f, FP_HOME, i);
     }
@@ -820,7 +820,7 @@ int inside_home = -1;
 static float out_x, out_y, room_cx, room_cy;
 
 static int HomeDoorNear(void) {
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
         float hx, hy;
         if (!VillageHomeCentre(i, &hx, &hy)) continue;
         float dx = player_x + HOME_FEET_OFFSET - hx, dy = player_y + HOME_FEET_OFFSET - (hy + HOME_HALF_Y);
@@ -840,18 +840,25 @@ int InteriorBlocks(float x, float y) {
     if (x < room_cx - ROOM_HX + 1.25f && y < room_cy - ROOM_HY + 2.1f) return 1;                    // bed
     if (fabsf(x - (room_cx + 1.0f)) < 0.6f && fabsf(y - (room_cy + 0.2f)) < 0.45f) return 1;       // table
     if (x > room_cx + ROOM_HX - 1.0f && y < room_cy - ROOM_HY + 0.9f) return 1;                    // hearth
+    if (inside_home == 4) {
+        int f = player_home[5];
+        if ((f & 1) && x > room_cx + ROOM_HX - 0.75f && fabsf(y - (room_cy + 1.0f)) < 0.6f) return 1;
+        if ((f & 2) && x < room_cx - ROOM_HX + 1.1f && fabsf(y - (room_cy + 1.2f)) < 0.45f) return 1;
+        if ((f & 16) && fabsf(x - (room_cx + 0.9f)) < 0.5f && y < room_cy - ROOM_HY + 0.75f) return 1;
+    }
     return 0;
 }
 
 int HomeInteract(void) {
     if (inside_home >= 0) {
+        if (inside_home == 4 && PlaceFurniture()) return 1;
         if (player_x < room_cx - ROOM_HX + 1.8f && player_y < room_cy - ROOM_HY + 2.6f) {
             sleep_fade_frame = 1; strcpy(arpg_action_log, "HOME: You sleep soundly in the cottage bed.");
         } else strcpy(arpg_action_log, "HOME: A snug cottage. Walk out the door to leave.");
         return 1;
     }
     int i = HomeDoorNear();
-    if (i < 0) return 0;
+    if (i < 0 || (i == 4 && player_home[0] != 2)) return 0;
     StoreEnemy();
     for (int k = 0; k < MAX_ENEMIES; k++) {
         float dx = enemies[k].x - player_x, dy = enemies[k].y - player_y;
@@ -860,7 +867,8 @@ int HomeInteract(void) {
     float hx, hy; VillageHomeCentre(i, &hx, &hy);
     inside_home = i; out_x = player_x; out_y = player_y; room_cx = hx; room_cy = hy;
     player_x = room_cx; player_y = room_cy + ROOM_HY - 0.8f;
-    strcpy(arpg_action_log, "HOME: \"Come in, come in! Mind the hearth.\"");
+    if (i == 4) { if (!PlaceFurniture()) strcpy(arpg_action_log, "HOME: Welcome home. Furniture you buy goes in when you come inside."); }
+    else strcpy(arpg_action_log, "HOME: \"Come in, come in! Mind the hearth.\"");
     return 1;
 }
 
@@ -910,12 +918,51 @@ static void RoomWindow(float y0, float wx0, float wx1, float z0, float z1, int n
     face_bias = 0.0f;
 }
 
+static void DrawHomeFurniture(float x0, float x1, float y0, float y1, float cx, float cy) {
+    int f = player_home[5];
+    static const COLORREF books[3] = { RGB(150, 40, 40), RGB(40, 70, 130), RGB(60, 110, 60) };
+    if (f & 1) { // bookshelf on the right wall
+        OBox(x1 - 0.25f, cy + 1.0f, 0, 0, 0.0f, 1.6f, 0.18f, 0.5f, RGB(100, 65, 38));
+        face_bias = 0.2f;
+        for (int k = 0; k < 3; k++) for (int b = 0; b < 4; b++)
+            OBox(x1 - 0.45f, cy + 0.68f + b * 0.21f, 0, 0, 0.3f + k * 0.5f, 0.64f + k * 0.5f, 0.03f, 0.08f, books[(b + k) % 3]);
+        face_bias = 0.0f;
+    }
+    if (f & 2) { // armchair by the door
+        COLORREF c = RGB(120, 50, 60);
+        OBox(x0 + 0.6f, cy + 1.2f, 0, 0, 0.0f, 0.35f, 0.3f, 0.3f, c);
+        OBox(x0 + 0.33f, cy + 1.2f, 0, 0, 0.35f, 0.85f, 0.07f, 0.3f, Dim(c, 0.8f));
+        OBox(x0 + 0.6f, cy + 0.93f, 0, 0, 0.35f, 0.5f, 0.3f, 0.05f, Dim(c, 0.9f));
+        OBox(x0 + 0.6f, cy + 1.47f, 0, 0, 0.35f, 0.5f, 0.3f, 0.05f, Dim(c, 0.9f));
+    }
+    if (f & 4) { // potted plant in the front-right corner
+        Prism(x1 - 0.4f, y1 - 0.4f, 0.0f, 0.3f, 0.14f, 0.11f, 6, 0.0f, RGB(180, 90, 55));
+        Prism(x1 - 0.4f, y1 - 0.4f, 0.3f, 0.8f, 0.26f, 0.0f, 5, 0.4f, RGB(60, 130, 55));
+    }
+    if (f & 8) { // painting on the back wall
+        face_bias = 0.3f; WallY(y0 + 0.01f, cx - 1.4f, cx - 0.8f, 1.0f, 1.5f, RGB(150, 110, 40), -1.0f);
+        face_bias = 0.4f; WallY(y0 + 0.02f, cx - 1.35f, cx - 0.85f, 1.25f, 1.45f, RGB(120, 170, 220), -1.0f);
+        WallY(y0 + 0.02f, cx - 1.35f, cx - 0.85f, 1.05f, 1.25f, RGB(80, 140, 70), -1.0f);
+        face_bias = 0.0f;
+    }
+    if (f & 16) { // wardrobe against the back wall
+        OBox(cx + 0.9f, y0 + 0.3f, 0, 0, 0.0f, 1.5f, 0.4f, 0.25f, RGB(90, 58, 34));
+        face_bias = 0.2f; WallY(y0 + 0.56f, cx + 0.88f, cx + 0.92f, 0.1f, 1.4f, RGB(60, 38, 22), -1.0f); face_bias = 0.0f;
+    }
+    if (f & 32) { // hanging lantern
+        OBox(cx - 0.3f, cy + 0.6f, 0, 0, 1.75f, 2.0f, 0.01f, 0.01f, RGB(50, 50, 50));
+        face_glow = 1; Prism(cx - 0.3f, cy + 0.6f, 1.5f, 1.75f, 0.08f, 0.08f, 6, 0.0f, RGB(255, 210, 110)); face_glow = 0;
+        scene_lit = 1.0f;
+    }
+}
+
 void DrawHomeInterior(HDC hdc) {
     if (inside_home < 0) return;
     if (player_y > room_cy + ROOM_HY - 0.35f && fabsf(player_x - room_cx) < 0.7f) { LeaveHome(); return; }
     float x0 = room_cx - ROOM_HX, x1 = room_cx + ROOM_HX, y0 = room_cy - ROOM_HY, y1 = room_cy + ROOM_HY, cx = room_cx, cy = room_cy;
     int night = (fabs(sin(day_night_cycle_accumulator)) < 0.35f); DWORD now = GetTickCount();
     COLORREF wood = RGB(120, 80, 45), dark = RGB(85, 55, 32), stone = RGB(130, 125, 120), wall = RGB(222, 200, 158);
+    if (inside_home == 4) wall = HomeWallColor(player_home[4]);
     static const COLORREF blankets[4] = { RGB(170, 50, 45), RGB(60, 100, 160), RGB(70, 130, 70), RGB(150, 110, 50) };
     Box(hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, RGB(26, 18, 12));
     RoomCamera(cx, y1 + 3.0f, 2.6f, 1.55f, (int)(WINDOW_HEIGHT * 0.16f));
@@ -927,7 +974,7 @@ void DrawHomeInterior(HDC hdc) {
     OBox(x0 + 0.6f, y0 + 0.08f, 0, 0, 0.0f, 0.75f, 0.5f, 0.06f, dark);
     OBox(x0 + 0.6f, y0 + 1.0f, 0, 0, 0.0f, 0.3f, 0.5f, 0.95f, wood);
     OBox(x0 + 0.6f, y0 + 1.15f, 0, 0, 0.3f, 0.4f, 0.48f, 0.75f, blankets[inside_home & 3]);
-    OBox(x0 + 0.6f, y0 + 0.28f, 0, 0, 0.3f, 0.42f, 0.38f, 0.15f, RGB(235, 235, 225));
+    face_bias = 0.3f; OBox(x0 + 0.6f, y0 + 0.28f, 0, 0, 0.3f, 0.42f, 0.38f, 0.15f, RGB(235, 235, 225)); face_bias = 0.0f;
     // table, stools and a bowl of apples
     for (int k = 0; k < 4; k++) OBox(cx + 1.0f + ((k & 1) ? 0.45f : -0.45f), cy + 0.2f + ((k & 2) ? 0.28f : -0.28f), 0, 0, 0.0f, 0.55f, 0.04f, 0.04f, dark);
     OBox(cx + 1.0f, cy + 0.2f, 0, 0, 0.55f, 0.62f, 0.55f, 0.38f, wood);
@@ -950,8 +997,8 @@ void DrawHomeInterior(HDC hdc) {
     WallY(y1, x0, cx - 0.55f, 0.0f, 0.3f, Dim(wall, 0.9f), -1.0f);
     WallY(y1, cx + 0.55f, x1, 0.0f, 0.3f, Dim(wall, 0.9f), -1.0f);
     // the villager who lives here, and the hero
-    FpThing r = { x0 + 1.7f, y0 + 1.6f, 0.0f, 0.0f, FP_NPC, (13 << 4) | (inside_home & 3) };
-    HumanMesh(&r);
+    if (inside_home < 4) { FpThing r = { x0 + 1.7f, y0 + 1.6f, 0.0f, 0.0f, FP_NPC, (13 << 4) | (inside_home & 3) }; HumanMesh(&r); }
+    else DrawHomeFurniture(x0, x1, y0, y1, cx, cy);
     FpThing h = { player_x, player_y, 0.0f, 0.0f, FP_NPC, (14 << 4) | 15 };
     HumanMesh(&h);
     DrawFaces(hdc, scene_lit);

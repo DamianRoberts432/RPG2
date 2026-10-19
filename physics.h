@@ -9,6 +9,7 @@
 #define HOME_HALF_X 1.0f
 #define HOME_HALF_Y 0.8f
 #define HOME_FEET_OFFSET 0.55f
+int TileBlocksPlayer(float x, float y);
 int VillageHomeCentre(int i, float *x, float *y);
 int PlayerCanStandAt(float x, float y);
 int PlayerTryMove(float tx, float ty, float* ox, float* oy);

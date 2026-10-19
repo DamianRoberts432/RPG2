@@ -90,6 +90,7 @@ int SaveWorldMapState(void) {
     ok = ok && fwrite(looks, sizeof(looks), 1, f) == 1;
     ok = ok && fwrite(screen_edits, sizeof(screen_edits), 1, f) == 1 && fwrite(screen_memory, sizeof(screen_memory), 1, f) == 1 &&
          fwrite(melt_patches, sizeof(melt_patches), 1, f) == 1;
+    ok = ok && fwrite(player_home, sizeof(player_home), 1, f) == 1;
     ok = (fclose(f) == 0) && ok;
     if (!ok) { remove(SAVE_TEMP_NAME); return 0; }
     return MoveFileExA(SAVE_TEMP_NAME, SAVE_FILE_NAME, MOVEFILE_REPLACE_EXISTING) != 0;
@@ -139,6 +140,8 @@ int LoadWorldMapState(void) {
     static MeltPatch saved_melt[MAX_MELT_PATCHES];
     int has_world = has_looks && fread(saved_edits, sizeof(saved_edits), 1, f) == 1 && fread(saved_memory, sizeof(saved_memory), 1, f) == 1 &&
                     fread(saved_melt, sizeof(saved_melt), 1, f) == 1;
+    int32_t saved_home[8];
+    int has_home = has_world && fread(saved_home, sizeof(saved_home), 1, f) == 1;
     fclose(f);
     if (!ok) return 0;
     memcpy(visited_biomes, biomes, sizeof(biomes));
@@ -194,6 +197,8 @@ int LoadWorldMapState(void) {
         memcpy(screen_memory, saved_memory, sizeof(saved_memory));
         memcpy(melt_patches, saved_melt, sizeof(saved_melt));
     }
+    memset(player_home, 0, sizeof(player_home));
+    if (has_home && saved_home[0] == 2 && saved_home[4] >= 0 && saved_home[4] < HOME_FRONTS) memcpy(player_home, saved_home, sizeof(player_home));
     return 1;
 }
 
@@ -333,6 +338,12 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
             FillSub(hdc, cx, cy, q, 3, 0, 1, 1, castle_tower);
             FillSub(hdc, cx, cy, q, 0, 3, 1, 1, castle_tower);
             FillSub(hdc, cx, cy, q, 3, 3, 1, 1, castle_tower);
+        }
+        if (player_home[0] == 2 && gx == player_home[6] && gy == player_home[7]) { // a tiny picture of your house
+            HBRUSH hr = CreateSolidBrush(HomeRoofColor(player_home[4])), hw = CreateSolidBrush(HomeWallColor(player_home[4]));
+            FillSub(hdc, cx, cy, q, 3, 2, 1, 1, hr); FillSub(hdc, cx, cy, q, 3, 3, 1, 1, hw);
+            DeleteObject(hr); DeleteObject(hw);
+            if (cs >= 64) { SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(255, 255, 255)); TextOut(hdc, cx + 2, cy + 2, "Home", 4); }
         }
         if ((poi & (POI_VILLAGE | POI_CASTLE)) && cs >= 64) { // zoomed in far enough to write the name on the tile
             char nm[32]; TownNameAt(gy * META_GRID_SIZE + gx + ((poi & POI_TOWN_ALT) ? 30000 : 0), nm, sizeof(nm));

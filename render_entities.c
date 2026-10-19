@@ -702,7 +702,7 @@ static void DrawIsoHome(HDC hdc, float cx, float cy, int i) {
     const int H = 58, R = 104;
     int night = fabs(sin(day_night_cycle_accumulator)) < 0.35;
     static const COLORREF roofs[4] = { RGB(196, 152, 74), RGB(170, 70, 50), RGB(120, 110, 100), RGB(186, 140, 70) };
-    COLORREF roof = roofs[i & 3], roof_back = RGB(GetRValue(roof) * 4 / 5, GetGValue(roof) * 4 / 5, GetBValue(roof) * 4 / 5);
+    COLORREF roof = i < 4 ? roofs[i & 3] : HomeRoofColor(player_home[4]), roof_back = RGB(GetRValue(roof) * 4 / 5, GetGValue(roof) * 4 / 5, GetBValue(roof) * 4 / 5);
     COLORREF timber = RGB(95, 62, 36), glass = night ? RGB(255, 205, 110) : RGB(150, 185, 210);
     POINT back[] = { IsoAt(x0 - e, y0 - e, H - 6), IsoAt(x1 + e, y0 - e, H - 6), IsoAt(x1 + e, cy, R), IsoAt(x0 - e, cy, R) };
     BrushPoly(hdc, roof_back, back, 4);
@@ -711,7 +711,7 @@ static void DrawIsoHome(HDC hdc, float cx, float cy, int i) {
     POINT gable[] = { IsoAt(x1, y0, 0), IsoAt(x1, y1, 0), IsoAt(x1, y1, H), IsoAt(x1, cy, R), IsoAt(x1, y0, H) };
     BrushPoly(hdc, RGB(170, 130, 88), gable, 5);
     POINT front[] = { IsoAt(x0, y1, 0), IsoAt(x1, y1, 0), IsoAt(x1, y1, H), IsoAt(x0, y1, H) };
-    BrushPoly(hdc, RGB(208, 172, 122), front, 4);
+    BrushPoly(hdc, i < 4 ? RGB(208, 172, 122) : HomeWallColor(player_home[4]), front, 4);
     POINT a = IsoAt(x0, y1, H / 2), b = IsoAt(x1, y1, H / 2), c0 = IsoAt(x1, y1, 0), c1 = IsoAt(x1, y1, H);
     PenLine(hdc, 2, timber, a.x, a.y, b.x, b.y);
     PenLine(hdc, 3, timber, c0.x, c0.y, c1.x, c1.y);
@@ -727,6 +727,12 @@ static void DrawIsoHome(HDC hdc, float cx, float cy, int i) {
 
 void DrawVillage(HDC hdc) {
     float hcx, hcy;
+    UpdatePlayerHome();
+    if (VillageHomeCentre(4, &hcx, &hcy)) {
+        DrawIsoHome(hdc, hcx, hcy, 4);
+        float fx = player_x + HOME_FEET_OFFSET, fy = player_y + HOME_FEET_OFFSET;
+        if (fx + fy > hcx + hcy + 0.3f && fabsf((fx - fy) - (hcx - hcy)) < HOME_HALF_X + HOME_HALF_Y + 0.7f) DrawHeroAsset(hdc);
+    }
     if (VillageHomeCentre(0, &hcx, &hcy)) {
         for (int i = 0; i < 4; i++) if (VillageHomeCentre(i, &hcx, &hcy)) DrawIsoHome(hdc, hcx, hcy, i);
         // The hero is drawn again when standing in front of a home.

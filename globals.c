@@ -240,7 +240,15 @@ MerchantItem merchant_catalog[MERCH_CAPACITY] = {
     { "Linen Shirt",     "Clothes", 0,  6, 2, 2, RARITY_COMMON, 0 },
     { "Work Smock",      "Clothes", 0,  8, 2, 2, RARITY_COMMON, 0 },
     { "Leather Jerkin",  "Clothes", 0, 22, 2, 2, RARITY_COMMON, 0 },
-    { "Padded Gambeson", "Clothes", 0, 45, 1, 1, RARITY_UNCOMMON, 0 }
+    { "Padded Gambeson", "Clothes", 0, 45, 1, 1, RARITY_UNCOMMON, 0 },
+    // Your own house and its furniture (see home.c).
+    { "House Supplies",  "Material", 0, 400, 1, 1, RARITY_COMMON, 0 },
+    { "Bookshelf",       "Material", 0,  60, 1, 1, RARITY_COMMON, 0 },
+    { "Armchair",        "Material", 0,  45, 1, 1, RARITY_COMMON, 0 },
+    { "Potted Plant",    "Material", 0,  15, 1, 1, RARITY_COMMON, 0 },
+    { "Painting",        "Material", 0,  80, 1, 1, RARITY_COMMON, 0 },
+    { "Wardrobe",        "Material", 0,  70, 1, 1, RARITY_COMMON, 0 },
+    { "Lantern",         "Material", 0,  25, 1, 1, RARITY_COMMON, 0 }
     // Legendary items are never sold; they only drop from bosses (see HandleEnemyDamage).
 };
 const char *villager_greetings[] = {
