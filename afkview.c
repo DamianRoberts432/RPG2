@@ -150,6 +150,17 @@ static void DrawSky(HDC hdc, float light) {
         Blob(hdc, x - 26, y - 26, x + 26, y + 26, RGB(255, 236, 170)); Blob(hdc, x - 18, y - 18, x + 18, y + 18, RGB(255, 250, 215));
         DrawSkyBeam(hdc, x, y, h, RGB(255, 240, 190), 45, BeamStrength(1));
     }
+    if (light > 0.4f && !gloomy) { // a distant flock: little cursive v's drifting and flapping
+        float tb = GetTickCount() / 1000.0f;
+        for (int i = 0; i < 7; i++) {
+            float az = 1.9f + tb * 0.006f + (i % 4) * 0.035f + i * 0.012f, el = 0.30f + 0.025f * sinf(tb * 0.3f + i * 1.3f) + (i % 3) * 0.02f;
+            int bx, by; SkyPoint(az, el, &bx, &by);
+            if (bx < 0 || bx >= WINDOW_WIDTH || by < 0 || by >= h) continue;
+            int s = 3 + (i % 3), flap = (int)(sinf(tb * (5.0f + i % 3) + i) * 2.0f);
+            COLORREF bc = Dim(RGB(60, 65, 80), 0.6f + 0.4f * light);
+            Stroke(hdc, bx - s, by - 1 - flap, bx, by + 1, 1, bc); Stroke(hdc, bx, by + 1, bx + s, by - 1 - flap, 1, bc);
+        }
+    }
     if (light >= 0.35f || gloomy) return;
     float k = (0.35f - light) / 0.35f;
     DWORD now = GetTickCount();
@@ -599,9 +610,14 @@ static void FireMesh(const FpThing *t) {
     float x = t->x, y = t->y, fl = 0.08f * sinf(GetTickCount() / 90.0f + t->seed);
     Prism(x, y, 0.0f, 0.1f, 0.32f, 0.3f, 6, 0.3f, RGB(95, 65, 40));
     face_glow = 1;
-    Prism(x, y, 0.1f, 0.62f + fl, 0.22f, 0.0f, 5, GetTickCount() / 400.0f, RGB(240, 120, 30));
+    DWORD now = GetTickCount(); // a smaller flame (the light it gives is unchanged)
+    Prism(x, y, 0.1f, 0.42f + fl * 0.7f, 0.15f, 0.0f, 5, now / 400.0f, RGB(240, 120, 30));
     face_bias = 0.05f;
-    Prism(x, y, 0.1f, 0.4f - fl, 0.12f, 0.0f, 5, -(GetTickCount() / 300.0f), RGB(255, 220, 90));
+    Prism(x, y, 0.1f, 0.28f - fl * 0.7f, 0.085f, 0.0f, 5, -(now / 300.0f), RGB(255, 220, 90));
+    face_bias = 0.08f; // flickering streaks inside: blue at the base, red and white tongues
+    Prism(x, y, 0.1f, 0.07f, 0.07f, 0.0f, 5, now / 250.0f, RGB(90, 130, 255));
+    static const COLORREF tongue[3] = { RGB(230, 50, 30), RGB(255, 250, 235), RGB(255, 170, 60) };
+    Prism(x + 0.03f * sinf(now / 170.0f), y, 0.14f, 0.2f + fl, 0.03f, 0.0f, 3, now / 200.0f, tongue[(now / 140 + t->seed) % 3]);
     face_bias = 0.0f; face_glow = 0;
 }
 
@@ -708,12 +724,20 @@ static float WindAcross(float *wx, float *wy) {
     return -*wx * sinf(yaw) + *wy * cosf(yaw);
 }
 
-static void CloudPuff(HDC hdc, int cx, int cy, int w, COLORREF c, int alpha) {
+static void CloudPuff(HDC hdc, int cx, int cy, int w, COLORREF c, int alpha, int seed) {
     int x0 = cx - w, y0 = cy - w / 2, W = 2 * w, H = w;
     if (W < 6 || x0 + W < 0 || x0 > WINDOW_WIDTH || y0 + H < 0) return;
     HDC t = CreateCompatibleDC(hdc); HBITMAP b = CreateCompatibleBitmap(hdc, W, H); HGDIOBJ ob = SelectObject(t, b);
     BitBlt(t, 0, 0, W, H, hdc, x0, y0, SRCCOPY);
-    Blob(t, 0, H / 3, W / 2, H - 1, c); Blob(t, W / 5, 0, W * 4 / 5, H - 1, c); Blob(t, W / 2, H / 4, W - 1, H - 1, c);
+    float tm = GetTickCount() / 9000.0f;
+    for (int k = 0; k < 5; k++) { // each lump swells and shrinks slowly, so no two clouds share a shape
+        float n = 0.5f + 0.25f * sinf(seed * 0.37f + k * 2.1f + tm) + 0.25f * cosf(seed * 0.11f + k * 1.3f - tm * 0.7f);
+        int lw = (int)(W * (0.28f + 0.22f * n)), lh = (int)(H * (0.5f + 0.45f * n));
+        int lx = (int)(W * (0.1f + 0.2f * k)) - lw / 2 + W / 10, ly = H - lh;
+        if (lx < 0) lx = 0;
+        if (lx + lw > W - 1) lw = W - 1 - lx;
+        Blob(t, lx, ly, lx + lw, H - 1, c);
+    }
     BLENDFUNCTION bf = { AC_SRC_OVER, 0, (BYTE)alpha, 0 };
     AlphaBlend(hdc, x0, y0, W, H, t, 0, 0, W, H, bf);
     SelectObject(t, ob); DeleteObject(b); DeleteDC(t);
@@ -728,16 +752,14 @@ static void DrawClouds(HDC hdc, float light) {
     int n = IsAdverseWeather() ? 12 : 3 + (int)(weather_intensity * 6.0f);
     for (int i = 0; i < n; i++) {
         int hs = RainHash(i * 977 + 31);
-        float bx = (float)(hs % 800) / 10.0f, by = (float)(hs / 800 % 800) / 10.0f;
-        float rx = fmodf(bx + wx * t * 0.05f - player_x + 4000.0f, 80.0f) - 40.0f;
-        float ry = fmodf(by + wy * t * 0.05f - player_y + 4000.0f, 80.0f) - 40.0f;
-        float d = sqrtf(rx * rx + ry * ry);
-        if (d < 6.0f) continue;
-        int x, y; SkyPoint(atan2f(ry, rx), atanf(9.0f / d), &x, &y);
+        // Pinned to bearings like the stars, drifting slowly with the wind, so a
+        // turning gaze slides them smoothly and they never jump or vanish.
+        float az = (hs % 6283) / 1000.0f + t * 0.004f * (wx - wy), el = 0.10f + (hs / 6283 % 300) / 1000.0f;
+        int x, y; SkyPoint(az, el, &x, &y);
         if (x < -400) continue;
-        int solid = i % 3 != 0, w = (int)(focal * (2.0f + (hs % 5) * 0.6f) / d);
+        int solid = i % 3 != 0, w = (int)(focal * (0.10f + (hs % 5) * 0.04f) * (0.7f + el));
         COLORREF c = IsAdverseWeather() ? RGB(120, 125, 135) : solid ? RGB(245, 245, 250) : RGB(215, 220, 230);
-        CloudPuff(hdc, x, y, w, Dim(c, k + 0.15f), solid ? 215 : 95);
+        CloudPuff(hdc, x, y, w, Dim(c, k + 0.15f), solid ? 215 : 95, hs);
     }
 }
 
