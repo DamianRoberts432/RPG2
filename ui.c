@@ -420,16 +420,16 @@ void DrawTabbedMenuOverlay(HDC hdc) {
 
         SetTextColor(hdc, RGB(180, 190, 200));
         TextOut(hdc, 80, 318, "ID", 2);
-        TextOut(hdc, 100, 318, "Name", 4);
-        TextOut(hdc, 430, 318, "Type", 4);
-        TextOut(hdc, 520, 318, "Qty", 3);
-        TextOut(hdc, 590, 318, "Wt", 2);
-        TextOut(hdc, 650, 318, "State", 5);
+        TextOut(hdc, 122, 318, "Name", 4);
+        TextOut(hdc, 380, 318, "Type", 4);
+        TextOut(hdc, 500, 318, "Qty", 3);
+        TextOut(hdc, 560, 318, "Wt", 2);
+        TextOut(hdc, 620, 318, "State", 5);
 
         // Only a handful of rows fit on screen at once now that inventory
         // space goes up to 100 slots, so scroll a small window around the
         // current selection instead of overflowing past the menu box.
-        const int visible_rows = 11;
+        const int visible_rows = 10;
         int list_start = selected_inv_index - visible_rows / 2;
         if (list_start > player_item_count - visible_rows) list_start = player_item_count - visible_rows;
         if (list_start < 0) list_start = 0;
@@ -446,27 +446,27 @@ void DrawTabbedMenuOverlay(HDC hdc) {
                 sprintf(buf, "Durability: %d/%d", item->durability_current, item->durability_max);
                 TextOut(hdc, 430, 300, buf, (int)strlen(buf));
             }
-            // Name field is a fixed 55 characters (dot padded, "..." when
+            // Name field is a fixed 30 characters (dot padded, "..." when
             // truncated) and every other column sits at a fixed pixel offset
             // so nothing shifts with name length.
-            char name_field[56];
+            char name_field[32];
             int name_len = (int)strlen(item->name);
-            if (name_len > 55) {
-                memcpy(name_field, item->name, 52);
-                strcpy(name_field + 52, "...");
+            if (name_len > 30) {
+                memcpy(name_field, item->name, 27);
+                strcpy(name_field + 27, "...");
             } else {
-                memset(name_field, '.', 55);
+                memset(name_field, '.', 30);
                 memcpy(name_field, item->name, name_len);
-                name_field[55] = '\0';
+                name_field[30] = '\0';
             }
-            int row_y = 336 + (row * 16);
+            int row_y = 336 + (row * 17);
             sprintf(buf, "[%2d]", i + 1); TextOut(hdc, 80, row_y, buf, (int)strlen(buf));
-            TextOut(hdc, 100, row_y, name_field, (int)strlen(name_field));
-            sprintf(buf, "[%s]", item->slot); TextOut(hdc, 430, row_y, buf, (int)strlen(buf));
-            sprintf(buf, "x%d", item->quantity); TextOut(hdc, 520, row_y, buf, (int)strlen(buf));
-            sprintf(buf, "%.1f", item->weight); TextOut(hdc, 590, row_y, buf, (int)strlen(buf));
-            const char *state = item->is_equipped ? "[EQUIPPED]" : "[UNEQUIPPED]";
-            TextOut(hdc, 650, row_y, state, (int)strlen(state));
+            TextOut(hdc, 122, row_y, name_field, (int)strlen(name_field));
+            sprintf(buf, "[%s]", item->slot); TextOut(hdc, 380, row_y, buf, (int)strlen(buf));
+            sprintf(buf, "x%d", item->quantity); TextOut(hdc, 500, row_y, buf, (int)strlen(buf));
+            sprintf(buf, "%.1f", item->weight); TextOut(hdc, 560, row_y, buf, (int)strlen(buf));
+            const char *state = item->is_equipped ? "[EQUIPPED]" : "";
+            TextOut(hdc, 620, row_y, state, (int)strlen(state));
         }
 
         SetTextColor(hdc, RGB(255, 180, 60));
