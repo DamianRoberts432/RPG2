@@ -5,7 +5,7 @@ static DWORD cast_at = 0; // the bobber flies out in an arc for CAST_MS
 static int fish_state = 0; // 0 idle, 1 bobber floating, 2 fish nibbling (bobber dips)
 static float bobber_x, bobber_y, cast_x, cast_y;
 static DWORD next_event = 0, dip_until = 0, rumble_until = 0;
-static int dips_left = 0, fishy = 0;
+static int dips_left = 0, fishy = 0, told_quiet = 0;
 
 static void Rumble(int on) {
     XINPUT_VIBRATION v = { 0 };
@@ -36,7 +36,7 @@ void CastFishingLine(void) {
     bobber_x = x + 0.5f; bobber_y = y + 0.5f;
     cast_x = player_x; cast_y = player_y;
     fishy = IsFacingFishWater();
-    dips_left = fishy ? 2 + rand() % 3 : 0;
+    dips_left = fishy ? 2 + rand() % 3 : 0; told_quiet = 0;
     fish_state = 1; fishing_active = 1; cast_at = GetTickCount();
     next_event = GetTickCount() + 1500 + rand() % 2500;
     strcpy(arpg_action_log, "FISHING: You cast your line. When the bobber dips, press X.");
@@ -66,7 +66,12 @@ static void UpdateFishing(void) {
         next_event = now + 1200 + rand() % 2200;
     }
     if (fish_state == 1 && now >= next_event) {
-        if (dips_left <= 0) { EndFishing(fishy ? "FISHING: The fish lost interest." : "FISHING: Nothing's biting here. Try other water."); return; }
+        if (dips_left <= 0) { // the line stays out until you reel in with X; fish may wander back
+            if (!told_quiet) { strcpy(arpg_action_log, fishy ? "FISHING: The fish lost interest. Wait, or press X to reel in." : "FISHING: Nothing's biting here. Press X to reel in."); told_quiet = 1; }
+            next_event = now + 5000 + rand() % 7000;
+            if (fishy && rand() % 3 == 0) dips_left = 1 + rand() % 2;
+            return;
+        }
         dips_left--;
         fish_state = 2; dip_until = now + 650;
         Rumble(1); rumble_until = now + 220;
