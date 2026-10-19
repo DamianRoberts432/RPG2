@@ -411,13 +411,13 @@ void ProcessGamepadInput(void) {
         if (dx != 0.0f || dy != 0.0f) {
             is_running = 1; run_bob += 0.4f;
             float race_mult = GetRaceSpeedMultiplier();
-            float speed = 0.135f * race_mult * WeightSpeedFactor() * (1.0f + 0.02f * stat_spent[1]); if (speed < 0.01f) speed = 0.0f;
+            float speed = 0.15f * race_mult * WeightSpeedFactor() * (1.0f + 0.02f * stat_spent[1]); if (speed < 0.01f) speed = 0.0f;
             if (speed <= 0.0f) strcpy(arpg_action_log, "OVERLOADED: Too heavy to move! Drop something.");
             if (player_stamina <= 0.0f) {
-                speed *= 0.4f; // exhausted: can still shuffle along, just much slower
+                speed *= 0.6f; // exhausted: can still walk, just slower
                 strcpy(arpg_action_log, "Exhausted! Rest to recover stamina.");
             } else {
-                player_stamina -= 0.15f; // running slowly drains stamina
+                player_stamina -= 0.035f; // walking barely tires you; a full bar lasts about a minute
                 if (player_stamina < 0.0f) player_stamina = 0.0f;
             }
             if (IsOnSlipperyGround()) {

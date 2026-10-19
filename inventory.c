@@ -497,12 +497,12 @@ int TryPickupDroppedItems(void) {
     return 0;
 }
 
-// Full speed up to 75% of carry capacity, then slows linearly to a stop at 100%.
+// Full speed up to 70% of carry capacity, then slows steadily to a stop at 100%.
 float WeightSpeedFactor(void) {
     float load = current_payload_weight / CarryLimit();
-    if (load <= 0.75f) return 1.0f;
+    if (load <= 0.70f) return 1.0f;
     if (load >= 1.0f) return 0.0f;
-    return (1.0f - load) / 0.25f;
+    return (1.0f - load) / 0.30f;
 }
 
 // Silver bites the undead: double melee damage against Dracula.
