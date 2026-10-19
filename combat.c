@@ -11,7 +11,7 @@ const char *MonsterName(MonsterType m) {
 static int MythicForCurrentLand(void) {
     switch (current_biome) {
         case BIOME_TUNDRA: return MONSTER_YETI;
-        case BIOME_MOUNTAIN: return (current_season == SEASON_WINTER || snow_cover > 0.3f) ? MONSTER_YETI : -1;
+        case BIOME_MOUNTAIN: return (current_season == SEASON_WINTER || snow_cover > 0.3f || MountainIsPeak(current_screen_index)) ? MONSTER_YETI : -1;
         case BIOME_DESERT: case BIOME_OASIS: return MONSTER_SPHINX;
         case BIOME_FOREST: return MONSTER_BIGFOOT;
         case BIOME_SWAMP: case BIOME_LAKE: case BIOME_RIVER: return MONSTER_BUNYIP;
@@ -48,7 +48,8 @@ void TriggerMonsterRespawn(void) {
     else if (spawn_side == 2) { enemy_x = (float)(rand() % 24 + 4); enemy_y = 2.0f; }
     else { enemy_x = (float)(rand() % 24 + 4); enemy_y = 29.0f; }
     int mythic = MythicForCurrentLand();
-    if (mythic >= 0 && rand() % 100 < MYTHIC_SPAWN_CHANCE * (is_night ? 2 : 1)) active_monster = (MonsterType)mythic;
+    int peak = current_biome == BIOME_MOUNTAIN && MountainIsPeak(current_screen_index); // Yeti haunt the summits
+    if (mythic >= 0 && rand() % 100 < MYTHIC_SPAWN_CHANCE * (is_night ? 2 : 1) * (peak ? 3 : 1)) active_monster = (MonsterType)mythic;
     else if (is_night && rand() % 100 < 4 && GetMaterialCount("Garlic") == 0) active_monster = MONSTER_DRACULA;
     else {
         // Satyr cultists keep to the wild Greek-style country: woods, meadows and hills.

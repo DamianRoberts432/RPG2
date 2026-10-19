@@ -160,6 +160,7 @@ int LoadWorldMapState(void) {
     if (has_cards) {
         memcpy(card_collection_bits, cards, sizeof(cards));
         memcpy(deck_of_cards_bits, deck, sizeof(deck));
+        FillEmptyDeck();
         for (int i = 0; i < MONSTER_TYPE_COUNT; i++) monster_card_links[i].kills = links[i].kills;
     }
     if (has_pack) {

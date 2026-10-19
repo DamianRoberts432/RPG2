@@ -145,7 +145,7 @@ static void DrawShopItemCard(HDC hdc) {
     const char *name, *slot, *rarity = ""; int price = -1, qty = 0, dur = 0, dur_max = 0;
     if (vendor_tab == 0) {
         MerchantItem *o = &merchant_catalog[merchant_selection];
-        if (o->requires_treasure_hunt && cave_treasure_hunts_found <= 0) return;
+        if ((o->requires_treasure_hunt && cave_treasure_hunts_found <= 0) || MerchSeasonLocked(o)) return;
         name = o->name; slot = o->slot; price = ShopPrice(o->base_price * (int)o->rarity);
         rarity = o->rarity == RARITY_LEGENDARY ? "Legendary" : o->rarity == RARITY_RARE ? "Rare" : o->rarity == RARITY_UNCOMMON ? "Uncommon" : "Common";
     } else {
@@ -223,7 +223,7 @@ void DrawVendorShopOverlay(HDC hdc) {
             const char *rarity_tag = offer->rarity == RARITY_LEGENDARY ? "Legendary" :
                 offer->rarity == RARITY_RARE ? "Rare" : offer->rarity == RARITY_UNCOMMON ? "Uncommon" : "Common";
             int price = ShopPrice(offer->base_price * (int)offer->rarity);
-            int locked = offer->requires_treasure_hunt && cave_treasure_hunts_found <= 0;
+            int locked = (offer->requires_treasure_hunt && cave_treasure_hunts_found <= 0) || MerchSeasonLocked(offer);
             SetTextColor(hdc, (i == merchant_selection) ? RGB(255, 255, 0) : RGB(210, 210, 210));
             char stock_str[16];
             if (locked) strcpy(stock_str, "???");

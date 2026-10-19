@@ -26,8 +26,8 @@
 #define MAX_BUTTERFLIES 8
 #define DEBRIS_MAX 16
 #define MAX_CRITTERS 6
-#define MERCH_BASE_ITEMS 46
-#define MERCH_CAPACITY 64 // room for NewItem lines from the Update folder
+#define MERCH_BASE_ITEMS 52
+#define MERCH_CAPACITY 72 // room for NewItem lines from the Update folder
 #define MERCH_ITEMS merch_item_count
 extern int merch_item_count;
 #define MAX_BLOOD_MIST 48
@@ -187,6 +187,20 @@ COLORREF HomeWallColor(int front);
 int HomeBuildInteract(void);
 void UpdatePlayerHome(void);
 int PlaceFurniture(void);
+#define DECOR_MAX 22 // home decorations use bits FURNITURE_KINDS.. of player_home[5]
+int DecorCount(void);
+const char *DecorName(int k);
+int DecorLight(int k);
+int HomeHasDecor(int k);
+int AddRuntimeDecor(const char *name, int light, int comfort);
+int HomeComfort(void);
+int MerchSeasonLocked(const MerchantItem *o);
+#define DECK_MAX 60
+int InDeck(int id);
+int DeckCount(void);
+void GainCard(int id);
+void FillEmptyDeck(void);
+int MountainIsPeak(int cell);
 COLORREF HeroEyeColor(void);
 COLORREF HeroHairColor(void);
 extern ClassType selected_class;

@@ -1081,6 +1081,63 @@ static void RoomWindow(float y0, float wx0, float wx1, float z0, float z1, int n
     face_bias = 0.0f;
 }
 
+// Decorations set out at home, on the table, sill, mantle and floor spots in turn.
+static void DrawHomeDecor(float x0, float x1, float y0, float y1, float cx, float cy) {
+    float sp[8][3] = { { cx + 0.75f, cy + 0.05f, 0.62f }, { cx + 1.25f, cy + 0.35f, 0.62f }, { cx - 0.2f, y0 + 0.12f, 0.85f }, { x1 - 0.5f, y0 + 0.45f, 1.1f },
+                       { x0 + 0.45f, y1 - 0.45f, 0.0f }, { x0 + 1.35f, y0 + 0.4f, 0.0f }, { cx - 1.0f, y0 + 0.35f, 0.0f }, { cx + 0.3f, y1 - 0.5f, 0.0f } };
+    static const COLORREF petal[3] = { RGB(240, 90, 120), RGB(250, 215, 70), RGB(170, 120, 240) }, cover[3] = { RGB(150, 40, 40), RGB(40, 70, 130), RGB(60, 110, 60) };
+    DWORD now = GetTickCount(); int slot = 0, lights = 0;
+    hcos = 1.0f; hsin = 0.0f;
+    for (int k = 0; k < DecorCount(); k++) {
+        if (!HomeHasDecor(k)) continue;
+        float x = sp[slot % 8][0] + (slot / 8) * 0.18f, y = sp[slot % 8][1], z = sp[slot % 8][2];
+        const char *nm = DecorName(k);
+        slot++;
+        if (strcmp(nm, "Flower Vase") == 0) {
+            Prism(x, y, z, z + 0.18f, 0.05f, 0.035f, 6, 0.0f, RGB(120, 160, 210));
+            for (int j = 0; j < 3; j++) {
+                float fx = x + (j - 1) * 0.03f, top = z + 0.28f + j * 0.02f;
+                Prism(fx, y, z + 0.18f, top, 0.006f, 0.006f, 3, 0.0f, RGB(60, 130, 50));
+                Prism(fx, y, top, top + 0.03f, 0.025f, 0.01f, 5, 0.0f, petal[j]);
+            }
+        } else if (strcmp(nm, "Pothos Ivy") == 0) {
+            Prism(x, y, z, z + 0.12f, 0.07f, 0.06f, 6, 0.0f, RGB(180, 90, 55));
+            for (int j = 0; j < 6; j++) {
+                float a = j * 1.05f, sw = 0.01f * sinf(now / 800.0f + j), lz = z > 0.3f ? z + 0.1f - j * 0.07f : z + 0.12f + j * 0.04f;
+                OBox(x + cosf(a) * 0.08f + sw, y + sinf(a) * 0.08f, 0, 0, lz, lz + 0.04f, 0.03f, 0.03f, RGB(70, 150, 60));
+            }
+        } else if (strcmp(nm, "Stack of Books") == 0) {
+            for (int j = 0; j < 3; j++) OBox(x, y, 0, 0, z + j * 0.04f, z + 0.04f + j * 0.04f, 0.1f - j * 0.01f, 0.07f, cover[j]);
+        } else if (strcmp(nm, "Snow Globe") == 0) {
+            Prism(x, y, z, z + 0.04f, 0.06f, 0.06f, 6, 0.0f, RGB(110, 70, 40));
+            Prism(x, y, z + 0.04f, z + 0.17f, 0.065f, 0.02f, 8, 0.0f, RGB(190, 215, 240));
+            face_bias = 0.02f;
+            for (int j = 0; j < 4; j++) {
+                float fz = z + 0.06f + fmodf(now / 2500.0f + j * 0.3f, 1.0f) * 0.09f;
+                OBox(x + 0.03f * sinf(now / 600.0f + j * 1.7f), y + 0.02f, 0, 0, fz, fz + 0.01f, 0.006f, 0.006f, RGB(255, 255, 255));
+            }
+            face_bias = 0.0f;
+        } else if (strcmp(nm, "Jack-o-Lantern") == 0) {
+            Prism(x, y, z, z + 0.15f, 0.09f, 0.07f, 8, 0.0f, RGB(235, 120, 30));
+            Prism(x, y, z + 0.15f, z + 0.19f, 0.015f, 0.01f, 4, 0.0f, RGB(70, 110, 40));
+            face_glow = 1; face_bias = 0.02f;
+            OBox(x - 0.03f, y + 0.085f, 0, 0, z + 0.08f, z + 0.1f, 0.012f, 0.004f, RGB(255, 220, 90));
+            OBox(x + 0.03f, y + 0.085f, 0, 0, z + 0.08f, z + 0.1f, 0.012f, 0.004f, RGB(255, 220, 90));
+            OBox(x, y + 0.085f, 0, 0, z + 0.04f, z + 0.055f, 0.04f, 0.004f, RGB(255, 220, 90));
+            face_bias = 0.0f; face_glow = 0;
+        } else if (strcmp(nm, "Candle") == 0) {
+            Prism(x, y, z, z + 0.12f, 0.025f, 0.025f, 6, 0.0f, RGB(240, 230, 200));
+            face_glow = 1; Prism(x, y, z + 0.12f, z + 0.17f + 0.01f * sinf(now / 90.0f + k), 0.015f, 0.0f, 4, 0.0f, RGB(255, 210, 90)); face_glow = 0;
+        } else { // a decoration from the Update folder: a little keepsake, glowing if it gives light
+            int h = abs(RainHash(k * 97 + 5));
+            Prism(x, y, z, z + 0.14f, 0.06f, 0.05f, 6, 0.0f, RGB(90 + h % 140, 90 + (h >> 8) % 140, 90 + (h >> 16) % 140));
+            if (DecorLight(k)) { face_glow = 1; Prism(x, y, z + 0.14f, z + 0.2f + 0.01f * sinf(now / 90.0f + k), 0.02f, 0.0f, 4, 0.0f, RGB(255, 220, 120)); face_glow = 0; }
+        }
+        lights += DecorLight(k);
+    }
+    if (lights) { scene_lit += 0.06f * lights; if (scene_lit > 1.0f) scene_lit = 1.0f; } // candles warm the whole room
+}
+
 static void DrawHomeFurniture(float x0, float x1, float y0, float y1, float cx, float cy) {
     int f = player_home[5];
     static const COLORREF books[3] = { RGB(150, 40, 40), RGB(40, 70, 130), RGB(60, 110, 60) };
@@ -1117,6 +1174,7 @@ static void DrawHomeFurniture(float x0, float x1, float y0, float y1, float cx, 
         face_glow = 1; Prism(cx - 0.3f, cy + 0.6f, 1.5f, 1.75f, 0.08f, 0.08f, 6, 0.0f, RGB(255, 210, 110)); face_glow = 0;
         scene_lit = 1.0f;
     }
+    DrawHomeDecor(x0, x1, y0, y1, cx, cy);
 }
 
 void DrawHomeInterior(HDC hdc) {

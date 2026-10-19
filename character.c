@@ -130,6 +130,21 @@ void KarmaAdjust(int soul, int miasma, int heat, int grapevine) {
 
 int HasCard(int id) { return id >= 0 && id < CARD_COUNT && ((card_collection_bits[id / 8] >> (id % 8)) & 1); }
 
+// The 60-card deck; every other card you own waits in the binder at home.
+int InDeck(int id) { return HasCard(id) && ((deck_of_cards_bits[id / 8] >> (id % 8)) & 1); }
+int DeckCount(void) { int n = 0; for (int id = 0; id < CARD_COUNT; id++) n += InDeck(id); return n; }
+void GainCard(int id) {
+    if (id < 0 || id >= CARD_COUNT) return;
+    int is_new = !HasCard(id);
+    card_collection_bits[id / 8] |= (uint8_t)(1u << (id % 8));
+    if (is_new && DeckCount() < DECK_MAX) deck_of_cards_bits[id / 8] |= (uint8_t)(1u << (id % 8));
+}
+void FillEmptyDeck(void) { // older saves never sorted cards: the first 60 go in the deck
+    if (DeckCount()) return;
+    for (int id = 0, n = 0; id < CARD_COUNT && n < DECK_MAX; id++)
+        if (HasCard(id)) { deck_of_cards_bits[id / 8] |= (uint8_t)(1u << (id % 8)); n++; }
+}
+
 int CardCount(void) {
     int n = 0;
     for (int i = 0; i < CARD_POOL; i++) n += HasCard(i);
@@ -142,7 +157,7 @@ void TryCardDrop(int monster) {
     int id = (monster >= 0 && rand() % 2 == 0) ? monster_card_links[monster].card_id
              : RandomPoolCard(MONSTER_TYPE_COUNT);
     int is_new = !HasCard(id);
-    card_collection_bits[id / 8] |= (uint8_t)(1u << (id % 8));
+    GainCard(id);
     size_t n = strlen(arpg_action_log);
     if (id < MONSTER_TYPE_COUNT) snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  |  CARD: %s card%s", MonsterName((MonsterType)id), is_new ? " (new!)" : "");
     else { char nm[48]; CardName(id, nm, sizeof(nm)); snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  |  CARD: %s%s", nm, is_new ? " (new!)" : ""); }

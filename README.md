@@ -174,6 +174,10 @@ One real second is one game minute, so a day lasts 24 real minutes and each 30-d
 - **Big trees:** old giants (many in forests) have a high crown; it turns lacy when you walk behind it so you can still see yourself. In AFK they tower over you and block part of the sky.
 - **Living watercolour (AFK):** water colours bleed softly, canopies sway, butterflies drift and flowers nod.
 - **NPC routines:** villagers sweep, farm, fetch water or enjoy a tree; the blacksmith hammers and quenches; the merchant checks his barrels and stares, then walks over, if you smash them (raises town heat).
+- **Home decorations:** Flower Vase, Pothos Ivy, Stack of Books, Candle, a Snow Globe (winter only) and a Jack-o-Lantern (fall only) from the merchant; set them out at home for comfort, and candles light the room. Add your own with `NewDecor` lines in the Update folder. House Supplies now cost 250.
+- **Card Binder:** at home, open the Card Binder to move cards between your 60-card deck and the binder; the selected card is shown face up.
+- **Mountains:** cliffs along mountain edges that you walk around, with paths in on two sides; neighbouring screens show the cliff face. Some mountains are peaks with rings of crags round a snowy summit, where Yeti roam.
+- **Caves:** a real cavern system to explore, with the treasure at the far end.
 - **Clothes and trim:** on the start screen pick a clothes colour ([8]) and a trim colour ([9]) for the hem, belt, collar and hood edge. Under a hood your chin shows and your eyes are two glowing points.
 - **AFK world:** Yeti, Bigfoot, Sphinx and Bunyip appear at their real size and shape, the Vampire wears his cape, and towns show their barrels, torches, fire pits, altar, castle stall and merchant tent.
 - **Vampires** (formerly Dracula): carry **Garlic** (merchant) and they won't come for you; a **Silver Dagger** (merchant) does double damage to them.
