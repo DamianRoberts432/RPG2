@@ -2,8 +2,8 @@
 
 // Peyote: some desert cacti are small peyote buttons. Two arrows split one
 // open (melee and X do nothing to it), X then gathers it, and eating it melts
-// the screen's colours for 30 seconds.
-#define PEYOTE_MELT_MS 30000
+// the screen's colours for 5 game hours.
+#define PEYOTE_MELT_MS 300000 // 5 game hours (1 real second = 1 game minute)
 static uint8_t peyote_hits[MAP_SIZE][MAP_SIZE];
 static int peyote_screen = -1;
 static DWORD peyote_until;
