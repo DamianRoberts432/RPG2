@@ -492,10 +492,15 @@ static void TreeMesh(const FpThing *t) {
     float x = t->x + ((s * 37) % 21 - 10) / 100.0f, y = t->y + ((s * 53) % 21 - 10) / 100.0f;
     float h = 0.85f + (s * 29 % 30) / 100.0f, rot = (s % 7) * 0.4f;
     Prism(x, y, 0.0f, 0.5f * h, 0.09f, 0.075f, 5, rot, RGB(110, 75, 45));
-    if (s % 3 == 0) { // round broadleaf
+    if (IsDeciduousTree(s)) { // round broadleaf, the same trees as in play
         COLORREF leaf = snow ? RGB(205, 215, 225) : current_season == SEASON_FALL ? (s % 2 ? RGB(210, 120, 40) : RGB(220, 175, 50)) : RGB(80, 160, 60);
         Prism(x, y, 0.4f * h, 0.98f * h, 0.32f, 0.6f, 7, rot, leaf); // same ring at the seam, overlapped, so no gap
         Prism(x, y, 0.95f * h, 1.5f * h, 0.61f, 0.28f, 7, rot, leaf);
+        if (TreeHasApples(s)) // the apples really on this tree
+            for (int a = 0; a < 6; a++) {
+                float an = rot + a * 1.05f, rr = 0.58f - (a % 2) * 0.12f;
+                Prism(x + cosf(an) * rr, y + sinf(an) * rr, (0.85f + (a % 3) * 0.18f) * h, (0.93f + (a % 3) * 0.18f) * h, 0.05f, 0.05f, 4, an, RGB(205, 35, 30));
+            }
     } else { // two-tier pine
         COLORREF needle = RGB(35, 115, 55);
         Prism(x, y, 0.3f * h, 1.15f * h, 0.62f, 0.22f, 7, rot, needle); // flat-topped skirt growing into the top cone
@@ -587,25 +592,101 @@ static void UpdateGaze(int fresh) {
             if (s > best) { best = s; pick = i; }
         }
         int fishing = pick >= 0 && things[pick].kind == FP_BOBBER;
+        float nod = (RainHash(gaze_n * 7 + 3) % 100 - 50) / 350.0f; // look a little up or down, never rigidly level
         if (!fishing && !in_cave && (gaze_n % 4 == 0 || pick < 0)) { target_pitch = 0.6f; target_yaw = yaw + 0.5f; }
         else if (pick >= 0) {
             target_yaw = atan2f(things[pick].y - player_y, things[pick].x - player_x);
-            target_pitch = fishing ? -0.15f : things[pick].kind == FP_TREE || things[pick].kind == FP_HOME ? 0.12f : -0.05f;
+            target_pitch = fishing ? -0.15f : (things[pick].kind == FP_TREE || things[pick].kind == FP_HOME ? 0.12f : -0.05f) + nod;
+            if (!fishing && gaze_n % 5 == 2) target_pitch = -0.32f; // down at the ground now and then
         }
     }
-    yaw += Wrap(target_yaw - yaw) * 0.012f;
-    pitch += (target_pitch - pitch) * 0.015f;
+    // An animal that wanders close is "heard": the head turns to it faster.
+    static DWORD heard_at[64], fast_until;
+    for (int i = 0; i < thing_count; i++) {
+        if (things[i].kind != FP_CRITTER && things[i].kind != FP_BUTTERFLY) continue;
+        float dx = things[i].x - player_x, dy = things[i].y - player_y;
+        int key = (things[i].kind == FP_CRITTER ? things[i].seed >> 3 : 32 + things[i].seed) & 63;
+        if (dx * dx + dy * dy > 25.0f) continue;
+        if (now - heard_at[key] > 15000) {
+            target_yaw = atan2f(dy, dx); target_pitch = -0.08f;
+            gaze_until = now + 3500; fast_until = now + 1500;
+        }
+        heard_at[key] = now;
+    }
+    float rate = now < fast_until ? 0.05f : 0.012f;
+    yaw += Wrap(target_yaw - yaw) * rate;
+    pitch += (target_pitch - pitch) * rate * 1.25f;
 }
 
+// Wind in AFK space: gameplay wind_dir pushes along screen x, which is the
+// world's (+x, -y) diagonal. Returns how fast that wind crosses the view.
+static float WindAcross(float *wx, float *wy) {
+    float w = (float)wind_dir * 0.7071f;
+    *wx = w; *wy = -w;
+    return -*wx * sinf(yaw) + *wy * cosf(yaw);
+}
+
+static void CloudPuff(HDC hdc, int cx, int cy, int w, COLORREF c, int alpha) {
+    int x0 = cx - w, y0 = cy - w / 2, W = 2 * w, H = w;
+    if (W < 6 || x0 + W < 0 || x0 > WINDOW_WIDTH || y0 + H < 0) return;
+    HDC t = CreateCompatibleDC(hdc); HBITMAP b = CreateCompatibleBitmap(hdc, W, H); HGDIOBJ ob = SelectObject(t, b);
+    BitBlt(t, 0, 0, W, H, hdc, x0, y0, SRCCOPY);
+    Blob(t, 0, H / 3, W / 2, H - 1, c); Blob(t, W / 5, 0, W * 4 / 5, H - 1, c); Blob(t, W / 2, H / 4, W - 1, H - 1, c);
+    BLENDFUNCTION bf = { AC_SRC_OVER, 0, (BYTE)alpha, 0 };
+    AlphaBlend(hdc, x0, y0, W, H, t, 0, 0, W, H, bf);
+    SelectObject(t, ob); DeleteObject(b); DeleteDC(t);
+}
+
+// Clouds sit high over an 80-tile patch around the hero and drift with the
+// calculated wind; some are see-through like the ghost, some solid.
+static void DrawClouds(HDC hdc, float light) {
+    if (in_cave || current_biome == BIOME_CAVE) return;
+    float wx, wy; WindAcross(&wx, &wy);
+    float t = GetTickCount() / 1000.0f, k = light < 0.25f ? 0.25f : light;
+    int n = IsAdverseWeather() ? 12 : 3 + (int)(weather_intensity * 6.0f);
+    for (int i = 0; i < n; i++) {
+        int hs = RainHash(i * 977 + 31);
+        float bx = (float)(hs % 800) / 10.0f, by = (float)(hs / 800 % 800) / 10.0f;
+        float rx = fmodf(bx + wx * t * 0.05f - player_x + 4000.0f, 80.0f) - 40.0f;
+        float ry = fmodf(by + wy * t * 0.05f - player_y + 4000.0f, 80.0f) - 40.0f;
+        float d = sqrtf(rx * rx + ry * ry);
+        if (d < 6.0f) continue;
+        int x, y; SkyPoint(atan2f(ry, rx), atanf(9.0f / d), &x, &y);
+        if (x < -400) continue;
+        int solid = i % 3 != 0, w = (int)(focal * (2.0f + (hs % 5) * 0.6f) / d);
+        COLORREF c = IsAdverseWeather() ? RGB(120, 125, 135) : solid ? RGB(245, 245, 250) : RGB(215, 220, 230);
+        CloudPuff(hdc, x, y, w, Dim(c, k + 0.15f), solid ? 215 : 95);
+    }
+}
+
+// Rain and snow slant and drift with the wind; leaves blow off the trees in
+// autumn or when it's gusty.
 static void DrawWeather(HDC hdc) {
-    if (in_cave || current_biome == BIOME_CAVE || !IsAdverseWeather()) return;
+    if (in_cave || current_biome == BIOME_CAVE) return;
     DWORD now = GetTickCount();
-    int snow = current_season == SEASON_WINTER || current_biome == BIOME_TUNDRA;
-    for (int i = 0; i < 140; i++) {
-        int hsh = RainHash(i * 613 + 9), x = (int)((hsh % WINDOW_WIDTH + now / (snow ? 30 : 4) * (1 + i % 3)) % WINDOW_WIDTH);
-        int y = (int)((hsh / 3 % WINDOW_HEIGHT + now / (snow ? 12 : 2) * (2 + i % 3)) % WINDOW_HEIGHT);
-        if (snow) Box(hdc, x, y, x + 2, y + 2, RGB(240, 240, 245));
-        else Stroke(hdc, x, y, x - 4, y + 14, 1, RGB(170, 185, 210));
+    float wx, wy, across = WindAcross(&wx, &wy);
+    if (IsAdverseWeather()) {
+        int snow = current_season == SEASON_WINTER || current_biome == BIOME_TUNDRA, n = 80 + (int)(weather_intensity * 120.0f);
+        for (int i = 0; i < n; i++) {
+            int hsh = RainHash(i * 613 + 9);
+            int x = (int)(((hsh % WINDOW_WIDTH) + (int)(now * across / (snow ? 40.0f : 12.0f)) + 100 * WINDOW_WIDTH) % WINDOW_WIDTH);
+            int y = (int)((hsh / 3 % WINDOW_HEIGHT + now / (snow ? 12 : 2) * (2 + i % 3)) % WINDOW_HEIGHT);
+            if (snow) Box(hdc, x, y, x + 2, y + 2, RGB(240, 240, 245));
+            else Stroke(hdc, x, y, x + (int)(across * 2.0f), y + 14, 1, RGB(170, 185, 210));
+        }
+    }
+    int trees = 0;
+    for (int i = 0; i < thing_count; i++) trees += things[i].kind == FP_TREE;
+    if (!trees || (current_season != SEASON_FALL && abs(wind_dir) < 4) || snow_cover > 0.5f) return;
+    COLORREF lc[3] = { RGB(210, 120, 40), RGB(220, 175, 50), RGB(90, 150, 55) };
+    for (int i = 0; i < 26; i++) {
+        int hsh = RainHash(i * 311 + 77);
+        float fall = now / (35.0f + hsh % 20);
+        int x = (int)(((hsh % WINDOW_WIDTH) + (int)(now * across / 9.0f) + (int)(sinf(fall / 20.0f + i) * 30.0f) + 100 * WINDOW_WIDTH) % WINDOW_WIDTH);
+        int y = (int)((hsh / 7 % WINDOW_HEIGHT + (int)fall) % WINDOW_HEIGHT);
+        int f = (int)(sinf(now / 150.0f + i) * 4.0f);
+        POINT p[4] = { { x - 4, y }, { x, y - 2 + f / 2 }, { x + 4, y }, { x, y + 2 - f / 2 } };
+        Shape(hdc, p, 4, lc[current_season == SEASON_FALL ? i % 2 : 2]);
     }
 }
 
@@ -624,6 +705,7 @@ void DrawAfkView(HDC hdc) {
     float lit = 0.3f + 0.7f * light;
     scene_lit = lit; haze = in_cave ? RGB(18, 16, 14) : Dim(RGB(185, 210, 235), 0.2f + 0.8f * light);
     DrawSky(hdc, light);
+    DrawClouds(hdc, light);
     DrawGround(hdc, lit);
     face_count = 0;
     GroundMesh();
