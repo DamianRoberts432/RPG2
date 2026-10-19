@@ -1,4 +1,5 @@
 #include "game.h"
+#include "worldmap.h"
 
 // 1 while any key, mouse button, gamepad button, trigger or stick is in use.
 int AnyPlayerInput(void) {
@@ -85,6 +86,10 @@ void ProcessGamepadInput(void) {
             if (current_menu_tab == 1) {
                 if (state.Gamepad.bLeftTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD && world_map_zoom > 1) { world_map_zoom /= 2; last_tab_gp = GetTickCount(); }
                 if (state.Gamepad.bRightTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD && world_map_zoom < 8) { world_map_zoom *= 2; last_tab_gp = GetTickCount(); }
+                if (buttons & XINPUT_GAMEPAD_DPAD_LEFT) { WorldMapMoveCursor(-1, 0); last_tab_gp = GetTickCount(); }
+                if (buttons & XINPUT_GAMEPAD_DPAD_RIGHT) { WorldMapMoveCursor(1, 0); last_tab_gp = GetTickCount(); }
+                if (buttons & XINPUT_GAMEPAD_DPAD_UP) { WorldMapMoveCursor(0, -1); last_tab_gp = GetTickCount(); }
+                if (buttons & XINPUT_GAMEPAD_DPAD_DOWN) { WorldMapMoveCursor(0, 1); last_tab_gp = GetTickCount(); }
             }
             
             if (current_menu_tab == 2 && (buttons & XINPUT_GAMEPAD_BACK)) { RequestDeleteSave(); last_tab_gp = GetTickCount(); }
@@ -276,6 +281,10 @@ void ProcessGamepadInput(void) {
         if (current_menu_tab == 1) {
             if ((GetAsyncKeyState(VK_OEM_MINUS) & 0x8000) && world_map_zoom > 1) { world_map_zoom /= 2; last_tab_kb = GetTickCount(); }
             if ((GetAsyncKeyState(VK_OEM_PLUS) & 0x8000) && world_map_zoom < 8) { world_map_zoom *= 2; last_tab_kb = GetTickCount(); }
+            if (GetAsyncKeyState(VK_LEFT) & 0x8000) { WorldMapMoveCursor(-1, 0); last_tab_kb = GetTickCount(); }
+            if (GetAsyncKeyState(VK_RIGHT) & 0x8000) { WorldMapMoveCursor(1, 0); last_tab_kb = GetTickCount(); }
+            if (GetAsyncKeyState(VK_UP) & 0x8000) { WorldMapMoveCursor(0, -1); last_tab_kb = GetTickCount(); }
+            if (GetAsyncKeyState(VK_DOWN) & 0x8000) { WorldMapMoveCursor(0, 1); last_tab_kb = GetTickCount(); }
         }
         
         if (current_menu_tab == 0 && (GetAsyncKeyState('P') & 0x8000)) { stat_assign_mode = !stat_assign_mode; last_tab_kb = GetTickCount(); }

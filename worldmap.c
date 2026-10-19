@@ -207,11 +207,31 @@ static void DrawLegendSwatch(HDC hdc, int x, int y, COLORREF c, const char *labe
     TextOut(hdc, x + 20, y, label, (int)strlen(label));
 }
 
+extern const char *biome_names[];
+// White map cursor: arrows / D-pad / mouse click pick a tile and the line
+// under the map names the town (god, card shop, pet shop) or the land there.
+int map_cursor_x = -1, map_cursor_y = -1;
+static int wm_left, wm_top, wm_cs, wm_minx, wm_miny, wm_span;
+void WorldMapMoveCursor(int dx, int dy) {
+    if (map_cursor_x < 0) { map_cursor_x = screen_grid_x; map_cursor_y = screen_grid_y; }
+    map_cursor_x += dx; map_cursor_y += dy;
+    if (map_cursor_x < 0) map_cursor_x = 0;
+    if (map_cursor_y < 0) map_cursor_y = 0;
+    if (map_cursor_x >= META_GRID_SIZE) map_cursor_x = META_GRID_SIZE - 1;
+    if (map_cursor_y >= META_GRID_SIZE) map_cursor_y = META_GRID_SIZE - 1;
+}
+void WorldMapClick(int x, int y) {
+    if (wm_cs <= 0 || x < wm_left || y < wm_top) return;
+    int gx = (x - wm_left) / wm_cs, gy = (y - wm_top) / wm_cs;
+    if (gx >= wm_span || gy >= wm_span) return;
+    map_cursor_x = wm_minx + gx; map_cursor_y = wm_miny + gy;
+}
+
 void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
     // world_map_zoom 1 shows the whole 64x64 world; 2/4/8 show a window
     // centred on the hero's screen. Unexplored cells stay dark until visited.
     int span = META_GRID_SIZE / world_map_zoom;
-    int min_x = screen_grid_x - span / 2, min_y = screen_grid_y - span / 2;
+    int min_x = (map_cursor_x >= 0 ? map_cursor_x : screen_grid_x) - span / 2, min_y = (map_cursor_y >= 0 ? map_cursor_y : screen_grid_y) - span / 2;
     if (min_x < 0) min_x = 0;
     if (min_y < 0) min_y = 0;
     if (min_x > META_GRID_SIZE - span) min_x = META_GRID_SIZE - span;
@@ -278,9 +298,11 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
         if (poi & (POI_VILLAGE | POI_CASTLE)) {
             if (town_n < 10) {
                 town_gx[town_n] = gx; town_gy[town_n] = gy; town_poi[town_n] = poi; town_n++;
-                char num[12]; snprintf(num, sizeof(num), "%d", town_n);
-                SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(255, 240, 120));
-                TextOut(hdc, cx + cs, cy - 4, num, (int)strlen(num));
+                if (cs >= 64) { // zoomed in far enough to write the name on the tile
+                    char nm[32]; TownNameAt(gy * META_GRID_SIZE + gx + ((poi & POI_TOWN_ALT) ? 30000 : 0), nm, sizeof(nm));
+                    SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(255, 240, 120));
+                    TextOut(hdc, cx + 2, cy + cs - 16, nm, (int)strlen(nm));
+                }
             } else town_more++;
         }
         // Some Mountain screens hide a cave; its treasure marker disappears
@@ -302,6 +324,33 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
         SelectObject(hdc, old_b); SelectObject(hdc, old_p); DeleteObject(you);
     }
 
+    wm_left = left; wm_top = top; wm_cs = cs; wm_minx = min_x; wm_miny = min_y; wm_span = span;
+    {
+        int gx = map_cursor_x >= 0 ? map_cursor_x : screen_grid_x, gy = map_cursor_y >= 0 ? map_cursor_y : screen_grid_y;
+        if (gx >= min_x && gx <= max_x && gy >= min_y && gy <= max_y) {
+            int cx = left + (gx - min_x) * cs, cy = top + (gy - min_y) * cs;
+            HPEN cur = CreatePen(PS_SOLID, 3, RGB(255, 255, 255));
+            HGDIOBJ op = SelectObject(hdc, cur), ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+            Rectangle(hdc, cx - 1, cy - 1, cx + cs + 2, cy + cs + 2);
+            SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(cur);
+        }
+        char info[220], nm[32];
+        uint8_t p = map_poi[gy][gx];
+        int b = GetVisitedBiomeAt(gx, gy);
+        if (p & (POI_VILLAGE | POI_CASTLE)) {
+            int screen = gy * META_GRID_SIZE + gx + ((p & POI_TOWN_ALT) ? 30000 : 0);
+            int castle = (p & POI_CASTLE) != 0, d = TownDeityAt(screen), shops = castle ? TownShopsToday(screen) : 0;
+            TownNameAt(screen, nm, sizeof(nm));
+            snprintf(info, sizeof(info), "%s (%s) - god: %s, %s - card shop: %s - pet shop: %s", nm, castle ? "castle town" : "village",
+                     DeityName(d), DeityKind(d), !castle ? "none" : (shops & 2) ? "open today" : "closed today",
+                     !castle ? "none" : (shops & 1) ? "open today" : "closed today");
+        } else if (b >= 0) snprintf(info, sizeof(info), "%s%s", biome_names[b], gx == screen_grid_x && gy == screen_grid_y ? " - you are here" : "");
+        else snprintf(info, sizeof(info), "Unexplored");
+        SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(255, 255, 255));
+        TextOut(hdc, left, top + rows * cs + 12, info, (int)strlen(info));
+        SetTextColor(hdc, RGB(150, 160, 170));
+        TextOut(hdc, left, top + rows * cs + 32, "Arrows / D-pad / click: move the white cursor", 45);
+    }
     DeleteObject(water); DeleteObject(home); DeleteObject(castle_wall); DeleteObject(castle_tower);
     DeleteObject(sand); DeleteObject(treasure); DeleteObject(treasure_edge);
 
@@ -328,7 +377,7 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
         int screen = town_gy[i] * META_GRID_SIZE + town_gx[i] + ((town_poi[i] & POI_TOWN_ALT) ? 30000 : 0);
         int castle = (town_poi[i] & POI_CASTLE) != 0, d = TownDeityAt(screen), shops = castle ? TownShopsToday(screen) : 0;
         TownNameAt(screen, name, sizeof(name));
-        snprintf(buf, sizeof(buf), "%d %s (%s) - %s, %s", i + 1, name, castle ? "castle town" : "village", DeityName(d), DeityKind(d));
+        snprintf(buf, sizeof(buf), "%s (%s) - %s, %s", name, castle ? "castle town" : "village", DeityName(d), DeityKind(d));
         SetTextColor(hdc, RGB(255, 240, 120));
         TextOut(hdc, lx, ty + 22 + i * 38, buf, (int)strlen(buf));
         snprintf(buf, sizeof(buf), "   Card shop: %s   Pet shop: %s", !castle ? "none" : (shops & 2) ? "open today" : "closed today",
