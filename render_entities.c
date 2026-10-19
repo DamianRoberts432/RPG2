@@ -526,7 +526,17 @@ static float UndeadRaceScale(int seed) {
 // faint swoosh on the follow-through.
 static void DrawEnemySwing(HDC hdc, int sx, int sy, int dir, float p) {
     float big = IS_MYTHIC_MONSTER(active_monster) ? 2.0f : 1.0f, a = -2.0f + p * 2.7f;
-    int shx = sx + dir * (int)(3 * big), shy = sy + (int)(2 * big);
+    if (active_monster == MONSTER_BIGFOOT || active_monster == MONSTER_YETI) { // a heavy overarm swipe from the shoulder, ending in a fist
+        COLORREF fur = active_monster == MONSTER_YETI ? RGB(235, 240, 248) : RGB(105, 70, 40);
+        int ax = sx + dir * 12, ay = sy - 16;
+        int ex = ax + (int)(dir * cosf(a) * 14), ey = ay + (int)(sinf(a) * 14);
+        int fx = ex + (int)(dir * cosf(a + 0.5f) * 12), fy = ey + (int)(sinf(a + 0.5f) * 12);
+        PenLine(hdc, 7, fur, ax, ay, ex, ey); PenLine(hdc, 6, fur, ex, ey, fx, fy);
+        BrushEllipse(hdc, fur, fx - 5, fy - 5, fx + 5, fy + 5);
+        if (p > 0.45f && p < 0.95f) PenLine(hdc, 1, RGB(230, 235, 245), ax + (int)(dir * cosf(a - 0.9f) * 30), ay + (int)(sinf(a - 0.9f) * 30), fx, fy);
+        return;
+    }
+    int shx = sx + dir * (int)(3 * big), shy = sy + (int)(2 * big) - (big > 1.0f ? 18 : 0);
     int hx = shx + (int)(dir * cosf(a) * 9 * big), hy = shy + (int)(sinf(a) * 9 * big);
     COLORREF arm = active_monster == MONSTER_ZOMBIE ? RGB(150, 175, 135) : active_monster == MONSTER_GOBLIN ? RGB(90, 140, 60) :
                    active_monster == MONSTER_SKELLY ? RGB(225, 225, 215) : active_monster == MONSTER_SATYR ? RGB(185, 140, 100) : RGB(120, 110, 125);
@@ -600,7 +610,12 @@ void DrawDynamicEnemy(HDC hdc) {
         HBRUSH red_b = CreateSolidBrush(RGB(255, 40, 40)); FillRect(hdc, &r, red_b); DeleteObject(red_b);
     }
     SelectObject(hdc, old);
-    if (attack_swing >= 0.0f) DrawEnemySwing(hdc, sx, sy, face_dir, attack_swing);
+    if (attack_swing >= 0.0f) { // the swing shrinks or grows with the monster (dwarf skeletons swing small)
+        int undead = active_monster == MONSTER_ZOMBIE || active_monster == MONSTER_SKELLY;
+        int mode = undead ? BeginScaledDraw(hdc, sx, sy + 16, UndeadRaceScale(current_screen_index * 7 + current_enemy)) : 0;
+        DrawEnemySwing(hdc, sx, sy, face_dir, attack_swing);
+        if (undead) EndScaledDraw(hdc, mode);
+    }
 }
 
 void DrawDebrisTwigs(HDC hdc) {
