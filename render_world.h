@@ -29,4 +29,6 @@ void DrawBedroll(HDC hdc);
 void DrawGroundLoot(HDC hdc);
 void DrawDroppedItems(HDC hdc);
 
+float WaveAt(float x, float y, float t);
+
 #endif // RENDER_WORLD_H

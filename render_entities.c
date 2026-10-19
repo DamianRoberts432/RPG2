@@ -23,6 +23,11 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
     if (selected_class == CLASS_NECROMANCER) { body_color = RGB(26, 22, 30); hat_color = RGB(14, 12, 18); } // black cloak and hood
     else if (selected_class == CLASS_WARRIOR) { body_color = RGB(160, 40, 30); hat_color = RGB(90, 20, 20); }
     else if (selected_class == CLASS_WIZARD) { body_color = RGB(30, 80, 180); hat_color = RGB(15, 40, 120); }
+    // Worn clothes replace the class colours; a Cloth Hood hides the face like the necromancer's.
+    const char *head_wear = WornItem("Head"), *clothes = WornItem("Clothes"), *cloak = WornItem("Cloak");
+    int hooded = head_wear ? strcmp(head_wear, "Cloth Hood") == 0 : selected_class == CLASS_NECROMANCER;
+    if (clothes) body_color = ClothingColor(clothes);
+    if (head_wear) hat_color = ClothingColor(head_wear);
 
     HBRUSH body_b = CreateSolidBrush(body_color); HGDIOBJ prev_body = SelectObject(hdc, body_b);
     POINT body[] = {
@@ -31,14 +36,31 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         {sx + (int)(8 * scale), sy + (int)(20 * scale)}, 
         {sx - (int)(8 * scale), sy + (int)(20 * scale)}
     }; 
-    Polygon(hdc, body, 4); SelectObject(hdc, prev_body); DeleteObject(body_b);
+    if (hero_sex) { // bust, waist and hips, a touch more shapely
+        POINT fb[] = { {sx - (int)(5 * scale), sy + (int)(6 * scale)}, {sx + (int)(5 * scale), sy + (int)(6 * scale)}, {sx + (int)(7 * scale), sy + (int)(9 * scale)},
+                       {sx + (int)(4 * scale), sy + (int)(13 * scale)}, {sx + (int)(9 * scale), sy + (int)(20 * scale)}, {sx - (int)(9 * scale), sy + (int)(20 * scale)},
+                       {sx - (int)(4 * scale), sy + (int)(13 * scale)}, {sx - (int)(7 * scale), sy + (int)(9 * scale)} };
+        Polygon(hdc, fb, 8);
+    } else Polygon(hdc, body, 4);
+    SelectObject(hdc, prev_body); DeleteObject(body_b);
+    if (cloak) { // two panels hanging from the shoulders, open at the front
+        COLORREF cc = ClothingColor(cloak);
+        HBRUSH cb = CreateSolidBrush(cc); HPEN cp = CreatePen(PS_SOLID, 1, RGB(GetRValue(cc) * 3 / 4, GetGValue(cc) * 3 / 4, GetBValue(cc) * 3 / 4));
+        HGDIOBJ pcb = SelectObject(hdc, cb), pcp = SelectObject(hdc, cp);
+        for (int side = -1; side <= 1; side += 2) {
+            POINT panel[] = { {sx + side * (int)(8 * scale), sy + (int)(5 * scale)}, {sx + side * (int)(3 * scale), sy + (int)(6 * scale)},
+                              {sx + side * (int)(5 * scale), sy + (int)(20 * scale)}, {sx + side * (int)(11 * scale), sy + (int)(22 * scale)} };
+            Polygon(hdc, panel, 4);
+        }
+        SelectObject(hdc, pcp); SelectObject(hdc, pcb); DeleteObject(cb); DeleteObject(cp);
+    }
 
-    if (selected_race == RACE_DWARF) {
-        HBRUSH beard_b = CreateSolidBrush(RGB(240, 240, 245)); HGDIOBJ prev_beard = SelectObject(hdc, beard_b);
+    if (hero_beard > 0) {
+        HBRUSH beard_b = CreateSolidBrush(HeroHairColor()); HGDIOBJ prev_beard = SelectObject(hdc, beard_b);
         POINT beard[] = {
             {sx - (int)(6 * scale), sy + (int)(6 * scale)},
             {sx + (int)(6 * scale), sy + (int)(6 * scale)},
-            {sx, sy + (int)(18 * scale)}
+            {sx, sy + (int)((hero_beard == 2 ? 18 : 12) * scale)}
         };
         Polygon(hdc, beard, 3); SelectObject(hdc, prev_beard); DeleteObject(beard_b);
     }
@@ -106,23 +128,63 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         }
     }
     
-    if (selected_race == RACE_GNOME) {
+    if (selected_race == RACE_GNOME && !head_wear) {
         HBRUSH gnome_hat = CreateSolidBrush(RGB(220, 40, 40)); HGDIOBJ prev_hat = SelectObject(hdc, gnome_hat);
         POINT cap[] = {{sx, sy - (int)(32 * scale)}, {sx + (int)(7 * scale), sy + (int)(4 * scale)}, {sx - (int)(7 * scale), sy + (int)(4 * scale)}};
         Polygon(hdc, cap, 3); SelectObject(hdc, prev_hat); DeleteObject(gnome_hat);
-    } else if (selected_class == CLASS_NECROMANCER) {
-        // Black hood: a cowl over the head with the face in shadow inside it.
-        HBRUSH hood = CreateSolidBrush(hat_color); HGDIOBJ prev_hood = SelectObject(hdc, hood);
-        POINT cowl[] = {{sx, sy - (int)(12 * scale)}, {sx + (int)(9 * scale), sy - (int)(2 * scale)}, {sx + (int)(8 * scale), sy + (int)(8 * scale)},
-                        {sx - (int)(8 * scale), sy + (int)(8 * scale)}, {sx - (int)(9 * scale), sy - (int)(2 * scale)}};
-        Polygon(hdc, cowl, 5); SelectObject(hdc, prev_hood); DeleteObject(hood);
-        HBRUSH face = CreateSolidBrush(RGB(150, 130, 115)); HGDIOBJ prev_face = SelectObject(hdc, face);
-        Ellipse(hdc, sx - (int)(4 * scale), sy - (int)(4 * scale), sx + (int)(4 * scale), sy + (int)(5 * scale));
-        SelectObject(hdc, prev_face); DeleteObject(face);
+    } else if (hooded) {
+#define HS(v) ((int)((v) * scale))
+        // Cloth hood: a soft cowl that falls onto the shoulders, the face lost
+        // in shadow inside it. Elf ears and dwarf beards still poke out.
+        HBRUSH hood = CreateSolidBrush(hat_color); HPEN fold = CreatePen(PS_SOLID, 1, RGB(48, 40, 56));
+        HGDIOBJ prev_hood = SelectObject(hdc, hood), prev_fold = SelectObject(hdc, fold);
+        POINT cowl[] = { {sx - HS(2), sy - HS(13)}, {sx + HS(3), sy - HS(12)}, {sx + HS(8), sy - HS(7)}, {sx + HS(10), sy + HS(1)}, {sx + HS(10), sy + HS(9)},
+                         {sx + HS(6), sy + HS(12)}, {sx - HS(6), sy + HS(12)}, {sx - HS(10), sy + HS(9)}, {sx - HS(10), sy + HS(1)}, {sx - HS(8), sy - HS(7)} };
+        Polygon(hdc, cowl, 10);
+        MoveToEx(hdc, sx - HS(7), sy + HS(10), NULL); LineTo(hdc, sx - HS(4), sy + HS(5)); // drape folds
+        MoveToEx(hdc, sx + HS(7), sy + HS(10), NULL); LineTo(hdc, sx + HS(4), sy + HS(5));
+        HBRUSH shade = CreateSolidBrush(RGB(5, 4, 7)); SelectObject(hdc, shade); SelectObject(hdc, GetStockObject(NULL_PEN));
+        Ellipse(hdc, sx - HS(5), sy - HS(6), sx + HS(5), sy + HS(6));
+        SelectObject(hdc, prev_fold); SelectObject(hdc, prev_hood); DeleteObject(fold); DeleteObject(hood); DeleteObject(shade);
+        if (selected_race == RACE_ELF) {
+            HPEN ear_p = CreatePen(PS_SOLID, 2, RGB(245, 210, 170)); HGDIOBJ prev_ear_p = SelectObject(hdc, ear_p);
+            MoveToEx(hdc, sx - HS(9), sy, NULL); LineTo(hdc, sx - HS(14), sy - HS(5));
+            MoveToEx(hdc, sx + HS(9), sy, NULL); LineTo(hdc, sx + HS(14), sy - HS(5));
+            SelectObject(hdc, prev_ear_p); DeleteObject(ear_p);
+        }
+        if (hero_beard > 0) {
+            HBRUSH beard_b = CreateSolidBrush(HeroHairColor()); HGDIOBJ prev_beard = SelectObject(hdc, beard_b);
+            POINT beard[] = { {sx - HS(4), sy + HS(4)}, {sx + HS(4), sy + HS(4)}, {sx, sy + HS(hero_beard == 2 ? 17 : 11)} };
+            Polygon(hdc, beard, 3); SelectObject(hdc, prev_beard); DeleteObject(beard_b);
+        }
+#undef HS
     } else {
         HBRUSH hat_b = CreateSolidBrush(hat_color); HGDIOBJ prev_hat = SelectObject(hdc, hat_b);
         POINT hat[] = {{sx, sy - (int)(14 * scale)}, {sx + (int)(9 * scale), sy + (int)(4 * scale)}, {sx, sy + (int)(8 * scale)}, {sx - (int)(9 * scale), sy + (int)(4 * scale)}};
         Polygon(hdc, hat, 4); SelectObject(hdc, prev_hat); DeleteObject(hat_b);
+        if (head_wear && (strcmp(head_wear, "Straw Hat") == 0 || strcmp(head_wear, "Feathered Hat") == 0)) {
+            HBRUSH brim_b = CreateSolidBrush(hat_color); HGDIOBJ pbb = SelectObject(hdc, brim_b);
+            POINT brim[] = { {sx - (int)(15 * scale), sy + (int)(3 * scale)}, {sx, sy - (int)(1 * scale)}, {sx + (int)(15 * scale), sy + (int)(3 * scale)}, {sx, sy + (int)(7 * scale)} };
+            Polygon(hdc, brim, 4); SelectObject(hdc, pbb); DeleteObject(brim_b);
+            if (head_wear[0] == 'F') {
+                HPEN fp = CreatePen(PS_SOLID, 2, RGB(200, 40, 40)); HGDIOBJ pfp = SelectObject(hdc, fp);
+                MoveToEx(hdc, sx + (int)(3 * scale), sy - (int)(6 * scale), NULL); LineTo(hdc, sx + (int)(10 * scale), sy - (int)(18 * scale));
+                SelectObject(hdc, pfp); DeleteObject(fp);
+            }
+        }
+    }
+
+    if (!hooded) { // hair under the hat and eye dots; the hood hides both
+        HBRUSH hair_b = CreateSolidBrush(HeroHairColor());
+        HGDIOBJ prev_hb = SelectObject(hdc, hair_b), prev_hp = SelectObject(hdc, GetStockObject(NULL_PEN));
+        int hair_len = hero_sex ? 15 : 9;
+        POINT hl[] = { {sx - (int)(9 * scale), sy + (int)(4 * scale)}, {sx - (int)(5 * scale), sy + (int)(6 * scale)}, {sx - (int)(8 * scale), sy + (int)(hair_len * scale)} };
+        POINT hr[] = { {sx + (int)(9 * scale), sy + (int)(4 * scale)}, {sx + (int)(5 * scale), sy + (int)(6 * scale)}, {sx + (int)(8 * scale), sy + (int)(hair_len * scale)} };
+        Polygon(hdc, hl, 3); Polygon(hdc, hr, 3);
+        HBRUSH eye_b = CreateSolidBrush(HeroEyeColor()); SelectObject(hdc, eye_b);
+        int ew = scale >= 1.5f ? 2 : 1, ey = sy + (int)(3 * scale);
+        for (int side = -1; side <= 1; side += 2) { int ex = sx + side * (int)(4 * scale); Ellipse(hdc, ex - ew, ey - ew, ex + ew + 1, ey + ew + 1); }
+        SelectObject(hdc, prev_hp); SelectObject(hdc, prev_hb); DeleteObject(hair_b); DeleteObject(eye_b);
     }
 
     // Distinct charging ring on hero indicates bow is held and charging; projectile is only released post-release
@@ -459,16 +521,47 @@ static float UndeadRaceScale(int seed) {
     return k < 0.55f ? 0.55f : k;
 }
 
+// The attacking arm: raised behind the shoulder, then brought down and
+// forward, with the monster's weapon (club, sword, spear or claws) and a
+// faint swoosh on the follow-through.
+static void DrawEnemySwing(HDC hdc, int sx, int sy, int dir, float p) {
+    float big = IS_MYTHIC_MONSTER(active_monster) ? 2.0f : 1.0f, a = -2.0f + p * 2.7f;
+    int shx = sx + dir * (int)(3 * big), shy = sy + (int)(2 * big);
+    int hx = shx + (int)(dir * cosf(a) * 9 * big), hy = shy + (int)(sinf(a) * 9 * big);
+    COLORREF arm = active_monster == MONSTER_ZOMBIE ? RGB(150, 175, 135) : active_monster == MONSTER_GOBLIN ? RGB(90, 140, 60) :
+                   active_monster == MONSTER_SKELLY ? RGB(225, 225, 215) : active_monster == MONSTER_SATYR ? RGB(185, 140, 100) : RGB(120, 110, 125);
+    PenLine(hdc, (int)(3 * big), arm, shx, shy, hx, hy);
+    int wx = hx + (int)(dir * cosf(a) * 14 * big), wy = hy + (int)(sinf(a) * 14 * big);
+    if (active_monster == MONSTER_GOBLIN) PenLine(hdc, (int)(4 * big), RGB(110, 75, 40), hx, hy, hx + (wx - hx) * 4 / 5, hy + (wy - hy) * 4 / 5);
+    else if (active_monster == MONSTER_SKELLY) PenLine(hdc, 2, RGB(200, 205, 215), hx, hy, wx, wy);
+    else if (active_monster == MONSTER_SATYR) PenLine(hdc, 2, RGB(130, 95, 55), hx - (wx - hx) / 3, hy - (wy - hy) / 3, wx + (wx - hx) / 3, wy + (wy - hy) / 3);
+    else for (int c = -1; c <= 1; c++) // claws
+        PenLine(hdc, 1, RGB(235, 230, 210), hx, hy, hx + (int)(dir * cosf(a + c * 0.35f) * 6 * big), hy + (int)(sinf(a + c * 0.35f) * 6 * big));
+    if (p > 0.45f && p < 0.95f) { // swoosh
+        float a0 = a - 0.9f;
+        int ox = shx + (int)(dir * cosf(a0) * 20 * big), oy = shy + (int)(sinf(a0) * 20 * big);
+        PenLine(hdc, 1, RGB(230, 235, 245), ox, oy, wx, wy);
+    }
+}
+
 void DrawDynamicEnemy(HDC hdc) {
     if (enemy_hearts <= 0.0f) return;
     int sx, sy; GetIsoCoords(enemy_x, enemy_y, &sx, &sy);
     int px, py; GetIsoCoords(player_x, player_y, &px, &py);
-    int face_dir = (px >= sx) ? 1 : -1;
-    // Attack lunge: up close the monster lunges at the hero in a short rhythm.
+    // Monsters face the way they walk, and turn to the hero only up close.
+    static float last_x[MAX_ENEMIES], last_y[MAX_ENEMIES]; static int last_dir[MAX_ENEMIES];
+    int slot = current_enemy >= 0 && current_enemy < MAX_ENEMIES ? current_enemy : 0;
+    float mv = (enemy_x - last_x[slot]) - (enemy_y - last_y[slot]);
+    if (fabsf(mv) > 0.002f && fabsf(mv) < 2.0f) last_dir[slot] = mv > 0 ? 1 : -1;
+    last_x[slot] = enemy_x; last_y[slot] = enemy_y;
+    int face_dir = last_dir[slot] ? last_dir[slot] : (px >= sx ? 1 : -1);
+    // Attack: up close the monster swings its arm and weapon in a short rhythm.
+    float attack_swing = -1.0f;
     float adx = player_x - enemy_x, ady = player_y - enemy_y;
     if (adx * adx + ady * ady < 2.6f) {
+        face_dir = (px >= sx) ? 1 : -1;
         float ph = fmodf((float)world_tick * 2.2f, 1.0f);
-        if (ph < 0.3f) { int l = (int)(sinf(ph / 0.3f * 3.14159f) * 7.0f); sx += face_dir * l; sy -= l / 2; }
+        if (ph < 0.45f) attack_swing = ph / 0.45f;
     }
     int sw = IS_MYTHIC_MONSTER(active_monster) ? 20 : 9;
     HBRUSH b1 = CreateSolidBrush(RGB(15, 20, 26)); HGDIOBJ old = SelectObject(hdc, b1); Ellipse(hdc, sx - sw, sy + 16, sx + sw, sy + 22); SelectObject(hdc, old); DeleteObject(b1);
@@ -507,6 +600,7 @@ void DrawDynamicEnemy(HDC hdc) {
         HBRUSH red_b = CreateSolidBrush(RGB(255, 40, 40)); FillRect(hdc, &r, red_b); DeleteObject(red_b);
     }
     SelectObject(hdc, old);
+    if (attack_swing >= 0.0f) DrawEnemySwing(hdc, sx, sy, face_dir, attack_swing);
 }
 
 void DrawDebrisTwigs(HDC hdc) {
@@ -534,6 +628,7 @@ void DrawMerchantStoreFront(HDC hdc) {
 // townsfolk: a simple tunic, belt, bare arms, round head and a cap/hair style
 // that varies per NPC so each villager in the settlement reads as a distinct
 // little character instead of an identical color-swapped blob.
+static int villager_facing; // 0 faces the camera, -1/1 looks left/right, 2 walks away
 void DrawZeldaStyleVillager(HDC hdc, int sx, int sy, int npc_index, float scale) {
 #define VS(v) ((int)((v) * scale))
     static const COLORREF tunic_palette[] = { RGB(60, 150, 70), RGB(190, 90, 60), RGB(90, 110, 170), RGB(200, 170, 70) };
@@ -582,66 +677,68 @@ void DrawZeldaStyleVillager(HDC hdc, int sx, int sy, int npc_index, float scale)
     } else {
         Ellipse(hdc, sx - VS(5), sy - VS(15), sx + VS(5), sy - VS(10));
     }
+    if (villager_facing == 2) Ellipse(hdc, sx - VS(4), sy - VS(14), sx + VS(4), sy - VS(7)); // back of the head
     SelectObject(hdc, old); DeleteObject(hair_b);
+    if (villager_facing != 2) {
+        HBRUSH eye = CreateSolidBrush(RGB(30, 25, 25));
+        int ex = sx + villager_facing * VS(1.5f);
+        RECT el = { ex - VS(2.5f), sy - VS(10), ex - VS(1), sy - VS(8.5f) }, er = { ex + VS(1), sy - VS(10), ex + VS(2.5f), sy - VS(8.5f) };
+        FillRect(hdc, &el, eye); FillRect(hdc, &er, eye); DeleteObject(eye);
+    }
 #undef VS
 }
 
+static POINT IsoAt(float x, float y, int z) {
+    int sx, sy; GetIsoCoords(x, y, &sx, &sy);
+    POINT p = { sx, sy - z };
+    return p;
+}
+
+// A village home as a solid isometric cottage: two lit walls (the gable end
+// and the long front with the door), a thatched roof over a ridge, a chimney,
+// and windows that glow at night. Its footprint is exactly the solid area.
+static void DrawIsoHome(HDC hdc, float cx, float cy, int i) {
+    float x0 = cx - HOME_HALF_X, x1 = cx + HOME_HALF_X, y0 = cy - HOME_HALF_Y, y1 = cy + HOME_HALF_Y, e = 0.15f;
+    const int H = 58, R = 104;
+    int night = fabs(sin(day_night_cycle_accumulator)) < 0.35;
+    static const COLORREF roofs[4] = { RGB(196, 152, 74), RGB(170, 70, 50), RGB(120, 110, 100), RGB(186, 140, 70) };
+    COLORREF roof = i < 4 ? roofs[i & 3] : HomeRoofColor(player_home[4]), roof_back = RGB(GetRValue(roof) * 4 / 5, GetGValue(roof) * 4 / 5, GetBValue(roof) * 4 / 5);
+    COLORREF timber = RGB(95, 62, 36), glass = night ? RGB(255, 205, 110) : RGB(150, 185, 210);
+    POINT back[] = { IsoAt(x0 - e, y0 - e, H - 6), IsoAt(x1 + e, y0 - e, H - 6), IsoAt(x1 + e, cy, R), IsoAt(x0 - e, cy, R) };
+    BrushPoly(hdc, roof_back, back, 4);
+    POINT chim[] = { IsoAt(x0 + 0.45f, y0 + 0.3f, 76), IsoAt(x0 + 0.75f, y0 + 0.3f, 76), IsoAt(x0 + 0.75f, y0 + 0.3f, 122), IsoAt(x0 + 0.45f, y0 + 0.3f, 122) };
+    BrushPoly(hdc, RGB(125, 125, 130), chim, 4);
+    POINT gable[] = { IsoAt(x1, y0, 0), IsoAt(x1, y1, 0), IsoAt(x1, y1, H), IsoAt(x1, cy, R), IsoAt(x1, y0, H) };
+    BrushPoly(hdc, RGB(170, 130, 88), gable, 5);
+    POINT front[] = { IsoAt(x0, y1, 0), IsoAt(x1, y1, 0), IsoAt(x1, y1, H), IsoAt(x0, y1, H) };
+    BrushPoly(hdc, i < 4 ? RGB(208, 172, 122) : HomeWallColor(player_home[4]), front, 4);
+    POINT a = IsoAt(x0, y1, H / 2), b = IsoAt(x1, y1, H / 2), c0 = IsoAt(x1, y1, 0), c1 = IsoAt(x1, y1, H);
+    PenLine(hdc, 2, timber, a.x, a.y, b.x, b.y);
+    PenLine(hdc, 3, timber, c0.x, c0.y, c1.x, c1.y);
+    POINT door[] = { IsoAt(cx - 0.2f, y1, 0), IsoAt(cx + 0.2f, y1, 0), IsoAt(cx + 0.2f, y1, 38), IsoAt(cx - 0.2f, y1, 38) };
+    BrushPoly(hdc, RGB(80, 52, 32), door, 4);
+    POINT w1[] = { IsoAt(x0 + 0.25f, y1, 34), IsoAt(x0 + 0.6f, y1, 34), IsoAt(x0 + 0.6f, y1, 50), IsoAt(x0 + 0.25f, y1, 50) };
+    POINT w2[] = { IsoAt(x1, cy - 0.22f, 26), IsoAt(x1, cy + 0.22f, 26), IsoAt(x1, cy + 0.22f, 44), IsoAt(x1, cy - 0.22f, 44) };
+    BrushPoly(hdc, glass, w1, 4); BrushPoly(hdc, glass, w2, 4);
+    POINT fr[] = { IsoAt(x0 - e, y1 + e, H - 6), IsoAt(x1 + e, y1 + e, H - 6), IsoAt(x1 + e, cy, R), IsoAt(x0 - e, cy, R) };
+    BrushPoly(hdc, roof, fr, 4);
+    PenLine(hdc, 2, roof_back, fr[3].x, fr[3].y, fr[2].x, fr[2].y);
+}
+
 void DrawVillage(HDC hdc) {
-    if (current_biome == BIOME_PRAIRIE && screens_until_town > 2) {
-        const int hx[] = { 11, 15, 19, 15 }, hy[] = { 11, 10, 11, 18 };
-        int shift = (current_screen_index % 3) - 1;
-        HBRUSH hut = CreateSolidBrush(RGB(150, 105, 65));
-        HBRUSH thatch = CreateSolidBrush(RGB(190, 150, 75));
-        HBRUSH door_b = CreateSolidBrush(RGB(70, 45, 28));
-        HBRUSH window_b = CreateSolidBrush(RGB(205, 225, 235));
-        HBRUSH chimney_b = CreateSolidBrush(RGB(130, 130, 135));
-        HPEN beam_pen = CreatePen(PS_SOLID, 2, RGB(90, 60, 35));
-        HPEN lattice_pen = CreatePen(PS_SOLID, 1, RGB(80, 85, 95));
-        // Village homes are scaled up from their original size but dialed back
-        // from the earlier 4.5x pass so they read as "larger, detailed
-        // cottages" instead of towering over the village. Anchored at the
-        // ground-contact point (the bottom edge of the hut body) so the
-        // building still sits planted on the tile instead of stretching
-        // symmetrically in both directions.
-        const float HOME_SCALE = 3.2f;
-        for (int i = 0; i < 4; i++) {
-            int sx, sy; GetIsoCoords((float)(hx[i] + shift), (float)hy[i], &sx, &sy);
-            int ax = sx, ay = sy + TILE_HEIGHT / 2 + 6; // planted on the tile centre, not floating above it
-            int hw = (int)(14 * HOME_SCALE), hh = (int)(20 * HOME_SCALE);
-            RECT body = { ax - hw, ay - hh, ax + hw, ay };
-            FillRect(hdc, &body, hut);
-
-            // Cross-timber framing accents break up the flat wall color.
-            HGDIOBJ old_pen = SelectObject(hdc, beam_pen);
-            MoveToEx(hdc, ax - hw, ay - hh / 2, NULL); LineTo(hdc, ax + hw, ay - hh / 2);
-            MoveToEx(hdc, ax - hw / 2, ay - hh, NULL); LineTo(hdc, ax - hw / 2, ay);
-            MoveToEx(hdc, ax + hw / 2, ay - hh, NULL); LineTo(hdc, ax + hw / 2, ay);
-            SelectObject(hdc, old_pen);
-
-            // Front door, planted centered on the ground edge.
-            int dw = (int)(4 * HOME_SCALE), dh = (int)(9 * HOME_SCALE);
-            RECT door = { ax - dw, ay - dh, ax + dw, ay };
-            FillRect(hdc, &door, door_b);
-
-            // A small shuttered window with simple lattice cross-bars.
-            RECT win = { ax - hw + (int)(3 * HOME_SCALE), ay - hh + (int)(6 * HOME_SCALE),
-                         ax - hw + (int)(9 * HOME_SCALE), ay - hh + (int)(12 * HOME_SCALE) };
-            FillRect(hdc, &win, window_b);
-            old_pen = SelectObject(hdc, lattice_pen);
-            MoveToEx(hdc, (win.left + win.right) / 2, win.top, NULL); LineTo(hdc, (win.left + win.right) / 2, win.bottom);
-            MoveToEx(hdc, win.left, (win.top + win.bottom) / 2, NULL); LineTo(hdc, win.right, (win.top + win.bottom) / 2);
-            SelectObject(hdc, old_pen);
-
-            HGDIOBJ old = SelectObject(hdc, thatch);
-            POINT roof[] = { {ax - (int)(18 * HOME_SCALE), ay - hh}, {ax, ay - (int)(36 * HOME_SCALE)}, {ax + (int)(18 * HOME_SCALE), ay - hh} };
-            Polygon(hdc, roof, 3); SelectObject(hdc, old);
-
-            // A small stone chimney poking out of the thatch for extra detail.
-            RECT chimney = { ax + (int)(8 * HOME_SCALE), ay - (int)(32 * HOME_SCALE), ax + (int)(11 * HOME_SCALE), ay - (int)(18 * HOME_SCALE) };
-            FillRect(hdc, &chimney, chimney_b);
-        }
-        DeleteObject(hut); DeleteObject(thatch); DeleteObject(door_b); DeleteObject(window_b);
-        DeleteObject(chimney_b); DeleteObject(beam_pen); DeleteObject(lattice_pen);
+    float hcx, hcy;
+    UpdatePlayerHome();
+    if (VillageHomeCentre(4, &hcx, &hcy)) {
+        DrawIsoHome(hdc, hcx, hcy, 4);
+        float fx = player_x + HOME_FEET_OFFSET, fy = player_y + HOME_FEET_OFFSET;
+        if (fx + fy > hcx + hcy + 0.3f && fabsf((fx - fy) - (hcx - hcy)) < HOME_HALF_X + HOME_HALF_Y + 0.7f) DrawHeroAsset(hdc);
+    }
+    if (VillageHomeCentre(0, &hcx, &hcy)) {
+        for (int i = 0; i < 4; i++) if (VillageHomeCentre(i, &hcx, &hcy)) DrawIsoHome(hdc, hcx, hcy, i);
+        // The hero is drawn again when standing in front of a home.
+        float fx = player_x + HOME_FEET_OFFSET, fy = player_y + HOME_FEET_OFFSET;
+        for (int i = 0; i < 4; i++)
+            if (VillageHomeCentre(i, &hcx, &hcy) && fx + fy > hcx + hcy + 0.3f && fabsf((fx - fy) - (hcx - hcy)) < HOME_HALF_X + HOME_HALF_Y + 0.7f) { DrawHeroAsset(hdc); break; }
     } else if (current_biome == BIOME_CASTLE) {
         int sx, sy; GetIsoCoords(11.0f, 14.0f, &sx, &sy);
         HBRUSH stall = CreateSolidBrush(RGB(170, 115, 65));
@@ -661,7 +758,12 @@ void DrawVillage(HDC hdc) {
         else if (village_npcs[i].type == 2) look = 2 + 4 * i; // guards: blue tunic
         else if (village_npcs[i].type >= 6) look = village_npcs[i].type; // king, beggar, banker
         if (village_npcs[i].type == 8) DrawAltar(hdc, sx, sy, TownDeity());
-        else DrawZeldaStyleVillager(hdc, sx, sy, look, NPC_SCALE);
+        else {
+            int d = village_npcs[i].direction; // iso: +y walks screen-left, +x screen-right; up/left turn their backs
+            villager_facing = d == FACE_DOWN ? -1 : d == FACE_RIGHT ? 1 : 2;
+            DrawZeldaStyleVillager(hdc, sx, sy, look, NPC_SCALE);
+            villager_facing = 0;
+        }
         if (village_npcs[i].type == 6) DrawCrown(hdc, sx, sy - (int)(19 * NPC_SCALE) - 2, 6);
         if (IsNearPoint(village_npcs[i].x, village_npcs[i].y, 2.0f)) {
             int top = sy - (int)(19 * NPC_SCALE) - 20;

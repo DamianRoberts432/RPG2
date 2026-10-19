@@ -51,7 +51,7 @@ static int CatchChance(void) {
 void FishingPressX(void) {
     if (fish_state != 2) { EndFishing("FISHING: You reel in. Nothing on the line yet."); return; }
     if (rand() % 100 >= CatchChance()) { EndFishing("FISHING: It slipped the hook! Cast again."); return; }
-    if (AddLootToInventory(LOOT_FISH, 1)) { EndFishing("FISHING: Got one! A fish goes into your pack."); TryCardDrop(-1); }
+    if (AddLootToInventory(LOOT_FISH, 1)) { EndFishing("FISHING: Got one! A fish goes into your pack."); TryCardDrop(-1); NoteQuestFish(); }
     else EndFishing("FISHING: You caught one, but your pack is too heavy to carry it.");
 }
 

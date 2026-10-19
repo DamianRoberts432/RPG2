@@ -25,9 +25,9 @@ void SyncActiveWeapon(void) {
 // Groups the pack by type (weapons, armor, shields, tools, food, materials),
 // equipped gear first within each group, then alphabetically.
 static int SlotRank(const char *slot) {
-    static const char *order[] = { "Weapon", "Armor", "Shield", "Tool", "Food", "Material" };
-    for (int i = 0; i < 6; i++) if (strcmp(slot, order[i]) == 0) return i;
-    return 6;
+    static const char *order[] = { "Weapon", "Armor", "Shield", "Head", "Cloak", "Clothes", "Ring", "Tool", "Food", "Material" };
+    for (int i = 0; i < 10; i++) if (strcmp(slot, order[i]) == 0) return i;
+    return 10;
 }
 
 static int CompareItems(const void *a, const void *b) {
@@ -98,7 +98,7 @@ void HandleInventoryPrimaryAction(void) {
                UpdatedFoodHeal(item->name) > 0) {
         ConsumeSelectedFood();
     } else if (strcmp(item->slot, "Weapon") == 0 || strcmp(item->slot, "Armor") == 0 || strcmp(item->slot, "Shield") == 0 ||
-               strcmp(item->slot, "Ring") == 0) {
+               strcmp(item->slot, "Ring") == 0 || IsClothingSlot(item->slot)) {
         ToggleEquipSelectedItem();
     } else if (strcmp(item->slot, "Tool") == 0) {
         strcpy(arpg_action_log, "TOOL: Already ready to gather - just interact with trees/rocks.");
@@ -181,7 +181,32 @@ float GetNamedItemWeight(const char *name) {
     if (strcmp(name, "Matches") == 0) return 1.0f;
     if (strcmp(name, "Dragon Scale Armor") == 0) return 6.0f;
     if (strcmp(name, "Musashi's Blade") == 0) return 1.0f;
+    if (strcmp(name, "Fur Mantle") == 0 || strcmp(name, "Padded Gambeson") == 0) return 2.0f;
+    if (strstr(name, "Cloak") || strcmp(name, "Leather Jerkin") == 0) return 1.5f;
+    if (ClothingColor(name) != CLOTH_UNKNOWN) return 0.5f;
     return 0.0f;
+}
+
+const char *WornItem(const char *slot) {
+    for (int i = 0; i < player_item_count; i++)
+        if (player_inventory[i].is_equipped && strcmp(player_inventory[i].slot, slot) == 0) return player_inventory[i].name;
+    return NULL;
+}
+
+int IsClothingSlot(const char *slot) {
+    return strcmp(slot, "Head") == 0 || strcmp(slot, "Cloak") == 0 || strcmp(slot, "Clothes") == 0;
+}
+
+COLORREF ClothingColor(const char *name) {
+    static const struct { const char *name; COLORREF c; } dyes[] = {
+        { "Cloth Hood", RGB(70, 58, 44) }, { "Straw Hat", RGB(215, 185, 100) }, { "Wool Cap", RGB(150, 40, 40) },
+        { "Leather Cap", RGB(110, 72, 40) }, { "Feathered Hat", RGB(40, 90, 60) },
+        { "Travel Cloak", RGB(105, 80, 50) }, { "Wool Cloak", RGB(120, 120, 125) }, { "Black Cloak", RGB(24, 20, 28) },
+        { "Fur Mantle", RGB(200, 190, 170) }, { "Linen Shirt", RGB(225, 215, 190) }, { "Work Smock", RGB(120, 135, 90) },
+        { "Leather Jerkin", RGB(125, 85, 50) }, { "Padded Gambeson", RGB(170, 150, 110) },
+    };
+    for (int i = 0; i < (int)(sizeof(dyes) / sizeof(dyes[0])); i++) if (strcmp(name, dyes[i].name) == 0) return dyes[i].c;
+    return CLOTH_UNKNOWN;
 }
 
 // Recomputes current_payload_weight from scratch by summing the weight of

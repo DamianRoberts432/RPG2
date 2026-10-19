@@ -340,6 +340,7 @@ void UpdateEnemySpawns(void) {
     DWORD now = GetTickCount();
     if (now - last_spawn < ENEMY_SPAWN_INTERVAL_MS) return;
     last_spawn = now;
+    if (ScreenStillQuiet()) return; // thinned out recently: monsters stay away for a while
     if (village_light_count > 0 && rand() % 3) return;
     StoreEnemy();
     int alive = 0, farthest = -1; float far_d = -1.0f;

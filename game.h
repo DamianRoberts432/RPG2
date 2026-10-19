@@ -26,8 +26,8 @@
 #define MAX_BUTTERFLIES 8
 #define DEBRIS_MAX 16
 #define MAX_CRITTERS 6
-#define MERCH_BASE_ITEMS 33
-#define MERCH_CAPACITY 50 // room for NewItem lines from the Update folder
+#define MERCH_BASE_ITEMS 46
+#define MERCH_CAPACITY 64 // room for NewItem lines from the Update folder
 #define MERCH_ITEMS merch_item_count
 extern int merch_item_count;
 #define MAX_BLOOD_MIST 48
@@ -127,6 +127,56 @@ typedef struct {
 typedef struct { float x, y; InventoryItem item; int screen_id, active; DWORD dropped_at; int legendary; } DroppedInventoryItem;
 extern char player_name[32];
 extern RaceType selected_race;
+// Looks picked on the start screen only: race sets the height.
+#define CREATION_FIELDS 7
+#define EYE_COLORS 5
+#define HAIR_COLORS 6
+extern int hero_sex, hero_beard, hero_eyes, hero_hair;
+extern const char *sex_names[], *beard_names[], *eye_names[], *hair_names[];
+void CycleCreationField(int field, int dir);
+// Clothes: "Head", "Cloak" and "Clothes" slots, wearable by every class.
+const char *WornItem(const char *slot);
+int IsClothingSlot(const char *slot);
+COLORREF ClothingColor(const char *name);
+#define CLOTH_UNKNOWN RGB(1, 2, 3)
+// World memory per screen (worldstate.c).
+#define MAX_SCREEN_EDITS 768
+#define MAX_SCREEN_MEMORY 128
+#define MAX_MELT_PATCHES 32
+typedef struct { int32_t screen_id, minute; uint8_t x, y, tile, active; } ScreenEdit;
+typedef struct { int32_t screen_id, left_minute, alive, active; } ScreenMemory;
+typedef struct { int32_t screen_id, active; float x, y, fill; } MeltPatch;
+extern ScreenEdit screen_edits[MAX_SCREEN_EDITS];
+extern ScreenMemory screen_memory[MAX_SCREEN_MEMORY];
+extern MeltPatch melt_patches[MAX_MELT_PATCHES];
+void RememberTileCleared(int x, int y, int tile);
+void RememberLeavingScreen(int new_index);
+void ApplyScreenMemory(int index);
+int ScreenStillQuiet(void);
+void TickMeltPatches(float dt);
+int GetMeltPatch(int i, float *x, float *y, float *size);
+// Walk-in homes and polygon shop rooms (afkview.c).
+extern int inside_home;
+int HomeInteract(void);
+void LeaveHome(void);
+int InteriorBlocks(float x, float y);
+void DrawHomeInterior(HDC hdc);
+void DrawShopRoom(HDC hdc, int stone, int shrine, int floor_y);
+// The player's own house (home.c).
+#define HOME_ROOFS 4
+#define HOME_WALLS 3
+#define HOME_FRONTS (HOME_ROOFS * HOME_WALLS)
+#define FURNITURE_KINDS 6
+extern int32_t player_home[8];
+extern const char *furniture_names[FURNITURE_KINDS];
+int PlayerHomeCentre(float *x, float *y);
+COLORREF HomeRoofColor(int front);
+COLORREF HomeWallColor(int front);
+int HomeBuildInteract(void);
+void UpdatePlayerHome(void);
+int PlaceFurniture(void);
+COLORREF HeroEyeColor(void);
+COLORREF HeroHairColor(void);
 extern ClassType selected_class;
 extern float player_height_m;
 extern const char* race_names[];

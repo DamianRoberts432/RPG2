@@ -746,6 +746,61 @@ static void DrawShelf(HDC hdc, int l, int r, int y, int seed) {
     }
 }
 
+// Pet-shop animals as flat-shaded side-view polygons with eye dots, matching
+// the low-poly look of the AFK view. Points are in figure units, feet at cy.
+static void PetPoly(HDC hdc, int cx, int cy, float s, const int *xy, int n, COLORREF c) {
+    POINT p[12];
+    for (int i = 0; i < n && i < 12; i++) p[i] = (POINT){ cx + (int)(xy[2 * i] * s), cy + (int)(xy[2 * i + 1] * s) };
+    HBRUSH b = CreateSolidBrush(c); HGDIOBJ ob = SelectObject(hdc, b), op = SelectObject(hdc, GetStockObject(NULL_PEN));
+    Polygon(hdc, p, n);
+    SelectObject(hdc, op); SelectObject(hdc, ob); DeleteObject(b);
+}
+
+static COLORREF PetDim(COLORREF c, float k) { return RGB((int)(GetRValue(c) * k), (int)(GetGValue(c) * k), (int)(GetBValue(c) * k)); }
+
+// kind 0 dog, 1 cat, 2 toad, 3 owl.
+static void DrawPetFigure(HDC hdc, int cx, int cy, float s, int kind, COLORREF c) {
+    COLORREF dark = PetDim(c, 0.7f), black = RGB(12, 10, 10);
+    int blink = (GetTickCount() / 140 + kind * 7) % 30 == 0;
+    if (kind <= 1) {
+        static const int legs[4] = { -12, -7, 6, 11 };
+        for (int l = 0; l < 4; l++) { int q[8] = { legs[l], -9, legs[l] + 3, -9, legs[l] + 3, 0, legs[l], 0 }; PetPoly(hdc, cx, cy, s, q, 4, l % 2 ? dark : c); }
+        static const int body[12] = { -14, -12, -10, -18, 10, -18, 14, -12, 10, -8, -10, -8 };
+        static const int head[12] = { 10, -16, 14, -24, 22, -24, 26, -18, 23, -13, 14, -12 };
+        PetPoly(hdc, cx, cy, s, body, 6, c);
+        if (kind == 0) {
+            static const int tail[8] = { -13, -15, -21, -23, -19, -24, -12, -17 }, snout[8] = { 23, -20, 30, -19, 30, -14, 23, -14 };
+            static const int ear[6] = { 14, -24, 18, -25, 16, -16 }, nose[8] = { 29, -20, 31, -20, 31, -18, 29, -18 };
+            PetPoly(hdc, cx, cy, s, tail, 4, c); PetPoly(hdc, cx, cy, s, head, 6, c);
+            PetPoly(hdc, cx, cy, s, snout, 4, dark); PetPoly(hdc, cx, cy, s, nose, 4, black); PetPoly(hdc, cx, cy, s, ear, 3, dark);
+        } else {
+            static const int tail[12] = { -13, -14, -20, -19, -22, -30, -19, -30, -17, -21, -12, -16 };
+            static const int ear1[6] = { 14, -23, 15, -30, 19, -24 }, ear2[6] = { 19, -24, 23, -30, 24, -22 };
+            PetPoly(hdc, cx, cy, s, tail, 6, c); PetPoly(hdc, cx, cy, s, head, 6, c);
+            PetPoly(hdc, cx, cy, s, ear1, 3, c); PetPoly(hdc, cx, cy, s, ear2, 3, c);
+        }
+        if (!blink) { int e[8] = { 20, -21, 22, -21, 22, -19, 20, -19 }; PetPoly(hdc, cx, cy, s, e, 4, kind ? RGB(110, 190, 60) : black); }
+    } else if (kind == 2) {
+        static const int body[12] = { -12, 0, -14, -6, -8, -12, 8, -12, 14, -6, 12, 0 };
+        static const int b1[8] = { -7, -12, -5, -16, -1, -16, 0, -12 }, b2[8] = { 1, -12, 2, -16, 6, -16, 8, -12 };
+        static const int e1[8] = { -5, -15, -2, -15, -2, -13, -5, -13 }, e2[8] = { 3, -15, 6, -15, 6, -13, 3, -13 };
+        PetPoly(hdc, cx, cy, s, body, 6, c); PetPoly(hdc, cx, cy, s, b1, 4, c); PetPoly(hdc, cx, cy, s, b2, 4, c);
+        if (!blink) { PetPoly(hdc, cx, cy, s, e1, 4, black); PetPoly(hdc, cx, cy, s, e2, 4, black); }
+    } else {
+        static const int body[12] = { -8, 0, -10, -12, -7, -22, 7, -22, 10, -12, 8, 0 };
+        static const int head[12] = { -8, -21, -9, -30, -5, -34, 5, -34, 9, -30, 8, -21 };
+        static const int t1[6] = { -8, -32, -9, -38, -4, -34 }, t2[6] = { 4, -34, 9, -38, 8, -32 };
+        static const int e1[8] = { -6, -31, -1, -31, -1, -26, -6, -26 }, e2[8] = { 1, -31, 6, -31, 6, -26, 1, -26 };
+        static const int p1[8] = { -4, -29, -2, -29, -2, -27, -4, -27 }, p2[8] = { 3, -29, 5, -29, 5, -27, 3, -27 };
+        static const int beak[6] = { -1, -26, 1, -26, 0, -23 };
+        PetPoly(hdc, cx, cy, s, body, 6, c); PetPoly(hdc, cx, cy, s, head, 6, c);
+        PetPoly(hdc, cx, cy, s, t1, 3, dark); PetPoly(hdc, cx, cy, s, t2, 3, dark);
+        PetPoly(hdc, cx, cy, s, e1, 4, RGB(250, 210, 60)); PetPoly(hdc, cx, cy, s, e2, 4, RGB(250, 210, 60));
+        if (!blink) { PetPoly(hdc, cx, cy, s, p1, 4, black); PetPoly(hdc, cx, cy, s, p2, 4, black); }
+        PetPoly(hdc, cx, cy, s, beak, 3, RGB(230, 170, 50));
+    }
+}
+
 void DrawInteriorBackdrop(HDC hdc, int menu) {
     if (menu == TM_BEGGAR || menu == TM_CHEST) return;
     const int W = WINDOW_WIDTH, H = WINDOW_HEIGHT, F = INT_FLOOR_Y;
@@ -753,24 +808,7 @@ void DrawInteriorBackdrop(HDC hdc, int menu) {
     COLORREF wall = shrine ? RGB(40, 30, 52) : stone ? RGB(96, 96, 104) : RGB(116, 78, 46);
     COLORREF seam = shrine ? RGB(26, 18, 36) : stone ? RGB(70, 70, 80) : RGB(86, 56, 32);
     DWORD t = GetTickCount();
-    TwBox(hdc, 0, 0, W, F, wall);
-    if (stone || shrine) {
-        for (int y = 0, row = 0; y < F; y += 44, row++) {
-            TwLine(hdc, 0, y, W, y, 2, seam);
-            for (int x = (row % 2) * 60; x < W; x += 120) TwLine(hdc, x, y, x, y + 44, 2, seam);
-        }
-    } else {
-        for (int x = 0; x < W; x += 70) TwLine(hdc, x, 0, x, F, 2, seam);
-    }
-    if (!shrine) { // a window shows the time of day outside
-        TwBox(hdc, 830, 110, 1010, 300, RGB(60, 40, 24));
-        TwBox(hdc, 842, 122, 998, 288, IsNight() ? RGB(18, 22, 58) : RGB(150, 200, 240));
-        if (IsNight()) TwDisc(hdc, 960, 160, 14, 14, RGB(235, 235, 210));
-        TwLine(hdc, 920, 122, 920, 288, 6, RGB(60, 40, 24)); TwLine(hdc, 842, 205, 998, 205, 6, RGB(60, 40, 24));
-    }
-    TwBox(hdc, 0, F, W, H, shrine ? RGB(30, 24, 36) : stone ? RGB(72, 68, 64) : RGB(82, 54, 32));
-    for (int y = F + 28; y < H; y += 34) TwLine(hdc, 0, y, W, y, 1, seam);
-    TwBox(hdc, 0, F - 12, W, F, seam);
+    DrawShopRoom(hdc, stone, shrine, F);
 
     if (menu == TM_SMITH) {
         TwBox(hdc, 150, 0, 260, 330, RGB(100, 55, 45));
@@ -799,12 +837,11 @@ void DrawInteriorBackdrop(HDC hdc, int menu) {
             int x0 = 80 + k * 110, y0 = 400;
             TwBox(hdc, x0, y0, x0 + 90, y0 + 90, RGB(60, 50, 40));
             TwBox(hdc, x0 + 4, y0 + 4, x0 + 86, y0 + 86, RGB(70, 46, 28));
-            TwDisc(hdc, x0 + 45, y0 + 64, 22, 14, k == 0 ? RGB(150, 100, 55) : k == 1 ? RGB(120, 120, 128) : RGB(70, 130, 60));
+            DrawPetFigure(hdc, x0 + 40, y0 + 82, 1.7f, k, k == 0 ? RGB(150, 100, 55) : k == 1 ? RGB(120, 120, 128) : RGB(70, 130, 60));
             for (int x = x0 + 12; x < x0 + 90; x += 15) TwLine(hdc, x, y0, x, y0 + 90, 2, RGB(180, 170, 150));
         }
         TwLine(hdc, 1000, 380, 1080, 380, 6, RGB(90, 60, 30));
-        TwDisc(hdc, 1040, 362, 14, 18, RGB(150, 110, 70));
-        TwDisc(hdc, 1044, 354, 2, 2, RGB(10, 10, 10));
+        DrawPetFigure(hdc, 1040, 378, 1.4f, 3, RGB(150, 110, 70));
     } else if (menu == TM_KING) {
         TwBox(hdc, 470, F, 650, H, RGB(150, 30, 40));
         TwBox(hdc, 150, 60, 230, 380, RGB(150, 30, 40)); TwBox(hdc, 182, 60, 198, 380, RGB(220, 180, 60));

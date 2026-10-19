@@ -125,6 +125,14 @@ Talking to a shopkeeper takes you inside their building (merchant included).
 - **Beggars**: giving gold or food raises Soul and lowers Town Heat; refusing does the opposite.
 - **Altars** belong to one of four gods: Solara (Light, Incense heals you), Nyx (Dark, a Chaos Relic gives +50% damage for 5 minutes), Baron Samedi (Voodoo, Tarot Card + Rum Bottle + Cigar gives Ghost Whisperer, +25% damage) or the Drowned One (Eldritch, offer a Fish). The merchant sells the offerings. Pray once a day for favor.
 
+## Homes, clothes and world memory
+
+- **Walk-in homes**: press X at a village cottage door to step inside a polygon room. X by the bed sleeps; walk out through the door to leave. Shop, castle and altar rooms use the same polygon walls and floors.
+- **Your own house**: buy **House Supplies** from the merchant (or get them as thanks for a Wood or Stone job). Press X on open ground to plan the house, and X again to cycle through 12 fronts (4 roofs x 3 walls). Walk away and it gets built. The merchant sells a Bookshelf, Armchair, Potted Plant, Painting, Wardrobe and Lantern, and they go into the house when you go inside. A tiny picture of it marks its tile on the World Map.
+- **Clothes**: any class can wear Head, Cloak and Clothes items from the merchant. A Cloth Hood hides the face.
+- **Start screen looks**: Body, Beard, Eyes and Hair (the colour shows age). These can only be changed on the start screen.
+- **World memory**: trees you cut and rocks you mine stay gone (trees regrow after 3 game days, rocks after 10, never on tilled soil). A cleared screen fills back up with monsters slowly over 6 game hours. Angry monsters close behind you follow you to the next screen. Snow melted by a campfire fills back in only while it snows.
+
 ## World map and saving
 
 The **Hero** tab also shows your **Karma** (Soul, Miasma from dark magic, Town Heat from crimes, Grapevine fame, and a life mark for each boss type slain), your **card collection** (each kill, cave treasure and fish catch has a 2% chance to give a card; monsters usually drop their own card), and the **bestiary** kill count per monster. These are saved with your hero. Food, materials and matches stack up to 99 per slot. The merchant now sells a **Spear** and an **A&D Strategy Guide** (use it from the inventory for a 2-second peek at secret card combos). A **Yeti** stays calm until you get within 3 tiles or hit it - then it charges. Races give small stat bonuses, and natural pairings (Elf Wizard, Human Knight, Dwarf Warrior, Halfling Rogue, Gnome Necromancer) get +1 to their key stat.

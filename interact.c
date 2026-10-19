@@ -55,6 +55,7 @@ void HandleContextInteract(void) {
             return;
         }
     }
+    if (HomeBuildInteract() || HomeInteract()) return;
     if (IsNearBedroll()) {
         sleep_fade_frame = 1;
         strcpy(arpg_action_log, "Rested and recovered! You feel the night air...");
@@ -62,6 +63,7 @@ void HandleContextInteract(void) {
     }
     for (int i = 0; i < village_npc_count; i++) {
         if (!IsNearPoint(village_npcs[i].x, village_npcs[i].y, 1.5f)) continue;
+        if (QuestDeliverTo(village_npcs[i].type)) return;
         if (village_npcs[i].type == 1) {
             vendor_menu_open = 1;
             vendor_tab = 0;
@@ -143,6 +145,7 @@ void HandleContextInteract(void) {
                 DropGroundLoot((float)target_x, (float)target_y, LOOT_APPLE, apples);
             }
             VISUAL_MAP[target_y][target_x] = 0;
+            RememberTileCleared(target_x, target_y, 11);
             sprintf(arpg_action_log, "CHOP: Felled a tree, +%d wood!", gained_wood);
             if (BirdsFleeTree(target_x, target_y)) strcat(arpg_action_log, " Birds burst from the branches!");
         } else {
@@ -156,6 +159,7 @@ void HandleContextInteract(void) {
             SpawnTreeDebris((float)target_x, (float)target_y);
             int gained_stone = 2 + (rand() % 3);
             AddMaterialToInventory("Stone", gained_stone);
+            RememberTileCleared(target_x, target_y, target_tile);
             VISUAL_MAP[target_y][target_x] = 0;
             sprintf(arpg_action_log, "MINE: Quarried stone rock, +%d stone!", gained_stone);
         } else {

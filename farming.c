@@ -37,6 +37,7 @@ int TryFarmPlot(int x, int y) {
     if (stage == 0) {
         if (!ConsumeMaterialFromInventory("Seeds", 1)) { strcpy(arpg_action_log, "FARM: Tilled soil. Buy Seeds at the merchant to plant here."); return 1; }
         p->planted = 1; p->planted_day = GameDayOfYear();
+        NoteQuestPlanted();
         strcpy(arpg_action_log, "FARM: Planted turnip seeds. They ripen in 3 days.");
         return 1;
     }

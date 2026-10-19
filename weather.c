@@ -344,6 +344,7 @@ void UpdateSeasonAndWeather(void) {
 
     if (current_weather == WEATHER_SNOW) snow_cover += 0.006f * weather_intensity * dt;
     else snow_cover -= (current_season == SEASON_WINTER ? 0.002f : 0.01f) * dt;
+    TickMeltPatches(dt);
     if (snow_cover < 0.0f) snow_cover = 0.0f;
     if (snow_cover > 1.0f) snow_cover = 1.0f;
 
@@ -535,6 +536,13 @@ static void DrawCampfireMeltPatches(HDC hdc) {
         int sx, sy; GetIsoCoords(campfires[i].x, campfires[i].y, &sx, &sy);
         int cy = sy + TILE_HEIGHT / 2;
         Ellipse(hdc, sx - TILE_WIDTH, cy - TILE_HEIGHT, sx + TILE_WIDTH, cy + TILE_HEIGHT);
+    }
+    for (int i = 0; i < MAX_MELT_PATCHES; i++) { // patches melted before, shrinking as new snow falls
+        float mx, my, k;
+        if (!GetMeltPatch(i, &mx, &my, &k)) continue;
+        int sx, sy; GetIsoCoords(mx, my, &sx, &sy);
+        int cy = sy + TILE_HEIGHT / 2, w = (int)(TILE_WIDTH * k), h = (int)(TILE_HEIGHT * k);
+        if (w > 2) Ellipse(hdc, sx - w, cy - h, sx + w, cy + h);
     }
     SelectObject(hdc, old_b); SelectObject(hdc, old_p); DeleteObject(grass);
 }
