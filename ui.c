@@ -365,7 +365,7 @@ void DrawTabbedMenuOverlay(HDC hdc) {
 
         DrawStatJewels(hdc, info_x, 160, "STR", stat_strength);
         DrawStatJewels(hdc, info_x, 174, "DEX", stat_dexterity);
-        DrawStatJewels(hdc, info_x, 188, "STA", stat_stamina);
+        DrawStatJewels(hdc, info_x, 188, "VIT", stat_stamina);
         DrawStatJewels(hdc, info_x, 202, "MAG", stat_magick);
         DrawStatJewels(hdc, info_x, 216, "LCK", stat_luck);
         DrawStatJewels(hdc, info_x, 230, "INT", stat_intelligence);

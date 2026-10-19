@@ -44,7 +44,7 @@ void CycleCreationField(int field, int dir) {
 }
 
 void SpendStatPoint(void) {
-    static const char *names[STAT_COUNT] = { "STR", "DEX", "STA", "MAG", "LCK", "INT", "CHR" };
+    static const char *names[STAT_COUNT] = { "STR", "DEX", "VIT", "MAG", "LCK", "INT", "CHR" };
     int *stat = StatByIndex(stat_cursor);
     if (stat_points <= 0) { strcpy(arpg_action_log, "No attribute points left. Level up to earn more."); return; }
     if (*stat >= STAT_CAP) { sprintf(arpg_action_log, "%s is already maxed at %d.", names[stat_cursor], STAT_CAP); return; }
@@ -91,6 +91,12 @@ void ApplyClassAndRaceStats(void) {
         if (*stat > STAT_CAP) *stat = STAT_CAP;
     }
     max_stamina = 100.0f + 10.0f * stat_spent[2];
+    { // Vitality (the old STA stat) also sets the HP bar: 100 + 10 per point
+        float old_max = max_player_hp;
+        max_player_hp = 100.0f + 10.0f * stat_stamina;
+        if (old_max > 0.0f) player_hp = player_hp * max_player_hp / old_max;
+        if (player_hp > max_player_hp) player_hp = max_player_hp;
+    }
     max_player_mp = 100.0f + 10.0f * stat_spent[3];
 
     if (selected_race == RACE_ELF) player_height_m = 1.95f;

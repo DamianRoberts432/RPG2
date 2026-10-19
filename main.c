@@ -152,7 +152,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 SetTextColor(memHDC, (selected_creation_field == 2) ? RGB(255, 255, 0) : RGB(200, 200, 200));
                 sprintf(label, "[3] Race:  < %s >", race_names[selected_race]); TextOut(memHDC, 100, 220, label, (int)strlen(label));
                 if (RaceClassSynergyStat() >= 0) {
-                    static const char *syn_names[STAT_COUNT] = { "STR", "DEX", "STA", "MAG", "LCK", "INT", "CHR" };
+                    static const char *syn_names[STAT_COUNT] = { "STR", "DEX", "VIT", "MAG", "LCK", "INT", "CHR" };
                     SetTextColor(memHDC, RGB(255, 215, 0));
                     sprintf(label, "Natural fit! +1 %s", syn_names[RaceClassSynergyStat()]);
                     TextOut(memHDC, 120, 242, label, (int)strlen(label));
@@ -178,7 +178,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
 
                 DrawStatJewels(memHDC, 80, 292, "STR", stat_strength);
                 DrawStatJewels(memHDC, 80, 306, "DEX", stat_dexterity);
-                DrawStatJewels(memHDC, 80, 320, "STA", stat_stamina);
+                DrawStatJewels(memHDC, 80, 320, "VIT", stat_stamina);
                 DrawStatJewels(memHDC, 80, 334, "MAG", stat_magick);
                 DrawStatJewels(memHDC, 80, 348, "LCK", stat_luck);
                 DrawStatJewels(memHDC, 80, 362, "INT", stat_intelligence);
