@@ -283,19 +283,48 @@ void UpdateGamePhysics(void) {
                 } else { enemy_x = nx; enemy_y = ny; }
                 if (summoned_zombie.active && zombie_dist < player_dist && zombie_dist < 0.7f &&
                     world_frame % 40 == 0 && summoned_zombie.type != SUMMON_GHOST) summoned_zombie.hp -= 0.5f; // ghosts phase through blows
-            } else if ((calm || dist > 8.0f) && world_frame % 10 == 0) {
-                static const int dir_lut[4][3] = {
-                    { FACE_LEFT, FACE_DOWN, FACE_RIGHT }, { FACE_RIGHT, FACE_UP, FACE_LEFT },
-                    { FACE_DOWN, FACE_LEFT, FACE_UP }, { FACE_UP, FACE_RIGHT, FACE_DOWN }
-                };
-                int ex = (int)enemy_x, ey = (int)enemy_y;
-                int tile = VISUAL_MAP[ey][ex];
-                int turn = tile == 1 ? 0 : tile == 12 ? 2 : 1;
-                enemy_direction = dir_lut[enemy_direction][turn];
-                float vx[] = { 0, 0, -1, 1 }, vy[] = { 1, -1, 0, 0 };
-                float tx = enemy_x + vx[enemy_direction] * 0.04f;
-                float ty = enemy_y + vy[enemy_direction] * 0.04f;
-                if (VISUAL_MAP[(int)ty][(int)tx] != 1 && VISUAL_MAP[(int)ty][(int)tx] != 12) { enemy_x = tx; enemy_y = ty; }
+            } else if (calm || dist > 8.0f) {
+                // Roam with a purpose: walk to a tree, the water's edge, an animal or a
+                // look-out spot, linger there a while (sniffing, watching), then move on.
+                static float goal_x[MAX_ENEMIES], goal_y[MAX_ENEMIES], goal_until[MAX_ENEMIES];
+                static int goal_screen[MAX_ENEMIES];
+                if (goal_screen[e] != current_screen_index + 1 || world_tick > goal_until[e]) {
+                    int h = abs(RainHash(e * 7919 + (int)(world_tick * 7.0f) + current_screen_index * 131));
+                    int kind = h % 4, found = 0;
+                    float gx = enemy_x, gy = enemy_y;
+                    if (kind == 2) { // an animal to stalk
+                        float best = 64.0f;
+                        for (int c = 0; c < MAX_CRITTERS; c++) {
+                            if (!critters[c].active || critters[c].hidden) continue;
+                            float dd = (critters[c].x - enemy_x) * (critters[c].x - enemy_x) + (critters[c].y - enemy_y) * (critters[c].y - enemy_y);
+                            if (dd < best) { best = dd; gx = critters[c].x; gy = critters[c].y; found = 1; }
+                        }
+                    }
+                    for (int k = 0; k < 24 && !found; k++) { // a tree (0), the water (1) or any open spot nearby
+                        int hk = abs(RainHash(h + k * 977));
+                        int tx = (int)enemy_x + hk % 13 - 6, ty = (int)enemy_y + (hk / 13) % 13 - 6;
+                        if (tx < 1 || ty < 1 || tx >= MAP_SIZE - 1 || ty >= MAP_SIZE - 1) continue;
+                        int want = kind == 0 ? 11 : kind == 1 ? 12 : -1;
+                        if (want >= 0 && VISUAL_MAP[ty][tx] != want) continue;
+                        if (want >= 0) { // stand beside it, on open ground
+                            for (int n = 0; n < 4 && !found; n++) {
+                                int nx2 = tx + (n == 0) - (n == 1), ny2 = ty + (n == 2) - (n == 3);
+                                if (VISUAL_MAP[ny2][nx2] != 1 && VISUAL_MAP[ny2][nx2] != 12 && VISUAL_MAP[ny2][nx2] != 11) { gx = nx2 + 0.5f; gy = ny2 + 0.5f; found = 1; }
+                            }
+                        } else if (VISUAL_MAP[ty][tx] != 1 && VISUAL_MAP[ty][tx] != 12) { gx = tx + 0.5f; gy = ty + 0.5f; found = 1; }
+                    }
+                    goal_x[e] = gx; goal_y[e] = gy; goal_screen[e] = current_screen_index + 1;
+                    float gd0 = sqrtf((gx - enemy_x) * (gx - enemy_x) + (gy - enemy_y) * (gy - enemy_y));
+                    goal_until[e] = world_tick + gd0 * 1.5f + 15.0f + (h >> 8) % 30; // time to get there, then a 5-15 s linger
+                }
+                float gdx = goal_x[e] - enemy_x, gdy = goal_y[e] - enemy_y, gd = sqrtf(gdx * gdx + gdy * gdy);
+                if (gd > 0.25f) {
+                    float sp = active_monster == MONSTER_ZOMBIE ? 0.007f : 0.012f;
+                    float tx = enemy_x + gdx / gd * sp, ty = enemy_y + gdy / gd * sp;
+                    if (tx > 0.5f && ty > 0.5f && tx < MAP_SIZE - 0.5f && ty < MAP_SIZE - 0.5f &&
+                        VISUAL_MAP[(int)ty][(int)tx] != 1 && VISUAL_MAP[(int)ty][(int)tx] != 12) { enemy_x = tx; enemy_y = ty; }
+                    else goal_until[e] = 0.0f; // blocked: pick somewhere else
+                }
             }
         }
         // Keep monsters from stacking on top of one another.

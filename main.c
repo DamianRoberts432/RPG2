@@ -159,15 +159,15 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 }
 
                 {
-                    const char *look_lbl[4] = { "Body", "Beard", "Eyes", "Hair" };
-                    const char *look_val[4] = { sex_names[hero_sex], beard_names[hero_beard], eye_names[hero_eyes], hair_names[hero_hair] };
-                    for (int i = 0; i < 4; i++) {
+                    const char *look_lbl[6] = { "Body", "Beard", "Eyes", "Hair", "Clothes", "Trim" };
+                    const char *look_val[6] = { sex_names[hero_sex], beard_names[hero_beard], eye_names[hero_eyes], hair_names[hero_hair], cloth_names[hero_cloth], trim_names[hero_trim] };
+                    for (int i = 0; i < 6; i++) {
                         SetTextColor(memHDC, (selected_creation_field == 3 + i) ? RGB(255, 255, 0) : RGB(200, 200, 200));
                         sprintf(label, "[%d] %s: < %s >", 4 + i, look_lbl[i], look_val[i]); TextOut(memHDC, 700, 140 + i * 30, label, (int)strlen(label));
                     }
                     SetTextColor(memHDC, RGB(150, 160, 170));
                     strcpy(label, "Your race sets your height. Looks can only be changed here.");
-                    TextOut(memHDC, 700, 270, label, (int)strlen(label));
+                    TextOut(memHDC, 700, 330, label, (int)strlen(label));
                 }
                 DrawHeroAssetEx(memHDC, 520, 200, 2.0f);
 

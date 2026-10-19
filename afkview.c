@@ -14,7 +14,7 @@
 #define FP_MAX_THINGS 240
 #define GAZE_MS 6500
 
-enum { FP_TREE, FP_ROCK, FP_HOME, FP_FIRE, FP_BUTTERFLY, FP_CRITTER, FP_FAMILIAR, FP_BOBBER, FP_ENEMY, FP_NPC };
+enum { FP_TREE, FP_ROCK, FP_HOME, FP_FIRE, FP_BUTTERFLY, FP_CRITTER, FP_FAMILIAR, FP_BOBBER, FP_ENEMY, FP_NPC, FP_BARREL, FP_LIGHT, FP_ALTAR, FP_STALL, FP_TENT };
 typedef struct { float x, y, z, depth; int kind, seed; } FpThing;
 static FpThing things[FP_MAX_THINGS];
 static int thing_count, horizon, bobber_sx = -1, bobber_sy;
@@ -105,6 +105,14 @@ static void GatherThings(void) {
     }
     for (int i = 0; i < village_npc_count; i++)
         if (village_npcs[i].type != 8) AddThing(village_npcs[i].x, village_npcs[i].y, 0.0f, FP_NPC, i * 16 + (village_npcs[i].type & 15));
+        else AddThing(village_npcs[i].x, village_npcs[i].y, 0.0f, FP_ALTAR, TownDeity());
+    { // the same town details as in play: barrels, torches and fire pits, the castle stall and tent
+        float qx, qy; int intact;
+        for (int i = 0; BarrelInfo(i, &qx, &qy, &intact); i++) AddThing(qx + 0.5f, qy + 0.5f, 0.0f, FP_BARREL, i * 2 + intact);
+        for (int i = 0; i < village_light_count && i < MAX_VILLAGE_LIGHTS; i++)
+            AddThing(village_lights[i].x, village_lights[i].y, 0.0f, FP_LIGHT, i * 2 + (village_lights[i].torch != 0));
+        if (current_biome == BIOME_CASTLE) { AddThing(11.0f, 14.0f, 0.0f, FP_STALL, 0); AddThing(merchant_x, merchant_y, 0.0f, FP_TENT, 0); }
+    }
     float bx, by; int nibble;
     if (FishingBobberPos(&bx, &by, &nibble)) AddThing(bx, by, 0.0f, FP_BOBBER, nibble);
 }
@@ -535,6 +543,53 @@ static void FireShadows(float x, float y, float tall) {
     face_bias = saved; face_glow = 0;
 }
 
+// Mythic beasts at the size and shape they have in play (about twice a
+// monster's height): Yeti and Bigfoot as long-armed apes that club with both
+// fists, the Sphinx as a lion with a pharaoh's head, the Bunyip low and tusked.
+static void BeastMesh(float x, float y, int type, int idx, float swing) {
+    DWORD now = GetTickCount();
+    COLORREF black = RGB(12, 10, 10);
+    if (type == MONSTER_YETI || type == MONSTER_BIGFOOT) {
+        float S = 1.9f, st = sinf(now / 220.0f + idx) * 0.05f * S;
+        COLORREF fur = type == MONSTER_YETI ? RGB(232, 238, 246) : RGB(105, 70, 40), face = type == MONSTER_YETI ? RGB(120, 140, 165) : RGB(160, 120, 85);
+        FireShadows(x, y, 1.2f * S);
+        OBox(x, y, st, 0.1f * S, 0.0f, 0.36f * S, 0.07f * S, 0.07f * S, fur);
+        OBox(x, y, -st, -0.1f * S, 0.0f, 0.36f * S, 0.07f * S, 0.07f * S, fur);
+        Prism(x, y, 0.32f * S, 0.95f * S, 0.24f * S, 0.2f * S, 7, 0.0f, fur);
+        for (int side = -1; side <= 1; side += 2) { // long arms that hang to the knees, raised together to club
+            float lift = swing * (side > 0 ? 1.0f : 0.8f);
+            OBox(x, y, (0.02f + lift * 0.25f) * S, side * 0.28f * S, (0.28f + lift * 0.55f) * S, (0.9f + lift * 0.35f) * S, 0.06f * S, 0.06f * S, fur);
+        }
+        OBox(x, y, 0.03f * S, 0.0f, 0.93f * S, 1.18f * S, 0.11f * S, 0.11f * S, fur);
+        face_bias = 0.01f; OBox(x, y, 0.12f * S, 0.0f, 0.96f * S, 1.12f * S, 0.025f * S, 0.075f * S, face); face_bias = 0.0f;
+        Eyes(x, y, 0.15f * S, 0.035f * S, 1.07f * S, 0.012f * S, black);
+    } else if (type == MONSTER_SPHINX) {
+        float S = 1.6f, st = sinf(now / 200.0f + idx) * 0.04f * S;
+        COLORREF lion = RGB(200, 165, 100), skin = RGB(205, 165, 110), blue = RGB(40, 70, 160), gold = RGB(235, 195, 60);
+        FireShadows(x, y, 0.8f * S);
+        for (int l = 0; l < 4; l++) OBox(x, y, (l < 2 ? 0.26f : -0.26f) * S + (l % 2 ? st : -st), (l % 2 ? 0.11f : -0.11f) * S, 0.0f, 0.32f * S, 0.05f * S, 0.05f * S, lion);
+        OBox(x, y, 0.0f, 0.0f, 0.28f * S, 0.55f * S, 0.38f * S, 0.16f * S, lion);
+        OBox(x, y, -0.45f * S, 0.0f, 0.45f * S, 0.5f * S, 0.1f * S, 0.015f * S, lion);
+        OBox(x, y, 0.36f * S, 0.0f, 0.5f * S, 0.95f * S, 0.09f * S, 0.14f * S, blue);
+        face_bias = 0.01f;
+        OBox(x, y, 0.36f * S, 0.0f, 0.68f * S, 0.71f * S, 0.095f * S, 0.145f * S, gold); OBox(x, y, 0.36f * S, 0.0f, 0.58f * S, 0.61f * S, 0.095f * S, 0.145f * S, gold);
+        OBox(x, y, 0.45f * S, 0.0f, 0.62f * S, 0.86f * S, 0.02f * S, 0.08f * S, skin);
+        face_bias = 0.0f;
+        Eyes(x, y, 0.475f * S, 0.03f * S, 0.77f * S, 0.012f * S, black);
+    } else { // Bunyip
+        float S = 1.6f, st = sinf(now / 260.0f + idx) * 0.03f * S;
+        COLORREF hide = RGB(60, 70, 45);
+        FireShadows(x, y, 0.5f * S);
+        for (int l = 0; l < 4; l++) OBox(x, y, (l < 2 ? 0.25f : -0.25f) * S + (l % 2 ? st : -st), (l % 2 ? 0.13f : -0.13f) * S, 0.0f, 0.16f * S, 0.05f * S, 0.05f * S, hide);
+        OBox(x, y, 0.0f, 0.0f, 0.12f * S, 0.38f * S, 0.4f * S, 0.2f * S, hide);
+        OBox(x, y, -0.52f * S, 0.0f, 0.16f * S, 0.26f * S, 0.15f * S, 0.05f * S, hide);
+        OBox(x, y, 0.48f * S, 0.0f, 0.2f * S, 0.42f * S, 0.12f * S, 0.12f * S, RGB(70, 80, 50));
+        OBox(x, y, 0.6f * S, 0.05f * S, 0.12f * S, 0.24f * S, 0.012f * S, 0.012f * S, RGB(235, 230, 210));
+        OBox(x, y, 0.6f * S, -0.05f * S, 0.12f * S, 0.24f * S, 0.012f * S, 0.012f * S, RGB(235, 230, 210));
+        Eyes(x, y, 0.6f * S, 0.06f * S, 0.36f * S, 0.012f * S, RGB(200, 240, 80));
+    }
+}
+
 // Monsters and villagers as low-poly people: legs that stride, a body,
 // arms (the leading one swings a weapon up close), a head and eye dots.
 static void HumanMesh(const FpThing *t) {
@@ -550,6 +605,7 @@ static void HumanMesh(const FpThing *t) {
         else if (type == MONSTER_SKELLY) { skin = RGB(225, 225, 215); cloth = skin; legs = skin; }
         else if (type == MONSTER_GOBLIN) { skin = RGB(90, 140, 60); cloth = RGB(110, 80, 50); S = 0.8f; }
         else if (type == MONSTER_SATYR) { skin = RGB(185, 140, 100); cloth = skin; legs = RGB(110, 80, 55); horns = 1; }
+        else if (type == MONSTER_DRACULA) { skin = RGB(222, 216, 228); cloth = RGB(35, 25, 35); legs = RGB(25, 20, 25); }
         else { skin = RGB(150, 140, 160); cloth = RGB(90, 85, 100); }
         eye = RGB(230, 60, 40);
     } else {
@@ -558,13 +614,19 @@ static void HumanMesh(const FpThing *t) {
         cloth = jobs[type % 10]; crown = type == 6;
         if (type == 15) { // the hero, in whatever clothes are worn
             const char *w = WornItem("Clothes"); COLORREF cc = w ? ClothingColor(w) : CLOTH_UNKNOWN;
-            cloth = cc != CLOTH_UNKNOWN ? cc : RGB(60, 80, 150); eye = HeroEyeColor(); hero = 1; crown = 0;
+            cloth = cc != CLOTH_UNKNOWN ? cc : HeroClothColor(RGB(60, 80, 150)); eye = HeroEyeColor(); hero = 1; crown = 0;
         }
     }
     float dx = player_x - x, dy = player_y - y, swing = 0.0f;
     if (enemy && dx * dx + dy * dy < 2.6f) { float ph = fmodf(now / 455.0f, 1.0f); if (ph < 0.45f) swing = sinf(ph / 0.45f * 3.14159f); }
+    if (enemy && IS_MYTHIC_MONSTER(type)) { BeastMesh(x, y, type, idx, swing); return; }
+    int vamp = enemy && type == MONSTER_DRACULA;
     float st = sinf(now / 140.0f + idx) * 0.04f * S;
     FireShadows(x, y, 0.75f * S);
+    if (vamp) { // high-collared cape behind the body
+        OBox(x, y, -0.07f * S, 0.0f, 0.18f * S, 0.66f * S, 0.02f * S, 0.15f * S, RGB(25, 12, 18));
+        face_bias = 0.01f; OBox(x, y, -0.065f * S, 0.0f, 0.18f * S, 0.62f * S, 0.015f * S, 0.13f * S, RGB(150, 20, 35)); face_bias = 0.0f;
+    }
     OBox(x, y, st, 0.05f * S, 0.0f, 0.32f * S, 0.035f * S, 0.035f * S, legs);
     OBox(x, y, -st, -0.05f * S, 0.0f, 0.32f * S, 0.035f * S, 0.035f * S, legs);
     OBox(x, y, 0.0f, 0.0f, 0.32f * S, 0.6f * S, 0.06f * S, 0.1f * S, cloth);
@@ -577,6 +639,12 @@ static void HumanMesh(const FpThing *t) {
     if (hero) {
         const char *hd = WornItem("Head"); COLORREF hc = hd ? ClothingColor(hd) : CLOTH_UNKNOWN;
         OBox(x, y, -0.01f * S, 0.0f, 0.72f * S, 0.78f * S, 0.066f * S, 0.066f * S, hc != CLOTH_UNKNOWN ? hc : HeroHairColor());
+    }
+    if (hero && HeroTrimColor() != CLOTH_UNKNOWN) { // trim at the hem and collar
+        face_bias = 0.01f;
+        OBox(x, y, 0.0f, 0.0f, 0.32f * S, 0.35f * S, 0.065f * S, 0.105f * S, HeroTrimColor());
+        OBox(x, y, 0.0f, 0.0f, 0.57f * S, 0.6f * S, 0.065f * S, 0.105f * S, HeroTrimColor());
+        face_bias = 0.0f;
     }
     Eyes(x, y, 0.063f * S, 0.025f * S, 0.69f * S, 0.01f * S, eye);
 }
@@ -620,6 +688,48 @@ static void FireMesh(const FpThing *t) {
     static const COLORREF tongue[3] = { RGB(230, 50, 30), RGB(255, 250, 235), RGB(255, 170, 60) };
     Prism(x + 0.03f * sinf(now / 170.0f), y, 0.14f, 0.2f + fl, 0.03f, 0.0f, 3, now / 200.0f, tongue[(now / 140 + t->seed) % 3]);
     face_bias = 0.0f; face_glow = 0;
+}
+
+static void DetailMesh(const FpThing *t) {
+    float x = t->x, y = t->y; DWORD now = GetTickCount();
+    hcos = 1.0f; hsin = 0.0f;
+    if (t->kind == FP_BARREL) {
+        COLORREF wood = RGB(140, 90, 45), hoop = RGB(60, 40, 25);
+        if (t->seed & 1) {
+            Prism(x, y, 0.0f, 0.42f, 0.16f, 0.16f, 8, 0.0f, wood);
+            face_bias = 0.01f;
+            Prism(x, y, 0.07f, 0.1f, 0.165f, 0.165f, 8, 0.0f, hoop); Prism(x, y, 0.32f, 0.35f, 0.165f, 0.165f, 8, 0.0f, hoop);
+            face_bias = 0.0f;
+        } else { // smashed: staves on the ground
+            OBox(x - 0.1f, y, 0.0f, 0.0f, 0.0f, 0.03f, 0.14f, 0.03f, wood); OBox(x + 0.08f, y + 0.1f, 0.0f, 0.0f, 0.0f, 0.03f, 0.03f, 0.12f, wood);
+            OBox(x, y - 0.12f, 0.0f, 0.0f, 0.0f, 0.03f, 0.1f, 0.03f, hoop);
+        }
+    } else if (t->kind == FP_LIGHT) {
+        if (t->seed & 1) { // torch on a post
+            float fl = 0.03f * sinf(now / 80.0f + t->seed);
+            Prism(x, y, 0.0f, 0.95f, 0.035f, 0.03f, 4, 0.0f, RGB(95, 65, 40));
+            face_glow = 1;
+            Prism(x, y, 0.95f, 1.12f + fl, 0.06f, 0.0f, 5, now / 300.0f, RGB(245, 140, 40));
+            face_bias = 0.04f; Prism(x, y, 0.95f, 1.05f - fl, 0.035f, 0.0f, 5, -(now / 250.0f), RGB(255, 225, 110));
+            face_bias = 0.0f; face_glow = 0;
+        } else { // village fire pit: a stone ring round the fire
+            Prism(x, y, 0.0f, 0.08f, 0.45f, 0.42f, 8, 0.2f, RGB(120, 120, 125));
+            FpThing f = *t; f.kind = FP_FIRE; FireMesh(&f);
+        }
+    } else if (t->kind == FP_ALTAR) {
+        static const COLORREF orb[4] = { RGB(255, 210, 90), RGB(150, 90, 230), RGB(120, 220, 120), RGB(60, 190, 200) };
+        Prism(x, y, 0.0f, 0.12f, 0.42f, 0.4f, 4, 0.785f, RGB(110, 110, 118));
+        Prism(x, y, 0.12f, 0.62f, 0.26f, 0.24f, 4, 0.785f, RGB(140, 140, 148));
+        Prism(x, y, 0.62f, 0.7f, 0.34f, 0.34f, 4, 0.785f, RGB(120, 120, 128));
+        face_glow = 1; Prism(x, y, 0.72f, 0.86f + 0.02f * sinf(now / 400.0f), 0.08f, 0.02f, 6, now / 900.0f, orb[t->seed & 3]); face_glow = 0;
+    } else if (t->kind == FP_STALL) { // market stall: counter, posts and a blue canopy
+        OBox(x, y, 0.0f, 0.0f, 0.0f, 0.45f, 0.75f, 0.3f, RGB(170, 115, 65));
+        for (int k = 0; k < 4; k++) OBox(x, y, k < 2 ? -0.7f : 0.7f, k % 2 ? 0.28f : -0.28f, 0.45f, 1.05f, 0.03f, 0.03f, RGB(110, 75, 45));
+        OBox(x, y, 0.0f, 0.0f, 1.05f, 1.1f, 0.85f, 0.42f, RGB(70, 115, 155));
+    } else if (t->kind == FP_TENT) { // the merchant's red tent
+        Prism(x, y, 0.0f, 1.25f, 0.85f, 0.0f, 4, 0.785f, RGB(220, 50, 40));
+        face_bias = 0.02f; Prism(x, y, 0.0f, 0.04f, 0.87f, 0.87f, 4, 0.785f, RGB(235, 195, 60)); face_bias = 0.0f;
+    }
 }
 
 static void HomeMesh(const FpThing *t, int night) {
@@ -835,6 +945,7 @@ void DrawAfkView(HDC hdc) {
         else if (k == FP_FIRE) FireMesh(&things[i]);
         else if (k == FP_BUTTERFLY || k == FP_CRITTER || k == FP_FAMILIAR) AnimalMesh(&things[i]);
         else if (k == FP_ENEMY || k == FP_NPC) HumanMesh(&things[i]);
+        else if (k >= FP_BARREL) DetailMesh(&things[i]);
         else if (things[i].depth > 0.0f) AddSprite(i);
     }
     bobber_sx = -1;
