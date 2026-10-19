@@ -75,10 +75,46 @@ void UpdatePlayerHome(void) {
     strcpy(arpg_action_log, "HOME: The merchant's builders finish your house! It's on your map. The merchant sells furniture.");
 }
 
+// Decorations: the built-in ones plus any NewDecor lines from the Update folder.
+typedef struct { char name[32]; int light, comfort; } DecorDef;
+static DecorDef decor[DECOR_MAX] = {
+    { "Flower Vase", 0, 1 }, { "Pothos Ivy", 0, 1 }, { "Stack of Books", 0, 1 },
+    { "Snow Globe", 0, 2 }, { "Jack-o-Lantern", 1, 2 }, { "Candle", 1, 1 } };
+static int decor_count = 6;
+
+int DecorCount(void) { return decor_count; }
+const char *DecorName(int k) { return k >= 0 && k < decor_count ? decor[k].name : ""; }
+int DecorLight(int k) { return k >= 0 && k < decor_count && decor[k].light; }
+int HomeHasDecor(int k) { return k >= 0 && k < decor_count && ((player_home[5] >> (FURNITURE_KINDS + k)) & 1); }
+
+int AddRuntimeDecor(const char *name, int light, int comfort) {
+    for (int k = 0; k < decor_count; k++)
+        if (_stricmp(decor[k].name, name) == 0) { decor[k].light = light != 0; decor[k].comfort = comfort; return k; }
+    if (decor_count >= DECOR_MAX) return -1;
+    snprintf(decor[decor_count].name, sizeof(decor[0].name), "%s", name);
+    decor[decor_count].light = light != 0; decor[decor_count].comfort = comfort;
+    return decor_count++;
+}
+
+int HomeComfort(void) {
+    int c = 0;
+    for (int k = 0; k < FURNITURE_KINDS; k++) c += (player_home[5] >> k) & 1;
+    for (int k = 0; k < decor_count; k++) if (HomeHasDecor(k)) c += decor[k].comfort;
+    return c;
+}
+
+int MerchSeasonLocked(const MerchantItem *o) {
+    if (strcmp(o->name, "Snow Globe") == 0) return current_season != SEASON_WINTER;
+    if (strcmp(o->name, "Jack-o-Lantern") == 0) return current_season != SEASON_FALL;
+    return 0;
+}
+
 int PlaceFurniture(void) {
     int placed = 0;
     for (int k = 0; k < FURNITURE_KINDS; k++)
         if (!(player_home[5] & (1 << k)) && ConsumeMaterialFromInventory(furniture_names[k], 1)) { player_home[5] |= 1 << k; placed++; }
-    if (placed) sprintf(arpg_action_log, "HOME: You set out %d new piece%s of furniture.", placed, placed == 1 ? "" : "s");
+    for (int k = 0; k < decor_count; k++)
+        if (!HomeHasDecor(k) && ConsumeMaterialFromInventory(decor[k].name, 1)) { player_home[5] |= 1 << (FURNITURE_KINDS + k); placed++; }
+    if (placed) sprintf(arpg_action_log, "HOME: You set out %d new piece%s. Home comfort: %d.", placed, placed == 1 ? "" : "s", HomeComfort());
     return placed;
 }

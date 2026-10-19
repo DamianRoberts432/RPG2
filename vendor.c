@@ -30,6 +30,7 @@ void HandleVendorBuy(void) {
     if (offer->requires_treasure_hunt && cave_treasure_hunts_found <= 0) {
         strcpy(arpg_action_log, "MARKET: This treasure-hunt item is still a rumor to this merchant."); return;
     }
+    if (MerchSeasonLocked(offer)) { strcpy(arpg_action_log, "MARKET: That one only comes in season."); return; }
     if (offer->stock == 0 || gold_count < price) {
         strcpy(arpg_action_log, "MARKET: Out of stock or not enough gold."); return;
     }

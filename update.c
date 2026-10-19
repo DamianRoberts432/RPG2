@@ -137,6 +137,17 @@ static int NewItemLine(char *cur) {
     return 1;
 }
 
+// NewDecor,DecorID,Name,Price,Light(0/1),Comfort: a home decoration the merchant sells.
+static int NewDecorLine(char *cur) {
+    char *f[4] = { 0 };
+    for (int i = 0; i < 4 && cur; i++) f[i] = NextField(&cur);
+    if (!f[1] || cur || !f[0][0] || atoi(f[1]) < 0) return 0;
+    if (AddRuntimeDecor(f[0], f[2] ? atoi(f[2]) : 0, f[3] && f[3][0] ? atoi(f[3]) : 1) < 0) return 0;
+    char line[64];
+    snprintf(line, sizeof(line), "%s,Material,%d", f[0], atoi(f[1]));
+    return NewItemLine(line);
+}
+
 // NewDialogue,DialogueID,NPCID,Speaker,Text[,NextDialogueID]: villagers say "Speaker: Text".
 static int NewDialogueLine(char *cur) {
     char *f[4] = { 0 };
@@ -164,6 +175,7 @@ static int ApplyUpdateLine(char *line) {
     if (!cmd || !id || !cur) return 0;
     if (_stricmp(cmd, "NewCard") == 0) return NewCardLine(cur);
     if (_stricmp(cmd, "NewItem") == 0) return NewItemLine(cur);
+    if (_stricmp(cmd, "NewDecor") == 0) return NewDecorLine(cur);
     if (_stricmp(cmd, "NewDialogue") == 0) return NewDialogueLine(cur);
     if (_stricmp(cmd, "NewQuest") == 0) return NewQuestLine(atoi(_strnicmp(id, "quest_id_", 9) == 0 ? id + 9 : id), cur);
     int quest = 0;

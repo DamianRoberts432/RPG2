@@ -20,6 +20,10 @@ New merchant items (Type is Food, Material or Tool; for Food, the last number is
 
     NewItem,105,Honey Cake,Food,25,1,0.3,18
 
+Home decorations the merchant sells (Price, then Light 1 to make it glow in your house, then the Comfort it adds):
+
+    NewDecor,201,Candle Lamp,10,1,1
+
 ## Cards
 
     NewCard,401,Odin Allfather,1,3,3,3,1
