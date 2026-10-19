@@ -121,7 +121,7 @@ Talking to a shopkeeper takes you inside their building (merchant included).
   - Every card is a 1/1, 2/2 or 3/3. Abilities make the difference: **First Strike** hits before a card without it; **Mighty** (Yeti, Bigfoot) is +3/+3, so they fight as 6/6; a Demon 1/1's **death curse** gives the next enemy card -2/-2; an Angel 1/1's **death blessing** gives your next card +1/+1, +2/+0 or +0/+2.
   - The kid at the corner table plays up to 10 practice hands per visit (no ante). You get three cards from the counter and pick the order to lay them; he leads with his left to right. The practice table on the right shows your three cards and his with their text, then the play-by-play: both cards deal damage at the same time unless one has First Strike, and death marks land on the next card in.
 - **Pet shop** (some days): familiars from level 3. Day familiars sleep in your pack from 9 PM to 6 AM, night ones by day.
-- **Castle towns** also have the **King** (Legendary quests from level 25: slay a mythic beast or Dracula, then report back for 10,000 gold), a **Bank** vault, a **beggar** and an **altar**. Villages have an altar and sometimes a beggar.
+- **Castle towns** also have the **King** (Legendary quests from level 25: slay a mythic beast or a Vampire, then report back for 10,000 gold), a **Bank** vault, a **beggar** and an **altar**. Villages have an altar and sometimes a beggar.
 - **Beggars**: giving gold or food raises Soul and lowers Town Heat; refusing does the opposite.
 - **Altars** belong to one of four gods: Solara (Light, Incense heals you), Nyx (Dark, a Chaos Relic gives +50% damage for 5 minutes), Baron Samedi (Voodoo, Tarot Card + Rum Bottle + Cigar gives Ghost Whisperer, +25% damage) or the Drowned One (Eldritch, offer a Fish). The merchant sells the offerings. Pray once a day for favor.
 
@@ -167,7 +167,7 @@ One real second is one game minute, so a day lasts 24 real minutes and each 30-d
 - **Loot:** fewer drops, and monsters killed by villagers or town defenders drop nothing, so gold doesn't pile up while you are away.
 - **Attacks:** monsters lunge at you up close, and your minions lunge each time they land a blow. Fishing shows the rod in your hand, the bobber flying out in an arc, a sagging line and the rod bending on a nibble.
 - **Dark vision:** Dwarves and Gnomes see further at night and in caves.
-- **Dracula:** carry **Garlic** (merchant) and he won't come for you; a **Silver Dagger** (merchant) does double damage to him.
+- **Vampires** (formerly Dracula): carry **Garlic** (merchant) and they won't come for you; a **Silver Dagger** (merchant) does double damage to them.
 - **Farming:** buy a **Hoe** and **Seeds** from the merchant. X with the Hoe on bare grass tills a plot (up to 48); X with Seeds plants turnips, which grow one stage a day and are ripe on day 3; X on a ripe plot harvests 2-3 **Turnips** (eat to heal) plus 3-4 Seeds per turnip, so you only buy Seeds once. Plots are saved.
 - **Footpaths:** grass you walk over often turns to a dirt path, and grows back a little each day you leave it alone. Paths are saved.
 - **Villager quests:** villagers sometimes ask you to slay a few monsters or bring them Wood, Stone, Fish or Apples, scaled to your level. One job at a time; any villager pays you when it's done. Talk to a villager to see your progress.

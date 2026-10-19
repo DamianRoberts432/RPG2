@@ -92,7 +92,7 @@ typedef struct { const char *name; int set, pt, ability; } CardDef;
 static const char *card_sets[3] = { "Wild Creatures", "Angels", "Goetia Demons" };
 int card_pool_size = CARD_PRINTED;
 static CardDef card_defs[CARD_COUNT] = {
-    { "Skeleton", 0, 1, AB_NONE }, { "Zombie", 0, 2, AB_NONE }, { "Dracula", 0, 3, AB_FIRST_STRIKE },
+    { "Skeleton", 0, 1, AB_NONE }, { "Zombie", 0, 2, AB_NONE }, { "Vampire", 0, 3, AB_FIRST_STRIKE },
     { "Goblin", 0, 1, AB_FIRST_STRIKE }, { "Satyr", 0, 2, AB_FIRST_STRIKE }, { "Yeti", 0, 3, AB_PUMP3 },
     { "Sphinx", 0, 3, AB_NONE }, { "Bigfoot", 0, 3, AB_PUMP3 }, { "Bunyip", 0, 2, AB_NONE },
     { "Bluebird", 0, 1, AB_FIRST_STRIKE }, { "Squirrel", 0, 1, AB_NONE }, { "Owl", 0, 2, AB_FIRST_STRIKE }, { "Bat", 0, 1, AB_NONE },
@@ -604,7 +604,7 @@ void TownMenuConfirm(void) {
         return; }
     case A_KING:
         if (player_level < LEGENDARY_QUEST_LEVEL) Say("KING: Legendary deeds are not for the untested. Return when you reach level %d.", LEGENDARY_QUEST_LEVEL);
-        else if (legendary_quest == 0) { legendary_quest = 1; Say("KING: A Legendary quest! Slay a mythic beast - Yeti, Sphinx, Bigfoot, Bunyip - or Dracula himself, then return to me."); }
+        else if (legendary_quest == 0) { legendary_quest = 1; Say("KING: A Legendary quest! Slay a mythic beast - Yeti, Sphinx, Bigfoot, Bunyip - or a Vampire lord, then return to me."); }
         else if (legendary_quest == 1) Say("KING: The beast still lives. Seek it in the wild lands beyond these walls.");
         else {
             legendary_quest = 0; legendary_quests_done++; gold_count += 10000; KarmaAdjust(5, 0, -5, 10);

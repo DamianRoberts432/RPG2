@@ -1,7 +1,7 @@
 #include "game.h"
 
 const char *MonsterName(MonsterType m) {
-    static const char *names[] = { "Skeleton", "Zombie", "Dracula", "Goblin", "Satyr", "Yeti", "Sphinx", "Bigfoot", "Bunyip" };
+    static const char *names[] = { "Skeleton", "Zombie", "Vampire", "Goblin", "Satyr", "Yeti", "Sphinx", "Bigfoot", "Bunyip" };
     return names[m];
 }
 
