@@ -11,10 +11,11 @@ static char town_note[160] = "";
 
 typedef struct { char text[96]; int action, arg; } TownRow;
 enum { A_LEAVE, A_REPAIR, A_FORGE, A_RECYCLE, A_SMITH_BUY, A_CARD, A_PACK, A_KID, A_PET, A_KING,
-       A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE, A_GUIDE, A_PET_SIZE, A_PET_COLOR, A_SLEEP, A_FURNISH };
+       A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE, A_GUIDE, A_PET_SIZE, A_PET_COLOR, A_SLEEP, A_FURNISH, A_BINDER, A_BINDER_CARD, A_BINDER_PAGE };
 #define TOWN_ROWS 24
 static TownRow rows[TOWN_ROWS];
 static int row_count = 0;
+static int binder_open = 0, binder_page = 0; // the Card Binder at home
 
 static const char *deity_names[4] = { "Solara of the Dawn", "Nyx the Veiled", "Baron Samedi", "The Drowned One" };
 static const char *deity_kinds[4] = { "Light", "Dark", "Voodoo", "Eldritch" };
@@ -289,9 +290,25 @@ static int OwnedFamiliarSlot(void) {
 static void BuildRows(void) {
     char t[96], nm[48];
     row_count = 0;
-    if (town_menu == TM_HOME) {
+    if (town_menu == TM_HOME && binder_open) { // 18 cards a page: A moves one between deck and binder
+        int shown = 0, skip = binder_page * 18, more = 0;
+        for (int id = 0; id < CARD_POOL; id++) {
+            if (!HasCard(id)) continue;
+            if (skip > 0) { skip--; continue; }
+            if (shown == 18) { more = 1; break; }
+            CardName(id, nm, sizeof(nm));
+            snprintf(t, sizeof(t), "%s %s", InDeck(id) ? "[DECK]  " : "[binder]", nm);
+            AddRow(A_BINDER_CARD, id, t); shown++;
+        }
+        if (more || binder_page > 0) AddRow(A_BINDER_PAGE, more ? binder_page + 1 : 0, more ? "Next page" : "First page");
+        AddRow(A_BINDER, 0, "Close the binder");
+    } else if (town_menu == TM_HOME) {
         AddRow(A_SLEEP, 0, inside_home == 4 ? "Sleep in your bed" : "Rest in the guest bed");
-        if (inside_home == 4) AddRow(A_FURNISH, 0, "Set out new furniture");
+        if (inside_home == 4) {
+            AddRow(A_FURNISH, 0, "Set out new furniture and decorations");
+            snprintf(t, sizeof(t), "Card Binder (deck %d / %d)", DeckCount(), DECK_MAX);
+            AddRow(A_BINDER, 1, t);
+        }
     }
     if (town_menu == TM_SMITH) {
         for (int i = 0; i < player_item_count; i++) {
@@ -409,7 +426,10 @@ static void RowInfo(const TownRow *r, char *out, size_t n) {
     case A_KID: snprintf(out, n, "A kid sits at the corner table shuffling a test deck. He won't play for ante."); break;
     case A_PRACTICE: snprintf(out, n, "Three duels, one card each. Both cards hit at once unless one has First Strike; death curses and blessings land on the next card. His cards and yours are on the right."); break;
     case A_SLEEP: snprintf(out, n, "Sleep until the next morning or evening. You wake rested."); break;
-    case A_FURNISH: snprintf(out, n, "Furniture bought from the merchant is set out in your home."); break;
+    case A_FURNISH: snprintf(out, n, "Furniture and decorations bought from the merchant are set out in your home. Comfort: %d.", HomeComfort()); break;
+    case A_BINDER: snprintf(out, n, "Deck: %d / %d cards. Every other card you own waits here in the binder.", DeckCount(), DECK_MAX); break;
+    case A_BINDER_CARD: CardDetails(r->arg, out, n); break;
+    case A_BINDER_PAGE: snprintf(out, n, "Turn the page."); break;
     case A_PET_SIZE: case A_PET_COLOR: snprintf(out, n, "Choose the size and coat colour of your dog or cat. Change it here any time."); break;
     case A_PET: snprintf(out, n, "%s  |  %s  |  %s", familiars[r->arg].name, familiars[r->arg].nocturnal ? "Nocturnal" : "Diurnal", familiars[r->arg].trait); break;
     case A_KING: snprintf(out, n, "Legendary quests open at level %d. Quests completed: %d.", LEGENDARY_QUEST_LEVEL, legendary_quests_done); break;
@@ -451,7 +471,7 @@ void OpenTownMenu(int menu) {
 }
 
 void TownMenuMove(int step) { BuildRows(); if (row_count > 0) town_cursor = (town_cursor + step + row_count) % row_count; }
-void TownMenuBack(void) { int was_home = town_menu == TM_HOME; town_menu = TM_NONE; if (was_home) LeaveHome(); }
+void TownMenuBack(void) { if (binder_open) { binder_open = 0; town_cursor = 0; return; } int was_home = town_menu == TM_HOME; town_menu = TM_NONE; if (was_home) LeaveHome(); }
 
 float TownDamageMult(void) {
     if (blessing_type < 0 || GetTickCount() > blessing_until) return 1.0f;
@@ -521,7 +541,7 @@ static void BuyCardPack(int count) {
         if (CardCount() >= CARD_POOL) { Say("CARD SHOP: You already own every card in print."); return; }
         if (gold_count < MASTER_BOX_PRICE) { Say("CARD SHOP: The Master Base Box costs %d gold.", MASTER_BOX_PRICE); return; }
         gold_count -= MASTER_BOX_PRICE;
-        for (int id = 0; id < CARD_POOL; id++) card_collection_bits[id / 8] |= (uint8_t)(1u << (id % 8));
+        for (int id = 0; id < CARD_POOL; id++) GainCard(id);
         Say("CARD SHOP: The Master Base Box! Your binder is complete (%d / %d).", CardCount(), CARD_POOL);
         return;
     }
@@ -532,7 +552,7 @@ static void BuyCardPack(int count) {
     for (int k = 0; k < count; k++) {
         int id = RandomPoolCard(0);
         if (!HasCard(id)) fresh++;
-        card_collection_bits[id / 8] |= (uint8_t)(1u << (id % 8));
+        GainCard(id);
     }
     Say("CARD SHOP: Opened %d cards - %d new! (%d / %d)", count, fresh, CardCount(), CARD_POOL);
 }
@@ -573,7 +593,18 @@ void TownMenuConfirm(void) {
     if (row_count <= 0) return;
     TownRow r = rows[town_cursor];
     switch (r.action) {
-    case A_LEAVE: TownMenuBack(); return;
+    case A_LEAVE: binder_open = 0; TownMenuBack(); return;
+    case A_BINDER: binder_open = r.arg; binder_page = 0; town_cursor = 0;
+        Say("HOME: Deck %d / %d. A on a card moves it between your deck and the binder.", DeckCount(), DECK_MAX); return;
+    case A_BINDER_PAGE: binder_page = r.arg; town_cursor = 0; return;
+    case A_BINDER_CARD: {
+        int id = r.arg, bit = 1 << (id % 8);
+        char t[48]; CardName(id, t, sizeof(t));
+        if (InDeck(id)) { deck_of_cards_bits[id / 8] &= (uint8_t)~bit; Say("BINDER: %s goes into the binder. Deck %d / %d.", t, DeckCount(), DECK_MAX); }
+        else if (DeckCount() >= DECK_MAX) Say("BINDER: Your deck is full (%d). Move a card out first.", DECK_MAX);
+        else { deck_of_cards_bits[id / 8] |= (uint8_t)bit; Say("BINDER: %s goes into your deck. Deck %d / %d.", t, DeckCount(), DECK_MAX); }
+        return;
+    }
     case A_SLEEP: sleep_fade_frame = 1; Say("HOME: You sleep soundly in the %s bed.", inside_home == 4 ? "warm" : "cottage"); return;
     case A_FURNISH: if (PlaceFurniture()) Say("%s", arpg_action_log); else Say("HOME: Nothing new to set out. The merchant sells furniture."); return;
     case A_REPAIR: {
@@ -623,7 +654,7 @@ void TownMenuConfirm(void) {
         if (HasCard(id)) { Say("CARD SHOP: You already own the %s card.", nm); return; }
         if (gold_count < price) { Say("CARD SHOP: The %s card is %d gold.", nm, price); return; }
         gold_count -= price;
-        card_collection_bits[id / 8] |= (uint8_t)(1u << (id % 8));
+        GainCard(id);
         Say("CARD SHOP: Added %s to your collection. (%d / %d)", nm, CardCount(), CARD_POOL);
         return; }
     case A_PACK: BuyCardPack(r.arg); return;
@@ -959,7 +990,8 @@ static void DrawCard(HDC hdc, int x, int y, int id, int num, int result) {
     Rectangle(hdc, x, y, x + w, y + h);
     SelectObject(hdc, op); SelectObject(hdc, ob); DeleteObject(pen);
     SetTextColor(hdc, RGB(255, 235, 100));
-    snprintf(buf, sizeof(buf), "%d. %s", num, c->name);
+    if (num > 0) snprintf(buf, sizeof(buf), "%d. %s", num, c->name);
+    else snprintf(buf, sizeof(buf), "%s", c->name);
     TextOut(hdc, x + 10, y + 6, buf, (int)strlen(buf));
     snprintf(buf, sizeof(buf), "%d/%d", p, p);
     TextOut(hdc, x + w - 50, y + 6, buf, (int)strlen(buf));
@@ -1014,7 +1046,7 @@ void DrawTownMenu(HDC hdc) {
     static const char *titles[10] = { "", "BLACKSMITH", "CARD SHOP", "PET SHOP", "THRONE ROOM", "TOWN BANK", "BEGGAR", "ALTAR", "CHEST", "HOME" };
     RECT box = { 1100, 70, 1790, 910 };
     if (town_menu == TM_BEGGAR || town_menu == TM_CHEST) { box.left = 560; box.right = 1260; box.top = 200; box.bottom = 700; }
-    if (town_menu == TM_HOME) { box.left = 1240; box.right = 1840; box.top = 470; box.bottom = 860; }
+    if (town_menu == TM_HOME) { box.left = 1240; box.right = 1840; box.top = binder_open ? 120 : 470; box.bottom = 860; }
     int table = KidTableVisible();
     if (table) { box.left = 40; box.right = 760; }
     TwBox(hdc, box.left, box.top, box.right, box.bottom, RGB(18, 20, 28));
@@ -1036,7 +1068,9 @@ void DrawTownMenu(HDC hdc) {
     SetTextColor(hdc, RGB(230, 230, 230));
     TextOut(hdc, box.left + 20, box.top + 42, line, (int)strlen(line));
 
-    int visible = town_menu == TM_BEGGAR || town_menu == TM_HOME ? 6 : 14;
+    if (town_menu == TM_HOME && binder_open && town_cursor < row_count && rows[town_cursor].action == A_BINDER_CARD)
+        DrawCard(hdc, box.left - 350, box.top, rows[town_cursor].arg, 0, 0); // the selected card, face up
+    int visible = town_menu == TM_BEGGAR || (town_menu == TM_HOME && !binder_open) ? 6 : 14;
     int start = town_cursor - visible / 2;
     if (start > row_count - visible) start = row_count - visible;
     if (start < 0) start = 0;
