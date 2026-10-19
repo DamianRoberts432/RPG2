@@ -476,6 +476,29 @@ static float UndeadRaceScale(int seed) {
     return k < 0.55f ? 0.55f : k;
 }
 
+// The attacking arm: raised behind the shoulder, then brought down and
+// forward, with the monster's weapon (club, sword, spear or claws) and a
+// faint swoosh on the follow-through.
+static void DrawEnemySwing(HDC hdc, int sx, int sy, int dir, float p) {
+    float big = IS_MYTHIC_MONSTER(active_monster) ? 2.0f : 1.0f, a = -2.0f + p * 2.7f;
+    int shx = sx + dir * (int)(3 * big), shy = sy + (int)(2 * big);
+    int hx = shx + (int)(dir * cosf(a) * 9 * big), hy = shy + (int)(sinf(a) * 9 * big);
+    COLORREF arm = active_monster == MONSTER_ZOMBIE ? RGB(150, 175, 135) : active_monster == MONSTER_GOBLIN ? RGB(90, 140, 60) :
+                   active_monster == MONSTER_SKELLY ? RGB(225, 225, 215) : active_monster == MONSTER_SATYR ? RGB(185, 140, 100) : RGB(120, 110, 125);
+    PenLine(hdc, (int)(3 * big), arm, shx, shy, hx, hy);
+    int wx = hx + (int)(dir * cosf(a) * 14 * big), wy = hy + (int)(sinf(a) * 14 * big);
+    if (active_monster == MONSTER_GOBLIN) PenLine(hdc, (int)(4 * big), RGB(110, 75, 40), hx, hy, hx + (wx - hx) * 4 / 5, hy + (wy - hy) * 4 / 5);
+    else if (active_monster == MONSTER_SKELLY) PenLine(hdc, 2, RGB(200, 205, 215), hx, hy, wx, wy);
+    else if (active_monster == MONSTER_SATYR) PenLine(hdc, 2, RGB(130, 95, 55), hx - (wx - hx) / 3, hy - (wy - hy) / 3, wx + (wx - hx) / 3, wy + (wy - hy) / 3);
+    else for (int c = -1; c <= 1; c++) // claws
+        PenLine(hdc, 1, RGB(235, 230, 210), hx, hy, hx + (int)(dir * cosf(a + c * 0.35f) * 6 * big), hy + (int)(sinf(a + c * 0.35f) * 6 * big));
+    if (p > 0.45f && p < 0.95f) { // swoosh
+        float a0 = a - 0.9f;
+        int ox = shx + (int)(dir * cosf(a0) * 20 * big), oy = shy + (int)(sinf(a0) * 20 * big);
+        PenLine(hdc, 1, RGB(230, 235, 245), ox, oy, wx, wy);
+    }
+}
+
 void DrawDynamicEnemy(HDC hdc) {
     if (enemy_hearts <= 0.0f) return;
     int sx, sy; GetIsoCoords(enemy_x, enemy_y, &sx, &sy);
@@ -487,12 +510,13 @@ void DrawDynamicEnemy(HDC hdc) {
     if (fabsf(mv) > 0.002f && fabsf(mv) < 2.0f) last_dir[slot] = mv > 0 ? 1 : -1;
     last_x[slot] = enemy_x; last_y[slot] = enemy_y;
     int face_dir = last_dir[slot] ? last_dir[slot] : (px >= sx ? 1 : -1);
-    // Attack lunge: up close the monster lunges at the hero in a short rhythm.
+    // Attack: up close the monster swings its arm and weapon in a short rhythm.
+    float attack_swing = -1.0f;
     float adx = player_x - enemy_x, ady = player_y - enemy_y;
     if (adx * adx + ady * ady < 2.6f) {
         face_dir = (px >= sx) ? 1 : -1;
         float ph = fmodf((float)world_tick * 2.2f, 1.0f);
-        if (ph < 0.3f) { int l = (int)(sinf(ph / 0.3f * 3.14159f) * 7.0f); sx += face_dir * l; sy -= l / 2; }
+        if (ph < 0.45f) attack_swing = ph / 0.45f;
     }
     int sw = IS_MYTHIC_MONSTER(active_monster) ? 20 : 9;
     HBRUSH b1 = CreateSolidBrush(RGB(15, 20, 26)); HGDIOBJ old = SelectObject(hdc, b1); Ellipse(hdc, sx - sw, sy + 16, sx + sw, sy + 22); SelectObject(hdc, old); DeleteObject(b1);
@@ -531,6 +555,7 @@ void DrawDynamicEnemy(HDC hdc) {
         HBRUSH red_b = CreateSolidBrush(RGB(255, 40, 40)); FillRect(hdc, &r, red_b); DeleteObject(red_b);
     }
     SelectObject(hdc, old);
+    if (attack_swing >= 0.0f) DrawEnemySwing(hdc, sx, sy, face_dir, attack_swing);
 }
 
 void DrawDebrisTwigs(HDC hdc) {
