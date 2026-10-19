@@ -95,7 +95,7 @@ static void GatherThings(void) {
         for (int i = 0; i < MAX_BUTTERFLIES; i++)
             if (butterflies[i].active) AddThing(butterflies[i].x, butterflies[i].y, 0.35f + butterflies[i].z / 40.0f, FP_BUTTERFLY, i);
     for (int i = 0; i < MAX_CRITTERS; i++)
-        if (critters[i].active && !critters[i].hidden) AddThing(critters[i].x, critters[i].y, 0.0f, FP_CRITTER, critters[i].type);
+        if (critters[i].active && !critters[i].hidden) AddThing(critters[i].x, critters[i].y, 0.0f, FP_CRITTER, i * 8 + (critters[i].type & 7));
     if (familiar_visible) AddThing(familiar_world_x, familiar_world_y, 0.0f, FP_FAMILIAR, familiar_visible - 1);
     float bx, by; int nibble;
     if (FishingBobberPos(&bx, &by, &nibble)) AddThing(bx, by, 0.0f, FP_BOBBER, nibble);
@@ -355,6 +355,138 @@ static void Prism(float x, float y, float z0, float z1, float r0, float r1, int 
     }
 }
 
+// --- Low-poly animals and people ------------------------------------------
+// Oriented boxes, cones and hinged wings built from the same shaded faces as
+// the trees, so animals keep their gameplay look: legs, body, head, ears,
+// tails and dark eye dots. Each figure faces the way it is moving.
+extern int familiar_size, familiar_color; // picked at the pet shop (town.c)
+static float hcos = 1.0f, hsin;
+
+static void OBox(float cx, float cy, float along, float side, float z0, float z1, float hl, float hw, COLORREF col) {
+    float x = cx + hcos * along - hsin * side, y = cy + hsin * along + hcos * side;
+    float c[3] = { x, y, (z0 + z1) / 2 }, px[4], py[4];
+    static const int sa[4] = { 1, 1, -1, -1 }, sb[4] = { 1, -1, -1, 1 };
+    for (int i = 0; i < 4; i++) { px[i] = x + hcos * hl * sa[i] - hsin * hw * sb[i]; py[i] = y + hsin * hl * sa[i] + hcos * hw * sb[i]; }
+    for (int i = 0; i < 4; i++) {
+        int j = (i + 1) % 4;
+        float v[4][3] = { { px[i], py[i], z0 }, { px[j], py[j], z0 }, { px[j], py[j], z1 }, { px[i], py[i], z1 } };
+        AddFace(v, 4, col, c, 0);
+    }
+    float top[4][3];
+    for (int i = 0; i < 4; i++) { top[i][0] = px[i]; top[i][1] = py[i]; top[i][2] = z1; }
+    AddFace(top, 4, col, c, 0);
+}
+
+static void Cone(float cx, float cy, float along, float side, float z0, float z1, float r, COLORREF col) {
+    Prism(cx + hcos * along - hsin * side, cy + hsin * along + hcos * side, z0, z1, r, 0.0f, 4, 0.0f, col);
+}
+
+// Two dots on the front of a head (drawn just in front of it).
+static void Eyes(float cx, float cy, float along, float side, float z, float e, COLORREF col) {
+    float saved = face_bias; face_bias = 0.05f; face_glow = 1;
+    for (int k = -1; k <= 1; k += 2) {
+        float x = cx + hcos * along - hsin * side * k, y = cy + hsin * along + hcos * side * k;
+        float v[4][3] = { { x - hsin * e, y + hcos * e, z - e }, { x + hsin * e, y - hcos * e, z - e }, { x + hsin * e, y - hcos * e, z + e }, { x - hsin * e, y + hcos * e, z + e } };
+        float c[3] = { x - hcos * 0.05f, y - hsin * 0.05f, z };
+        AddFace(v, 4, col, c, 0);
+    }
+    face_bias = saved; face_glow = 0;
+}
+
+// A wing hinged along the body, raised by angle f; seen from above or below.
+static void Wing(float cx, float cy, float z, float len, float span, float f, int sidek, COLORREF col) {
+    float sx = -hsin * sidek, sy = hcos * sidek, tip = span * cosf(f), up = span * sinf(f);
+    float v[4][3] = { { cx + hcos * len, cy + hsin * len, z }, { cx - hcos * len, cy - hsin * len, z },
+                      { cx - hcos * len * 0.6f + sx * tip, cy - hsin * len * 0.6f + sy * tip, z + up }, { cx + hcos * len * 1.2f + sx * tip, cy + hsin * len * 1.2f + sy * tip, z + up } };
+    float above[3] = { cx, cy, z + 1.0f }, below[3] = { cx, cy, z - 1.0f };
+    AddFace(v, 4, col, above, 0); AddFace(v, 4, col, below, 0);
+}
+
+static float HeadingFor(int key, float x, float y) {
+    static float lx[64], ly[64], hd[64];
+    key &= 63;
+    float dx = x - lx[key], dy = y - ly[key], d2 = dx * dx + dy * dy;
+    if (d2 >= 4.0f) hd[key] = atan2f(player_y - y, player_x - x); // just appeared: facing the hero
+    else if (d2 > 0.00002f) hd[key] = Wrap(hd[key] + Wrap(atan2f(dy, dx) - hd[key]) * 0.2f);
+    lx[key] = x; ly[key] = y;
+    return hd[key];
+}
+
+static void AnimalMesh(const FpThing *t) {
+    DWORD now = GetTickCount();
+    int kind = t->kind, idx = kind == FP_CRITTER ? t->seed >> 3 : t->seed, type = kind == FP_CRITTER ? t->seed & 7 : -1;
+    float h = HeadingFor(kind * 16 + (idx & 15), t->x, t->y), x = t->x, y = t->y, z = t->z;
+    hcos = cosf(h); hsin = sinf(h);
+    COLORREF black = RGB(12, 10, 10);
+    if (kind == FP_FAMILIAR && t->seed <= 1) { // dog or cat in the coat and size picked at the pet shop
+        static const COLORREF coats[2][4] = { { RGB(150, 100, 55), RGB(40, 35, 30), RGB(235, 230, 220), RGB(205, 160, 80) },
+                                              { RGB(120, 120, 128), RGB(220, 130, 50), RGB(35, 35, 40), RGB(240, 240, 240) } };
+        int cat = t->seed == 1;
+        COLORREF c = coats[cat][familiar_color & 3], dark = Dim(c, 0.7f);
+        float S = familiar_size == 0 ? 0.75f : familiar_size == 2 ? 1.3f : 1.0f, st = sinf(now / 110.0f) * 0.02f * S;
+        for (int l = 0; l < 4; l++) OBox(x, y, (l < 2 ? 0.11f : -0.11f) * S + (l % 2 ? st : -st), (l % 2 ? 0.05f : -0.05f) * S, 0.0f, 0.14f * S, 0.025f * S, 0.025f * S, dark);
+        OBox(x, y, 0.0f, 0.0f, 0.13f * S, 0.27f * S, (cat ? 0.15f : 0.17f) * S, (cat ? 0.055f : 0.07f) * S, c);
+        OBox(x, y, 0.2f * S, 0.0f, 0.24f * S, 0.38f * S, 0.07f * S, 0.065f * S, c);
+        if (cat) { Cone(x, y, 0.19f * S, 0.04f * S, 0.38f * S, 0.46f * S, 0.03f * S, c); Cone(x, y, 0.19f * S, -0.04f * S, 0.38f * S, 0.46f * S, 0.03f * S, c);
+                   OBox(x, y, -0.17f * S, 0.0f, 0.2f * S, 0.32f * S, 0.02f * S, 0.02f * S, c); OBox(x, y, -0.2f * S, 0.0f, 0.32f * S, 0.46f * S, 0.02f * S, 0.02f * S, c); }
+        else { OBox(x, y, 0.29f * S, 0.0f, 0.25f * S, 0.31f * S, 0.04f * S, 0.035f * S, dark); OBox(x, y, 0.335f * S, 0.0f, 0.29f * S, 0.315f * S, 0.008f * S, 0.015f * S, black);
+               OBox(x, y, 0.18f * S, 0.075f * S, 0.27f * S, 0.37f * S, 0.025f * S, 0.012f * S, dark); OBox(x, y, 0.18f * S, -0.075f * S, 0.27f * S, 0.37f * S, 0.025f * S, 0.012f * S, dark);
+               OBox(x, y, -0.2f * S, sinf(now / 90.0f) * 0.03f * S, 0.24f * S, 0.34f * S, 0.03f * S, 0.015f * S, c); }
+        Eyes(x, y, 0.273f * S, 0.03f * S, 0.33f * S, 0.012f * S, cat ? RGB(110, 190, 60) : black);
+        return;
+    }
+    if (kind == FP_BUTTERFLY) {
+        static const COLORREF wing[4] = { RGB(250, 200, 60), RGB(240, 120, 180), RGB(120, 180, 250), RGB(250, 250, 250) };
+        COLORREF c = wing[butterflies[idx].color_profile & 3];
+        float f = 0.2f + 1.1f * fabsf(sinf(now / 90.0f + idx));
+        OBox(x, y, 0.0f, 0.0f, z - 0.008f, z + 0.008f, 0.03f, 0.006f, RGB(40, 30, 20));
+        Wing(x, y, z, 0.025f, 0.06f, f, 1, c); Wing(x, y, z, 0.025f, 0.06f, f, -1, c);
+        return;
+    }
+    if (kind == FP_FAMILIAR && t->seed == 2) type = 5; // toad
+    if (kind == FP_FAMILIAR && t->seed >= 3) type = t->seed == 4 ? 2 : 6; // owl or hawk
+    float hop = (now / 250 + idx) % 4 == 0 ? 0.03f : 0.0f;
+    if (type == 0 || type == 6) { // bird / hawk
+        COLORREF c = type == 6 ? RGB(140, 100, 60) : RGB(70, 120, 220);
+        float zb = (type == 6 ? 0.9f + sinf(now / 300.0f) * 0.05f : hop), f = type == 6 ? sinf(now / 150.0f) * 0.6f : -0.2f;
+        OBox(x, y, 0.0f, 0.0f, zb + 0.05f, zb + 0.13f, 0.06f, 0.035f, c);
+        OBox(x, y, 0.065f, 0.0f, zb + 0.11f, zb + 0.18f, 0.03f, 0.028f, c);
+        OBox(x, y, 0.105f, 0.0f, zb + 0.135f, zb + 0.15f, 0.015f, 0.008f, RGB(240, 170, 40));
+        OBox(x, y, -0.08f, 0.0f, zb + 0.1f, zb + 0.115f, 0.03f, 0.02f, Dim(c, 0.7f));
+        Wing(x, y, zb + 0.12f, 0.04f, type == 6 ? 0.16f : 0.05f, f, 1, Dim(c, 0.8f)); Wing(x, y, zb + 0.12f, 0.04f, type == 6 ? 0.16f : 0.05f, f, -1, Dim(c, 0.8f));
+        Eyes(x, y, 0.096f, 0.012f, zb + 0.16f, 0.006f, black);
+    } else if (type == 1) { // squirrel with a big curled tail
+        COLORREF c = RGB(150, 95, 50);
+        OBox(x, y, 0.0f, 0.0f, hop, hop + 0.1f, 0.07f, 0.04f, c);
+        OBox(x, y, 0.07f, 0.0f, hop + 0.07f, hop + 0.15f, 0.035f, 0.032f, c);
+        Cone(x, y, 0.065f, 0.02f, hop + 0.15f, hop + 0.19f, 0.012f, c); Cone(x, y, 0.065f, -0.02f, hop + 0.15f, hop + 0.19f, 0.012f, c);
+        OBox(x, y, -0.09f, 0.0f, hop + 0.04f, hop + 0.16f, 0.03f, 0.035f, Mix(c, RGB(200, 160, 110), 0.3f));
+        OBox(x, y, -0.11f, 0.0f, hop + 0.16f, hop + 0.25f, 0.035f, 0.035f, Mix(c, RGB(200, 160, 110), 0.3f));
+        Eyes(x, y, 0.106f, 0.015f, hop + 0.125f, 0.007f, black);
+    } else if (type == 2) { // owl, upright with tufts and big yellow eyes
+        COLORREF c = RGB(140, 115, 85);
+        OBox(x, y, 0.0f, 0.0f, 0.0f, 0.24f, 0.07f, 0.07f, c);
+        OBox(x, y, 0.0f, 0.0f, 0.24f, 0.36f, 0.065f, 0.065f, c);
+        Cone(x, y, 0.0f, 0.045f, 0.36f, 0.42f, 0.02f, c); Cone(x, y, 0.0f, -0.045f, 0.36f, 0.42f, 0.02f, c);
+        Eyes(x, y, 0.068f, 0.028f, 0.31f, 0.018f, RGB(250, 210, 60));
+        face_bias = 0.02f; Eyes(x, y, 0.072f, 0.028f, 0.31f, 0.008f, black); face_bias = 0.0f;
+    } else if (type == 3) { // bat
+        float zb = 0.6f + sinf(now / 200.0f + idx) * 0.08f;
+        OBox(x, y, 0.0f, 0.0f, zb, zb + 0.06f, 0.03f, 0.025f, RGB(45, 40, 50));
+        Wing(x, y, zb + 0.04f, 0.04f, 0.12f, sinf(now / 70.0f) * 0.8f, 1, RGB(60, 52, 66)); Wing(x, y, zb + 0.04f, 0.04f, 0.12f, sinf(now / 70.0f) * 0.8f, -1, RGB(60, 52, 66));
+    } else if (type == 4) { // scorpion: flat body, pincers, tail curled up and over
+        COLORREF c = RGB(150, 95, 45);
+        OBox(x, y, 0.0f, 0.0f, 0.0f, 0.03f, 0.05f, 0.03f, c);
+        OBox(x, y, 0.07f, 0.035f, 0.0f, 0.02f, 0.025f, 0.012f, c); OBox(x, y, 0.07f, -0.035f, 0.0f, 0.02f, 0.025f, 0.012f, c);
+        for (int sgm = 0; sgm < 4; sgm++) OBox(x, y, -0.06f - sgm * 0.012f + (sgm > 2) * 0.03f, 0.0f, 0.02f + sgm * 0.025f, 0.045f + sgm * 0.025f, 0.012f, 0.01f, c);
+    } else if (type == 5) { // toad
+        COLORREF c = RGB(70, 130, 60);
+        OBox(x, y, 0.0f, 0.0f, hop, hop + 0.08f, 0.08f, 0.07f, c);
+        OBox(x, y, 0.05f, 0.035f, hop + 0.08f, hop + 0.11f, 0.015f, 0.015f, c); OBox(x, y, 0.05f, -0.035f, hop + 0.08f, hop + 0.11f, 0.015f, 0.015f, c);
+        Eyes(x, y, 0.066f, 0.035f, hop + 0.095f, 0.008f, black);
+    }
+}
+
 static void TreeMesh(const FpThing *t) {
     int s = t->seed, snow = snow_cover > 0.5f;
     float x = t->x + ((s * 37) % 21 - 10) / 100.0f, y = t->y + ((s * 53) % 21 - 10) / 100.0f;
@@ -502,6 +634,7 @@ void DrawAfkView(HDC hdc) {
         else if (k == FP_ROCK) RockMesh(&things[i]);
         else if (k == FP_HOME) HomeMesh(&things[i], light < 0.35f);
         else if (k == FP_FIRE) FireMesh(&things[i]);
+        else if (k == FP_BUTTERFLY || k == FP_CRITTER || k == FP_FAMILIAR) AnimalMesh(&things[i]);
         else if (things[i].depth > 0.0f) AddSprite(i);
     }
     bobber_sx = -1;
