@@ -631,3 +631,64 @@ void FireClassAbility(void) {
         sprintf(arpg_action_log, "SNEAK: Breaking monster detection for %ds!", sneak_ms / 1000);
     }
 }
+
+// ---- The hero can be hurt (forgiving for now) ----
+DWORD hero_held_until = 0; // a zombie's grab holds the hero in place briefly
+int hero_hop_frame = 0;    // counts down while the hero is mid-hop
+
+// Nearest known castle town on the world map, else -1.
+static int NearestTownCell(void) {
+    int best = -1, best_d = 1 << 30;
+    for (int gy = 0; gy < META_GRID_SIZE; gy++) for (int gx = 0; gx < META_GRID_SIZE; gx++) {
+        if (!IsMapCastle(gx, gy)) continue;
+        int d = (gx - screen_grid_x) * (gx - screen_grid_x) + (gy - screen_grid_y) * (gy - screen_grid_y);
+        if (d < best_d) { best_d = d; best = gy * META_GRID_SIZE + gx; }
+    }
+    return best;
+}
+
+// Knocked out: a townsfolk carries the hero to the nearest town. Nothing is lost.
+static void RescueHero(void) {
+    int cell = NearestTownCell();
+    if (in_cave) { in_cave = 0; pending_forced_biome = -1; }
+    if (fishing_active) fishing_active = 0;
+    if (cell >= 0) {
+        screen_grid_x = cell % META_GRID_SIZE; screen_grid_y = cell / META_GRID_SIZE;
+        screens_until_town = 0;
+        GenerateProceduralScreen(30000 + cell);
+    } else GenerateProceduralScreen(screen_grid_y * META_GRID_SIZE + screen_grid_x);
+    player_x = MAP_SIZE / 2.0f; player_y = MAP_SIZE / 2.0f;
+    for (int r = 0; r < MAP_SIZE / 2 && !PlayerCanStandAt(player_x, player_y); r++) player_x = MAP_SIZE / 2.0f + r * ((r & 1) ? 1 : -1);
+    player_hp = max_player_hp * 0.6f; player_stamina = max_stamina; hero_held_until = 0;
+    strcpy(arpg_action_log, cell >= 0 ? "A townsman: \"Found you out cold and carried you here. My son's fetched all your things - nothing's missing.\""
+                                      : "A passing villager: \"You took a nasty knock. I watched over you and my son gathered your things.\"");
+}
+
+void HurtHero(float dmg) {
+    if (dmg <= 0.0f || player_hp <= 0.0f) return;
+    player_hp -= dmg;
+    if (player_hp <= 0.0f) { player_hp = 0.0f; RescueHero(); }
+}
+
+// Called for each live monster (selected into enemy_x/enemy_y/active_monster).
+void EnemyAttackHero(int e) {
+    static DWORD next_hit[MAX_ENEMIES];
+    if (e < 0 || e >= MAX_ENEMIES || inside_home >= 0 || town_menu != TM_NONE || is_character_creation) return;
+    float dx = player_x - enemy_x, dy = player_y - enemy_y, d2 = dx * dx + dy * dy;
+    DWORD now = GetTickCount();
+    if (active_monster == MONSTER_DRACULA && GetMaterialCount("Garlic") == 0) { // vampires drain from a distance and heal
+        float reach = 1.4f + 0.35f * (enemy_hearts > 4.0f ? 4.0f : enemy_hearts); // stronger ones reach further
+        if (d2 < reach * reach && world_frame % 20 == 0) {
+            HurtHero(0.4f);
+            if (enemy_hearts < 6.0f) enemy_hearts += 0.04f;
+            if (world_frame % 120 == 0) strcpy(arpg_action_log, "VAMPIRE: It drinks your life from afar! Get away or strike it.");
+        }
+    }
+    if (d2 > 1.25f * 1.25f || hero_hop_frame > 0 || (int)(now - next_hit[e]) < 0) return;
+    int big = IS_MYTHIC_MONSTER(active_monster);
+    next_hit[e] = now + (big ? 1800 : 1400) + rand() % 600;
+    float dmg = big ? 5.0f : 2.0f;
+    if (active_monster == MONSTER_ZOMBIE) { hero_held_until = now + 550; strcpy(arpg_action_log, "ZOMBIE: It grabs you and bites!"); }
+    else if (active_monster == MONSTER_BIGFOOT || active_monster == MONSTER_YETI) strcpy(arpg_action_log, "A huge arm swats you!");
+    HurtHero(dmg);
+}

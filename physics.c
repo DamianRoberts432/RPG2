@@ -58,6 +58,7 @@ void UpdateGamePhysics(void) {
     if (is_character_creation) return;
     world_frame++;
     world_tick += 0.05f; if (sword_swipe_frame > 0) sword_swipe_frame--;
+    if (hero_hop_frame > 0) hero_hop_frame--;
     if (ability_visual_frame > 0) ability_visual_frame--;
     if (sleep_fade_frame > 0) {
         sleep_fade_frame++;
@@ -181,6 +182,7 @@ void UpdateGamePhysics(void) {
             enemy_hearts -= POISON_TICK_DAMAGE;
             if (enemy_hearts <= 0.0f) { HandleEnemyDamage(0.0f); continue; }
         }
+        EnemyAttackHero(e);
         int fleeing_from_fire = 0;
         float fire_fx = 0.0f, fire_fy = 0.0f;
         
@@ -234,8 +236,14 @@ void UpdateGamePhysics(void) {
                 if (active_monster == MONSTER_YETI) speed = YETI_CHARGE_SPEED;
                 if (fabs(sin(day_night_cycle_accumulator)) < 0.35f) speed *= 1.2f;
                 if (VISUAL_MAP[(int)enemy_y][(int)enemy_x] == 12) speed *= 0.25f;
-                enemy_x += (s_dx / dist) * speed;
-                enemy_y += (s_dy / dist) * speed;
+                float nx = enemy_x + (s_dx / dist) * speed, ny = enemy_y + (s_dy / dist) * speed;
+                int at_fire_edge = 0; // don't step back into the light: wait at its edge instead of jittering in and out
+                for (int i = 0; i < MAX_CAMPFIRES; i++)
+                    if (campfires[i].active && (nx - campfires[i].x) * (nx - campfires[i].x) + (ny - campfires[i].y) * (ny - campfires[i].y) < 4.2f * 4.2f) at_fire_edge = 1;
+                if (at_fire_edge) { // shift weight from foot to foot while waiting for the fire to die
+                    enemy_x += sinf(world_tick * 0.9f + e * 1.7f) * 0.004f;
+                    enemy_y += cosf(world_tick * 0.7f + e) * 0.003f;
+                } else { enemy_x = nx; enemy_y = ny; }
                 if (summoned_zombie.active && zombie_dist < player_dist && zombie_dist < 0.7f &&
                     world_frame % 40 == 0 && summoned_zombie.type != SUMMON_GHOST) summoned_zombie.hp -= 0.5f; // ghosts phase through blows
             } else if ((calm || dist > 8.0f) && world_frame % 10 == 0) {

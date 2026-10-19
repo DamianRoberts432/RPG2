@@ -1,4 +1,6 @@
 #include "game.h"
+
+static int gp_run_held = 0, gp_hop_down = 0; // left trigger runs, left bumper hops
 #include "worldmap.h"
 
 // 1 while any key, mouse button, gamepad button, trigger or stick is in use.
@@ -190,6 +192,8 @@ void ProcessGamepadInput(void) {
 
         static DWORD bow_charge_start_gp = 0;
         BYTE rt = state.Gamepad.bRightTrigger;
+        gp_run_held = !is_menu_open && state.Gamepad.bLeftTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
+        gp_hop_down = !is_menu_open && (state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER) != 0;
         if (bow_equipped && !is_menu_open && rt > XINPUT_GAMEPAD_TRIGGER_THRESHOLD) {
             if (!is_charging_bow) {
                 is_charging_bow = 1;
@@ -408,11 +412,19 @@ void ProcessGamepadInput(void) {
 
 
         UpdateMouseInput(&dx, &dy);
+        static int hop_was_down = 0;
+        int hop_down = gp_hop_down || (GetAsyncKeyState('J') & 0x8000) != 0;
+        if (hop_down && !hop_was_down && hero_hop_frame == 0 && player_stamina > 5.0f) { hero_hop_frame = 18; player_stamina -= 5.0f; }
+        hop_was_down = hop_down;
+        if (GetTickCount() < hero_held_until) { dx = 0.0f; dy = 0.0f; } // held by a zombie
+        int running = (gp_run_held || (GetAsyncKeyState(VK_SHIFT) & 0x8000)) && player_stamina > 0.0f;
         if (dx != 0.0f || dy != 0.0f) {
             is_running = 1; run_bob += 0.4f;
             float race_mult = GetRaceSpeedMultiplier();
             float speed = 0.15f * race_mult * WeightSpeedFactor() * (1.0f + 0.02f * stat_spent[1]); if (speed < 0.01f) speed = 0.0f;
             if (speed <= 0.0f) strcpy(arpg_action_log, "OVERLOADED: Too heavy to move! Drop something.");
+            if (running) { speed *= 1.6f; player_stamina -= 0.25f; }
+            if (hero_hop_frame > 0) speed *= 1.3f;
             if (player_stamina <= 0.0f) {
                 speed *= 0.6f; // exhausted: can still walk, just slower
                 strcpy(arpg_action_log, "Exhausted! Rest to recover stamina.");

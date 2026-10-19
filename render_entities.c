@@ -203,6 +203,7 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
 
 void DrawHeroAsset(HDC hdc) {
     int sx, sy; GetIsoCoords(player_x, player_y, &sx, &sy);
+    if (hero_hop_frame > 0) sy -= (int)(sinf(3.14159f * (18 - hero_hop_frame) / 18.0f) * 14.0f); // quick hop arc
     DrawHeroAssetEx(hdc, sx, sy, 1.0f);
 }
 
