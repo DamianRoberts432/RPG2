@@ -90,13 +90,15 @@ game.exe
 | **'X' / 'C' Key / (X) Button** | — | Contextual Interact: Pick up loot, gold or a dropped item (nothing is ever auto-grabbed) / Chop Tree / Mine Rock / Talk / Fish. Next to a campfire it **adds 1 Wood** (a fire holds up to 10; each log burns 4x longer than before). Next to the bedroll it sleeps to the next phase: by day you wake at 9 PM, by night at 6 AM. Never lights a new campfire. |
 | **'F' / 'R' Key / RT (Right Trigger)** | — | Bow Charge (Tap for Quick Shot / Hold to Charge; holding the draw drains stamina every frame). With a **Spear** equipped and no Bow, it **throws the spear**: it lands on the ground, stand on it and press X to pick it up. The Bow is a **secondary** weapon: equip it alongside your sword/axe. Arrows fly the way you face (they only hit a monster you are facing), stop at trees and rocks, and vanish at the screen edge. |
 | **'Y' Button / Key** | — | Class Special Ability (gameplay-only, debounced to fire once per press, then on cooldown): Necromancer summons (Zombie from level 1 - poison bite, Skeleton from level 3 - tough, Ghost from level 5 - fast and can't be hit; each press raises the next one), Wizard ranged spell bolt, Knight/Warrior defensive backstep + counter-strike, Rogue sneak (breaks monster detection). |
+| **Shift / LT (Left Trigger), held while moving** | — | Run: 1.6x speed, drains stamina. Plain walking barely tires you, and carry weight only slows you past 70% of your limit. |
+| **'J' Key / LB (Left Bumper)** | — | Quick hop: a short, fast hop (costs 5 stamina). Monsters can't hit you mid-hop. |
 | **'M' Key / Start Button** | — | Open Inventory & Route Display |
 | **'1' Key / (A) in Inventory Tab** | — | Equip/Unequip the selected inventory item. One melee weapon and one Bow can be equipped at the same time. |
 | **'3' Key / (X) in Inventory Tab** | — | Light a Campfire — the ONLY way to place one. Uses 2 Wood + 1 Match and needs a free campfire slot; nothing is consumed unless all are available. |
 | **'4' Key / (Y) in Inventory Tab** | — | Drop the selected inventory item on the ground in front of the hero. Stand on it and press X to pick it up again (no auto-pickup). Ordinary drops vanish after 5 minutes. |
 | **'5' Key / Left Stick click in Inventory Tab** | — | Sort the inventory by type (weapons, armor, shields, tools, food, materials), equipped gear first. |
 | **'6' Key in Inventory Tab** | — | Build a **storage chest** from 4 Wood in front of you (up to 8 in the world). Press X next to it to store or take items. A chest out in the open (fewer than 3 trees around it) may be found broken into, with half its items gone. Chests are saved with your hero. |
-| **X facing water (Fishing Pole in pack)** | — | Cast. A bobber floats out; when it dips the controller rumbles gently - press X then to catch a fish (60%, sometimes 70%, plus 3% per LCK point, up to 90%). Walk away to reel in. |
+| **X facing water (Fishing Pole in pack)** | — | Cast. A bobber floats out; when it dips the controller rumbles gently - press X then to catch a fish (60%, sometimes 70%, plus 3% per LCK point, up to 90%). If nothing bites the line stays out (with a notice) until you press X to reel in or walk away. |
 | **Mouse left click** | — | Walk to that spot, or walk up to a clicked monster and attack it. Click loot or a villager to walk over and pick it up / talk. In a shop, click a row to pick it and click it again to buy, sell or confirm; click the Buy/Sell tabs to switch; the wheel scrolls a shop menu. On the World Map tab, click a tile to put the white cursor on it. Clicking a belt slot uses it. |
 | **Mouse right click** | — | Class ability (same as Y). In a shop it backs out. |
 | **'V' Key / Right Stick click** | — | Step the camera through three zoom levels: wide, normal, close. |
@@ -208,3 +210,11 @@ One real second is one game minute, so a day lasts 24 real minutes and each 30-d
 | update.c | Reads the Update folder's text files at launch |
 
 Each module has a matching .h with its function prototypes.
+
+## Getting hurt
+
+- Monsters can now hurt you (in the AFK view too). For now it's forgiving: about 2 HP a hit, 5 from big beasts like Bigfoot, a second or more apart.
+- **Zombies** grab and bite, holding you in place for half a second. **Vampires** drain HP from a short distance and heal themselves; stronger ones reach further. Garlic still keeps them away.
+- **Vitality (VIT)**, the old STA stat, sets your HP bar: 100 + 10 per point.
+- If you're knocked out you wake in the nearest castle town you've found. A townsman says he carried you there and his son fetched your things. Nothing is lost.
+- Homes, shops, altars and the castle are menus: **B / ESC** or **Leave** always takes you back outside.
