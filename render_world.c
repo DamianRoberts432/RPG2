@@ -325,7 +325,7 @@ void DrawEnvironmentalCritters(HDC hdc) {
             continue;
         }
         int sx, sy; GetIsoCoords(critters[i].x, critters[i].y, &sx, &sy);
-        int jump_bob = (critters[i].state == 1) ? (int)(sin(world_tick * 8.0f) * 4.0f) : 0;
+        int jump_bob = (critters[i].state == 1) ? (int)(sin(world_tick * (6.0f + 2.0f * (i % 3)) + i * 1.9f) * 4.0f) : 0; // three hop timings
         if (critters[i].type == 0) { // bluebird: hops on the ground, flaps when flying
             int t = critters[i].timer, flying = critters[i].state == 2;
             int lift = flying ? 22 : (t <= 8 ? (int)(sin(t * 3.14159f / 8.0f) * 6.0f) : 0);
@@ -563,7 +563,7 @@ void DrawBedroll(HDC hdc) {
 }
 
 // Very slight zoom-in of the gameplay view (HUD is drawn afterwards, unscaled).
-static const float zoom_levels[3] = { 1.08f, 1.18f, 1.30f }; // far (default), closer, closest
+static const float zoom_levels[3] = { 1.08f, 1.25f, 1.42f }; // far (default), closer, closest
 static int zoom_index = 0;
 #define CAMERA_ZOOM zoom_levels[zoom_index]
 static float afk_amount; // 0..1 while the AFK camera has eased in

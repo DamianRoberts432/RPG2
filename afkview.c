@@ -238,7 +238,7 @@ static void DrawThing(HDC hdc, const FpThing *t, float lit) {
     case FP_CRITTER: {
         static const COLORREF fur[4] = { RGB(70, 120, 220), RGB(150, 95, 50), RGB(140, 115, 85), RGB(45, 40, 50) };
         COLORREF c = Dim(fur[t->seed & 3], lit + 0.1f);
-        int hop = (now / 250 + t->seed) % 4 == 0 ? (int)(0.06f * u) : 0;
+        int hop = (now / (190 + 60 * (t->seed % 3)) + t->seed) % 4 == 0 ? (int)(0.06f * u) : 0;
         if ((t->seed & 3) == 1) Blob(hdc, sx - (int)(0.32f * u), sy - (int)(0.45f * u) - hop, sx - (int)(0.08f * u), sy - (int)(0.1f * u) - hop, c);
         Blob(hdc, sx - (int)(0.12f * u), sy - (int)(0.22f * u) - hop, sx + (int)(0.12f * u), sy - hop, c);
         Blob(hdc, sx + (int)(0.04f * u), sy - (int)(0.32f * u) - hop, sx + (int)(0.2f * u), sy - (int)(0.16f * u) - hop, c);
@@ -453,7 +453,7 @@ static void AnimalMesh(const FpThing *t) {
     }
     if (kind == FP_FAMILIAR && t->seed == 2) type = 5; // toad
     if (kind == FP_FAMILIAR && t->seed >= 3) type = t->seed == 4 ? 2 : 6; // owl or hawk
-    float hop = (now / 250 + idx) % 4 == 0 ? 0.03f : 0.0f;
+    float hop = (now / (190 + 60 * (idx % 3)) + idx) % 4 == 0 ? 0.03f : 0.0f;
     if (type == 0 || type == 6) { // bird / hawk
         COLORREF c = type == 6 ? RGB(140, 100, 60) : RGB(70, 120, 220);
         float zb = (type == 6 ? 0.9f + sinf(now / 300.0f) * 0.05f : hop), f = type == 6 ? sinf(now / 150.0f) * 0.6f : -0.2f;
