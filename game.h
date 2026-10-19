@@ -139,6 +139,22 @@ const char *WornItem(const char *slot);
 int IsClothingSlot(const char *slot);
 COLORREF ClothingColor(const char *name);
 #define CLOTH_UNKNOWN RGB(1, 2, 3)
+// World memory per screen (worldstate.c).
+#define MAX_SCREEN_EDITS 768
+#define MAX_SCREEN_MEMORY 128
+#define MAX_MELT_PATCHES 32
+typedef struct { int32_t screen_id, minute; uint8_t x, y, tile, active; } ScreenEdit;
+typedef struct { int32_t screen_id, left_minute, alive, active; } ScreenMemory;
+typedef struct { int32_t screen_id, active; float x, y, fill; } MeltPatch;
+extern ScreenEdit screen_edits[MAX_SCREEN_EDITS];
+extern ScreenMemory screen_memory[MAX_SCREEN_MEMORY];
+extern MeltPatch melt_patches[MAX_MELT_PATCHES];
+void RememberTileCleared(int x, int y, int tile);
+void RememberLeavingScreen(int new_index);
+void ApplyScreenMemory(int index);
+int ScreenStillQuiet(void);
+void TickMeltPatches(float dt);
+int GetMeltPatch(int i, float *x, float *y, float *size);
 COLORREF HeroEyeColor(void);
 COLORREF HeroHairColor(void);
 extern ClassType selected_class;

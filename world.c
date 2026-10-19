@@ -226,6 +226,7 @@ static BiomeType PickBiomeRaw(int gx, int gy) {
 }
 
 void GenerateProceduralScreen(int index) {
+    RememberLeavingScreen(index);
     srand((unsigned int)(0x51A7u + index * 313u));
     for (int i = 0; i < MAX_APPLE_TREES; i++) {
         AppleTreeState *tree = &apple_tree_states[i];
@@ -401,6 +402,7 @@ void GenerateProceduralScreen(int index) {
     GenerateVillageNPCs();
     if (current_biome == BIOME_SWAMP) { gator_x = 12.0f; gator_y = 12.0f; gator_active = 1; } else { gator_active = 0; }
     SpawnScreenEnemies();
+    ApplyScreenMemory(index);
     // Musashi's Blade only washes up on a beach at the world's eastern edge,
     // and only on summer day 13 (Musashi died on June 13, 1645).
     if (current_biome == BIOME_BEACH && grid_c == META_GRID_SIZE - 1 && current_season == SEASON_SUMMER &&

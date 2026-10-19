@@ -144,6 +144,7 @@ void HandleContextInteract(void) {
                 DropGroundLoot((float)target_x, (float)target_y, LOOT_APPLE, apples);
             }
             VISUAL_MAP[target_y][target_x] = 0;
+            RememberTileCleared(target_x, target_y, 11);
             sprintf(arpg_action_log, "CHOP: Felled a tree, +%d wood!", gained_wood);
             if (BirdsFleeTree(target_x, target_y)) strcat(arpg_action_log, " Birds burst from the branches!");
         } else {
@@ -157,6 +158,7 @@ void HandleContextInteract(void) {
             SpawnTreeDebris((float)target_x, (float)target_y);
             int gained_stone = 2 + (rand() % 3);
             AddMaterialToInventory("Stone", gained_stone);
+            RememberTileCleared(target_x, target_y, target_tile);
             VISUAL_MAP[target_y][target_x] = 0;
             sprintf(arpg_action_log, "MINE: Quarried stone rock, +%d stone!", gained_stone);
         } else {
