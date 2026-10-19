@@ -735,7 +735,7 @@ void DrawNightDarkness(HDC hdc) {
     float night = current_biome == BIOME_CAVE ? 1.0f : (0.55f - light) / 0.35f;
     if (night <= 0.0f) return;
     if (night > 1.0f) night = 1.0f;
-    enum { LW = WINDOW_WIDTH / 8, LH = (WINDOW_HEIGHT + 7) / 8, NL = 1 + MAX_CAMPFIRES + MAX_VILLAGE_LIGHTS };
+    enum { LW = (WINDOW_WIDTH + 3) / 4, LH = (WINDOW_HEIGHT + 3) / 4, NL = 1 + MAX_CAMPFIRES + MAX_VILLAGE_LIGHTS };
     static HDC ldc; static HBITMAP lbmp; static uint32_t *px;
     if (!ldc) {
         BITMAPINFO bi = { 0 };
@@ -760,7 +760,7 @@ void DrawNightDarkness(HDC hdc) {
     }
     const float tile_px = TILE_WIDTH * 0.75f;
     for (int y = 0; y < LH; y++) for (int x = 0; x < LW; x++) {
-        float wx = x * 8.0f + 4.0f, wy = y * 8.0f + 4.0f, dark = 1.0f, warm = 0.0f;
+        float wx = x * 4.0f + 2.0f, wy = y * 4.0f + 2.0f, dark = 1.0f, warm = 0.0f;
         for (int i = 0; i < n; i++) {
             float dx = (wx - lx[i]) / (lr[i] * tile_px), dy = (wy - ly[i]) * 2.0f / (lr[i] * tile_px), d2 = dx * dx + dy * dy;
             if (d2 >= 1.0f) continue;
@@ -773,5 +773,5 @@ void DrawNightDarkness(HDC hdc) {
         px[y * LW + x] = ((uint32_t)a << 24) | ((uint32_t)(255 * aw / 255) << 16) | ((uint32_t)(150 * aw / 255) << 8) | (uint32_t)(60 * aw / 255);
     }
     BLENDFUNCTION bf = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
-    AlphaBlend(hdc, 0, 0, LW * 8, LH * 8, ldc, 0, 0, LW, LH, bf);
+    AlphaBlend(hdc, 0, 0, LW * 4, LH * 4, ldc, 0, 0, LW, LH, bf);
 }
