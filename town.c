@@ -11,7 +11,7 @@ static char town_note[160] = "";
 
 typedef struct { char text[96]; int action, arg; } TownRow;
 enum { A_LEAVE, A_REPAIR, A_FORGE, A_RECYCLE, A_SMITH_BUY, A_CARD, A_PACK, A_KID, A_PET, A_KING,
-       A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE, A_GUIDE, A_PET_SIZE, A_PET_COLOR };
+       A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE, A_GUIDE, A_PET_SIZE, A_PET_COLOR, A_SLEEP, A_FURNISH };
 #define TOWN_ROWS 24
 static TownRow rows[TOWN_ROWS];
 static int row_count = 0;
@@ -289,6 +289,10 @@ static int OwnedFamiliarSlot(void) {
 static void BuildRows(void) {
     char t[96], nm[48];
     row_count = 0;
+    if (town_menu == TM_HOME) {
+        AddRow(A_SLEEP, 0, inside_home == 4 ? "Sleep in your bed" : "Rest in the guest bed");
+        if (inside_home == 4) AddRow(A_FURNISH, 0, "Set out new furniture");
+    }
     if (town_menu == TM_SMITH) {
         for (int i = 0; i < player_item_count; i++) {
             InventoryItem *it = &player_inventory[i];
@@ -404,6 +408,8 @@ static void RowInfo(const TownRow *r, char *out, size_t n) {
     case A_GUIDE: snprintf(out, n, "Secret card combos: read it from your pack for a 2-second peek. Stealing it means jail."); break;
     case A_KID: snprintf(out, n, "A kid sits at the corner table shuffling a test deck. He won't play for ante."); break;
     case A_PRACTICE: snprintf(out, n, "Three duels, one card each. Both cards hit at once unless one has First Strike; death curses and blessings land on the next card. His cards and yours are on the right."); break;
+    case A_SLEEP: snprintf(out, n, "Sleep until the next morning or evening. You wake rested."); break;
+    case A_FURNISH: snprintf(out, n, "Furniture bought from the merchant is set out in your home."); break;
     case A_PET_SIZE: case A_PET_COLOR: snprintf(out, n, "Choose the size and coat colour of your dog or cat. Change it here any time."); break;
     case A_PET: snprintf(out, n, "%s  |  %s  |  %s", familiars[r->arg].name, familiars[r->arg].nocturnal ? "Nocturnal" : "Diurnal", familiars[r->arg].trait); break;
     case A_KING: snprintf(out, n, "Legendary quests open at level %d. Quests completed: %d.", LEGENDARY_QUEST_LEVEL, legendary_quests_done); break;
@@ -425,7 +431,7 @@ static void Say(const char *fmt, ...) {
     snprintf(arpg_action_log, sizeof(arpg_action_log), "%s", town_note);
 }
 
-static const char *greetings[9] = { "",
+static const char *greetings[10] = { "",
     "BLACKSMITH: Steel needs mending, or something finer? Pick a job.",
     "CARD SHOP: Ten fresh cards on the counter today. The kid at the table can teach you.",
     "PET SHOP: Every familiar here needs a seasoned keeper.",
@@ -433,7 +439,8 @@ static const char *greetings[9] = { "",
     "BANKER: Your gold is safe in the vault.",
     "BEGGAR: Spare a coin or a crust, kind traveler?",
     "",
-    "CHEST: Pick an item to take out, or something from your pack to store." };
+    "CHEST: Pick an item to take out, or something from your pack to store.",
+    "HOME: \"Come in, come in! Mind the hearth.\"" };
 
 void OpenTownMenu(int menu) {
     town_menu = menu; town_cursor = 0; menu_screen = current_screen_index;
@@ -444,7 +451,7 @@ void OpenTownMenu(int menu) {
 }
 
 void TownMenuMove(int step) { BuildRows(); if (row_count > 0) town_cursor = (town_cursor + step + row_count) % row_count; }
-void TownMenuBack(void) { town_menu = TM_NONE; }
+void TownMenuBack(void) { int was_home = town_menu == TM_HOME; town_menu = TM_NONE; if (was_home) LeaveHome(); }
 
 float TownDamageMult(void) {
     if (blessing_type < 0 || GetTickCount() > blessing_until) return 1.0f;
@@ -519,6 +526,8 @@ void TownMenuConfirm(void) {
     TownRow r = rows[town_cursor];
     switch (r.action) {
     case A_LEAVE: TownMenuBack(); return;
+    case A_SLEEP: sleep_fade_frame = 1; Say("HOME: You sleep soundly in the %s bed.", inside_home == 4 ? "warm" : "cottage"); return;
+    case A_FURNISH: if (PlaceFurniture()) Say("%s", arpg_action_log); else Say("HOME: Nothing new to set out. The merchant sells furniture."); return;
     case A_REPAIR: {
         InventoryItem *it = &player_inventory[r.arg];
         int cost = ShopPrice(it->durability_max - it->durability_current);
@@ -802,7 +811,7 @@ static void DrawPetFigure(HDC hdc, int cx, int cy, float s, int kind, COLORREF c
 }
 
 void DrawInteriorBackdrop(HDC hdc, int menu) {
-    if (menu == TM_BEGGAR || menu == TM_CHEST) return;
+    if (menu == TM_BEGGAR || menu == TM_CHEST || menu == TM_HOME) return;
     const int W = WINDOW_WIDTH, H = WINDOW_HEIGHT, F = INT_FLOOR_Y;
     int stone = menu == TM_KING || menu == TM_BANK, shrine = menu == TM_ALTAR;
     COLORREF wall = shrine ? RGB(40, 30, 52) : stone ? RGB(96, 96, 104) : RGB(116, 78, 46);
@@ -953,9 +962,10 @@ void DrawTownMenu(HDC hdc) {
     if (menu_screen != current_screen_index) { town_menu = TM_NONE; return; }
     BuildRows();
     DrawInteriorBackdrop(hdc, town_menu);
-    static const char *titles[9] = { "", "BLACKSMITH", "CARD SHOP", "PET SHOP", "THRONE ROOM", "TOWN BANK", "BEGGAR", "ALTAR", "CHEST" };
+    static const char *titles[10] = { "", "BLACKSMITH", "CARD SHOP", "PET SHOP", "THRONE ROOM", "TOWN BANK", "BEGGAR", "ALTAR", "CHEST", "HOME" };
     RECT box = { 1100, 70, 1790, 910 };
     if (town_menu == TM_BEGGAR || town_menu == TM_CHEST) { box.left = 560; box.right = 1260; box.top = 200; box.bottom = 700; }
+    if (town_menu == TM_HOME) { box.left = 1240; box.right = 1840; box.top = 470; box.bottom = 860; }
     int table = KidTableVisible();
     if (table) { box.left = 40; box.right = 760; }
     TwBox(hdc, box.left, box.top, box.right, box.bottom, RGB(18, 20, 28));
@@ -977,7 +987,7 @@ void DrawTownMenu(HDC hdc) {
     SetTextColor(hdc, RGB(230, 230, 230));
     TextOut(hdc, box.left + 20, box.top + 42, line, (int)strlen(line));
 
-    int visible = town_menu == TM_BEGGAR ? 6 : 14;
+    int visible = town_menu == TM_BEGGAR || town_menu == TM_HOME ? 6 : 14;
     int start = town_cursor - visible / 2;
     if (start > row_count - visible) start = row_count - visible;
     if (start < 0) start = 0;

@@ -812,8 +812,8 @@ void DrawAfkView(HDC hdc) {
 
 // Walk-in village homes: X at a cottage door steps into a polygon room drawn
 // with the same flat-shaded faces as the AFK view, from a fixed camera by the
-// doorway. The hero walks about inside, X by the bed sleeps, and walking back
-// out through the door returns to the village.
+// doorway. Inside, everything is a menu (TM_HOME): sleep, set out furniture,
+// or Leave; B / ESC always steps back outside, so nobody gets stuck indoors.
 #define ROOM_HX 2.6f
 #define ROOM_HY 2.0f
 int inside_home = -1;
@@ -832,6 +832,7 @@ static int HomeDoorNear(void) {
 void LeaveHome(void) {
     if (inside_home < 0) return;
     inside_home = -1; player_x = out_x; player_y = out_y;
+    if (town_menu == TM_HOME) town_menu = TM_NONE;
     strcpy(arpg_action_log, "HOME: You step back outside.");
 }
 
@@ -850,13 +851,7 @@ int InteriorBlocks(float x, float y) {
 }
 
 int HomeInteract(void) {
-    if (inside_home >= 0) {
-        if (inside_home == 4 && PlaceFurniture()) return 1;
-        if (player_x < room_cx - ROOM_HX + 1.8f && player_y < room_cy - ROOM_HY + 2.6f) {
-            sleep_fade_frame = 1; strcpy(arpg_action_log, "HOME: You sleep soundly in the cottage bed.");
-        } else strcpy(arpg_action_log, "HOME: A snug cottage. Walk out the door to leave.");
-        return 1;
-    }
+    if (inside_home >= 0) { if (town_menu != TM_HOME) OpenTownMenu(TM_HOME); return 1; }
     int i = HomeDoorNear();
     if (i < 0 || (i == 4 && player_home[0] != 2)) return 0;
     StoreEnemy();
@@ -866,9 +861,9 @@ int HomeInteract(void) {
     }
     float hx, hy; VillageHomeCentre(i, &hx, &hy);
     inside_home = i; out_x = player_x; out_y = player_y; room_cx = hx; room_cy = hy;
-    player_x = room_cx; player_y = room_cy + ROOM_HY - 0.8f;
+    player_x = room_cx - 0.3f; player_y = room_cy + 0.9f;
+    OpenTownMenu(TM_HOME);
     if (i == 4) { if (!PlaceFurniture()) strcpy(arpg_action_log, "HOME: Welcome home. Furniture you buy goes in when you come inside."); }
-    else strcpy(arpg_action_log, "HOME: \"Come in, come in! Mind the hearth.\"");
     return 1;
 }
 
@@ -958,7 +953,7 @@ static void DrawHomeFurniture(float x0, float x1, float y0, float y1, float cx, 
 
 void DrawHomeInterior(HDC hdc) {
     if (inside_home < 0) return;
-    if (player_y > room_cy + ROOM_HY - 0.35f && fabsf(player_x - room_cx) < 0.7f) { LeaveHome(); return; }
+    if (town_menu != TM_HOME) { LeaveHome(); return; }
     float x0 = room_cx - ROOM_HX, x1 = room_cx + ROOM_HX, y0 = room_cy - ROOM_HY, y1 = room_cy + ROOM_HY, cx = room_cx, cy = room_cy;
     int night = (fabs(sin(day_night_cycle_accumulator)) < 0.35f); DWORD now = GetTickCount();
     COLORREF wood = RGB(120, 80, 45), dark = RGB(85, 55, 32), stone = RGB(130, 125, 120), wall = RGB(222, 200, 158);
@@ -1002,9 +997,6 @@ void DrawHomeInterior(HDC hdc) {
     FpThing h = { player_x, player_y, 0.0f, 0.0f, FP_NPC, (14 << 4) | 15 };
     HumanMesh(&h);
     DrawFaces(hdc, scene_lit);
-    SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(240, 225, 190));
-    const char *hint = "Walk out through the door to leave   |   X by the bed: sleep";
-    TextOut(hdc, WINDOW_WIDTH / 2 - 230, WINDOW_HEIGHT - 150, hint, (int)strlen(hint));
 }
 
 // Shop and castle rooms: the same polygon room, framed so the floor meets the
