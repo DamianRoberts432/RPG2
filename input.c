@@ -39,13 +39,12 @@ void ProcessGamepadInput(void) {
         if (is_character_creation) {
             static DWORD last_c_tick = 0;
             if (GetTickCount() - last_c_tick > 200) {
-                if (buttons & XINPUT_GAMEPAD_DPAD_UP) { selected_creation_field = (selected_creation_field - 1 + 3) % 3; last_c_tick = GetTickCount(); }
-                if (buttons & XINPUT_GAMEPAD_DPAD_DOWN) { selected_creation_field = (selected_creation_field + 1) % 3; last_c_tick = GetTickCount(); }
+                if (buttons & XINPUT_GAMEPAD_DPAD_UP) { selected_creation_field = (selected_creation_field - 1 + CREATION_FIELDS) % CREATION_FIELDS; last_c_tick = GetTickCount(); }
+                if (buttons & XINPUT_GAMEPAD_DPAD_DOWN) { selected_creation_field = (selected_creation_field + 1) % CREATION_FIELDS; last_c_tick = GetTickCount(); }
                 if (buttons & XINPUT_GAMEPAD_DPAD_LEFT || buttons & XINPUT_GAMEPAD_DPAD_RIGHT) {
                     int dir = (buttons & XINPUT_GAMEPAD_DPAD_RIGHT) ? 1 : -1;
                     if (selected_creation_field == 0) creation_name_letter_cursor = (creation_name_letter_cursor + dir + 26) % 26;
-                    if (selected_creation_field == 1) selected_class = (ClassType)((selected_class + dir + 5) % 5);
-                    if (selected_creation_field == 2) selected_race = (RaceType)((selected_race + dir + 5) % 5);
+                    CycleCreationField(selected_creation_field, dir);
                     ApplyClassAndRaceStats(); last_c_tick = GetTickCount();
                 }
                 if (selected_creation_field == 0) {
@@ -214,12 +213,11 @@ void ProcessGamepadInput(void) {
     if (is_character_creation) {
         static DWORD last_kb_c = 0;
         if (GetTickCount() - last_kb_c > 200) {
-            if (GetAsyncKeyState(VK_UP) & 0x8000) { selected_creation_field = (selected_creation_field - 1 + 3) % 3; last_kb_c = GetTickCount(); }
-            if (GetAsyncKeyState(VK_DOWN) & 0x8000) { selected_creation_field = (selected_creation_field + 1) % 3; last_kb_c = GetTickCount(); }
+            if (GetAsyncKeyState(VK_UP) & 0x8000) { selected_creation_field = (selected_creation_field - 1 + CREATION_FIELDS) % CREATION_FIELDS; last_kb_c = GetTickCount(); }
+            if (GetAsyncKeyState(VK_DOWN) & 0x8000) { selected_creation_field = (selected_creation_field + 1) % CREATION_FIELDS; last_kb_c = GetTickCount(); }
             if (selected_creation_field != 0 && ((GetAsyncKeyState(VK_LEFT) & 0x8000) || (GetAsyncKeyState(VK_RIGHT) & 0x8000))) {
                 int dir = (GetAsyncKeyState(VK_RIGHT) & 0x8000) ? 1 : -1;
-                if (selected_creation_field == 1) selected_class = (ClassType)((selected_class + dir + 5) % 5);
-                if (selected_creation_field == 2) selected_race = (RaceType)((selected_race + dir + 5) % 5);
+                CycleCreationField(selected_creation_field, dir);
                 ApplyClassAndRaceStats(); last_kb_c = GetTickCount();
             }
             // SPACE finalizes creation from the Class/Race fields (legacy

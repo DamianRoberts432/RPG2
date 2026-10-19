@@ -127,6 +127,15 @@ typedef struct {
 typedef struct { float x, y; InventoryItem item; int screen_id, active; DWORD dropped_at; int legendary; } DroppedInventoryItem;
 extern char player_name[32];
 extern RaceType selected_race;
+// Looks picked on the start screen only: race sets the height.
+#define CREATION_FIELDS 7
+#define EYE_COLORS 5
+#define HAIR_COLORS 6
+extern int hero_sex, hero_beard, hero_eyes, hero_hair;
+extern const char *sex_names[], *beard_names[], *eye_names[], *hair_names[];
+void CycleCreationField(int field, int dir);
+COLORREF HeroEyeColor(void);
+COLORREF HeroHairColor(void);
 extern ClassType selected_class;
 extern float player_height_m;
 extern const char* race_names[];

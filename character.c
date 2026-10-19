@@ -14,6 +14,35 @@ int *StatByIndex(int i) {
     return stats[i];
 }
 
+int hero_sex = 0, hero_beard = 0, hero_eyes = 0, hero_hair = 1;
+const char *sex_names[] = { "Male", "Female" };
+const char *beard_names[] = { "None", "Short", "Long" };
+const char *eye_names[] = { "Brown", "Blue", "Green", "Grey", "Amber" };
+const char *hair_names[] = { "Black (young)", "Brown (young)", "Blond (young)", "Red (young)", "Grey (older)", "White (elder)" };
+
+COLORREF HeroEyeColor(void) {
+    static const COLORREF c[EYE_COLORS] = { RGB(90, 55, 25), RGB(60, 120, 230), RGB(60, 170, 70), RGB(150, 160, 170), RGB(210, 150, 40) };
+    return c[hero_eyes % EYE_COLORS];
+}
+
+COLORREF HeroHairColor(void) {
+    static const COLORREF c[HAIR_COLORS] = { RGB(30, 26, 24), RGB(110, 70, 35), RGB(225, 195, 110), RGB(180, 70, 30), RGB(150, 150, 155), RGB(240, 240, 245) };
+    return c[hero_hair % HAIR_COLORS];
+}
+
+// Start-screen fields 1..6: class, race, body, beard, eyes, hair.
+void CycleCreationField(int field, int dir) {
+    if (field == 1) selected_class = (ClassType)((selected_class + dir + 5) % 5);
+    else if (field == 2) {
+        selected_race = (RaceType)((selected_race + dir + 5) % 5);
+        if (selected_race == RACE_DWARF && hero_beard == 0) hero_beard = 2;
+    }
+    else if (field == 3) hero_sex ^= 1;
+    else if (field == 4) hero_beard = (hero_beard + dir + 3) % 3;
+    else if (field == 5) hero_eyes = (hero_eyes + dir + EYE_COLORS) % EYE_COLORS;
+    else if (field == 6) hero_hair = (hero_hair + dir + HAIR_COLORS) % HAIR_COLORS;
+}
+
 void SpendStatPoint(void) {
     static const char *names[STAT_COUNT] = { "STR", "DEX", "STA", "MAG", "LCK", "INT", "CHR" };
     int *stat = StatByIndex(stat_cursor);

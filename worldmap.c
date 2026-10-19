@@ -86,6 +86,8 @@ int SaveWorldMapState(void) {
     ok = ok && fwrite(farm_plots, sizeof(farm_plots), 1, f) == 1;
     ok = ok && fwrite(worn_tiles, sizeof(worn_tiles), 1, f) == 1;
     ok = ok && fwrite(village_quest, sizeof(village_quest), 1, f) == 1;
+    int32_t looks[4] = { hero_sex, hero_beard, hero_eyes, hero_hair };
+    ok = ok && fwrite(looks, sizeof(looks), 1, f) == 1;
     ok = (fclose(f) == 0) && ok;
     if (!ok) { remove(SAVE_TEMP_NAME); return 0; }
     return MoveFileExA(SAVE_TEMP_NAME, SAVE_FILE_NAME, MOVEFILE_REPLACE_EXISTING) != 0;
@@ -128,6 +130,8 @@ int LoadWorldMapState(void) {
     int has_paths = has_farm && fread(saved_worn, sizeof(saved_worn), 1, f) == 1;
     int32_t saved_quest[5];
     int has_quest = has_paths && fread(saved_quest, sizeof(saved_quest), 1, f) == 1;
+    int32_t looks[4];
+    int has_looks = has_quest && fread(looks, sizeof(looks), 1, f) == 1;
     fclose(f);
     if (!ok) return 0;
     memcpy(visited_biomes, biomes, sizeof(biomes));
@@ -172,6 +176,12 @@ int LoadWorldMapState(void) {
     if (has_farm) memcpy(farm_plots, saved_plots, sizeof(farm_plots));
     if (has_paths) memcpy(worn_tiles, saved_worn, sizeof(worn_tiles));
     if (has_quest && saved_quest[1] >= 0 && saved_quest[1] < QUEST_TEMPLATE_MAX) memcpy(village_quest, saved_quest, sizeof(village_quest));
+    if (has_looks) {
+        hero_sex = looks[0] & 1;
+        hero_beard = (looks[1] >= 0 && looks[1] < 3) ? looks[1] : 0;
+        hero_eyes = (looks[2] >= 0 && looks[2] < EYE_COLORS) ? looks[2] : 0;
+        hero_hair = (looks[3] >= 0 && looks[3] < HAIR_COLORS) ? looks[3] : 1;
+    }
     return 1;
 }
 

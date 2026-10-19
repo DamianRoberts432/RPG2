@@ -31,14 +31,20 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         {sx + (int)(8 * scale), sy + (int)(20 * scale)}, 
         {sx - (int)(8 * scale), sy + (int)(20 * scale)}
     }; 
-    Polygon(hdc, body, 4); SelectObject(hdc, prev_body); DeleteObject(body_b);
+    if (hero_sex) { // bust, waist and hips, a touch more shapely
+        POINT fb[] = { {sx - (int)(5 * scale), sy + (int)(6 * scale)}, {sx + (int)(5 * scale), sy + (int)(6 * scale)}, {sx + (int)(7 * scale), sy + (int)(9 * scale)},
+                       {sx + (int)(4 * scale), sy + (int)(13 * scale)}, {sx + (int)(9 * scale), sy + (int)(20 * scale)}, {sx - (int)(9 * scale), sy + (int)(20 * scale)},
+                       {sx - (int)(4 * scale), sy + (int)(13 * scale)}, {sx - (int)(7 * scale), sy + (int)(9 * scale)} };
+        Polygon(hdc, fb, 8);
+    } else Polygon(hdc, body, 4);
+    SelectObject(hdc, prev_body); DeleteObject(body_b);
 
-    if (selected_race == RACE_DWARF) {
-        HBRUSH beard_b = CreateSolidBrush(RGB(240, 240, 245)); HGDIOBJ prev_beard = SelectObject(hdc, beard_b);
+    if (hero_beard > 0) {
+        HBRUSH beard_b = CreateSolidBrush(HeroHairColor()); HGDIOBJ prev_beard = SelectObject(hdc, beard_b);
         POINT beard[] = {
             {sx - (int)(6 * scale), sy + (int)(6 * scale)},
             {sx + (int)(6 * scale), sy + (int)(6 * scale)},
-            {sx, sy + (int)(18 * scale)}
+            {sx, sy + (int)((hero_beard == 2 ? 18 : 12) * scale)}
         };
         Polygon(hdc, beard, 3); SelectObject(hdc, prev_beard); DeleteObject(beard_b);
     }
@@ -130,9 +136,9 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
             MoveToEx(hdc, sx + HS(9), sy, NULL); LineTo(hdc, sx + HS(14), sy - HS(5));
             SelectObject(hdc, prev_ear_p); DeleteObject(ear_p);
         }
-        if (selected_race == RACE_DWARF) {
-            HBRUSH beard_b = CreateSolidBrush(RGB(240, 240, 245)); HGDIOBJ prev_beard = SelectObject(hdc, beard_b);
-            POINT beard[] = { {sx - HS(4), sy + HS(4)}, {sx + HS(4), sy + HS(4)}, {sx, sy + HS(17)} };
+        if (hero_beard > 0) {
+            HBRUSH beard_b = CreateSolidBrush(HeroHairColor()); HGDIOBJ prev_beard = SelectObject(hdc, beard_b);
+            POINT beard[] = { {sx - HS(4), sy + HS(4)}, {sx + HS(4), sy + HS(4)}, {sx, sy + HS(hero_beard == 2 ? 17 : 11)} };
             Polygon(hdc, beard, 3); SelectObject(hdc, prev_beard); DeleteObject(beard_b);
         }
 #undef HS
@@ -140,6 +146,19 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         HBRUSH hat_b = CreateSolidBrush(hat_color); HGDIOBJ prev_hat = SelectObject(hdc, hat_b);
         POINT hat[] = {{sx, sy - (int)(14 * scale)}, {sx + (int)(9 * scale), sy + (int)(4 * scale)}, {sx, sy + (int)(8 * scale)}, {sx - (int)(9 * scale), sy + (int)(4 * scale)}};
         Polygon(hdc, hat, 4); SelectObject(hdc, prev_hat); DeleteObject(hat_b);
+    }
+
+    if (selected_class != CLASS_NECROMANCER) { // hair under the hat and eye dots; the hood hides both
+        HBRUSH hair_b = CreateSolidBrush(HeroHairColor());
+        HGDIOBJ prev_hb = SelectObject(hdc, hair_b), prev_hp = SelectObject(hdc, GetStockObject(NULL_PEN));
+        int hair_len = hero_sex ? 15 : 9;
+        POINT hl[] = { {sx - (int)(9 * scale), sy + (int)(4 * scale)}, {sx - (int)(5 * scale), sy + (int)(6 * scale)}, {sx - (int)(8 * scale), sy + (int)(hair_len * scale)} };
+        POINT hr[] = { {sx + (int)(9 * scale), sy + (int)(4 * scale)}, {sx + (int)(5 * scale), sy + (int)(6 * scale)}, {sx + (int)(8 * scale), sy + (int)(hair_len * scale)} };
+        Polygon(hdc, hl, 3); Polygon(hdc, hr, 3);
+        HBRUSH eye_b = CreateSolidBrush(HeroEyeColor()); SelectObject(hdc, eye_b);
+        int ew = scale >= 1.5f ? 2 : 1, ey = sy + (int)(3 * scale);
+        for (int side = -1; side <= 1; side += 2) { int ex = sx + side * (int)(4 * scale); Ellipse(hdc, ex - ew, ey - ew, ex + ew + 1, ey + ew + 1); }
+        SelectObject(hdc, prev_hp); SelectObject(hdc, prev_hb); DeleteObject(hair_b); DeleteObject(eye_b);
     }
 
     // Distinct charging ring on hero indicates bow is held and charging; projectile is only released post-release

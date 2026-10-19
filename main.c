@@ -155,6 +155,17 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                     TextOut(memHDC, 120, 242, label, (int)strlen(label));
                 }
 
+                {
+                    const char *look_lbl[4] = { "Body", "Beard", "Eyes", "Hair" };
+                    const char *look_val[4] = { sex_names[hero_sex], beard_names[hero_beard], eye_names[hero_eyes], hair_names[hero_hair] };
+                    for (int i = 0; i < 4; i++) {
+                        SetTextColor(memHDC, (selected_creation_field == 3 + i) ? RGB(255, 255, 0) : RGB(200, 200, 200));
+                        sprintf(label, "[%d] %s: < %s >", 4 + i, look_lbl[i], look_val[i]); TextOut(memHDC, 700, 140 + i * 30, label, (int)strlen(label));
+                    }
+                    SetTextColor(memHDC, RGB(150, 160, 170));
+                    strcpy(label, "Your race sets your height. Looks can only be changed here.");
+                    TextOut(memHDC, 700, 270, label, (int)strlen(label));
+                }
                 DrawHeroAssetEx(memHDC, 520, 200, 2.0f);
 
                 prev_cc_font = SelectObject(memHDC, underline_font);
