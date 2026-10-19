@@ -29,6 +29,7 @@ void OpenTownMenu(int menu);
 void TownMenuMove(int step);
 void TownMenuConfirm(void);
 void TownMenuBack(void);
+int TownMenuClick(int x, int y);
 void DrawInteriorBackdrop(HDC hdc, int menu);
 void DrawTownMenu(HDC hdc);
 void DrawFamiliar(HDC hdc);

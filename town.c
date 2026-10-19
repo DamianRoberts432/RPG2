@@ -902,6 +902,15 @@ static void DrawCardTable(HDC hdc) {
     for (int i = 0; i < kid_log_n; i++) TextOut(hdc, x0, 474 + i * 26, kid_log[i], (int)strlen(kid_log[i]));
 }
 
+static int tm_top, tm_start, tm_end, tm_left, tm_right;
+int TownMenuClick(int x, int y) {
+    if (town_menu == TM_NONE || x < tm_left || x > tm_right || y < tm_top - 3) return 0;
+    int i = tm_start + (y - tm_top + 3) / 30;
+    if (i >= tm_end) return 0;
+    if (i == town_cursor) TownMenuConfirm(); else town_cursor = i;
+    return 1;
+}
+
 void DrawTownMenu(HDC hdc) {
     if (town_menu == TM_NONE) return;
     if (menu_screen != current_screen_index) { town_menu = TM_NONE; return; }
@@ -937,6 +946,7 @@ void DrawTownMenu(HDC hdc) {
     if (start < 0) start = 0;
     int end = start + visible; if (end > row_count) end = row_count;
     int y = box.top + 78;
+    tm_top = y; tm_start = start; tm_end = end; tm_left = box.left; tm_right = box.right;
     for (int i = start; i < end; i++, y += 30) {
         int sel = i == town_cursor;
         if (sel) TwBox(hdc, box.left + 10, y - 3, box.right - 10, y + 25, RGB(40, 64, 74));
