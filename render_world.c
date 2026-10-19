@@ -349,7 +349,15 @@ void DrawEnvironmentalCritters(HDC hdc) {
                 MoveToEx(hdc, sx + 2, by + 3, NULL); LineTo(hdc, sx + 2, by + 6);
             }
             SelectObject(hdc, old_p); DeleteObject(lp);
-        } else if (critters[i].type == 2) { // owl
+        } else if (critters[i].type == 2) { // owl: perched up in a canopy, wings out while flying between trees
+            if (current_biome != BIOME_CAVE) sy -= 38;
+            if (critters[i].state) {
+                int flap = (world_frame / 6) % 2 ? -6 : 3;
+                HPEN wing = CreatePen(PS_SOLID, 3, RGB(110, 85, 55)); HGDIOBJ ow = SelectObject(hdc, wing);
+                MoveToEx(hdc, sx - 4, sy - 5, NULL); LineTo(hdc, sx - 15, sy - 5 + flap);
+                MoveToEx(hdc, sx + 4, sy - 5, NULL); LineTo(hdc, sx + 15, sy - 5 + flap);
+                SelectObject(hdc, ow); DeleteObject(wing);
+            }
             HBRUSH owl_b = CreateSolidBrush(RGB(120, 90, 60)); HGDIOBJ old = SelectObject(hdc, owl_b);
             HPEN owl_p = CreatePen(PS_SOLID, 1, RGB(80, 60, 40)); HGDIOBJ old_p = SelectObject(hdc, owl_p);
             Ellipse(hdc, sx - 5, sy - 10, sx + 5, sy + 3);
@@ -357,6 +365,14 @@ void DrawEnvironmentalCritters(HDC hdc) {
             HBRUSH eye = CreateSolidBrush(RGB(250, 210, 60));
             RECT el = { sx - 4, sy - 7, sx - 1, sy - 4 }, er = { sx + 1, sy - 7, sx + 4, sy - 4 };
             FillRect(hdc, &el, eye); FillRect(hdc, &er, eye); DeleteObject(eye);
+        } else if (critters[i].type == 4) { // tiny desert scorpion: body, pincers and a curled tail
+            HBRUSH sc = CreateSolidBrush(RGB(70, 45, 25)); HGDIOBJ os = SelectObject(hdc, sc);
+            HPEN sp = CreatePen(PS_SOLID, 1, RGB(50, 30, 15)); HGDIOBJ osp = SelectObject(hdc, sp);
+            int step = (world_frame / 5) % 2;
+            Ellipse(hdc, sx - 4, sy - 2, sx + 4, sy + 3);
+            MoveToEx(hdc, sx - 3, sy, NULL); LineTo(hdc, sx - 7, sy - 2 + step); MoveToEx(hdc, sx + 3, sy, NULL); LineTo(hdc, sx + 7, sy - 2 + step);
+            MoveToEx(hdc, sx, sy + 2, NULL); LineTo(hdc, sx + 1, sy + 6); LineTo(hdc, sx + 4, sy + 4); LineTo(hdc, sx + 4, sy + 1);
+            SelectObject(hdc, osp); SelectObject(hdc, os); DeleteObject(sp); DeleteObject(sc);
         } else if (critters[i].type == 3) { // bat
             int flap = (int)(sin(world_tick * 18.0f + i) * 4.0f), by = sy - 14 + (int)(sin(world_tick * 3.0f + i) * 3.0f);
             HBRUSH bat_b = CreateSolidBrush(RGB(45, 35, 50)); HGDIOBJ old = SelectObject(hdc, bat_b);
@@ -528,6 +544,8 @@ void DrawBedroll(HDC hdc) {
     // can visibly share the same bedroll (future-proofing for multiplayer).
     POINT mattress[] = { {sx - 18, sy}, {sx, sy - 8}, {sx + 18, sy}, {sx, sy + 8} };
     Polygon(hdc, mattress, 4); SelectObject(hdc, old); DeleteObject(roll);
+    HBRUSH pillow = CreateSolidBrush(RGB(235, 230, 215)); old = SelectObject(hdc, pillow); // pillow at the head (top) end
+    Ellipse(hdc, sx - 7, sy - 8, sx + 7, sy - 2); SelectObject(hdc, old); DeleteObject(pillow);
     if (sleep_fade_frame > 0 && sleep_fade_frame < 30) {
         SetTextColor(hdc, RGB(255, 255, 255)); SetBkMode(hdc, TRANSPARENT);
         TextOut(hdc, sx - 6, sy - 28, "Zzz", 3);
@@ -535,14 +553,16 @@ void DrawBedroll(HDC hdc) {
 }
 
 // Very slight zoom-in of the gameplay view (HUD is drawn afterwards, unscaled).
-static const float zoom_levels[3] = { 1.0f, 1.08f, 1.3f };
-static int zoom_index = 1;
+static const float zoom_levels[3] = { 1.08f, 1.18f, 1.30f }; // far (default), closer, closest
+static int zoom_index = 0;
 #define CAMERA_ZOOM zoom_levels[zoom_index]
 static float afk_amount; // 0..1 while the AFK camera has eased in
+static DWORD afk_idle_ms;
+int AfkViewMs(void) { return afk_amount > 0.0f ? (int)afk_idle_ms : -1; }
 
 // V / right-stick click steps through the three zoom levels.
 void CycleCameraZoom(void) {
-    static const char *names[3] = { "Wide", "Normal", "Close" };
+    static const char *names[3] = { "Far", "Closer", "Closest" };
     zoom_index = (zoom_index + 1) % 3;
     sprintf(arpg_action_log, "VIEW: %s zoom.", names[zoom_index]);
 }
@@ -559,10 +579,11 @@ void ApplyCameraZoom(HDC hdc, float zoom) {
 }
 
 // AFK camera: after AFK_DELAY_MS with no input the view eases into a closer
-// zoom and slowly drifts around the hero; any input snaps it straight back.
+// zoom into the hero's head, then DrawAfkView (afkview.c) shows the world
+// through their eyes; any input snaps it straight back.
 // Shifts cam_x/cam_y for this frame and returns the zoom to draw with.
 #define AFK_DELAY_MS 45000
-#define AFK_EASE_MS 10000
+#define AFK_EASE_MS 4000
 float UpdateAfkCamera(int input_active) {
     static DWORD last_input = 0;
     DWORD now = GetTickCount();
@@ -572,11 +593,10 @@ float UpdateAfkCamera(int input_active) {
     float t = (float)(idle - AFK_DELAY_MS) / AFK_EASE_MS;
     if (t > 1.0f) t = 1.0f;
     t = t * t * (3.0f - 2.0f * t);
-    afk_amount = t;
-    float a = (float)(idle - AFK_DELAY_MS) / 12000.0f;
-    cam_x += (int)(sinf(a) * 140.0f * t);
-    cam_y += (int)(sinf(a * 0.7f) * 70.0f * t);
-    return CAMERA_ZOOM + 0.22f * t;
+    afk_amount = t > 0.001f ? t : 0.001f;
+    afk_idle_ms = idle - AFK_DELAY_MS;
+    cam_y -= (int)(24.0f * t); // close in on the hero's head; DrawAfkView takes over from there
+    return CAMERA_ZOOM + 1.6f * t;
 }
 
 void FillRectAlpha(HDC hdc, int x, int y, int w, int h, COLORREF color, int alpha) {
@@ -588,45 +608,6 @@ void FillRectAlpha(HDC hdc, int x, int y, int w, int h, COLORREF color, int alph
     BLENDFUNCTION bf = { AC_SRC_OVER, 0, (BYTE)(alpha > 255 ? 255 : alpha), 0 };
     AlphaBlend(hdc, x, y, w, h, src, 0, 0, 1, 1, bf);
     SelectObject(src, old); DeleteObject(bmp); DeleteDC(src);
-}
-
-// AFK night sky: once the idle camera has drifted in at night, a starry sky
-// fades in over the top of the view, with the moon (its phase follows the
-// 30-day season) and the odd shooting star.
-void DrawAfkNightSky(HDC hdc) {
-    if (afk_amount <= 0.0f || in_cave || current_biome == BIOME_CAVE) return;
-    if (fabs(sin(day_night_cycle_accumulator)) >= 0.35f) return;
-    float k = afk_amount;
-    int sky_h = WINDOW_HEIGHT * 2 / 5;
-    for (int band = 0; band < 8; band++)
-        FillRectAlpha(hdc, 0, band * sky_h / 8, WINDOW_WIDTH, sky_h / 8 + 1, RGB(8, 12, 32), (int)((220 - band * 24) * k));
-    DWORD now = GetTickCount();
-    for (int i = 0; i < 70; i++) {
-        int h = RainHash(i * 7919 + 13);
-        int x = h % WINDOW_WIDTH, y = (h / WINDOW_WIDTH) % sky_h, sz = i % 9 == 0 ? 2 : 1;
-        int lum = (int)((150.0f + 105.0f * (0.5f + 0.5f * sinf(now / 700.0f + i))) * k * (1.0f - 0.6f * y / sky_h));
-        HBRUSH b = CreateSolidBrush(RGB(lum, lum, lum));
-        RECT r = { x, y, x + sz, y + sz };
-        FillRect(hdc, &r, b); DeleteObject(b);
-    }
-    float phase = (SeasonDay() % 30) / 30.0f; // 0 = new moon, 0.5 = full
-    int mx = WINDOW_WIDTH * 3 / 4, my = sky_h / 3, mr = 16, moon = (int)(230 * k);
-    HBRUSH lit = CreateSolidBrush(RGB(moon, moon, moon * 9 / 10)), dark = CreateSolidBrush(RGB(8, 12, 32));
-    HGDIOBJ ob = SelectObject(hdc, lit), op = SelectObject(hdc, GetStockObject(NULL_PEN));
-    Ellipse(hdc, mx - mr, my - mr, mx + mr, my + mr);
-    int off = phase <= 0.5f ? (int)(phase * 4.0f * mr) : -(int)((1.0f - phase) * 4.0f * mr);
-    if (off < 2 * mr && off > -2 * mr) { SelectObject(hdc, dark); Ellipse(hdc, mx - mr + off, my - mr, mx + mr + off, my + mr); }
-    SelectObject(hdc, op); SelectObject(hdc, ob); DeleteObject(lit); DeleteObject(dark);
-    DWORD cycle = now / 6000, t = now % 6000;
-    if (t < 700) {
-        int h = RainHash((int)cycle * 31 + 5);
-        float p = t / 700.0f;
-        int x1 = h % (WINDOW_WIDTH / 2) + WINDOW_WIDTH / 8 + (int)(p * 220), y1 = (h / 7) % (sky_h / 2) + (int)(p * 80);
-        HPEN pen = CreatePen(PS_SOLID, 2, RGB((int)(255 * k), (int)(255 * k), (int)(230 * k)));
-        HGDIOBJ old = SelectObject(hdc, pen);
-        MoveToEx(hdc, x1 - 34, y1 - 12, NULL); LineTo(hdc, x1, y1);
-        SelectObject(hdc, old); DeleteObject(pen);
-    }
 }
 
 int RainHash(int value) {

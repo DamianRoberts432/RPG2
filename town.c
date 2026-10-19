@@ -11,7 +11,7 @@ static char town_note[160] = "";
 
 typedef struct { char text[96]; int action, arg; } TownRow;
 enum { A_LEAVE, A_REPAIR, A_FORGE, A_RECYCLE, A_SMITH_BUY, A_CARD, A_PACK, A_KID, A_PET, A_KING,
-       A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE };
+       A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE, A_GUIDE, A_PET_SIZE, A_PET_COLOR };
 #define TOWN_ROWS 24
 static TownRow rows[TOWN_ROWS];
 static int row_count = 0;
@@ -274,6 +274,8 @@ static void PracticeHand(int order) {
 // --- Menu rows ---------------------------------------------------------------
 static void AddLeave(void) { row_count = row_count >= TOWN_ROWS ? TOWN_ROWS - 1 : row_count; AddRow(A_LEAVE, 0, "Leave"); }
 
+int familiar_size = 1, familiar_color = 0; // picked at the pet shop: small/medium/large, coat 0..3
+
 static int FamiliarIndex(const char *name) {
     for (int k = 0; k < FAMILIAR_COUNT; k++) if (strcmp(name, familiars[k].name) == 0) return k;
     return -1;
@@ -326,6 +328,7 @@ static void BuildRows(void) {
         AddRow(A_PACK, 60, "60-card box - 350,000 gold");
         snprintf(t, sizeof(t), "Master Base Box (all %d cards) - 1,000,000 gold", CARD_POOL);
         AddRow(A_PACK, 0, t);
+        AddRow(A_GUIDE, 0, "A&D Ultimate Strategy Guide - 1,000,000 gold");
         AddRow(A_KID, 0, "Talk to the kid at the table");
         int left = kid_round_screen == current_screen_index ? KID_MAX_ROUNDS - kid_rounds : KID_MAX_ROUNDS;
         if (kid_dealt && kid_round_screen == current_screen_index) {
@@ -346,6 +349,9 @@ static void BuildRows(void) {
                      player_level < FAMILIAR_UNLOCK_LEVEL ? "  (needs level 3)" : "");
             AddRow(A_PET, k, t);
         }
+        static const char *sizes[3] = { "Small", "Medium", "Large" };
+        snprintf(t, sizeof(t), "Familiar size: %s (press to change)", sizes[familiar_size]); AddRow(A_PET_SIZE, 0, t);
+        snprintf(t, sizeof(t), "Familiar coat: %d of 4 (press to change)", familiar_color + 1); AddRow(A_PET_COLOR, 0, t);
     } else if (town_menu == TM_KING) {
         AddRow(A_KING, 0, legendary_quest == 2 ? "Report your Legendary victory" :
                           legendary_quest == 1 ? "Ask about your Legendary quest" : "Ask the King for a Legendary quest");
@@ -395,8 +401,10 @@ static void RowInfo(const TownRow *r, char *out, size_t n) {
         if (r->arg == 0) snprintf(out, n, "One of every card in print. Completes your binder. Collection: %d / %d.", CardCount(), CARD_POOL);
         else snprintf(out, n, "%d random cards. Collection: %d / %d.", r->arg, CardCount(), CARD_POOL);
         break;
+    case A_GUIDE: snprintf(out, n, "Secret card combos: read it from your pack for a 2-second peek. Stealing it means jail."); break;
     case A_KID: snprintf(out, n, "A kid sits at the corner table shuffling a test deck. He won't play for ante."); break;
     case A_PRACTICE: snprintf(out, n, "Three duels, one card each. Both cards hit at once unless one has First Strike; death curses and blessings land on the next card. His cards and yours are on the right."); break;
+    case A_PET_SIZE: case A_PET_COLOR: snprintf(out, n, "Choose the size and coat colour of your dog or cat. Change it here any time."); break;
     case A_PET: snprintf(out, n, "%s  |  %s  |  %s", familiars[r->arg].name, familiars[r->arg].nocturnal ? "Nocturnal" : "Diurnal", familiars[r->arg].trait); break;
     case A_KING: snprintf(out, n, "Legendary quests open at level %d. Quests completed: %d.", LEGENDARY_QUEST_LEVEL, legendary_quests_done); break;
     case A_DEPOSIT: case A_WITHDRAW: snprintf(out, n, "Vault balance: %d gold. Purse: %d gold.", bank_gold, gold_count); break;
@@ -495,7 +503,7 @@ static void Offer(int d) {
     } else if (d == 2) {
         if (!TakeOffering("Tarot Card", "Rum Bottle", "Cigar")) { Say("ALTAR: The Baron wants a Tarot Card, a Rum Bottle and a Cigar."); return; }
         Bless(2); KarmaAdjust(0, 0, 0, 2);
-        Say("ALTAR: Ghost Whisperer! The Baron grins and the spirits guide your hand (+25%% damage for 5 minutes). They whisper: '%s'", hint);
+        Say("ALTAR: Baron Samedi appears behind you with a toothy grin. Ghost Whisperer: +25%% damage for 5 min. '%s'", hint);
     } else {
         if (!TakeOffering("Fish", NULL, NULL)) { Say("ALTAR: The Drowned One hungers for a Fish from the deep."); return; }
         KarmaAdjust(0, 1, 0, 0);
@@ -562,8 +570,18 @@ void TownMenuConfirm(void) {
         Say("CARD SHOP: Added %s to your collection. (%d / %d)", nm, CardCount(), CARD_POOL);
         return; }
     case A_PACK: BuyCardPack(r.arg); return;
+    case A_GUIDE:
+        if (HasInventoryItem("Strategy Guide")) { Say("CARD SHOP: You already own the A&D Strategy Guide."); return; }
+        if (gold_count < 1000000) { Say("CARD SHOP: The A&D Strategy Guide costs 1,000,000 gold."); return; }
+        gold_count -= 1000000;
+        AddStackableItem("Strategy Guide", "Tool", 1); RecalculateCarriedWeight();
+        guide_flash_until = GetTickCount() + GUIDE_FLASH_MS;
+        Say("CARD SHOP: The A&D Ultimate Strategy Guide is yours. Read it from your pack.");
+        return;
     case A_KID: kid_line = (kid_line + 1) % KID_LINE_COUNT; Say("%s", kid_lines[kid_line]); return;
     case A_PRACTICE: PracticeHand(r.arg); return;
+    case A_PET_SIZE: familiar_size = (familiar_size + 1) % 3; Say("PET SHOP: A %s companion it is.", familiar_size == 0 ? "small" : familiar_size == 1 ? "medium" : "large"); return;
+    case A_PET_COLOR: familiar_color = (familiar_color + 1) % 4; Say("PET SHOP: Coat %d of 4 - a fine look.", familiar_color + 1); return;
     case A_PET: {
         const FamiliarDef *f = &familiars[r.arg];
         if (player_level < FAMILIAR_UNLOCK_LEVEL) { Say("PET SHOP: Familiars only bond with heroes of level %d or higher.", FAMILIAR_UNLOCK_LEVEL); return; }
@@ -592,12 +610,12 @@ void TownMenuConfirm(void) {
         Say("BANKER: %s %d gold. Vault: %d   Purse: %d", dep ? "Deposited" : "Withdrew", amt, bank_gold, gold_count);
         return; }
     case A_ALMS_GOLD: case A_ALMS_FOOD: case A_REFUSE:
-        if (alms_screen == current_screen_index && alms_day == SeasonDay()) { Say("BEGGAR: You've made your choice today. Safe travels."); return; }
+      { // Give as often as you like; karma and favor count once a day per town.
+        int rewarded = alms_screen == current_screen_index && alms_day == SeasonDay();
         if (r.action == A_ALMS_GOLD) {
             if (gold_count < r.arg) { Say("BEGGAR: You haven't that much to spare, friend."); return; }
             gold_count -= r.arg;
-            KarmaAdjust(r.arg >= 100 ? 3 : 1, 0, r.arg >= 100 ? -3 : -1, 1);
-            deity_favor[0] += r.arg >= 100 ? 2 : 1;
+            if (!rewarded) { KarmaAdjust(r.arg >= 100 ? 3 : 1, 0, r.arg >= 100 ? -3 : -1, 1); deity_favor[0] += r.arg >= 100 ? 2 : 1; }
             Say("BEGGAR: Bless you, traveler! This town will remember your kindness.");
         } else if (r.action == A_ALMS_FOOD) {
             int fi = -1;
@@ -605,14 +623,14 @@ void TownMenuConfirm(void) {
             if (fi < 0) { Say("BEGGAR: You've no food on you. Bless you for the thought."); return; }
             char nm[32]; snprintf(nm, sizeof(nm), "%s", player_inventory[fi].name);
             ConsumeMaterialFromInventory(nm, 1); RecalculateCarriedWeight();
-            KarmaAdjust(2, 0, -2, 1); deity_favor[0]++;
+            if (!rewarded) { KarmaAdjust(2, 0, -2, 1); deity_favor[0]++; }
             Say("BEGGAR: A %s! Bless you - I haven't eaten in days.", nm);
         } else {
-            KarmaAdjust(-1, 1, 2, 0); deity_favor[1]++;
+            if (!rewarded) { KarmaAdjust(-1, 1, 2, 0); deity_favor[1]++; }
             Say("BEGGAR: ...I see. The townsfolk watching mutter and look away.");
         }
         alms_screen = current_screen_index; alms_day = SeasonDay();
-        return;
+        return; }
     case A_PRAY: {
         int d = r.arg;
         if (prayed_screen == current_screen_index && pray_day == SeasonDay()) { Say("ALTAR: %s has already heard you today.", deity_names[d]); return; }
@@ -884,6 +902,15 @@ static void DrawCardTable(HDC hdc) {
     for (int i = 0; i < kid_log_n; i++) TextOut(hdc, x0, 474 + i * 26, kid_log[i], (int)strlen(kid_log[i]));
 }
 
+static int tm_top, tm_start, tm_end, tm_left, tm_right;
+int TownMenuClick(int x, int y) {
+    if (town_menu == TM_NONE || x < tm_left || x > tm_right || y < tm_top - 3) return 0;
+    int i = tm_start + (y - tm_top + 3) / 30;
+    if (i >= tm_end) return 0;
+    if (i == town_cursor) TownMenuConfirm(); else town_cursor = i;
+    return 1;
+}
+
 void DrawTownMenu(HDC hdc) {
     if (town_menu == TM_NONE) return;
     if (menu_screen != current_screen_index) { town_menu = TM_NONE; return; }
@@ -919,6 +946,7 @@ void DrawTownMenu(HDC hdc) {
     if (start < 0) start = 0;
     int end = start + visible; if (end > row_count) end = row_count;
     int y = box.top + 78;
+    tm_top = y; tm_start = start; tm_end = end; tm_left = box.left; tm_right = box.right;
     for (int i = start; i < end; i++, y += 30) {
         int sel = i == town_cursor;
         if (sel) TwBox(hdc, box.left + 10, y - 3, box.right - 10, y + 25, RGB(40, 64, 74));
@@ -945,6 +973,7 @@ void DrawTownMenu(HDC hdc) {
 void DrawFamiliar(HDC hdc) {
     static float fx = -100.0f, fy = -100.0f;
     static int was_asleep = -1;
+    familiar_visible = 0;
     int slot = OwnedFamiliarSlot();
     if (slot < 0) { was_asleep = -1; return; }
     int k = FamiliarIndex(player_inventory[slot].name);
@@ -953,23 +982,61 @@ void DrawFamiliar(HDC hdc) {
     if (was_asleep >= 0 && asleep != was_asleep)
         snprintf(arpg_action_log, sizeof(arpg_action_log), asleep ? "Your %s curls up in your pack to sleep." :
                  "Your %s wakes and climbs out of your pack.", familiars[k].name);
+    // Asleep it curls up by a nearby campfire; with no fire it rides in the pack and adds a little weight.
+    int fire = asleep && !in_cave ? FindNearbyCampfire(4.0f) : -1;
+    float pack_w = asleep && fire < 0 ? 2.0f : 0.0f;
+    if (player_inventory[slot].weight != pack_w) { player_inventory[slot].weight = pack_w; RecalculateCarriedWeight(); }
     was_asleep = asleep;
-    if (asleep || in_cave) return;
+    if (in_cave || (asleep && fire < 0)) return;
+    static int face = 1; static float prev_fx, prev_fy;
     float tx = player_x - 0.9f, ty = player_y + 0.6f;
-    if (fabsf(fx - tx) > 5.0f || fabsf(fy - ty) > 5.0f) { fx = tx; fy = ty; }
+    if (fire >= 0) { tx = campfires[fire].x + 0.9f; ty = campfires[fire].y + 0.4f; }
+    else if (k <= 1 && AfkViewMs() >= 0 && (AfkViewMs() / 1000) % 15 < 5) {
+        // AFK play: the dog chases a squirrel, the cat a butterfly or bird, then
+        // trots back. It always stops just short, so it never catches one.
+        float best = 64.0f, px = 0.0f, py = 0.0f;
+        for (int i = 0; i < MAX_CRITTERS; i++) {
+            CritterEntity *c = &critters[i];
+            if (!c->active || c->hidden || c->type != (k == 0 ? 1 : 0)) continue;
+            float dx = c->x - fx, dy = c->y - fy;
+            if (dx * dx + dy * dy < best) { best = dx * dx + dy * dy; px = c->x; py = c->y; }
+        }
+        if (k == 1) for (int i = 0; i < MAX_BUTTERFLIES; i++) {
+            if (!butterflies[i].active) continue;
+            float dx = butterflies[i].x - fx, dy = butterflies[i].y - fy;
+            if (dx * dx + dy * dy < best) { best = dx * dx + dy * dy; px = butterflies[i].x; py = butterflies[i].y; }
+        }
+        if (best < 64.0f) { float d = sqrtf(best) + 0.001f; tx = px - (px - fx) / d * 1.2f; ty = py - (py - fy) / d * 1.2f; }
+    }
+    if (fabsf(fx - tx) > 10.0f || fabsf(fy - ty) > 10.0f) { fx = tx; fy = ty; }
     fx += (tx - fx) * 0.05f; fy += (ty - fy) * 0.05f;
+    float mv = (fx - prev_fx) - (fy - prev_fy); // screen-x direction of travel
+    if (fabsf(mv) > 0.003f) face = mv > 0.0f ? 1 : -1;
+    else face = (player_facing == FACE_LEFT || player_facing == FACE_UP) ? -1 : 1;
+    prev_fx = fx; prev_fy = fy;
+    familiar_world_x = fx; familiar_world_y = fy; familiar_visible = k + 1;
     int sx, sy; GetIsoCoords(fx, fy, &sx, &sy);
     DWORD t = GetTickCount();
     int bob = (int)(sin(t / 180.0) * 3.0);
-    if (k <= 1) { // dog or cat
-        COLORREF body = k == 0 ? RGB(150, 100, 55) : RGB(120, 120, 128);
-        for (int l = 0; l < 3; l++) TwLine(hdc, sx - 7 + l * 6, sy - 6, sx - 7 + l * 6, sy, 2, body);
-        TwDisc(hdc, sx, sy - 9, 11, 6, body);
-        TwDisc(hdc, sx + 10, sy - 15, 6, 6, body);
-        if (k == 0) TwDisc(hdc, sx + 7, sy - 18, 3, 5, RGB(110, 70, 35));
-        else { TwLine(hdc, sx + 6, sy - 20, sx + 7, sy - 25, 2, body); TwLine(hdc, sx + 13, sy - 20, sx + 13, sy - 25, 2, body); }
-        TwLine(hdc, sx - 10, sy - 10, sx - 16, sy - 16 + bob, 2, body);
-        TwDisc(hdc, sx + 12, sy - 16, 1, 1, RGB(10, 10, 10));
+    if (k <= 1) { // dog or cat, faced the way it is going, in the size and coat picked at the pet shop
+        static const COLORREF coats[2][4] = { { RGB(150, 100, 55), RGB(40, 35, 30), RGB(235, 230, 220), RGB(205, 160, 80) },
+                                              { RGB(120, 120, 128), RGB(220, 130, 50), RGB(35, 35, 40), RGB(240, 240, 240) } };
+        COLORREF body = coats[k][familiar_color & 3];
+        float S = familiar_size == 0 ? 0.75f : familiar_size == 2 ? 1.3f : 1.0f;
+        int m = face;
+#define FS(v) ((int)((v) * S))
+        if (fire >= 0) { // curled up asleep by the fire
+            TwDisc(hdc, sx, sy - FS(5), FS(11), FS(5), body); TwDisc(hdc, sx + m * FS(9), sy - FS(6), FS(5), FS(4), body);
+            return;
+        }
+        for (int l = 0; l < 3; l++) TwLine(hdc, sx + m * FS(-7 + l * 6), sy - FS(6), sx + m * FS(-7 + l * 6), sy, 2, body);
+        TwDisc(hdc, sx, sy - FS(9), FS(11), FS(6), body);
+        TwDisc(hdc, sx + m * FS(10), sy - FS(15), FS(6), FS(6), body);
+        if (k == 0) TwDisc(hdc, sx + m * FS(7), sy - FS(18), FS(3), FS(5), RGB(110, 70, 35));
+        else { TwLine(hdc, sx + m * FS(6), sy - FS(20), sx + m * FS(7), sy - FS(25), 2, body); TwLine(hdc, sx + m * FS(13), sy - FS(20), sx + m * FS(13), sy - FS(25), 2, body); }
+        TwLine(hdc, sx - m * FS(10), sy - FS(10), sx - m * FS(16), sy - FS(16) + bob, 2, body);
+        TwDisc(hdc, sx + m * FS(12), sy - FS(16), 1, 1, RGB(10, 10, 10));
+#undef FS
     } else if (k == 2) { // toad
         int hop = bob > 2 ? -3 : 0;
         TwDisc(hdc, sx, sy - 6 + hop, 9, 6, RGB(70, 130, 60));
@@ -987,6 +1054,9 @@ void DrawFamiliar(HDC hdc) {
 }
 
 // --- Storage chests ----------------------------------------------------------
+float familiar_world_x, familiar_world_y;
+int familiar_visible; // familiar index + 1 while it is out walking, else 0
+
 StashChest chests[MAX_CHESTS];
 int open_chest = -1;
 

@@ -11,6 +11,8 @@ void SpawnTreeDebris(float cx, float cy);
 void SpawnDirtClods(float cx, float cy);
 void UpdateDebrisTwigs(void);
 void HandleEnemyDamage(float dmg);
+extern int village_kill;
+extern DWORD bow_stamina_lock_until;
 float DistanceToEnemy(void);
 int IsFacingEnemyWithin(float dot_threshold);
 int IsFacingEnemy(void);

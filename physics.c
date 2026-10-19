@@ -8,6 +8,11 @@
 static int TileBlocksPlayer(float x, float y) {
     if (x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE) return 1;
     uint8_t t = VISUAL_MAP[(int)y][(int)x];
+    if (village_npc_count > 0 && !in_cave) { // village homes are solid
+        static const int hx[4] = { 11, 15, 19, 15 }, hy[4] = { 11, 10, 11, 18 };
+        int shift = (current_screen_index % 3) - 1;
+        for (int i = 0; i < 4; i++) if (fabsf(x - (hx[i] + shift + 0.5f)) < 1.1f && fabsf(y - (hy[i] + 0.5f)) < 0.9f) return 1;
+    }
     return t == 1 || (t == 12 && !HasInventoryItem("Raft") && !HasInventoryItem("Canoe") && !HasInventoryItem("Boat"));
 }
 
@@ -84,13 +89,20 @@ void UpdateGamePhysics(void) {
         player_mp += 0.06f + (stat_magick + stat_intelligence) * 0.01f; // MAG and INT both speed MP regen
         if (player_mp > max_player_mp) player_mp = max_player_mp;
     }
-    if (player_stamina < max_stamina) {
+    if (player_stamina < max_stamina && GetTickCount() >= bow_stamina_lock_until) {
         float stamina_floor = max_stamina * 0.30f;
         // Full recovery needs a short pause; while still swinging or running
         // below 30% only a slow trickle comes back, so the hero does tire out.
         if (stamina_rest_timer >= STAMINA_REST_FRAMES_REQUIRED) player_stamina += 1.5f + stat_stamina * 0.1f;
         else if (player_stamina < stamina_floor) player_stamina += WINDED_STAMINA_REGEN;
         if (player_stamina > max_stamina) player_stamina = max_stamina;
+    }
+
+    // Resting by a lit campfire slowly refills HP, MP and stamina (sleeping refills them all).
+    if (FindNearbyCampfire(2.5f) >= 0) {
+        if (player_hp < max_player_hp) { player_hp += 0.02f; if (player_hp > max_player_hp) player_hp = max_player_hp; }
+        if (player_mp < max_player_mp) { player_mp += 0.05f; if (player_mp > max_player_mp) player_mp = max_player_mp; }
+        if (player_stamina < max_stamina) { player_stamina += 0.5f; if (player_stamina > max_stamina) player_stamina = max_stamina; }
     }
 
     DWORD now_tick = GetTickCount();

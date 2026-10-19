@@ -11,6 +11,8 @@ void MarkMapTreasureFound(int origin_cell);
 int IsMapTreasureFound(int origin_cell);
 int IsMapCastle(int gx, int gy);
 void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h);
+void WorldMapMoveCursor(int dx, int dy);
+void WorldMapClick(int x, int y);
 int SaveWorldMapState(void);
 int LoadWorldMapState(void);
 int DeleteSaveFile(void);

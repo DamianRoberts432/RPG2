@@ -37,7 +37,7 @@ int player_level = 1;
 int player_xp = 0;
 int player_next_level_xp = 100;
 int is_poisoned = 0;
-char quest_log_text[128] = "Main Quest: Reach Townsville Castle Perimeter.";
+char quest_log_text[128] = "Main Quest: Find a castle town.";
 
 // Game Dynamic Options
 float opt_xp_mult = 1.0f;
@@ -213,7 +213,6 @@ MerchantItem merchant_catalog[MERCH_CAPACITY] = {
     { "Boat",          "Tool",     0,               2400, 1,  1, RARITY_RARE, 0 },
     { "Long Sword",    "Weapon",   LOOT_LONG_SWORD,  700, 2,  2, RARITY_UNCOMMON, 0 },
     { "Short Bow",     "Weapon",   LOOT_SHORT_BOW,   500, 2,  2, RARITY_UNCOMMON, 0 },
-    { "Strategy Guide", "Tool",    0,             200000, 1,  1, RARITY_RARE, 0 }, // 1,000,000 gold endgame luxury
     { "Dragon Scale Armor", "Armor", 0,              5000, 1,  1, RARITY_RARE, 0 },
     // Altar offerings (see town.c).
     { "Incense",     "Material", 0, 30,  -1, 0, RARITY_COMMON, 0 },

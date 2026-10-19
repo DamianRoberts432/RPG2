@@ -1,10 +1,13 @@
 #include "game.h"
+#include "worldmap.h"
 
 #define BELT_SLOTS 10
 static volatile int m_x = 0, m_y = 0, m_lclick = 0, m_rclick = 0, m_wheel = 0, m_xbtn = 0;
 static volatile DWORD last_mouse_event = 0;
 static int walk_active = 0, target_enemy = -1, belt_sel = 0;
 static float walk_x, walk_y;
+static int walk_interact = 0;
+void HandleContextInteract(void);
 static DWORD walk_started = 0;
 static DWORD last_mouse_attack = 0;
 
@@ -58,6 +61,47 @@ static int BeltSlotAt(int x, int y) {
     return -1;
 }
 
+// Clicking loot or a villager walks there and does what X would.
+static int ClickTargetsInteract(float wx, float wy) {
+    for (int i = 0; i < MAX_GROUND_LOOT; i++) {
+        GroundLoot *l = &ground_loot[i];
+        if (l->active && l->screen_id == current_screen_index && fabsf(l->x - wx) < 0.9f && fabsf(l->y - wy) < 0.9f) return 1;
+    }
+    for (int i = 0; i < MAX_DROPPED_ITEMS; i++) {
+        DroppedInventoryItem *d = &dropped_items[i];
+        if (d->active && d->screen_id == current_screen_index && fabsf(d->x - wx) < 0.9f && fabsf(d->y - wy) < 0.9f) return 1;
+    }
+    for (int i = 0; i < village_npc_count; i++)
+        if (fabsf(village_npcs[i].x - wx) < 1.2f && fabsf(village_npcs[i].y - wy) < 1.2f) return 1;
+    return 0;
+}
+
+// Merchant window (160,90 - 640,420): click a tab, click a row to pick it, again to buy/sell.
+static void VendorClick(int x, int y) {
+    if (y >= 90 && y < 130) {
+        if (x >= 160 && x < 310) { vendor_tab = 0; shop_action_menu = 0; }
+        else if (x >= 310 && x < 460) { vendor_tab = 1; shop_action_menu = 0; }
+        return;
+    }
+    if (x < 160 || x > 640 || y < 133 || y > 420) return;
+    if (vendor_tab == 0 && shop_action_menu) { ShopConfirm(); return; }
+    int i = (y - 133) / 20;
+    if (i >= 10) return;
+    if (vendor_tab == 0) {
+        int start = merchant_selection - 5;
+        if (start > MERCH_ITEMS - 10) start = MERCH_ITEMS - 10;
+        if (start < 0) start = 0;
+        int k = start + i; if (k >= MERCH_ITEMS) return;
+        if (k == merchant_selection) ShopConfirm(); else merchant_selection = k;
+    } else {
+        int start = selected_inv_index - 5;
+        if (start > player_item_count - 10) start = player_item_count - 10;
+        if (start < 0) start = 0;
+        int k = start + i; if (k >= player_item_count) return;
+        if (k == selected_inv_index) HandleVendorSell(); else selected_inv_index = k;
+    }
+}
+
 void UpdateMouseInput(float *dx, float *dy) {
     int busy = town_menu || vendor_menu_open || is_menu_open;
     static int key_was[BELT_SLOTS];
@@ -66,6 +110,8 @@ void UpdateMouseInput(float *dx, float *dy) {
         if (down && !key_was[k] && !busy) UseBeltSlot(k);
         key_was[k] = down;
     }
+    if (m_wheel && town_menu) { TownMenuMove(m_wheel); m_wheel = 0; }
+    if (m_wheel && vendor_menu_open && shop_action_menu) { ShopMoveCursor(m_wheel); m_wheel = 0; }
     if (m_wheel) { belt_sel = ((belt_sel + m_wheel) % BELT_SLOTS + BELT_SLOTS) % BELT_SLOTS; m_wheel = 0; }
     if (m_xbtn) {
         if (!busy) {
@@ -74,13 +120,22 @@ void UpdateMouseInput(float *dx, float *dy) {
         }
         m_xbtn = 0;
     }
-    if (m_rclick) { if (!busy) FireClassAbility(); m_rclick = 0; }
+    if (m_rclick) { // right click backs out of a shop
+        if (town_menu) TownMenuBack();
+        else if (vendor_menu_open) { if (shop_action_menu) shop_action_menu = 0; else vendor_menu_open = 0; }
+        else if (!busy) FireClassAbility();
+        m_rclick = 0;
+    }
     if (m_lclick) {
         m_lclick = 0;
+        if (town_menu) TownMenuClick(m_x, m_y);
+        else if (vendor_menu_open) VendorClick(m_x, m_y);
+        else if (is_menu_open && current_menu_tab == 1) WorldMapClick(m_x, m_y);
         int slot = busy ? -1 : BeltSlotAt(m_x, m_y);
         if (slot >= 0) UseBeltSlot(slot);
         else if (!busy) {
             ScreenToWorld(m_x, m_y, &walk_x, &walk_y);
+            walk_interact = ClickTargetsInteract(walk_x, walk_y);
             StoreEnemy();
             target_enemy = EnemyAtPoint(walk_x, walk_y, 1.0f);
             walk_active = 1; walk_started = GetTickCount();
@@ -100,6 +155,7 @@ void UpdateMouseInput(float *dx, float *dy) {
         if (GetTickCount() - last_mouse_attack > 400) { PerformMeleeAttack(); last_mouse_attack = GetTickCount(); }
         return;
     }
+    if (walk_interact && d < 1.1f) { walk_active = 0; walk_interact = 0; HandleContextInteract(); return; }
     if (d < 0.25f) { walk_active = 0; return; }
     *dx = ddx / d; *dy = ddy / d;
 }

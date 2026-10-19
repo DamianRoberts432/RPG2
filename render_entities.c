@@ -20,7 +20,7 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
     COLORREF body_color = RGB(245, 225, 195);
     COLORREF hat_color  = RGB(55, 185, 90);
 
-    if (selected_class == CLASS_NECROMANCER) { body_color = RGB(80, 50, 110); hat_color = RGB(40, 20, 60); }
+    if (selected_class == CLASS_NECROMANCER) { body_color = RGB(26, 22, 30); hat_color = RGB(14, 12, 18); } // black cloak and hood
     else if (selected_class == CLASS_WARRIOR) { body_color = RGB(160, 40, 30); hat_color = RGB(90, 20, 20); }
     else if (selected_class == CLASS_WIZARD) { body_color = RGB(30, 80, 180); hat_color = RGB(15, 40, 120); }
 
@@ -110,6 +110,15 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         HBRUSH gnome_hat = CreateSolidBrush(RGB(220, 40, 40)); HGDIOBJ prev_hat = SelectObject(hdc, gnome_hat);
         POINT cap[] = {{sx, sy - (int)(32 * scale)}, {sx + (int)(7 * scale), sy + (int)(4 * scale)}, {sx - (int)(7 * scale), sy + (int)(4 * scale)}};
         Polygon(hdc, cap, 3); SelectObject(hdc, prev_hat); DeleteObject(gnome_hat);
+    } else if (selected_class == CLASS_NECROMANCER) {
+        // Black hood: a cowl over the head with the face in shadow inside it.
+        HBRUSH hood = CreateSolidBrush(hat_color); HGDIOBJ prev_hood = SelectObject(hdc, hood);
+        POINT cowl[] = {{sx, sy - (int)(12 * scale)}, {sx + (int)(9 * scale), sy - (int)(2 * scale)}, {sx + (int)(8 * scale), sy + (int)(8 * scale)},
+                        {sx - (int)(8 * scale), sy + (int)(8 * scale)}, {sx - (int)(9 * scale), sy - (int)(2 * scale)}};
+        Polygon(hdc, cowl, 5); SelectObject(hdc, prev_hood); DeleteObject(hood);
+        HBRUSH face = CreateSolidBrush(RGB(150, 130, 115)); HGDIOBJ prev_face = SelectObject(hdc, face);
+        Ellipse(hdc, sx - (int)(4 * scale), sy - (int)(4 * scale), sx + (int)(4 * scale), sy + (int)(5 * scale));
+        SelectObject(hdc, prev_face); DeleteObject(face);
     } else {
         HBRUSH hat_b = CreateSolidBrush(hat_color); HGDIOBJ prev_hat = SelectObject(hdc, hat_b);
         POINT hat[] = {{sx, sy - (int)(14 * scale)}, {sx + (int)(9 * scale), sy + (int)(4 * scale)}, {sx, sy + (int)(8 * scale)}, {sx - (int)(9 * scale), sy + (int)(4 * scale)}};
@@ -455,6 +464,12 @@ void DrawDynamicEnemy(HDC hdc) {
     int sx, sy; GetIsoCoords(enemy_x, enemy_y, &sx, &sy);
     int px, py; GetIsoCoords(player_x, player_y, &px, &py);
     int face_dir = (px >= sx) ? 1 : -1;
+    // Attack lunge: up close the monster lunges at the hero in a short rhythm.
+    float adx = player_x - enemy_x, ady = player_y - enemy_y;
+    if (adx * adx + ady * ady < 2.6f) {
+        float ph = fmodf((float)world_tick * 2.2f, 1.0f);
+        if (ph < 0.3f) { int l = (int)(sinf(ph / 0.3f * 3.14159f) * 7.0f); sx += face_dir * l; sy -= l / 2; }
+    }
     int sw = IS_MYTHIC_MONSTER(active_monster) ? 20 : 9;
     HBRUSH b1 = CreateSolidBrush(RGB(15, 20, 26)); HGDIOBJ old = SelectObject(hdc, b1); Ellipse(hdc, sx - sw, sy + 16, sx + sw, sy + 22); SelectObject(hdc, old); DeleteObject(b1);
     if (active_monster == MONSTER_ZOMBIE) {
@@ -591,7 +606,7 @@ void DrawVillage(HDC hdc) {
         const float HOME_SCALE = 3.2f;
         for (int i = 0; i < 4; i++) {
             int sx, sy; GetIsoCoords((float)(hx[i] + shift), (float)hy[i], &sx, &sy);
-            int ax = sx, ay = sy + 8;
+            int ax = sx, ay = sy + TILE_HEIGHT / 2 + 6; // planted on the tile centre, not floating above it
             int hw = (int)(14 * HOME_SCALE), hh = (int)(20 * HOME_SCALE);
             RECT body = { ax - hw, ay - hh, ax + hw, ay };
             FillRect(hdc, &body, hut);
@@ -710,6 +725,9 @@ void DrawSummonedZombie(HDC hdc) {
     // reaching toward the enemy it is hunting (or ahead, if there is none).
     int face_dir = 1;
     if (enemy_hearts > 0.0f) { int ex, ey; GetIsoCoords(enemy_x, enemy_y, &ex, &ey); face_dir = (ex >= sx) ? 1 : -1; }
+    // Attack lunge for the first few frames after each blow it lands.
+    int full = summoned_zombie.type == SUMMON_GHOST ? 24 : 30, since = full - summoned_zombie.attack_cooldown;
+    if (summoned_zombie.attack_cooldown > 0 && since < 8) sx += face_dir * (since < 4 ? since : 8 - since) * 3;
     // Summons stand as tall as the hero's race (gnome dead are small, elves tall).
     float k = player_height_m / 1.82f; if (k < 0.55f) k = 0.55f;
     int old_mode = BeginScaledDraw(hdc, sx, sy + 16, k);

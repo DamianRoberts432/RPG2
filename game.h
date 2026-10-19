@@ -26,15 +26,15 @@
 #define MAX_BUTTERFLIES 8
 #define DEBRIS_MAX 16
 #define MAX_CRITTERS 6
-#define MERCH_BASE_ITEMS 34
+#define MERCH_BASE_ITEMS 33
 #define MERCH_CAPACITY 50 // room for NewItem lines from the Update folder
 #define MERCH_ITEMS merch_item_count
 extern int merch_item_count;
 #define MAX_BLOOD_MIST 48
 #define MAX_CAMPFIRES 8
 #define MAX_INVENTORY_ITEMS 100
-#define MAX_GROUND_LOOT 16
-#define MAX_DROPPED_ITEMS 16
+#define MAX_GROUND_LOOT 32
+#define MAX_DROPPED_ITEMS 32
 #define MAX_NPCS 8
 #define MAX_APPLE_TREES 8
 
@@ -343,6 +343,7 @@ extern int cam_y;
 #include "farming.h"
 #include "barrels.h"
 #include "peyote.h"
+#include "afkview.h"
 #include "quests.h"
 #include "update.h"
 

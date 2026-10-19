@@ -152,14 +152,17 @@ int GetVisitedBiomeAt(int gx, int gy) {
 //     least frequent biome of all; River/Lake are deliberately uncommon.
 static BiomeType PickBiomeRaw(int gx, int gy);
 // Climate by latitude: tundra crowds the far north and south of the world and
-// desert the middle band; PickBiomeRaw's neighbour rules decide the rest.
+// desert the middle band (mostly far east and west); PickBiomeRaw's neighbour rules decide the rest.
 BiomeType PickBiomeForScreen(int gx, int gy) {
     BiomeType b = PickBiomeRaw(gx, gy);
     float lat = fabsf((gy + 0.5f) - META_GRID_SIZE / 2.0f) / (META_GRID_SIZE / 2.0f); // 0 equator .. 1 pole
     if (b == BIOME_DESERT && lat > 0.5f) b = BIOME_PRAIRIE;
     if (b == BIOME_TUNDRA && lat < 0.55f) b = BIOME_FOREST;
     if (lat > 0.8f && (b == BIOME_PRAIRIE || b == BIOME_FOREST) && rand() % 100 < 65) b = BIOME_TUNDRA;
-    if (lat < 0.3f && b == BIOME_PRAIRIE && rand() % 100 < 30) b = BIOME_DESERT;
+    // Deserts sit in the middle band, mostly toward the far east and far west.
+    float lon = fabsf((gx + 0.5f) - META_GRID_SIZE / 2.0f) / (META_GRID_SIZE / 2.0f); // 0 centre .. 1 east/west edge
+    if (b == BIOME_DESERT && lon < 0.4f && rand() % 100 < 70) b = BIOME_PRAIRIE;
+    if (lat < 0.3f && b == BIOME_PRAIRIE && rand() % 100 < (lon > 0.6f ? 45 : 8)) b = BIOME_DESERT;
     return b;
 }
 
@@ -248,7 +251,7 @@ void GenerateProceduralScreen(int index) {
         pending_forced_biome = -1;
     } else if (screens_until_town == 0) {
         current_biome = BIOME_CASTLE;
-        sprintf(arpg_action_log, "DISCOVERY: Arrived at Townsville Castle perimeter gates!");
+        { char town[48]; TownNameAt(30000 + screen_grid_y * META_GRID_SIZE + screen_grid_x, town, sizeof(town)); sprintf(arpg_action_log, "DISCOVERY: Arrived at the gates of %s!", town); }
     } else {
         int recalled = GetVisitedBiomeAt(grid_c, grid_r);
         if (recalled != -1) {
@@ -375,7 +378,7 @@ void GenerateProceduralScreen(int index) {
         // 0 bird, 1 squirrel (both diurnal), 2 owl, 3 bat (nocturnal). Day screens
         // get a flock of birds and a couple of squirrels, night screens an owl
         // and a bat; caves only bats.
-        critters[i].type = current_biome == BIOME_CAVE ? 3 : spawn_night && i < 2 ? 2 + i : i % 3 == 2 ? 1 : 0;
+        critters[i].type = current_biome == BIOME_CAVE ? 3 : current_biome == BIOME_DESERT && i < 2 ? 4 : spawn_night && i < 2 ? 2 + i : i % 3 == 2 ? 1 : 0;
         critters[i].timer = rand() % 90;
         critters[i].state = 0;
         critters[i].active = 1;
@@ -415,7 +418,7 @@ void UpdateVillageNPCs(void) {
             float ex = enemy_x - npc->x, ey = enemy_y - npc->y, ed = (float)sqrt(ex * ex + ey * ey);
             if (ed < 6.0f) {
                 if (ed > 0.8f) { npc->x += ex / ed * 0.04f; npc->y += ey / ed * 0.04f; }
-                else if ((world_frame + i * 9) % 45 == 0) { HandleEnemyDamage(0.3f); strcpy(arpg_action_log, "VILLAGERS: The townsfolk gang up on the intruder!"); }
+                else if ((world_frame + i * 9) % 45 == 0) { village_kill = 1; HandleEnemyDamage(0.3f); village_kill = 0; strcpy(arpg_action_log, "VILLAGERS: The townsfolk gang up on the intruder!"); }
                 continue;
             }
         }
@@ -557,14 +560,49 @@ int BirdsFleeTree(int x, int y) {
     return flushed;
 }
 
+// Two birds or two squirrels sheltering in the same tree raise one baby:
+// at most one per screen per day, and only into a free critter slot.
+static void NestBabies(void) {
+    static int nest_screen = -1, nest_day = -1;
+    int day = GameDayOfYear();
+    if (nest_screen == current_screen_index && nest_day == day) return;
+    for (int i = 0; i < MAX_CRITTERS; i++) for (int j = i + 1; j < MAX_CRITTERS; j++) {
+        CritterEntity *a = &critters[i], *b = &critters[j];
+        if (!a->active || !b->active || a->type != b->type || a->type > 1 || !a->hidden || !b->hidden) continue;
+        if ((int)(a->x + 0.5f) != (int)(b->x + 0.5f) || (int)(a->y + 0.5f) != (int)(b->y + 0.5f)) continue;
+        for (int k = 0; k < MAX_CRITTERS; k++) if (!critters[k].active) {
+            critters[k] = *a; critters[k].x += 0.3f; critters[k].state = 0; critters[k].hidden = 0;
+            nest_screen = current_screen_index; nest_day = day;
+            sprintf(arpg_action_log, "NATURE: A baby %s peeks out of the tree.", a->type == 0 ? "bird" : "squirrel");
+            return;
+        }
+        return;
+    }
+}
+
 void UpdateCritters(void) {
     UpdateBirds();
     if (world_frame % 30 != 0) return;
+    NestBabies();
     for (int i = 0; i < MAX_CRITTERS; i++) {
         CritterEntity *critter = &critters[i];
         if (!critter->active || critter->type == 0) continue;
         // Day animals sleep from 9 PM to 6 AM; the owl only comes out then.
         if (CritterAsleep(critter)) { critter->hidden = 1; continue; }
+        if (critter->type == 2 && current_biome != BIOME_CAVE) { // owls perch in trees and fly to another when disturbed
+            float pdx = critter->x - player_x, pdy = critter->y - player_y;
+            int perched = VISUAL_MAP[(int)critter->base_y][(int)critter->base_x] == 11;
+            if (!perched || pdx * pdx + pdy * pdy < 9.0f)
+                for (int tries = 0; tries < 60; tries++) {
+                    int x = 1 + rand() % (MAP_SIZE - 2), y = 1 + rand() % (MAP_SIZE - 2);
+                    float ddx = x - player_x, ddy = y - player_y;
+                    if (VISUAL_MAP[y][x] == 11 && ddx * ddx + ddy * ddy > 25.0f) { critter->base_x = (float)x; critter->base_y = (float)y; break; }
+                }
+            critter->x += (critter->base_x - critter->x) * 0.25f; critter->y += (critter->base_y - critter->y) * 0.25f;
+            critter->state = fabsf(critter->base_x - critter->x) + fabsf(critter->base_y - critter->y) > 0.3f; // 1 = flying
+            critter->hidden = 0;
+            continue;
+        }
         // Rain or snow sends nature to the nearest tree (or into a burrow if
         // there are none); it comes back out once the weather turns fair.
         if (IsAdverseWeather() && current_biome != BIOME_CAVE) {
