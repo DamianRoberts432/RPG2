@@ -138,7 +138,12 @@ static void DrawSky(HDC hdc, float light) {
     int gloomy = IsAdverseWeather();
     COLORREF top = Mix(RGB(6, 9, 26), RGB(70, 130, 220), light), low = Mix(RGB(26, 32, 62), RGB(175, 210, 245), light);
     if (gloomy) { top = Mix(top, Dim(RGB(130, 135, 145), 0.3f + 0.7f * light), 0.7f); low = Mix(low, Dim(RGB(160, 165, 170), 0.3f + 0.7f * light), 0.7f); }
-    for (int band = 0; band < 16; band++) Box(hdc, 0, band * h / 16, WINDOW_WIDTH, (band + 1) * h / 16, Mix(top, low, band / 15.0f));
+    if (h > 0) { // one smooth vertical gradient instead of stacked bands
+        TRIVERTEX v[2] = { { 0, 0, (COLOR16)(GetRValue(top) << 8), (COLOR16)(GetGValue(top) << 8), (COLOR16)(GetBValue(top) << 8), 0 },
+                           { WINDOW_WIDTH, h, (COLOR16)(GetRValue(low) << 8), (COLOR16)(GetGValue(low) << 8), (COLOR16)(GetBValue(low) << 8), 0 } };
+        GRADIENT_RECT gr = { 0, 1 };
+        GradientFill(hdc, v, 2, &gr, 1, GRADIENT_FILL_RECT_V);
+    }
     int x, y;
     if (light > 0.45f && !gloomy) { // the sun
         SkyPoint(-0.9f, 0.55f * light, &x, &y);
@@ -156,8 +161,8 @@ static void DrawSky(HDC hdc, float light) {
         Box(hdc, x, y, x + sz - 1, y + sz - 1, RGB(lum, lum, lum));
     }
     SkyPoint(0.8f, 0.42f, &x, &y); // the moon; its phase follows the 30-day season
-    DrawSkyBeam(hdc, x, y, h, RGB(200, 215, 240), (int)(35 * k), BeamStrength(2));
-    if (x > -100) {
+    if (x > -100) { // moonlight is a soft halo, not a spotlight
+        for (int r = 4; r >= 1; r--) FillRectAlpha(hdc, x - 22 * r, y - 22 * r, 44 * r, 44 * r, RGB(200, 215, 240), (int)(7 * k));
         int mr = 22, moon = (int)(235 * k);
         float phase = (SeasonDay() % 30) / 30.0f;
         Blob(hdc, x - mr, y - mr, x + mr, y + mr, RGB(moon, moon, moon * 9 / 10));
