@@ -414,6 +414,92 @@ void GenerateProceduralScreen(int index) {
     SaveSaveFileToDisk();
 }
 
+// Daily routines: villagers sweep, work a furrow, fetch water or stop by a
+// tree; the blacksmith hammers and quenches; the merchant checks his barrels
+// and stares (then walks over) when you smash them.
+static int npc_act[MAX_NPCS], npc_screen[MAX_NPCS], npc_leg[MAX_NPCS], npc_busy[MAX_NPCS], merchant_strikes;
+static float npc_gx[MAX_NPCS], npc_gy[MAX_NPCS], npc_until[MAX_NPCS], merchant_stare_until;
+
+int NpcActivity(int i) { return i >= 0 && i < MAX_NPCS && npc_screen[i] == current_screen_index + 1 ? npc_act[i] : NPC_IDLE; }
+int NpcAtWork(int i) { return NpcActivity(i) != NPC_IDLE && npc_busy[i]; }
+
+static int OpenTile(int x, int y) { return x > 2 && y > 2 && x < MAP_SIZE - 3 && y < MAP_SIZE - 3 && VISUAL_MAP[y][x] != 1 && VISUAL_MAP[y][x] != 11 && VISUAL_MAP[y][x] != 12; }
+
+static int SpotBeside(int want, float hx, float hy, float range, float *gx, float *gy) {
+    float best = range * range; int ok = 0;
+    for (int y = 1; y < MAP_SIZE - 1; y++) for (int x = 1; x < MAP_SIZE - 1; x++) {
+        if (VISUAL_MAP[y][x] != want) continue;
+        for (int n = 0; n < 4; n++) {
+            int nx = x + (n == 0) - (n == 1), ny = y + (n == 2) - (n == 3);
+            if (!OpenTile(nx, ny)) continue;
+            float dx = nx - hx, dy = ny - hy, d = dx * dx + dy * dy;
+            if (d < best) { best = d; *gx = (float)nx; *gy = (float)ny; ok = 1; }
+        }
+    }
+    return ok;
+}
+
+void NoteBarrelBroken(float bx, float by) {
+    for (int i = 0; i < village_npc_count; i++) {
+        if (village_npcs[i].type != 1) continue;
+        float dx = village_npcs[i].x - bx, dy = village_npcs[i].y - by;
+        if (dx * dx + dy * dy > 49.0f) return;
+        merchant_strikes++;
+        merchant_stare_until = world_tick + (merchant_strikes >= 2 ? 12.0f : 7.0f);
+        if (merchant_strikes == 1) strcpy(arpg_action_log, "MERCHANT: ...stops what he's doing and stares at you.");
+        else {
+            strcpy(arpg_action_log, "MERCHANT: *shakes his head* Those barrels are folks' livelihoods. Word gets around town.");
+            KarmaAdjust(-1, 0, 1, 0);
+        }
+        return;
+    }
+}
+
+// Returns 1 while the NPC is walking somewhere (or staring) on purpose.
+static int NpcRoutine(int i) {
+    NPCEntity *npc = &village_npcs[i];
+    if (npc_screen[i] != current_screen_index + 1) {
+        npc_screen[i] = current_screen_index + 1; npc_leg[i] = 1; npc_until[i] = 0.0f; npc_busy[i] = 0;
+        npc_act[i] = npc->type == 1 ? NPC_INSPECT : npc->type == 3 ? NPC_HAMMER : npc->type == 0 ? NPC_SWEEP + (i + current_screen_index) % 4 : NPC_IDLE;
+        if (npc->type == 1) { merchant_strikes = 0; merchant_stare_until = 0.0f; }
+    }
+    if (npc->type == 1 && world_tick < merchant_stare_until) {
+        float dx = player_x - npc->x, dy = player_y - npc->y, d = (float)sqrt(dx * dx + dy * dy);
+        npc->direction = DirectionOf(dx, dy); npc_busy[i] = 0;
+        if (merchant_strikes >= 2 && d > 1.3f) { npc->x += dx / d * 0.035f; npc->y += dy / d * 0.035f; }
+        return 1;
+    }
+    int act = npc_act[i];
+    if (world_tick > npc_until[i]) { // next leg of the routine
+        npc_leg[i] ^= 1;
+        npc_until[i] = world_tick + 15.0f + abs(RainHash(i * 131 + (int)(world_tick * 3.0f))) % 25;
+        float hx = npc->home_x, hy = npc->home_y, gx = hx, gy = hy;
+        if (act == NPC_SWEEP) gx = hx + (npc_leg[i] ? 0.7f : -0.7f);
+        else if (act == NPC_FARM && OpenTile((int)(hx + 1.3f), (int)(hy + 1.3f))) { gx = hx + 1.3f; gy = hy + (npc_leg[i] ? 1.3f : 2.2f); }
+        else if (act == NPC_WATER && npc_leg[i] && !SpotBeside(12, hx, hy, 10.0f, &gx, &gy)) npc_act[i] = NPC_NATURE;
+        else if (act == NPC_NATURE && npc_leg[i]) SpotBeside(11, hx, hy, 8.0f, &gx, &gy);
+        else if (act == NPC_INSPECT && npc_leg[i]) {
+            float bx, by; int intact, n = 0, pick = abs(RainHash(i + (int)world_tick)) % 6;
+            for (int k = 0; BarrelInfo(k, &bx, &by, &intact); k++) {
+                if (!intact || (bx - hx) * (bx - hx) + (by - hy) * (by - hy) > 36.0f) continue;
+                if (n++ <= pick) { gx = bx + 0.8f; gy = by; }
+            }
+            if (!n && OpenTile(12, 14)) { gx = 12.0f; gy = 14.6f; } // no barrels: check the stall's goods
+        }
+        npc_gx[i] = gx; npc_gy[i] = gy;
+    }
+    float dx = npc_gx[i] - npc->x, dy = npc_gy[i] - npc->y, d = (float)sqrt(dx * dx + dy * dy);
+    if (d <= (act == NPC_IDLE ? 1.6f : 0.12f)) { npc_busy[i] = 1; return 0; }
+    npc_busy[i] = 0;
+    float nx = npc->x + dx / d * 0.03f, ny = npc->y + dy / d * 0.03f;
+    if (VISUAL_MAP[(int)ny][(int)nx] != 1 && VISUAL_MAP[(int)ny][(int)nx] != 12) { npc->x = nx; npc->y = ny; }
+    else if (VISUAL_MAP[(int)npc->y][(int)nx] != 1 && VISUAL_MAP[(int)npc->y][(int)nx] != 12) npc->x = nx;
+    else if (VISUAL_MAP[(int)ny][(int)npc->x] != 1 && VISUAL_MAP[(int)ny][(int)npc->x] != 12) npc->y = ny;
+    else npc_until[i] = 0.0f;
+    npc->direction = DirectionOf(dx, dy);
+    return 1;
+}
+
 void UpdateVillageNPCs(void) {
     for (int i = 0; i < village_npc_count; i++) {
         NPCEntity *npc = &village_npcs[i];
@@ -428,10 +514,7 @@ void UpdateVillageNPCs(void) {
                 continue;
             }
         }
-        {
-            float hx = npc->home_x - npc->x, hy = npc->home_y - npc->y, hd = (float)sqrt(hx * hx + hy * hy);
-            if (hd > 1.6f) { npc->x += hx / hd * 0.04f; npc->y += hy / hd * 0.04f; npc->direction = DirectionOf(hx, hy); continue; }
-        }
+        if (npc->type != 8 && NpcRoutine(i)) continue;
         if (IsNearPoint(npc->x, npc->y, 3.0f)) {
             float dx = player_x - npc->x, dy = player_y - npc->y;
             npc->direction = fabs(dx) > fabs(dy) ? (dx < 0 ? FACE_LEFT : FACE_RIGHT) : (dy < 0 ? FACE_UP : FACE_DOWN);
@@ -444,7 +527,7 @@ void UpdateVillageNPCs(void) {
                 npc->dialogue_cooldown = 120 + rand() % 61;
                 if (IsNearPoint(npc->x, npc->y, 2.0f)) strcpy(arpg_action_log, npc->dialogue);
             }
-        } else if (npc->type != 7 && npc->type != 8 && world_frame % 45 == (i * 7) % 45) {
+        } else if (npc->type == 2 && world_frame % 45 == (i * 7) % 45) { // guards still pace their post
             int direction = rand() % 4;
             float dx[] = { 0, 0, -1, 1 }, dy[] = { 1, -1, 0, 0 };
             float nx = npc->x + dx[direction] * 0.12f, ny = npc->y + dy[direction] * 0.12f;

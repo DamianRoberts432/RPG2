@@ -55,6 +55,7 @@ int TryBreakBarrel(void) {
         else if (roll < 60) { AddStackableItem("Apple", "Food", 1); strcpy(arpg_action_log, "BARREL: Smashed it open - an apple inside."); }
         else if (roll < 75) { AddStackableItem("Wood", "Material", 1); strcpy(arpg_action_log, "BARREL: Smashed it open - some wood for the fire."); }
         else strcpy(arpg_action_log, "BARREL: Smashed it open - empty.");
+        NoteBarrelBroken(barrels[i].x, barrels[i].y);
         RecalculateCarriedWeight();
         TryCardDrop(-1);
         return 1;

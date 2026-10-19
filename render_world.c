@@ -163,6 +163,36 @@ static void DrawDeciduousCanopy(HDC hdc, int sx, int sy, int tile_seed) {
     DrawCanopyBlob(hdc, sx + 1, sy - 8, 9, c[2]);
 }
 
+// A few trees (many in forests) are tall old giants: a high crown over the
+// normal canopy. When the hero walks just behind one its leaves turn lacy so
+// you can still see yourself and anything attacking you.
+int IsBigTree(int tile_seed) {
+    if (in_cave) return 0;
+    int h = abs(RainHash(tile_seed * 7919 + 17)) % 100;
+    if (current_biome == BIOME_FOREST) return h < 22;
+    return (current_biome == BIOME_GRASSLANDS || current_biome == BIOME_SWAMP || current_biome == BIOME_OASIS) && h < 6;
+}
+
+void DrawBigCrown(HDC hdc, int sx, int sy, int tile_seed) {
+    int r = tile_seed / MAP_SIZE, c = tile_seed % MAP_SIZE, broad = IsDeciduousTree(tile_seed);
+    int sway = (int)(sin(world_tick * 0.9f + tile_seed) * (2 + abs(wind_dir)));
+    COLORREF leaf = snow_cover > 0.5f ? RGB(200, 210, 222) : !broad ? RGB(30, 95, 45) : current_season == SEASON_FALL ? RGB(190, 105, 40) : RGB(55, 120, 45);
+    COLORREF dark = RGB(GetRValue(leaf) * 3 / 4, GetGValue(leaf) * 3 / 4, GetBValue(leaf) * 3 / 4);
+    HBRUSH bark = CreateSolidBrush(RGB(115, 82, 60)); HGDIOBJ ob = SelectObject(hdc, bark), op = SelectObject(hdc, GetStockObject(NULL_PEN));
+    POINT trunk[] = { {sx - 2 + sway / 2, sy - 30}, {sx + 2 + sway / 2, sy - 30}, {sx + 3, sy - 8}, {sx - 3, sy - 8} };
+    Polygon(hdc, trunk, 4);
+    float depth = (c + r) - (player_x + player_y), across = (c - r) - (player_x - player_y);
+    int lacy = depth > 0.3f && depth < 5.0f && across > -2.5f && across < 2.5f;
+    HBRUSH lb = lacy ? CreateHatchBrush(HS_DIAGCROSS, leaf) : CreateSolidBrush(leaf), db = lacy ? CreateHatchBrush(HS_DIAGCROSS, dark) : CreateSolidBrush(dark);
+    int old_mode = SetBkMode(hdc, TRANSPARENT);
+    SelectObject(hdc, db);
+    Ellipse(hdc, sx - 26 + sway, sy - 44, sx + 2 + sway, sy - 20); Ellipse(hdc, sx - 2 + sway, sy - 46, sx + 26 + sway, sy - 22);
+    SelectObject(hdc, lb);
+    Ellipse(hdc, sx - 16 + sway, sy - 58, sx + 16 + sway, sy - 32);
+    SetBkMode(hdc, old_mode);
+    SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(bark); DeleteObject(lb); DeleteObject(db);
+}
+
 void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
     static int sway_lut[32], sway_initialized = 0;
     if (!sway_initialized) {

@@ -676,6 +676,46 @@ void DrawMerchantStoreFront(HDC hdc) {
 // that varies per NPC so each villager in the settlement reads as a distinct
 // little character instead of an identical color-swapped blob.
 static int villager_facing; // 0 faces the camera, -1/1 looks left/right, 2 walks away
+// The tool of whatever the NPC is busy with: broom, hoe, bucket, or the
+// blacksmith's anvil, hammer and quench tub.
+static void DrawNpcProp(HDC hdc, int sx, int sy, int i) {
+    int act = NpcActivity(i), busy = NpcAtWork(i);
+    float t = world_tick;
+    COLORREF wood = RGB(120, 85, 50);
+    if (act == NPC_SWEEP) {
+        int sw = busy ? (int)(sinf(t * 3.0f + i) * 6.0f) : 0;
+        PenLine(hdc, 2, wood, sx + 5, sy - 6, sx + 3 + sw, sy + 12);
+        PenLine(hdc, 4, RGB(205, 175, 90), sx + sw, sy + 13, sx + 7 + sw, sy + 13);
+    } else if (act == NPC_FARM) {
+        int up = busy ? (int)(fabsf(sinf(t * 2.0f + i)) * 8.0f) : 0;
+        PenLine(hdc, 2, wood, sx + 6, sy - 8 - up, sx + 10, sy + 10 - up);
+        PenLine(hdc, 3, RGB(150, 150, 155), sx + 8, sy + 10 - up, sx + 14, sy + 10 - up);
+    } else if (act == NPC_WATER) {
+        HBRUSH pail = CreateSolidBrush(RGB(140, 140, 150)); RECT r = { sx + 7, sy + 3, sx + 14, sy + 10 }; FillRect(hdc, &r, pail); DeleteObject(pail);
+        PenLine(hdc, 1, RGB(70, 70, 75), sx + 7, sy + 3, sx + 10, sy - 1); PenLine(hdc, 1, RGB(70, 70, 75), sx + 10, sy - 1, sx + 13, sy + 3);
+        if (NpcAtWork(i)) { HBRUSH w = CreateSolidBrush(RGB(70, 140, 220)); RECT wr = { sx + 8, sy + 3, sx + 13, sy + 5 }; FillRect(hdc, &wr, w); DeleteObject(w); }
+    } else if (act == NPC_HAMMER) {
+        HBRUSH iron = CreateSolidBrush(RGB(55, 55, 62)), tub = CreateSolidBrush(RGB(60, 110, 170));
+        RECT top = { sx + 10, sy + 4, sx + 24, sy + 9 }, base = { sx + 14, sy + 9, sx + 20, sy + 15 }, water = { sx + 24, sy + 8, sx + 33, sy + 15 };
+        FillRect(hdc, &top, iron); FillRect(hdc, &base, iron); FillRect(hdc, &water, tub);
+        float ph = fmodf(t + i * 3.0f, 14.0f);
+        if (ph < 11.0f) { // hammering the glowing bar
+            HBRUSH hot = CreateSolidBrush(RGB(255, 140, 40)); RECT bar = { sx + 14, sy + 2, sx + 21, sy + 4 }; FillRect(hdc, &bar, hot); DeleteObject(hot);
+            float sw = sinf(ph * 4.0f);
+            int hx = sx + 15, hy = sy - (sw > 0.0f ? (int)(sw * 10.0f) : 0);
+            PenLine(hdc, 2, wood, sx + 6, sy - 4, hx, hy);
+            RECT head = { hx - 3, hy - 3, hx + 3, hy + 1 }; FillRect(hdc, &head, iron);
+            if (sw < -0.7f) for (int k = 0; k < 5; k++) SetPixel(hdc, sx + 17 + (k * 7 % 9) - 4, sy - 1 - (k * 5 % 6), RGB(255, 210, 80));
+        } else for (int k = 0; k < 3; k++) { // quenching: steam off the tub
+            int rise = (int)((ph - 11.0f) * 9.0f) + k * 6;
+            HBRUSH steam = CreateSolidBrush(RGB(225, 225, 230)); HGDIOBJ o = SelectObject(hdc, steam), op = SelectObject(hdc, GetStockObject(NULL_PEN));
+            Ellipse(hdc, sx + 26 + k * 2, sy + 2 - rise, sx + 32 + k * 2, sy + 7 - rise);
+            SelectObject(hdc, o); SelectObject(hdc, op); DeleteObject(steam);
+        }
+        DeleteObject(iron); DeleteObject(tub);
+    }
+}
+
 void DrawZeldaStyleVillager(HDC hdc, int sx, int sy, int npc_index, float scale) {
 #define VS(v) ((int)((v) * scale))
     static const COLORREF tunic_palette[] = { RGB(60, 150, 70), RGB(190, 90, 60), RGB(90, 110, 170), RGB(200, 170, 70) };
@@ -810,6 +850,7 @@ void DrawVillage(HDC hdc) {
             villager_facing = d == FACE_DOWN ? -1 : d == FACE_RIGHT ? 1 : 2;
             DrawZeldaStyleVillager(hdc, sx, sy, look, NPC_SCALE);
             villager_facing = 0;
+            DrawNpcProp(hdc, sx, sy, i);
         }
         if (village_npcs[i].type == 6) DrawCrown(hdc, sx, sy - (int)(19 * NPC_SCALE) - 2, 6);
         if (IsNearPoint(village_npcs[i].x, village_npcs[i].y, 2.0f)) {
