@@ -91,6 +91,8 @@ int SaveWorldMapState(void) {
     ok = ok && fwrite(screen_edits, sizeof(screen_edits), 1, f) == 1 && fwrite(screen_memory, sizeof(screen_memory), 1, f) == 1 &&
          fwrite(melt_patches, sizeof(melt_patches), 1, f) == 1;
     ok = ok && fwrite(player_home, sizeof(player_home), 1, f) == 1;
+    int32_t outfit[2] = { hero_cloth, hero_trim };
+    ok = ok && fwrite(outfit, sizeof(outfit), 1, f) == 1;
     ok = (fclose(f) == 0) && ok;
     if (!ok) { remove(SAVE_TEMP_NAME); return 0; }
     return MoveFileExA(SAVE_TEMP_NAME, SAVE_FILE_NAME, MOVEFILE_REPLACE_EXISTING) != 0;
@@ -142,6 +144,8 @@ int LoadWorldMapState(void) {
                     fread(saved_melt, sizeof(saved_melt), 1, f) == 1;
     int32_t saved_home[8];
     int has_home = has_world && fread(saved_home, sizeof(saved_home), 1, f) == 1;
+    int32_t outfit[2];
+    int has_outfit = has_home && fread(outfit, sizeof(outfit), 1, f) == 1;
     fclose(f);
     if (!ok) return 0;
     memcpy(visited_biomes, biomes, sizeof(biomes));
@@ -191,6 +195,10 @@ int LoadWorldMapState(void) {
         hero_beard = (looks[1] >= 0 && looks[1] < 3) ? looks[1] : 0;
         hero_eyes = (looks[2] >= 0 && looks[2] < EYE_COLORS) ? looks[2] : 0;
         hero_hair = (looks[3] >= 0 && looks[3] < HAIR_COLORS) ? looks[3] : 1;
+    }
+    if (has_outfit) {
+        hero_cloth = (outfit[0] >= 0 && outfit[0] < CLOTH_COLORS) ? outfit[0] : 0;
+        hero_trim = (outfit[1] >= 0 && outfit[1] < TRIM_COLORS) ? outfit[1] : 1;
     }
     if (has_world) {
         memcpy(screen_edits, saved_edits, sizeof(saved_edits));

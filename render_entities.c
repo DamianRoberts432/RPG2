@@ -1,5 +1,7 @@
 #include "game.h"
 
+static void PenLine(HDC hdc, int w, COLORREF c, int x1, int y1, int x2, int y2);
+
 void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) {
     int sx = render_x; int sy = render_y;
     float scale = override_scale;
@@ -23,6 +25,12 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
     if (selected_class == CLASS_NECROMANCER) { body_color = RGB(26, 22, 30); hat_color = RGB(14, 12, 18); } // black cloak and hood
     else if (selected_class == CLASS_WARRIOR) { body_color = RGB(160, 40, 30); hat_color = RGB(90, 20, 20); }
     else if (selected_class == CLASS_WIZARD) { body_color = RGB(30, 80, 180); hat_color = RGB(15, 40, 120); }
+    if (hero_cloth > 0) { // clothes colour picked on the start screen; the hood a shade darker
+        body_color = HeroClothColor(body_color);
+        hat_color = RGB(GetRValue(body_color) * 3 / 4, GetGValue(body_color) * 3 / 4, GetBValue(body_color) * 3 / 4);
+    }
+    COLORREF trim = HeroTrimColor();
+    int trim_w = scale >= 1.5f ? 2 : 1;
     // Worn clothes replace the class colours; a Cloth Hood hides the face like the necromancer's.
     const char *head_wear = WornItem("Head"), *clothes = WornItem("Clothes"), *cloak = WornItem("Cloak");
     int hooded = head_wear ? strcmp(head_wear, "Cloth Hood") == 0 : selected_class == CLASS_NECROMANCER;
@@ -43,6 +51,13 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         Polygon(hdc, fb, 8);
     } else Polygon(hdc, body, 4);
     SelectObject(hdc, prev_body); DeleteObject(body_b);
+    if (trim != CLOTH_UNKNOWN) { // trim: hem, belt and a V collar in the second colour
+        int hw = hero_sex ? 9 : 8;
+        PenLine(hdc, trim_w, trim, sx - (int)((hw - 1) * scale), sy + (int)(19 * scale), sx + (int)((hw - 1) * scale), sy + (int)(19 * scale));
+        PenLine(hdc, trim_w, trim, sx - (int)(5 * scale), sy + (int)(13 * scale), sx + (int)(5 * scale), sy + (int)(13 * scale));
+        PenLine(hdc, trim_w, trim, sx - (int)(4 * scale), sy + (int)(6 * scale), sx, sy + (int)(10 * scale));
+        PenLine(hdc, trim_w, trim, sx, sy + (int)(10 * scale), sx + (int)(4 * scale), sy + (int)(6 * scale));
+    }
     if (cloak) { // two panels hanging from the shoulders, open at the front
         COLORREF cc = ClothingColor(cloak);
         HBRUSH cb = CreateSolidBrush(cc); HPEN cp = CreatePen(PS_SOLID, 1, RGB(GetRValue(cc) * 3 / 4, GetGValue(cc) * 3 / 4, GetBValue(cc) * 3 / 4));
@@ -145,7 +160,23 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         MoveToEx(hdc, sx + HS(7), sy + HS(10), NULL); LineTo(hdc, sx + HS(4), sy + HS(5));
         HBRUSH shade = CreateSolidBrush(RGB(5, 4, 7)); SelectObject(hdc, shade); SelectObject(hdc, GetStockObject(NULL_PEN));
         Ellipse(hdc, sx - HS(5), sy - HS(6), sx + HS(5), sy + HS(6));
+        HBRUSH chin = CreateSolidBrush(selected_race == RACE_DWARF ? RGB(225, 180, 145) : RGB(235, 200, 165)); // the chin catches the light under the hood
+        SelectObject(hdc, chin); Ellipse(hdc, sx - HS(3), sy + HS(1), sx + HS(3) + 1, sy + HS(6));
+        COLORREF ec = HeroEyeColor(), glow = RGB((GetRValue(ec) + 255) / 2, (GetGValue(ec) + 255) / 2, (GetBValue(ec) + 255) / 2);
+        HBRUSH halo = CreateSolidBrush(RGB(GetRValue(ec) / 2, GetGValue(ec) / 2, GetBValue(ec) / 2)), eyes = CreateSolidBrush(glow);
+        int ew = scale >= 1.5f ? 2 : 1, ey = sy - HS(1);
+        for (int side = -1; side <= 1; side += 2) { // two glowing points in the shadow
+            int ex = sx + side * HS(2);
+            SelectObject(hdc, halo); Ellipse(hdc, ex - ew - 1, ey - ew - 1, ex + ew + 2, ey + ew + 2);
+            SelectObject(hdc, eyes); Ellipse(hdc, ex - ew + 1, ey - ew + 1, ex + ew, ey + ew);
+        }
+        if (trim != CLOTH_UNKNOWN) { // trimmed edge round the face opening
+            HPEN tp = CreatePen(PS_SOLID, trim_w, trim); SelectObject(hdc, tp); SelectObject(hdc, GetStockObject(NULL_BRUSH));
+            Ellipse(hdc, sx - HS(6), sy - HS(7), sx + HS(6), sy + HS(7));
+            SelectObject(hdc, prev_fold); DeleteObject(tp);
+        }
         SelectObject(hdc, prev_fold); SelectObject(hdc, prev_hood); DeleteObject(fold); DeleteObject(hood); DeleteObject(shade);
+        DeleteObject(chin); DeleteObject(halo); DeleteObject(eyes);
         if (selected_race == RACE_ELF) {
             HPEN ear_p = CreatePen(PS_SOLID, 2, RGB(245, 210, 170)); HGDIOBJ prev_ear_p = SelectObject(hdc, ear_p);
             MoveToEx(hdc, sx - HS(9), sy, NULL); LineTo(hdc, sx - HS(14), sy - HS(5));

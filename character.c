@@ -14,7 +14,19 @@ int *StatByIndex(int i) {
     return stats[i];
 }
 
-int hero_sex = 0, hero_beard = 0, hero_eyes = 0, hero_hair = 1;
+int hero_sex = 0, hero_beard = 0, hero_eyes = 0, hero_hair = 1, hero_cloth = 0, hero_trim = 1;
+const char *cloth_names[] = { "Class colour", "Charcoal", "Crimson", "Forest green", "Royal blue", "Plum", "Earth brown", "Bone white" };
+const char *trim_names[] = { "None", "Gold", "Silver", "Crimson", "Emerald", "Sky blue", "Violet", "Copper" };
+
+COLORREF HeroClothColor(COLORREF class_colour) {
+    static const COLORREF c[CLOTH_COLORS] = { 0, RGB(58, 56, 64), RGB(150, 35, 40), RGB(45, 105, 55), RGB(40, 75, 170), RGB(105, 50, 120), RGB(120, 85, 55), RGB(225, 215, 195) };
+    return hero_cloth > 0 && hero_cloth < CLOTH_COLORS ? c[hero_cloth] : class_colour;
+}
+
+COLORREF HeroTrimColor(void) {
+    static const COLORREF c[TRIM_COLORS] = { 0, RGB(235, 195, 70), RGB(200, 205, 215), RGB(200, 45, 50), RGB(60, 185, 110), RGB(110, 180, 240), RGB(165, 100, 220), RGB(200, 120, 60) };
+    return hero_trim > 0 && hero_trim < TRIM_COLORS ? c[hero_trim] : CLOTH_UNKNOWN;
+}
 const char *sex_names[] = { "Male", "Female" };
 const char *beard_names[] = { "None", "Short", "Long" };
 const char *eye_names[] = { "Brown", "Blue", "Green", "Grey", "Amber" };
@@ -30,7 +42,7 @@ COLORREF HeroHairColor(void) {
     return c[hero_hair % HAIR_COLORS];
 }
 
-// Start-screen fields 1..6: class, race, body, beard, eyes, hair.
+// Start-screen fields 1..8: class, race, body, beard, eyes, hair, clothes colour, trim colour.
 void CycleCreationField(int field, int dir) {
     if (field == 1) selected_class = (ClassType)((selected_class + dir + 5) % 5);
     else if (field == 2) {
@@ -41,6 +53,8 @@ void CycleCreationField(int field, int dir) {
     else if (field == 4) hero_beard = (hero_beard + dir + 3) % 3;
     else if (field == 5) hero_eyes = (hero_eyes + dir + EYE_COLORS) % EYE_COLORS;
     else if (field == 6) hero_hair = (hero_hair + dir + HAIR_COLORS) % HAIR_COLORS;
+    else if (field == 7) hero_cloth = (hero_cloth + dir + CLOTH_COLORS) % CLOTH_COLORS;
+    else if (field == 8) hero_trim = (hero_trim + dir + TRIM_COLORS) % TRIM_COLORS;
 }
 
 void SpendStatPoint(void) {

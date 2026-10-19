@@ -128,10 +128,16 @@ typedef struct { float x, y; InventoryItem item; int screen_id, active; DWORD dr
 extern char player_name[32];
 extern RaceType selected_race;
 // Looks picked on the start screen only: race sets the height.
-#define CREATION_FIELDS 7
+#define CREATION_FIELDS 9
 #define EYE_COLORS 5
 #define HAIR_COLORS 6
-extern int hero_sex, hero_beard, hero_eyes, hero_hair;
+extern int hero_sex, hero_beard, hero_eyes, hero_hair, hero_cloth, hero_trim;
+#define CLOTH_COLORS 8
+#define TRIM_COLORS 8
+extern const char *cloth_names[], *trim_names[];
+COLORREF HeroClothColor(COLORREF class_colour);
+COLORREF HeroTrimColor(void); // CLOTH_UNKNOWN when no trim
+int BarrelInfo(int i, float *x, float *y, int *intact);
 extern const char *sex_names[], *beard_names[], *eye_names[], *hair_names[];
 void CycleCreationField(int field, int dir);
 // Clothes: "Head", "Cloak" and "Clothes" slots, wearable by every class.
