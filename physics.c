@@ -15,6 +15,7 @@ int VillageHomeCentre(int i, float *x, float *y) {
 
 static int TileBlocksPlayer(float x, float y) {
     if (x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE) return 1;
+    if (inside_home >= 0) return InteriorBlocks(x, y);
     uint8_t t = VISUAL_MAP[(int)y][(int)x];
     for (int i = 0; i < 4; i++) { // village homes are solid exactly where they are drawn
         float hx, hy;

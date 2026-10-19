@@ -1,7 +1,7 @@
 #include "game.h"
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    if (uMsg == WM_CLOSE && !is_character_creation) { ClearLegendaryDrops(); SaveSaveFileToDisk(); }
+    if (uMsg == WM_CLOSE && !is_character_creation) { ClearLegendaryDrops(); LeaveHome(); SaveSaveFileToDisk(); }
     if (uMsg == WM_DESTROY) { PostQuitMessage(0); return 0; }
     if (uMsg >= WM_MOUSEFIRST && uMsg <= WM_MOUSELAST) {
         RECT cr; GetClientRect(hwnd, &cr); // the frame is scaled to the window, so scale the mouse back
@@ -108,7 +108,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
             
             cam_x = (int)((player_x - player_y) * (TILE_WIDTH / 2)); cam_y = (int)((player_x + player_y) * (TILE_HEIGHT / 2));
             float view_zoom = UpdateAfkCamera(AnyPlayerInput() || MouseBusy() || is_menu_open || vendor_menu_open || town_menu ||
-                                              is_character_creation || sleep_fade_frame > 0);
+                                              is_character_creation || sleep_fade_frame > 0 || inside_home >= 0);
             HDC hdc = GetDC(hwnd); HDC memHDC = CreateCompatibleDC(hdc); HBITMAP memBitmap = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT); SelectObject(memHDC, memBitmap);
             
             if (is_character_creation) {
@@ -261,6 +261,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 DrawWeatherEffects(memHDC); DrawSolitaireSunMoonBeam(memHDC);
                 ApplyCameraZoom(memHDC, view_zoom);
                 DrawAfkView(memHDC);
+                DrawHomeInterior(memHDC);
                 DrawPeyoteMelt(memHDC);
                 DrawPlayerStatusHUD(memHDC); // HP, MP and stamina stay on screen, AFK view included
         if (!AfkViewActive()) { DrawLootPreview(memHDC); DrawBelt(memHDC); }

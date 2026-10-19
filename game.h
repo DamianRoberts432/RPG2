@@ -155,6 +155,13 @@ void ApplyScreenMemory(int index);
 int ScreenStillQuiet(void);
 void TickMeltPatches(float dt);
 int GetMeltPatch(int i, float *x, float *y, float *size);
+// Walk-in homes and polygon shop rooms (afkview.c).
+extern int inside_home;
+int HomeInteract(void);
+void LeaveHome(void);
+int InteriorBlocks(float x, float y);
+void DrawHomeInterior(HDC hdc);
+void DrawShopRoom(HDC hdc, int stone, int shrine, int floor_y);
 COLORREF HeroEyeColor(void);
 COLORREF HeroHairColor(void);
 extern ClassType selected_class;

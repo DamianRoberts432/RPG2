@@ -808,24 +808,7 @@ void DrawInteriorBackdrop(HDC hdc, int menu) {
     COLORREF wall = shrine ? RGB(40, 30, 52) : stone ? RGB(96, 96, 104) : RGB(116, 78, 46);
     COLORREF seam = shrine ? RGB(26, 18, 36) : stone ? RGB(70, 70, 80) : RGB(86, 56, 32);
     DWORD t = GetTickCount();
-    TwBox(hdc, 0, 0, W, F, wall);
-    if (stone || shrine) {
-        for (int y = 0, row = 0; y < F; y += 44, row++) {
-            TwLine(hdc, 0, y, W, y, 2, seam);
-            for (int x = (row % 2) * 60; x < W; x += 120) TwLine(hdc, x, y, x, y + 44, 2, seam);
-        }
-    } else {
-        for (int x = 0; x < W; x += 70) TwLine(hdc, x, 0, x, F, 2, seam);
-    }
-    if (!shrine) { // a window shows the time of day outside
-        TwBox(hdc, 830, 110, 1010, 300, RGB(60, 40, 24));
-        TwBox(hdc, 842, 122, 998, 288, IsNight() ? RGB(18, 22, 58) : RGB(150, 200, 240));
-        if (IsNight()) TwDisc(hdc, 960, 160, 14, 14, RGB(235, 235, 210));
-        TwLine(hdc, 920, 122, 920, 288, 6, RGB(60, 40, 24)); TwLine(hdc, 842, 205, 998, 205, 6, RGB(60, 40, 24));
-    }
-    TwBox(hdc, 0, F, W, H, shrine ? RGB(30, 24, 36) : stone ? RGB(72, 68, 64) : RGB(82, 54, 32));
-    for (int y = F + 28; y < H; y += 34) TwLine(hdc, 0, y, W, y, 1, seam);
-    TwBox(hdc, 0, F - 12, W, F, seam);
+    DrawShopRoom(hdc, stone, shrine, F);
 
     if (menu == TM_SMITH) {
         TwBox(hdc, 150, 0, 260, 330, RGB(100, 55, 45));

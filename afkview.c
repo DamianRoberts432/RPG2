@@ -19,6 +19,7 @@ typedef struct { float x, y, z, depth; int kind, seed; } FpThing;
 static FpThing things[FP_MAX_THINGS];
 static int thing_count, horizon, bobber_sx = -1, bobber_sy;
 static float yaw, pitch, focal;
+static float eye_x, eye_y, eye_z = FP_EYE;
 
 int AfkViewActive(void) { return AfkViewMs() >= FP_ZOOM_MS + FP_DIP_MS; }
 
@@ -62,11 +63,11 @@ static void Stroke(HDC hdc, int x0, int y0, int x1, int y1, int w, COLORREF c) {
 
 // Projects a world point (tile units, z = height in tiles) to the screen.
 static int Project(float x, float y, float z, int *sx, int *sy, float *depth) {
-    float dx = x - player_x, dy = y - player_y, cs = cosf(yaw), sn = sinf(yaw);
+    float dx = x - eye_x, dy = y - eye_y, cs = cosf(yaw), sn = sinf(yaw);
     float f = dx * cs + dy * sn, side = -dx * sn + dy * cs;
     if (f < 0.3f) return 0;
     *sx = WINDOW_WIDTH / 2 + (int)(side / f * focal);
-    *sy = horizon + (int)((FP_EYE - z) / f * focal);
+    *sy = horizon + (int)((eye_z - z) / f * focal);
     if (depth) *depth = f;
     return 1;
 }
@@ -283,14 +284,14 @@ static void AddFace(float v[][3], int n, COLORREF col, const float *center, int 
     cx /= n; cy /= n; cz /= n;
     float out = center ? nx * (cx - center[0]) + ny * (cy - center[1]) + nz * (cz - center[2]) : nz;
     if (out < 0) { nx = -nx; ny = -ny; nz = -nz; }
-    float ex = player_x - cx, ey = player_y - cy, ez = FP_EYE - cz;
+    float ex = eye_x - cx, ey = eye_y - cy, ez = eye_z - cz;
     if (nx * ex + ny * ey + nz * ez <= 0.0f) return; // facing away
     float len = sqrtf(nx * nx + ny * ny + nz * nz) + 1e-6f;
     float sun = (-0.45f * nx - 0.35f * ny + 0.82f * nz) / len;
     float shade = face_glow ? 1.0f : (0.5f + 0.5f * (sun > 0 ? sun : 0)) * scene_lit;
     float cs = cosf(yaw), sn = sinf(yaw), in[8][3], cl[12][3];
     for (int i = 0; i < n; i++) {
-        float dx = v[i][0] - player_x, dy = v[i][1] - player_y;
+        float dx = v[i][0] - eye_x, dy = v[i][1] - eye_y;
         in[i][0] = dx * cs + dy * sn; in[i][1] = -dx * sn + dy * cs; in[i][2] = v[i][2];
     }
     int m = 0;
@@ -304,7 +305,7 @@ static void AddFace(float v[][3], int n, COLORREF col, const float *center, int 
     FpFace *F = &faces[face_count++];
     for (int i = 0; i < m; i++) {
         F->p[i].x = WINDOW_WIDTH / 2 + (int)(cl[i][1] / cl[i][0] * focal);
-        F->p[i].y = horizon + (int)((FP_EYE - cl[i][2]) / cl[i][0] * focal);
+        F->p[i].y = horizon + (int)((eye_z - cl[i][2]) / cl[i][0] * focal);
     }
     float d = sqrtf(ex * ex + ey * ey + ez * ez), fog = (d - 6.0f) / (FP_RANGE - 6.0f);
     fog = fog < 0 ? 0 : fog > 1 ? 1 : fog;
@@ -315,7 +316,7 @@ static void AddFace(float v[][3], int n, COLORREF col, const float *center, int 
 // Animals, butterflies, the familiar and the bobber stay small figures, sorted in with the polygons.
 static void AddSprite(int idx) {
     if (face_count >= FP_MAX_FACES) return;
-    float dx = things[idx].x - player_x, dy = things[idx].y - player_y;
+    float dx = things[idx].x - eye_x, dy = things[idx].y - eye_y;
     FpFace *F = &faces[face_count++];
     F->sprite = idx; F->n = 0; F->depth = sqrtf(dx * dx + dy * dy);
 }
@@ -524,7 +525,7 @@ static void HumanMesh(const FpThing *t) {
     int enemy = t->kind == FP_ENEMY, idx = enemy ? t->seed >> 5 : t->seed >> 4, type = enemy ? t->seed & 31 : t->seed & 15;
     float h = HeadingFor((enemy ? 100 : 108) + (idx & 15), t->x, t->y), x = t->x, y = t->y;
     hcos = cosf(h); hsin = sinf(h);
-    float S = 1.0f; int horns = 0, crown = 0;
+    float S = 1.0f; int horns = 0, crown = 0, hero = 0;
     COLORREF skin = RGB(225, 185, 150), cloth = RGB(70, 100, 170), legs = RGB(70, 55, 45), eye = RGB(12, 10, 10);
     if (enemy) {
         S = IS_MYTHIC_MONSTER(type) ? 2.0f : 1.0f;
@@ -538,6 +539,10 @@ static void HumanMesh(const FpThing *t) {
         static const COLORREF jobs[10] = { RGB(70, 100, 170), RGB(60, 130, 70), RGB(120, 110, 100), RGB(60, 55, 50), RGB(210, 130, 50),
                                            RGB(170, 50, 50), RGB(110, 50, 140), RGB(120, 95, 70), RGB(90, 90, 90), RGB(30, 30, 35) };
         cloth = jobs[type % 10]; crown = type == 6;
+        if (type == 15) { // the hero, in whatever clothes are worn
+            const char *w = WornItem("Clothes"); COLORREF cc = w ? ClothingColor(w) : CLOTH_UNKNOWN;
+            cloth = cc != CLOTH_UNKNOWN ? cc : RGB(60, 80, 150); eye = HeroEyeColor(); hero = 1; crown = 0;
+        }
     }
     float dx = player_x - x, dy = player_y - y, swing = 0.0f;
     if (enemy && dx * dx + dy * dy < 2.6f) { float ph = fmodf(now / 455.0f, 1.0f); if (ph < 0.45f) swing = sinf(ph / 0.45f * 3.14159f); }
@@ -552,6 +557,10 @@ static void HumanMesh(const FpThing *t) {
     OBox(x, y, 0.0f, 0.0f, 0.6f * S, 0.74f * S, 0.06f * S, 0.06f * S, skin);
     if (horns) { Cone(x, y, 0.0f, 0.04f * S, 0.74f * S, 0.82f * S, 0.015f * S, RGB(230, 220, 190)); Cone(x, y, 0.0f, -0.04f * S, 0.74f * S, 0.82f * S, 0.015f * S, RGB(230, 220, 190)); }
     if (crown) OBox(x, y, 0.0f, 0.0f, 0.74f * S, 0.79f * S, 0.055f * S, 0.055f * S, RGB(235, 195, 60));
+    if (hero) {
+        const char *hd = WornItem("Head"); COLORREF hc = hd ? ClothingColor(hd) : CLOTH_UNKNOWN;
+        OBox(x, y, -0.01f * S, 0.0f, 0.72f * S, 0.78f * S, 0.066f * S, 0.066f * S, hc != CLOTH_UNKNOWN ? hc : HeroHairColor());
+    }
     Eyes(x, y, 0.063f * S, 0.025f * S, 0.69f * S, 0.01f * S, eye);
 }
 
@@ -763,6 +772,7 @@ void DrawAfkView(HDC hdc) {
     int ms = AfkViewMs();
     if (ms < FP_ZOOM_MS) { was_on = 0; return; }
     if (ms < FP_ZOOM_MS + FP_DIP_MS) { FillWindowAlpha(hdc, RGB(0, 0, 0), (ms - FP_ZOOM_MS) * 255 / FP_DIP_MS); was_on = 0; return; }
+    eye_x = player_x; eye_y = player_y; eye_z = FP_EYE;
     GatherThings();
     UpdateGaze(!was_on); was_on = 1;
     focal = (WINDOW_WIDTH / 2) / tanf(FP_FOV / 2);
@@ -798,4 +808,171 @@ void DrawAfkView(HDC hdc) {
     }
     int fade_in = ms - FP_ZOOM_MS - FP_DIP_MS;
     if (fade_in < FP_DIP_MS) FillWindowAlpha(hdc, RGB(0, 0, 0), 255 - fade_in * 255 / FP_DIP_MS);
+}
+
+// Walk-in village homes: X at a cottage door steps into a polygon room drawn
+// with the same flat-shaded faces as the AFK view, from a fixed camera by the
+// doorway. The hero walks about inside, X by the bed sleeps, and walking back
+// out through the door returns to the village.
+#define ROOM_HX 2.6f
+#define ROOM_HY 2.0f
+int inside_home = -1;
+static float out_x, out_y, room_cx, room_cy;
+
+static int HomeDoorNear(void) {
+    for (int i = 0; i < 4; i++) {
+        float hx, hy;
+        if (!VillageHomeCentre(i, &hx, &hy)) continue;
+        float dx = player_x + HOME_FEET_OFFSET - hx, dy = player_y + HOME_FEET_OFFSET - (hy + HOME_HALF_Y);
+        if (dx * dx + dy * dy < 0.8f) return i;
+    }
+    return -1;
+}
+
+void LeaveHome(void) {
+    if (inside_home < 0) return;
+    inside_home = -1; player_x = out_x; player_y = out_y;
+    strcpy(arpg_action_log, "HOME: You step back outside.");
+}
+
+int InteriorBlocks(float x, float y) {
+    if (x < room_cx - ROOM_HX + 0.25f || x > room_cx + ROOM_HX - 0.25f || y < room_cy - ROOM_HY + 0.3f || y > room_cy + ROOM_HY - 0.15f) return 1;
+    if (x < room_cx - ROOM_HX + 1.25f && y < room_cy - ROOM_HY + 2.1f) return 1;                    // bed
+    if (fabsf(x - (room_cx + 1.0f)) < 0.6f && fabsf(y - (room_cy + 0.2f)) < 0.45f) return 1;       // table
+    if (x > room_cx + ROOM_HX - 1.0f && y < room_cy - ROOM_HY + 0.9f) return 1;                    // hearth
+    return 0;
+}
+
+int HomeInteract(void) {
+    if (inside_home >= 0) {
+        if (player_x < room_cx - ROOM_HX + 1.8f && player_y < room_cy - ROOM_HY + 2.6f) {
+            sleep_fade_frame = 1; strcpy(arpg_action_log, "HOME: You sleep soundly in the cottage bed.");
+        } else strcpy(arpg_action_log, "HOME: A snug cottage. Walk out the door to leave.");
+        return 1;
+    }
+    int i = HomeDoorNear();
+    if (i < 0) return 0;
+    StoreEnemy();
+    for (int k = 0; k < MAX_ENEMIES; k++) {
+        float dx = enemies[k].x - player_x, dy = enemies[k].y - player_y;
+        if (enemies[k].hearts > 0.0f && enemies[k].angry && dx * dx + dy * dy < 36.0f) { strcpy(arpg_action_log, "HOME: Not with monsters on your heels!"); return 1; }
+    }
+    float hx, hy; VillageHomeCentre(i, &hx, &hy);
+    inside_home = i; out_x = player_x; out_y = player_y; room_cx = hx; room_cy = hy;
+    player_x = room_cx; player_y = room_cy + ROOM_HY - 0.8f;
+    strcpy(arpg_action_log, "HOME: \"Come in, come in! Mind the hearth.\"");
+    return 1;
+}
+
+static void FloorRect(float x0, float y0, float x1, float y1, float z, COLORREF col, int ground) {
+    float v[4][3] = { { x0, y0, z }, { x1, y0, z }, { x1, y1, z }, { x0, y1, z } };
+    AddFace(v, 4, col, NULL, ground);
+}
+// Walls face along +x / +y when the offset puts the centre on the -x / -y side.
+static void WallX(float x, float y0, float y1, float z0, float z1, COLORREF col, float off) {
+    float c[3] = { x + off, (y0 + y1) / 2, (z0 + z1) / 2 }, v[4][3] = { { x, y0, z0 }, { x, y1, z0 }, { x, y1, z1 }, { x, y0, z1 } };
+    AddFace(v, 4, col, c, 0);
+}
+static void WallY(float y, float x0, float x1, float z0, float z1, COLORREF col, float off) {
+    float c[3] = { (x0 + x1) / 2, y + off, (z0 + z1) / 2 }, v[4][3] = { { x0, y, z0 }, { x1, y, z0 }, { x1, y, z1 }, { x0, y, z1 } };
+    AddFace(v, 4, col, c, 0);
+}
+
+static void RoomCamera(float ex, float ey, float ez, float fov, int hz) {
+    eye_x = ex; eye_y = ey; eye_z = ez; yaw = -1.5707963f;
+    focal = (WINDOW_WIDTH / 2) / tanf(fov / 2); horizon = hz;
+    face_count = 0; face_bias = 0.0f; face_glow = 0; hcos = 1.0f; hsin = 0.0f;
+}
+
+static void RoomShell(float x0, float y0, float x1, float y1, float wh, COLORREF fa, COLORREF fb, COLORREF wall, int stone) {
+    if (stone) {
+        int nx = (int)(x1 - x0), ny = (int)(y1 - y0);
+        for (int j = 0; j < ny; j++) for (int i = 0; i < nx; i++) FloorRect(x0 + i, y0 + j, x0 + i + 1, y0 + j + 1, 0, (i + j) % 2 ? fa : fb, 1);
+    } else {
+        int n = (int)((x1 - x0) / 0.5f);
+        for (int i = 0; i < n; i++) FloorRect(x0 + i * 0.5f, y0, x0 + i * 0.5f + 0.5f, y1, 0, i % 2 ? fa : fb, 1);
+    }
+    WallY(y0, x0, x1, 0, wh, wall, -1.0f);
+    WallX(x0, y0, y1, 0, wh, Dim(wall, 0.82f), -1.0f);
+    WallX(x1, y0, y1, 0, wh, Dim(wall, 0.82f), 1.0f);
+    face_bias = 0.3f; WallY(y0 + 0.02f, x0, x1, 0, 0.12f, Dim(wall, 0.6f), -1.0f); face_bias = 0.0f;
+}
+
+static void RoomWindow(float y0, float wx0, float wx1, float z0, float z1, int night) {
+    COLORREF frame = RGB(95, 65, 40);
+    float mx = (wx0 + wx1) / 2, mz = (z0 + z1) / 2;
+    face_bias = 0.3f; WallY(y0 + 0.01f, wx0, wx1, z0, z1, frame, -1.0f);
+    face_bias = 0.4f; face_glow = 1;
+    WallY(y0 + 0.02f, wx0 + 0.07f, wx1 - 0.07f, z0 + 0.07f, z1 - 0.07f, night ? RGB(20, 26, 62) : RGB(160, 205, 240), -1.0f);
+    face_glow = 0; face_bias = 0.5f;
+    WallY(y0 + 0.03f, mx - 0.03f, mx + 0.03f, z0 + 0.07f, z1 - 0.07f, frame, -1.0f);
+    WallY(y0 + 0.03f, wx0 + 0.07f, wx1 - 0.07f, mz - 0.03f, mz + 0.03f, frame, -1.0f);
+    face_bias = 0.0f;
+}
+
+void DrawHomeInterior(HDC hdc) {
+    if (inside_home < 0) return;
+    if (player_y > room_cy + ROOM_HY - 0.35f && fabsf(player_x - room_cx) < 0.7f) { LeaveHome(); return; }
+    float x0 = room_cx - ROOM_HX, x1 = room_cx + ROOM_HX, y0 = room_cy - ROOM_HY, y1 = room_cy + ROOM_HY, cx = room_cx, cy = room_cy;
+    int night = (fabs(sin(day_night_cycle_accumulator)) < 0.35f); DWORD now = GetTickCount();
+    COLORREF wood = RGB(120, 80, 45), dark = RGB(85, 55, 32), stone = RGB(130, 125, 120), wall = RGB(222, 200, 158);
+    static const COLORREF blankets[4] = { RGB(170, 50, 45), RGB(60, 100, 160), RGB(70, 130, 70), RGB(150, 110, 50) };
+    Box(hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, RGB(26, 18, 12));
+    RoomCamera(cx, y1 + 3.0f, 2.6f, 1.55f, (int)(WINDOW_HEIGHT * 0.16f));
+    scene_lit = night ? 0.75f : 0.95f; haze = RGB(26, 18, 12);
+    RoomShell(x0, y0, x1, y1, 2.0f, RGB(150, 105, 62), RGB(136, 94, 55), wall, 0);
+    RoomWindow(y0, cx - 0.6f, cx + 0.2f, 0.85f, 1.55f, night);
+    face_bias = -0.6f; OBox(cx - 0.3f, cy + 0.6f, 0, 0, 0.0f, 0.015f, 0.8f, 0.55f, RGB(150, 60, 60)); face_bias = 0.0f; // rug
+    // bed in the back-left corner
+    OBox(x0 + 0.6f, y0 + 0.08f, 0, 0, 0.0f, 0.75f, 0.5f, 0.06f, dark);
+    OBox(x0 + 0.6f, y0 + 1.0f, 0, 0, 0.0f, 0.3f, 0.5f, 0.95f, wood);
+    OBox(x0 + 0.6f, y0 + 1.15f, 0, 0, 0.3f, 0.4f, 0.48f, 0.75f, blankets[inside_home & 3]);
+    OBox(x0 + 0.6f, y0 + 0.28f, 0, 0, 0.3f, 0.42f, 0.38f, 0.15f, RGB(235, 235, 225));
+    // table, stools and a bowl of apples
+    for (int k = 0; k < 4; k++) OBox(cx + 1.0f + ((k & 1) ? 0.45f : -0.45f), cy + 0.2f + ((k & 2) ? 0.28f : -0.28f), 0, 0, 0.0f, 0.55f, 0.04f, 0.04f, dark);
+    OBox(cx + 1.0f, cy + 0.2f, 0, 0, 0.55f, 0.62f, 0.55f, 0.38f, wood);
+    Prism(cx + 1.0f, cy + 0.2f, 0.62f, 0.7f, 0.1f, 0.13f, 6, 0.0f, RGB(200, 60, 40));
+    Prism(cx + 0.25f, cy + 0.25f, 0.0f, 0.38f, 0.15f, 0.15f, 6, 0.0f, wood);
+    Prism(cx + 1.0f, cy + 0.9f, 0.0f, 0.38f, 0.15f, 0.15f, 6, 0.0f, wood);
+    // shelf with jars on the left wall
+    OBox(x0 + 0.12f, cy + 0.6f, 0, 0, 1.0f, 1.05f, 0.1f, 0.5f, wood);
+    for (int k = 0; k < 3; k++) Prism(x0 + 0.12f, cy + 0.3f + k * 0.3f, 1.05f, 1.2f, 0.05f, 0.05f, 5, 0.0f, k == 1 ? RGB(90, 120, 160) : RGB(190, 160, 110));
+    // hearth in the back-right corner with a flickering fire
+    OBox(x1 - 0.5f, y0 + 0.4f, 0, 0, 0.0f, 1.1f, 0.45f, 0.35f, stone);
+    OBox(x1 - 0.5f, y0 + 0.25f, 0, 0, 1.1f, 2.0f, 0.3f, 0.2f, Dim(stone, 0.8f));
+    face_bias = 0.2f; OBox(x1 - 0.5f, y0 + 0.76f, 0, 0, 0.05f, 0.55f, 0.28f, 0.02f, RGB(25, 18, 14));
+    face_glow = 1; face_bias = 0.4f;
+    Prism(x1 - 0.5f, y0 + 0.8f, 0.05f, 0.38f + 0.08f * sinf(now / 90.0f), 0.16f, 0.0f, 5, now / 300.0f, RGB(240, 140, 40));
+    face_bias = 0.5f;
+    Prism(x1 - 0.5f, y0 + 0.82f, 0.05f, 0.25f + 0.05f * sinf(now / 70.0f), 0.08f, 0.0f, 5, -(now / 250.0f), RGB(255, 225, 90));
+    face_glow = 0; face_bias = 0.0f;
+    // low front wall either side of the door
+    WallY(y1, x0, cx - 0.55f, 0.0f, 0.3f, Dim(wall, 0.9f), -1.0f);
+    WallY(y1, cx + 0.55f, x1, 0.0f, 0.3f, Dim(wall, 0.9f), -1.0f);
+    // the villager who lives here, and the hero
+    FpThing r = { x0 + 1.7f, y0 + 1.6f, 0.0f, 0.0f, FP_NPC, (13 << 4) | (inside_home & 3) };
+    HumanMesh(&r);
+    FpThing h = { player_x, player_y, 0.0f, 0.0f, FP_NPC, (14 << 4) | 15 };
+    HumanMesh(&h);
+    DrawFaces(hdc, scene_lit);
+    SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(240, 225, 190));
+    const char *hint = "Walk out through the door to leave   |   X by the bed: sleep";
+    TextOut(hdc, WINDOW_WIDTH / 2 - 230, WINDOW_HEIGHT - 150, hint, (int)strlen(hint));
+}
+
+// Shop and castle rooms: the same polygon room, framed so the floor meets the
+// back wall at floor_y, where each shop's own props stand.
+void DrawShopRoom(HDC hdc, int stone, int shrine, int floor_y) {
+    float x0 = -5.5f, x1 = 5.5f, y0 = -3.0f, y1 = 3.0f, ez = 2.3f, ey = y1 + 2.0f, fov = 1.6f;
+    float f = (WINDOW_WIDTH / 2) / tanf(fov / 2);
+    int hz = floor_y - (int)(ez / (ey - y0) * f);
+    COLORREF wall = shrine ? RGB(48, 36, 62) : stone ? RGB(112, 112, 120) : RGB(132, 90, 54);
+    COLORREF fa = shrine ? RGB(40, 32, 46) : stone ? RGB(92, 88, 84) : RGB(104, 70, 42);
+    Box(hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, Dim(wall, 0.45f));
+    RoomCamera(0.0f, ey, ez, fov, hz);
+    scene_lit = 1.0f; haze = Dim(wall, 0.5f);
+    RoomShell(x0, y0, x1, y1, 3.6f, fa, Dim(fa, 0.85f), wall, stone || shrine);
+    if (!shrine) RoomWindow(y0, -1.0f, 0.6f, 0.9f, 1.9f, (fabs(sin(day_night_cycle_accumulator)) < 0.35f));
+    for (int k = 0; k < 4; k++) OBox(x0 + 1.4f + k * 2.75f, 0.0f, 0, 0, 3.4f, 3.6f, 0.12f, 3.0f, Dim(wall, 0.55f));
+    DrawFaces(hdc, 1.0f);
 }
