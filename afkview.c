@@ -289,6 +289,7 @@ static FpFace faces[FP_MAX_FACES];
 static int face_count, face_glow;
 static float face_bias, scene_lit;
 static COLORREF haze;
+static float fog_near = 6.0f, fog_far = FP_RANGE, fog_cap = 0.7f; // night pulls these in (further for elves/dwarves)
 
 static void AddFace(float v[][3], int n, COLORREF col, const float *center, int ground) {
     if (face_count >= FP_MAX_FACES || n < 3 || n > 8) return;
@@ -323,10 +324,10 @@ static void AddFace(float v[][3], int n, COLORREF col, const float *center, int 
         F->p[i].x = WINDOW_WIDTH / 2 + (int)(cl[i][1] / cl[i][0] * focal);
         F->p[i].y = horizon + (int)((eye_z - cl[i][2]) / cl[i][0] * focal);
     }
-    float d = sqrtf(ex * ex + ey * ey + ez * ez), fog = (d - 6.0f) / (FP_RANGE - 6.0f);
+    float d = sqrtf(ex * ex + ey * ey + ez * ez), fog = (d - fog_near) / (fog_far - fog_near);
     fog = fog < 0 ? 0 : fog > 1 ? 1 : fog;
     F->n = m; F->sprite = -1; F->depth = d - face_bias + (ground ? 1000.0f : 0.0f); // ground always first
-    F->c = Mix(Dim(col, shade), haze, fog * 0.7f);
+    F->c = Mix(Dim(col, shade), haze, fog * fog_cap);
 }
 
 // Animals, butterflies, the familiar and the bobber stay small figures, sorted in with the polygons.
@@ -812,6 +813,14 @@ void DrawAfkView(HDC hdc) {
     if (in_cave) light = 0.35f;
     float lit = 0.3f + 0.7f * light;
     scene_lit = lit; haze = in_cave ? RGB(18, 16, 14) : Dim(RGB(185, 210, 235), 0.2f + 0.8f * light);
+    { // darkness closes in at night as far as the hero's race can see
+        float nv = in_cave ? 1.0f : (0.55f - light) / 0.35f;
+        nv = nv < 0.0f ? 0.0f : nv > 1.0f ? 1.0f : nv;
+        float see = RaceVisionTiles() * 2.0f;
+        fog_far = FP_RANGE + (see - FP_RANGE) * nv;
+        if (fog_far < 8.0f) fog_far = 8.0f;
+        fog_near = 6.0f * (1.0f - nv) + 0.35f * fog_far * nv; fog_cap = 0.7f + 0.22f * nv;
+    }
     DrawSky(hdc, light);
     DrawClouds(hdc, light);
     DrawGround(hdc, lit);
@@ -830,6 +839,7 @@ void DrawAfkView(HDC hdc) {
     }
     bobber_sx = -1;
     DrawFaces(hdc, lit);
+    fog_near = 6.0f; fog_far = FP_RANGE; fog_cap = 0.7f; // rooms drawn with the same pipeline keep the daytime fog
     DrawWeather(hdc);
     if (bobber_sx >= 0) { // the rod in hand, line out to the bobber
         int tip_x = WINDOW_WIDTH * 3 / 5, tip_y = WINDOW_HEIGHT * 2 / 5;

@@ -713,3 +713,65 @@ void DrawVillageLights(HDC hdc) {
         }
     }
 }
+
+// How far the hero sees in the dark, in tiles: elves see further, and
+// dwarves and gnomes (born underground) further still.
+float RaceVisionTiles(void) {
+    if (NightVisionActive()) return 10.0f;
+    switch (selected_race) {
+    case RACE_ELF: return 7.5f;
+    case RACE_DWARF: case RACE_GNOME: return 8.5f;
+    case RACE_HALFLING: return 6.0f;
+    default: return 5.5f;
+    }
+}
+
+// Night closes in round the hero: a low-res light map (one texel per 8x8 px)
+// darkens everything beyond the hero's sight and warms everything near a
+// fire, so trees, the hero, villagers and monsters all catch the firelight.
+extern int village_light_count;
+void DrawNightDarkness(HDC hdc) {
+    float light = (float)fabs(sin(day_night_cycle_accumulator));
+    float night = current_biome == BIOME_CAVE ? 1.0f : (0.55f - light) / 0.35f;
+    if (night <= 0.0f) return;
+    if (night > 1.0f) night = 1.0f;
+    enum { LW = (WINDOW_WIDTH + 3) / 4, LH = (WINDOW_HEIGHT + 3) / 4, NL = 1 + MAX_CAMPFIRES + MAX_VILLAGE_LIGHTS };
+    static HDC ldc; static HBITMAP lbmp; static uint32_t *px;
+    if (!ldc) {
+        BITMAPINFO bi = { 0 };
+        bi.bmiHeader.biSize = sizeof(bi.bmiHeader); bi.bmiHeader.biWidth = LW; bi.bmiHeader.biHeight = -LH;
+        bi.bmiHeader.biPlanes = 1; bi.bmiHeader.biBitCount = 32; bi.bmiHeader.biCompression = BI_RGB;
+        lbmp = CreateDIBSection(hdc, &bi, DIB_RGB_COLORS, (void **)&px, NULL, 0);
+        if (!lbmp) return;
+        ldc = CreateCompatibleDC(hdc); SelectObject(ldc, lbmp);
+    }
+    float lx[NL], ly[NL], lr[NL]; int fire[NL], n = 0, sx, sy;
+    float flick = 1.0f + 0.05f * sinf(world_tick * 15.0f);
+    GetIsoCoords(player_x, player_y, &sx, &sy);
+    lx[n] = (float)sx; ly[n] = (float)(sy + TILE_HEIGHT / 2); lr[n] = RaceVisionTiles(); fire[n++] = 0;
+    for (int i = 0; i < MAX_CAMPFIRES; i++) {
+        if (!campfires[i].active || campfires[i].screen_id != current_screen_index) continue;
+        GetIsoCoords(campfires[i].x, campfires[i].y, &sx, &sy);
+        lx[n] = (float)sx; ly[n] = (float)(sy + TILE_HEIGHT / 2); lr[n] = 5.5f * flick; fire[n++] = 1;
+    }
+    for (int i = 0; i < village_light_count && i < MAX_VILLAGE_LIGHTS; i++) {
+        GetIsoCoords(village_lights[i].x, village_lights[i].y, &sx, &sy);
+        lx[n] = (float)sx; ly[n] = (float)(sy + TILE_HEIGHT / 2); lr[n] = 4.0f * flick; fire[n++] = 1;
+    }
+    const float tile_px = TILE_WIDTH * 0.75f;
+    for (int y = 0; y < LH; y++) for (int x = 0; x < LW; x++) {
+        float wx = x * 4.0f + 2.0f, wy = y * 4.0f + 2.0f, dark = 1.0f, warm = 0.0f;
+        for (int i = 0; i < n; i++) {
+            float dx = (wx - lx[i]) / (lr[i] * tile_px), dy = (wy - ly[i]) * 2.0f / (lr[i] * tile_px), d2 = dx * dx + dy * dy;
+            if (d2 >= 1.0f) continue;
+            float d = sqrtf(d2), v = d < 0.4f ? 1.0f : 1.0f - (d - 0.4f) / 0.6f;
+            dark *= 1.0f - v * v * (3.0f - 2.0f * v);
+            if (fire[i]) warm += (1.0f - d) * (1.0f - d);
+        }
+        int ad = (int)(dark * night * 165.0f), aw = (int)((warm > 1.0f ? 1.0f : warm) * night * 80.0f), a = ad + aw;
+        if (a > 255) a = 255;
+        px[y * LW + x] = ((uint32_t)a << 24) | ((uint32_t)(255 * aw / 255) << 16) | ((uint32_t)(150 * aw / 255) << 8) | (uint32_t)(60 * aw / 255);
+    }
+    BLENDFUNCTION bf = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
+    AlphaBlend(hdc, 0, 0, LW * 4, LH * 4, ldc, 0, 0, LW, LH, bf);
+}

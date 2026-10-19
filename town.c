@@ -460,6 +460,54 @@ float TownDamageMult(void) {
 
 static void Bless(int type) { blessing_type = type; blessing_until = GetTickCount() + 5 * 60 * 1000; }
 
+// A god's answer shown on screen for a few seconds after an offering.
+static int blessing_fx = -1;
+static DWORD blessing_fx_start = 0;
+static void BlessingFx(int deity) { blessing_fx = deity; blessing_fx_start = GetTickCount(); }
+
+static void FxEllipse(HDC hdc, COLORREF c, int l, int t, int r, int b) {
+    HBRUSH br = CreateSolidBrush(c); HGDIOBJ ob = SelectObject(hdc, br), op = SelectObject(hdc, GetStockObject(NULL_PEN));
+    Ellipse(hdc, l, t, r, b); SelectObject(hdc, op); SelectObject(hdc, ob); DeleteObject(br);
+}
+static void FxRect(HDC hdc, COLORREF c, int l, int t, int r, int b) { RECT rc = { l, t, r, b }; HBRUSH br = CreateSolidBrush(c); FillRect(hdc, &rc, br); DeleteObject(br); }
+
+void DrawBlessingFx(HDC hdc) {
+    if (blessing_fx < 0) return;
+    DWORD t = GetTickCount() - blessing_fx_start;
+    if (t > 6000) { blessing_fx = -1; return; }
+    float k = t < 700 ? t / 700.0f : t > 5000 ? (6000 - t) / 1000.0f : 1.0f;
+    int cx = WINDOW_WIDTH / 2, cy = WINDOW_HEIGHT / 2;
+    if (blessing_fx == 0) { // Solara: a warm sunbeam pours down onto the hero, motes drifting in it
+        for (int s = 0; s < 12; s++) { int w = 70 + s * 12, bh = (cy + 40) / 12 + 1; FillRectAlpha(hdc, cx - w / 2, s * bh, w, bh, RGB(255, 228, 140), (int)(70 * k)); }
+        for (int r = 3; r >= 1; r--) FillRectAlpha(hdc, cx - 40 * r, cy + 20 - 8 * r, 80 * r, 16 * r, RGB(255, 240, 170), (int)(30 * k));
+        for (int m = 0; m < 18; m++) { int mx = cx - 60 + (int)((m * 53) % 120), my = (int)((t / 6 + m * 71) % (cy + 40)); FillRectAlpha(hdc, mx, my, 3, 3, RGB(255, 255, 220), (int)(200 * k)); }
+    } else if (blessing_fx == 1) { // Nyx: a violet veil and a scatter of slow-twinkling stars
+        FillWindowAlpha(hdc, RGB(55, 20, 85), (int)(60 * k));
+        for (int s = 0; s < 40; s++) { int sx = (s * 977) % WINDOW_WIDTH, sy = (s * 613) % (WINDOW_HEIGHT * 2 / 3); float tw = 0.5f + 0.5f * sinf(t / 300.0f + s);
+            FillRectAlpha(hdc, sx, sy, 3, 3, RGB(230, 210, 255), (int)(220 * k * tw)); }
+    } else if (blessing_fx == 2) { // Baron Samedi rises in the corner, top hat and toothy grin, and smiles
+        int x = WINDOW_WIDTH - 230, y = WINDOW_HEIGHT - 60 - (int)(250 * k);
+        FxRect(hdc, RGB(20, 18, 24), x - 10, y + 150, x + 170, y + 260);               // coat
+        FxRect(hdc, RGB(150, 20, 30), x + 70, y + 150, x + 90, y + 200);              // red sash
+        FxEllipse(hdc, RGB(235, 232, 220), x + 20, y + 40, x + 140, y + 165);          // skull face
+        FxRect(hdc, RGB(15, 14, 18), x + 30, y - 40, x + 130, y + 40);                 // top hat
+        FxRect(hdc, RGB(15, 14, 18), x + 5, y + 32, x + 155, y + 46);
+        FxRect(hdc, RGB(120, 20, 120), x + 30, y + 22, x + 130, y + 32);               // purple hat band
+        int wink = (t / 1400) % 3 == 2 && (t % 1400) < 250;
+        FxEllipse(hdc, RGB(15, 14, 18), x + 42, y + 72, x + 72, y + (wink ? 80 : 102)); FxEllipse(hdc, RGB(15, 14, 18), x + 88, y + 72, x + 118, y + 102);
+        FxEllipse(hdc, RGB(255, 200, 60), x + 54, y + 84, x + 60, y + 90); FxEllipse(hdc, RGB(255, 200, 60), x + 100, y + 84, x + 106, y + 90); // glinting eyes
+        FxRect(hdc, RGB(15, 14, 18), x + 76, y + 108, x + 84, y + 118);                // nose
+        FxRect(hdc, RGB(15, 14, 18), x + 40, y + 126, x + 120, y + 146);               // the grin
+        for (int tooth = 0; tooth < 8; tooth++) FxRect(hdc, RGB(250, 248, 236), x + 42 + tooth * 10, y + 128, x + 49 + tooth * 10, y + 144);
+        FxRect(hdc, RGB(140, 90, 50), x + 118, y + 134, x + 160, y + 140); FxEllipse(hdc, RGB(255, 120, 40), x + 156, y + 132, x + 164, y + 142); // cigar
+        for (int p = 0; p < 4; p++) FillRectAlpha(hdc, x + 160 + p * 6, y + 120 - p * 14 - (int)(t / 40 % 14), 10, 10, RGB(200, 200, 205), (int)(90 * k));
+    } else { // The Drowned One: deep water rises from below, bubbles drifting up
+        for (int b = 0; b < 8; b++) FillRectAlpha(hdc, 0, WINDOW_HEIGHT - (b + 1) * 50, WINDOW_WIDTH, 50, RGB(20, 90, 110), (int)((80 - b * 9) * k));
+        for (int b = 0; b < 30; b++) { int bx = (b * 389) % WINDOW_WIDTH + (int)(sinf(t / 400.0f + b) * 8), by = WINDOW_HEIGHT - (int)((t / 4 + b * 97) % 420);
+            FxEllipse(hdc, RGB(170, 225, 235), bx, by, bx + 6 + b % 4 * 2, by + 6 + b % 4 * 2); }
+    }
+}
+
 void NoteLegendaryKill(int monster) {
     if (legendary_quest != 1 || !IS_BOSS_MONSTER(monster)) return;
     legendary_quest = 2;
@@ -501,19 +549,19 @@ static void Offer(int d) {
     const char *hint = world_hints[rand() % WORLD_HINT_COUNT];
     if (d == 0) {
         if (!TakeOffering("Incense", NULL, NULL)) { Say("ALTAR: Solara asks for Incense. The merchant sells it."); return; }
-        player_hp = max_player_hp; KarmaAdjust(3, 0, -1, 0);
+        player_hp = max_player_hp; KarmaAdjust(3, 0, -1, 0); BlessingFx(0);
         Say("ALTAR: Dawn's Grace! Solara heals your wounds and lifts your Soul.");
     } else if (d == 1) {
         if (!TakeOffering("Chaos Relic", NULL, NULL)) { Say("ALTAR: Nyx wants a Chaos Relic. Merchants keep a few."); return; }
-        Bless(1); KarmaAdjust(-3, 2, 0, 0);
+        Bless(1); KarmaAdjust(-3, 2, 0, 0); BlessingFx(1);
         Say("ALTAR: Night's Edge! Nyx sharpens your strikes (+50%% damage for 5 minutes).");
     } else if (d == 2) {
         if (!TakeOffering("Tarot Card", "Rum Bottle", "Cigar")) { Say("ALTAR: The Baron wants a Tarot Card, a Rum Bottle and a Cigar."); return; }
-        Bless(2); KarmaAdjust(0, 0, 0, 2);
+        Bless(2); KarmaAdjust(0, 0, 0, 2); BlessingFx(2);
         Say("ALTAR: Baron Samedi appears behind you with a toothy grin. Ghost Whisperer: +25%% damage for 5 min. '%s'", hint);
     } else {
         if (!TakeOffering("Fish", NULL, NULL)) { Say("ALTAR: The Drowned One hungers for a Fish from the deep."); return; }
-        KarmaAdjust(0, 1, 0, 0);
+        KarmaAdjust(0, 1, 0, 0); BlessingFx(3);
         if (rand() % 2) { Bless(1); Say("ALTAR: The Drowned One accepts. Strange strength floods you (+50%% damage for 5 minutes)."); }
         else Say("ALTAR: The Drowned One accepts, and something vast whispers: '%s'", hint);
     }
