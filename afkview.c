@@ -85,10 +85,9 @@ static void GatherThings(void) {
             if (VISUAL_MAP[r][c] == 11) AddThing(c + 0.5f, r + 0.5f, 0.0f, FP_TREE, r * MAP_SIZE + c);
             else if (VISUAL_MAP[r][c] == 1) AddThing(c + 0.5f, r + 0.5f, 0.0f, FP_ROCK, r * MAP_SIZE + c);
         }
-    if (village_npc_count > 0 && !in_cave) {
-        static const int hx[4] = { 11, 15, 19, 15 }, hy[4] = { 11, 10, 11, 18 };
-        int shift = (current_screen_index % 3) - 1;
-        for (int i = 0; i < 4; i++) AddThing(hx[i] + shift + 0.5f, hy[i] + 0.5f, 0.0f, FP_HOME, i);
+    for (int i = 0; i < 4; i++) { // homes sit where they block the hero
+        float hx, hy;
+        if (VillageHomeCentre(i, &hx, &hy)) AddThing(hx - HOME_FEET_OFFSET, hy - HOME_FEET_OFFSET, 0.0f, FP_HOME, i);
     }
     for (int i = 0; i < MAX_CAMPFIRES; i++)
         if (campfires[i].active && campfires[i].screen_id == current_screen_index) AddThing(campfires[i].x, campfires[i].y, 0.0f, FP_FIRE, i);
@@ -138,11 +137,17 @@ static void DrawSky(HDC hdc, float light) {
         int off = phase <= 0.5f ? (int)(phase * 4.0f * mr) : -(int)((1.0f - phase) * 4.0f * mr);
         if (off < 2 * mr && off > -2 * mr) Blob(hdc, x - mr + off, y - mr, x + mr + off, y + mr, Mix(top, low, 0.45f));
     }
-    DWORD cyc = now / 7000, t = now % 7000;
-    if (t < 700 && h > 80) { // the odd shooting star
-        int hsh = RainHash((int)cyc * 31 + 5); float p = t / 700.0f;
-        int x1 = hsh % (WINDOW_WIDTH * 3 / 4) + (int)(p * 240), y1 = (hsh / 7) % (h / 2) + (int)(p * 90);
-        Stroke(hdc, x1 - 44, y1 - 16, x1, y1, 2, RGB((int)(255 * k), (int)(255 * k), (int)(230 * k)));
+    // A rare shooting star (one every ~40 s on average), pinned to the sky like
+    // the stars so its trail glides smoothly when the gaze pans.
+    DWORD cyc = now / 4000, t = now % 4000;
+    int mh = RainHash((int)cyc * 31 + 5);
+    if (mh % 10 == 0 && t < 900) {
+        float p = t / 900.0f, az = (mh / 10 % 6283) / 1000.0f, el = 0.35f + (mh / 7 % 300) / 1000.0f;
+        int x0, y0, x1, y1;
+        SkyPoint(az + p * 0.35f, el - p * 0.12f, &x1, &y1);
+        SkyPoint(az + p * 0.35f - 0.09f, el - p * 0.12f + 0.03f, &x0, &y0);
+        int fade = (int)(255 * k * (p < 0.8f ? 1.0f : (1.0f - p) / 0.2f));
+        if (x1 > 0 && x0 > 0 && y1 < h) Stroke(hdc, x0, y0, x1, y1, 2, RGB(fade, fade, fade * 9 / 10));
     }
 }
 
@@ -338,11 +343,11 @@ static void TreeMesh(const FpThing *t) {
     Prism(x, y, 0.0f, 0.5f * h, 0.09f, 0.075f, 5, rot, RGB(110, 75, 45));
     if (s % 3 == 0) { // round broadleaf
         COLORREF leaf = snow ? RGB(205, 215, 225) : current_season == SEASON_FALL ? (s % 2 ? RGB(210, 120, 40) : RGB(220, 175, 50)) : RGB(80, 160, 60);
-        Prism(x, y, 0.4f * h, 0.95f * h, 0.32f, 0.6f, 7, rot, leaf);
-        Prism(x, y, 0.95f * h, 1.5f * h, 0.6f, 0.28f, 7, rot + 0.22f, leaf);
+        Prism(x, y, 0.4f * h, 0.98f * h, 0.32f, 0.6f, 7, rot, leaf); // same ring at the seam, overlapped, so no gap
+        Prism(x, y, 0.95f * h, 1.5f * h, 0.61f, 0.28f, 7, rot, leaf);
     } else { // two-tier pine
         COLORREF needle = RGB(35, 115, 55);
-        Prism(x, y, 0.3f * h, 1.25f * h, 0.62f, 0.0f, 7, rot, needle);
+        Prism(x, y, 0.3f * h, 1.15f * h, 0.62f, 0.22f, 7, rot, needle); // flat-topped skirt growing into the top cone
         Prism(x, y, 0.9f * h, 2.0f * h, 0.45f, 0.0f, 7, rot + 0.2f, snow ? RGB(225, 232, 240) : needle);
     }
 }
@@ -363,7 +368,7 @@ static void FireMesh(const FpThing *t) {
 }
 
 static void HomeMesh(const FpThing *t, int night) {
-    float x0 = t->x - 0.8f, x1 = t->x + 0.8f, y0 = t->y - 0.6f, y1 = t->y + 0.6f, wh = 0.95f, rz = 1.6f, o = 0.12f;
+    float x0 = t->x - HOME_HALF_X, x1 = t->x + HOME_HALF_X, y0 = t->y - HOME_HALF_Y, y1 = t->y + HOME_HALF_Y, wh = 0.95f, rz = 1.6f, o = 0.12f;
     float c[3] = { t->x, t->y, 0.7f };
     COLORREF wall = RGB(225, 205, 160), roof = RGB(165, 60, 45);
     float w1[4][3] = { { x0, y1, 0 }, { x1, y1, 0 }, { x1, y1, wh }, { x0, y1, wh } };

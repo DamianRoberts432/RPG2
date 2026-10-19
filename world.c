@@ -12,6 +12,10 @@ static void PlaceVillageLights(int shift) {
     }
 }
 
+static int DirectionOf(float dx, float dy) {
+    return fabsf(dx) > fabsf(dy) ? (dx < 0 ? FACE_LEFT : FACE_RIGHT) : (dy < 0 ? FACE_UP : FACE_DOWN);
+}
+
 void GenerateVillageNPCs(void) {
     village_npc_count = 0;
     village_light_count = 0;
@@ -51,10 +55,10 @@ void GenerateVillageNPCs(void) {
                 villager_greetings[(current_screen_index + i) % 3], 100 + (i * 17) % 80 };
         }
         village_npc_count = 4;
-        float shrine_x = 15.0f + shift, beggar_x = 19.0f + shift;
-        village_npcs[village_npc_count++] = (NPCEntity){ shrine_x, 10.0f, shrine_x, 10.0f, 8, 0, FACE_DOWN, "A wayside altar hums with power. X to kneel.", 999 };
+        float shrine_x = 13.5f + shift, beggar_x = 20.5f + shift; // in front of the homes, not inside them
+        village_npcs[village_npc_count++] = (NPCEntity){ shrine_x, 13.0f, shrine_x, 13.0f, 8, 0, FACE_DOWN, "A wayside altar hums with power. X to kneel.", 999 };
         if (RainHash(current_screen_index * 31 + SeasonDay()) % 2)
-            village_npcs[village_npc_count++] = (NPCEntity){ beggar_x, 11.0f, beggar_x, 11.0f, 7, 0, FACE_DOWN, "Beggar: Spare a coin or a crust, kind traveler?", 140 };
+            village_npcs[village_npc_count++] = (NPCEntity){ beggar_x, 13.5f, beggar_x, 13.5f, 7, 0, FACE_DOWN, "Beggar: Spare a coin or a crust, kind traveler?", 140 };
     }
 }
 
@@ -417,14 +421,14 @@ void UpdateVillageNPCs(void) {
         if ((npc->type == 0 || npc->type == 2) && SelectNearestEnemyTo(npc->x, npc->y) >= 0) {
             float ex = enemy_x - npc->x, ey = enemy_y - npc->y, ed = (float)sqrt(ex * ex + ey * ey);
             if (ed < 6.0f) {
-                if (ed > 0.8f) { npc->x += ex / ed * 0.04f; npc->y += ey / ed * 0.04f; }
+                if (ed > 0.8f) { npc->x += ex / ed * 0.04f; npc->y += ey / ed * 0.04f; npc->direction = DirectionOf(ex, ey); }
                 else if ((world_frame + i * 9) % 45 == 0) { village_kill = 1; HandleEnemyDamage(0.3f); village_kill = 0; strcpy(arpg_action_log, "VILLAGERS: The townsfolk gang up on the intruder!"); }
                 continue;
             }
         }
         {
             float hx = npc->home_x - npc->x, hy = npc->home_y - npc->y, hd = (float)sqrt(hx * hx + hy * hy);
-            if (hd > 1.6f) { npc->x += hx / hd * 0.04f; npc->y += hy / hd * 0.04f; continue; }
+            if (hd > 1.6f) { npc->x += hx / hd * 0.04f; npc->y += hy / hd * 0.04f; npc->direction = DirectionOf(hx, hy); continue; }
         }
         if (IsNearPoint(npc->x, npc->y, 3.0f)) {
             float dx = player_x - npc->x, dy = player_y - npc->y;
@@ -446,7 +450,7 @@ void UpdateVillageNPCs(void) {
             if (nx > 3 && nx < MAP_SIZE - 3 && ny > 3 && ny < MAP_SIZE - 3 &&
                 home_dx * home_dx + home_dy * home_dy <= 2.25f &&
                 VISUAL_MAP[(int)ny][(int)nx] != 1 && VISUAL_MAP[(int)ny][(int)nx] != 12) {
-                npc->x = nx; npc->y = ny;
+                npc->x = nx; npc->y = ny; npc->direction = DirectionOf(dx[direction], dy[direction]);
             }
         }
     }
