@@ -23,6 +23,11 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
     if (selected_class == CLASS_NECROMANCER) { body_color = RGB(26, 22, 30); hat_color = RGB(14, 12, 18); } // black cloak and hood
     else if (selected_class == CLASS_WARRIOR) { body_color = RGB(160, 40, 30); hat_color = RGB(90, 20, 20); }
     else if (selected_class == CLASS_WIZARD) { body_color = RGB(30, 80, 180); hat_color = RGB(15, 40, 120); }
+    // Worn clothes replace the class colours; a Cloth Hood hides the face like the necromancer's.
+    const char *head_wear = WornItem("Head"), *clothes = WornItem("Clothes"), *cloak = WornItem("Cloak");
+    int hooded = head_wear ? strcmp(head_wear, "Cloth Hood") == 0 : selected_class == CLASS_NECROMANCER;
+    if (clothes) body_color = ClothingColor(clothes);
+    if (head_wear) hat_color = ClothingColor(head_wear);
 
     HBRUSH body_b = CreateSolidBrush(body_color); HGDIOBJ prev_body = SelectObject(hdc, body_b);
     POINT body[] = {
@@ -38,6 +43,17 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         Polygon(hdc, fb, 8);
     } else Polygon(hdc, body, 4);
     SelectObject(hdc, prev_body); DeleteObject(body_b);
+    if (cloak) { // two panels hanging from the shoulders, open at the front
+        COLORREF cc = ClothingColor(cloak);
+        HBRUSH cb = CreateSolidBrush(cc); HPEN cp = CreatePen(PS_SOLID, 1, RGB(GetRValue(cc) * 3 / 4, GetGValue(cc) * 3 / 4, GetBValue(cc) * 3 / 4));
+        HGDIOBJ pcb = SelectObject(hdc, cb), pcp = SelectObject(hdc, cp);
+        for (int side = -1; side <= 1; side += 2) {
+            POINT panel[] = { {sx + side * (int)(8 * scale), sy + (int)(5 * scale)}, {sx + side * (int)(3 * scale), sy + (int)(6 * scale)},
+                              {sx + side * (int)(5 * scale), sy + (int)(20 * scale)}, {sx + side * (int)(11 * scale), sy + (int)(22 * scale)} };
+            Polygon(hdc, panel, 4);
+        }
+        SelectObject(hdc, pcp); SelectObject(hdc, pcb); DeleteObject(cb); DeleteObject(cp);
+    }
 
     if (hero_beard > 0) {
         HBRUSH beard_b = CreateSolidBrush(HeroHairColor()); HGDIOBJ prev_beard = SelectObject(hdc, beard_b);
@@ -112,11 +128,11 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         }
     }
     
-    if (selected_race == RACE_GNOME) {
+    if (selected_race == RACE_GNOME && !head_wear) {
         HBRUSH gnome_hat = CreateSolidBrush(RGB(220, 40, 40)); HGDIOBJ prev_hat = SelectObject(hdc, gnome_hat);
         POINT cap[] = {{sx, sy - (int)(32 * scale)}, {sx + (int)(7 * scale), sy + (int)(4 * scale)}, {sx - (int)(7 * scale), sy + (int)(4 * scale)}};
         Polygon(hdc, cap, 3); SelectObject(hdc, prev_hat); DeleteObject(gnome_hat);
-    } else if (selected_class == CLASS_NECROMANCER) {
+    } else if (hooded) {
 #define HS(v) ((int)((v) * scale))
         // Cloth hood: a soft cowl that falls onto the shoulders, the face lost
         // in shadow inside it. Elf ears and dwarf beards still poke out.
@@ -146,9 +162,19 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         HBRUSH hat_b = CreateSolidBrush(hat_color); HGDIOBJ prev_hat = SelectObject(hdc, hat_b);
         POINT hat[] = {{sx, sy - (int)(14 * scale)}, {sx + (int)(9 * scale), sy + (int)(4 * scale)}, {sx, sy + (int)(8 * scale)}, {sx - (int)(9 * scale), sy + (int)(4 * scale)}};
         Polygon(hdc, hat, 4); SelectObject(hdc, prev_hat); DeleteObject(hat_b);
+        if (head_wear && (strcmp(head_wear, "Straw Hat") == 0 || strcmp(head_wear, "Feathered Hat") == 0)) {
+            HBRUSH brim_b = CreateSolidBrush(hat_color); HGDIOBJ pbb = SelectObject(hdc, brim_b);
+            POINT brim[] = { {sx - (int)(15 * scale), sy + (int)(3 * scale)}, {sx, sy - (int)(1 * scale)}, {sx + (int)(15 * scale), sy + (int)(3 * scale)}, {sx, sy + (int)(7 * scale)} };
+            Polygon(hdc, brim, 4); SelectObject(hdc, pbb); DeleteObject(brim_b);
+            if (head_wear[0] == 'F') {
+                HPEN fp = CreatePen(PS_SOLID, 2, RGB(200, 40, 40)); HGDIOBJ pfp = SelectObject(hdc, fp);
+                MoveToEx(hdc, sx + (int)(3 * scale), sy - (int)(6 * scale), NULL); LineTo(hdc, sx + (int)(10 * scale), sy - (int)(18 * scale));
+                SelectObject(hdc, pfp); DeleteObject(fp);
+            }
+        }
     }
 
-    if (selected_class != CLASS_NECROMANCER) { // hair under the hat and eye dots; the hood hides both
+    if (!hooded) { // hair under the hat and eye dots; the hood hides both
         HBRUSH hair_b = CreateSolidBrush(HeroHairColor());
         HGDIOBJ prev_hb = SelectObject(hdc, hair_b), prev_hp = SelectObject(hdc, GetStockObject(NULL_PEN));
         int hair_len = hero_sex ? 15 : 9;

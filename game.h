@@ -26,8 +26,8 @@
 #define MAX_BUTTERFLIES 8
 #define DEBRIS_MAX 16
 #define MAX_CRITTERS 6
-#define MERCH_BASE_ITEMS 33
-#define MERCH_CAPACITY 50 // room for NewItem lines from the Update folder
+#define MERCH_BASE_ITEMS 46
+#define MERCH_CAPACITY 64 // room for NewItem lines from the Update folder
 #define MERCH_ITEMS merch_item_count
 extern int merch_item_count;
 #define MAX_BLOOD_MIST 48
@@ -134,6 +134,11 @@ extern RaceType selected_race;
 extern int hero_sex, hero_beard, hero_eyes, hero_hair;
 extern const char *sex_names[], *beard_names[], *eye_names[], *hair_names[];
 void CycleCreationField(int field, int dir);
+// Clothes: "Head", "Cloak" and "Clothes" slots, wearable by every class.
+const char *WornItem(const char *slot);
+int IsClothingSlot(const char *slot);
+COLORREF ClothingColor(const char *name);
+#define CLOTH_UNKNOWN RGB(1, 2, 3)
 COLORREF HeroEyeColor(void);
 COLORREF HeroHairColor(void);
 extern ClassType selected_class;

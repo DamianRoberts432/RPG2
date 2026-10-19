@@ -226,7 +226,21 @@ MerchantItem merchant_catalog[MERCH_CAPACITY] = {
     // Farming (see farming.c).
     { "Hoe",           "Tool",     0,                 12, 1,  1, RARITY_COMMON, 0 },
     { "Seeds",         "Material", 0,                  2, -1, 0, RARITY_COMMON, 0 },
-    { "Turnip",        "Food",     0,                  4, -1, 0, RARITY_COMMON, 0 }
+    { "Turnip",        "Food",     0,                  4, -1, 0, RARITY_COMMON, 0 },
+    // Practical clothes any class can wear (see ClothingColor in inventory.c).
+    { "Cloth Hood",      "Head",    0, 12, 2, 2, RARITY_COMMON, 0 },
+    { "Straw Hat",       "Head",    0,  6, 2, 2, RARITY_COMMON, 0 },
+    { "Wool Cap",        "Head",    0,  5, 2, 2, RARITY_COMMON, 0 },
+    { "Leather Cap",     "Head",    0, 10, 2, 2, RARITY_COMMON, 0 },
+    { "Feathered Hat",   "Head",    0, 40, 1, 1, RARITY_UNCOMMON, 0 },
+    { "Travel Cloak",    "Cloak",   0, 20, 2, 2, RARITY_COMMON, 0 },
+    { "Wool Cloak",      "Cloak",   0, 25, 2, 2, RARITY_COMMON, 0 },
+    { "Black Cloak",     "Cloak",   0, 35, 1, 1, RARITY_COMMON, 0 },
+    { "Fur Mantle",      "Cloak",   0, 60, 1, 1, RARITY_UNCOMMON, 0 },
+    { "Linen Shirt",     "Clothes", 0,  6, 2, 2, RARITY_COMMON, 0 },
+    { "Work Smock",      "Clothes", 0,  8, 2, 2, RARITY_COMMON, 0 },
+    { "Leather Jerkin",  "Clothes", 0, 22, 2, 2, RARITY_COMMON, 0 },
+    { "Padded Gambeson", "Clothes", 0, 45, 1, 1, RARITY_UNCOMMON, 0 }
     // Legendary items are never sold; they only drop from bosses (see HandleEnemyDamage).
 };
 const char *villager_greetings[] = {
