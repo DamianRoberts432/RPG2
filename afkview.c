@@ -155,34 +155,6 @@ static COLORREF GroundColor(void) {
     return RGB(85, 155, 65);
 }
 
-static void DrawGround(HDC hdc, float lit) {
-    COLORREF g = Dim(GroundColor(), lit);
-    int top = horizon < 0 ? 0 : horizon;
-    for (int band = 0; band < 12; band++) {
-        int y0 = top + (WINDOW_HEIGHT - top) * band * band / 144, y1 = top + (WINDOW_HEIGHT - top) * (band + 1) * (band + 1) / 144;
-        Box(hdc, 0, y0, WINDOW_WIDTH, y1, Dim(g, 0.8f + (band % 2) * 0.05f + band * 0.015f));
-    }
-    for (int r = (int)player_y - FP_RANGE; r <= (int)player_y + FP_RANGE; r++)
-        for (int c = (int)player_x - FP_RANGE; c <= (int)player_x + FP_RANGE; c++) {
-            if (r < 0 || c < 0 || r >= MAP_SIZE || c >= MAP_SIZE) continue;
-            int t = VISUAL_MAP[r][c];
-            if (t == 12) { // water lies flat on the ground
-                POINT q[4]; int ok = 1;
-                ok &= Project((float)c, (float)r, 0, (int *)&q[0].x, (int *)&q[0].y, NULL);
-                ok &= Project(c + 1.0f, (float)r, 0, (int *)&q[1].x, (int *)&q[1].y, NULL);
-                ok &= Project(c + 1.0f, r + 1.0f, 0, (int *)&q[2].x, (int *)&q[2].y, NULL);
-                ok &= Project((float)c, r + 1.0f, 0, (int *)&q[3].x, (int *)&q[3].y, NULL);
-                if (ok) Shape(hdc, q, 4, Dim(RGB(50, 120, 210), lit));
-            } else if (t != 1 && t != 11 && !in_cave && abs(r - (int)player_y) < 7 && abs(c - (int)player_x) < 7) {
-                int hsh = RainHash(r * 977 + c * 131 + current_screen_index * 7), sx, sy; float d;
-                if (!Project(c + (hsh % 100) / 100.0f, r + ((hsh / 100) % 100) / 100.0f, 0, &sx, &sy, &d)) continue;
-                int u = (int)(focal / d * 0.12f) + 1;
-                if (current_biome == BIOME_DESERT || snow_cover > 0.5f) Box(hdc, sx, sy, sx + u / 3, sy + u / 4, Dim(g, 0.8f));
-                else for (int b = -1; b <= 1; b++) Stroke(hdc, sx + b * u / 2, sy, sx + b * u, sy - u - (b == 0) * u / 2, 1, Dim(g, 1.25f));
-            }
-        }
-}
-
 static void DrawThing(HDC hdc, const FpThing *t, float lit) {
     int sx, sy; float d;
     if (!Project(t->x, t->y, t->z, &sx, &sy, &d)) return;
@@ -259,6 +231,181 @@ static void DrawThing(HDC hdc, const FpThing *t, float lit) {
     }
 }
 
+// Virtua Racing-style flat-shaded polygons: every ground tile, tree, rock,
+// home and fire is built from faces, clipped at the eye, shaded by the sun,
+// faded into the haze with distance and painted far to near.
+#define FP_MAX_FACES 4096
+#define FP_NEAR 0.08f
+typedef struct { float depth; int n, sprite; POINT p[12]; COLORREF c; } FpFace;
+static FpFace faces[FP_MAX_FACES];
+static int face_count, face_glow;
+static float face_bias, scene_lit;
+static COLORREF haze;
+
+static void AddFace(float v[][3], int n, COLORREF col, const float *center, int ground) {
+    if (face_count >= FP_MAX_FACES || n < 3 || n > 8) return;
+    float ax = v[1][0] - v[0][0], ay = v[1][1] - v[0][1], az = v[1][2] - v[0][2];
+    float bx = v[2][0] - v[0][0], by = v[2][1] - v[0][1], bz = v[2][2] - v[0][2];
+    float nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
+    float cx = 0, cy = 0, cz = 0;
+    for (int i = 0; i < n; i++) { cx += v[i][0]; cy += v[i][1]; cz += v[i][2]; }
+    cx /= n; cy /= n; cz /= n;
+    float out = center ? nx * (cx - center[0]) + ny * (cy - center[1]) + nz * (cz - center[2]) : nz;
+    if (out < 0) { nx = -nx; ny = -ny; nz = -nz; }
+    float ex = player_x - cx, ey = player_y - cy, ez = FP_EYE - cz;
+    if (nx * ex + ny * ey + nz * ez <= 0.0f) return; // facing away
+    float len = sqrtf(nx * nx + ny * ny + nz * nz) + 1e-6f;
+    float sun = (-0.45f * nx - 0.35f * ny + 0.82f * nz) / len;
+    float shade = face_glow ? 1.0f : (0.5f + 0.5f * (sun > 0 ? sun : 0)) * scene_lit;
+    float cs = cosf(yaw), sn = sinf(yaw), in[8][3], cl[12][3];
+    for (int i = 0; i < n; i++) {
+        float dx = v[i][0] - player_x, dy = v[i][1] - player_y;
+        in[i][0] = dx * cs + dy * sn; in[i][1] = -dx * sn + dy * cs; in[i][2] = v[i][2];
+    }
+    int m = 0;
+    for (int i = 0; i < n; i++) { // clip against the near plane
+        float *a = in[i], *b = in[(i + 1) % n];
+        int ia = a[0] >= FP_NEAR, ib = b[0] >= FP_NEAR;
+        if (ia) { cl[m][0] = a[0]; cl[m][1] = a[1]; cl[m][2] = a[2]; m++; }
+        if (ia != ib) { float t = (FP_NEAR - a[0]) / (b[0] - a[0]); for (int k = 0; k < 3; k++) cl[m][k] = a[k] + t * (b[k] - a[k]); m++; }
+    }
+    if (m < 3) return;
+    FpFace *F = &faces[face_count++];
+    for (int i = 0; i < m; i++) {
+        F->p[i].x = WINDOW_WIDTH / 2 + (int)(cl[i][1] / cl[i][0] * focal);
+        F->p[i].y = horizon + (int)((FP_EYE - cl[i][2]) / cl[i][0] * focal);
+    }
+    float d = sqrtf(ex * ex + ey * ey + ez * ez), fog = (d - 6.0f) / (FP_RANGE - 6.0f);
+    fog = fog < 0 ? 0 : fog > 1 ? 1 : fog;
+    F->n = m; F->sprite = -1; F->depth = d - face_bias + (ground ? 1000.0f : 0.0f); // ground always first
+    F->c = Mix(Dim(col, shade), haze, fog * 0.7f);
+}
+
+// Animals, butterflies, the familiar and the bobber stay small figures, sorted in with the polygons.
+static void AddSprite(int idx) {
+    if (face_count >= FP_MAX_FACES) return;
+    float dx = things[idx].x - player_x, dy = things[idx].y - player_y;
+    FpFace *F = &faces[face_count++];
+    F->sprite = idx; F->n = 0; F->depth = sqrtf(dx * dx + dy * dy);
+}
+
+static int FaceFarFirst(const void *a, const void *b) {
+    float da = ((const FpFace *)a)->depth, db = ((const FpFace *)b)->depth;
+    return da < db ? 1 : da > db ? -1 : 0;
+}
+
+static void DrawFaces(HDC hdc, float lit) {
+    qsort(faces, face_count, sizeof(FpFace), FaceFarFirst);
+    HGDIOBJ ob = SelectObject(hdc, GetStockObject(DC_BRUSH)), op = SelectObject(hdc, GetStockObject(DC_PEN));
+    for (int i = 0; i < face_count; i++) {
+        FpFace *F = &faces[i];
+        if (F->sprite >= 0) {
+            DrawThing(hdc, &things[F->sprite], lit);
+            SelectObject(hdc, GetStockObject(DC_BRUSH)); SelectObject(hdc, GetStockObject(DC_PEN));
+            continue;
+        }
+        SetDCBrushColor(hdc, F->c); SetDCPenColor(hdc, F->c); // same-colour edge hides seams
+        Polygon(hdc, F->p, F->n);
+    }
+    SelectObject(hdc, ob); SelectObject(hdc, op);
+}
+
+// A ring of seg points at z0 joined to a ring at z1 (r1 = 0 makes a cone).
+static void Prism(float x, float y, float z0, float z1, float r0, float r1, int seg, float rot, COLORREF col) {
+    float c[3] = { x, y, (z0 + z1) / 2 }, ring0[8][2], ring1[8][2];
+    for (int i = 0; i < seg; i++) {
+        float a = rot + i * 6.2832f / seg;
+        ring0[i][0] = x + cosf(a) * r0; ring0[i][1] = y + sinf(a) * r0;
+        ring1[i][0] = x + cosf(a) * r1; ring1[i][1] = y + sinf(a) * r1;
+    }
+    for (int i = 0; i < seg; i++) {
+        int j = (i + 1) % seg;
+        float v[4][3] = { { ring0[i][0], ring0[i][1], z0 }, { ring0[j][0], ring0[j][1], z0 },
+                          { ring1[j][0], ring1[j][1], z1 }, { ring1[i][0], ring1[i][1], z1 } };
+        AddFace(v, r1 > 0.001f ? 4 : 3, col, c, 0);
+    }
+    if (r1 > 0.001f) {
+        float v[8][3];
+        for (int i = 0; i < seg; i++) { v[i][0] = ring1[i][0]; v[i][1] = ring1[i][1]; v[i][2] = z1; }
+        AddFace(v, seg, col, c, 0);
+    }
+}
+
+static void TreeMesh(const FpThing *t) {
+    int s = t->seed, snow = snow_cover > 0.5f;
+    float x = t->x + ((s * 37) % 21 - 10) / 100.0f, y = t->y + ((s * 53) % 21 - 10) / 100.0f;
+    float h = 0.85f + (s * 29 % 30) / 100.0f, rot = (s % 7) * 0.4f;
+    Prism(x, y, 0.0f, 0.5f * h, 0.09f, 0.075f, 5, rot, RGB(110, 75, 45));
+    if (s % 3 == 0) { // round broadleaf
+        COLORREF leaf = snow ? RGB(205, 215, 225) : current_season == SEASON_FALL ? (s % 2 ? RGB(210, 120, 40) : RGB(220, 175, 50)) : RGB(80, 160, 60);
+        Prism(x, y, 0.4f * h, 0.95f * h, 0.32f, 0.6f, 7, rot, leaf);
+        Prism(x, y, 0.95f * h, 1.5f * h, 0.6f, 0.28f, 7, rot + 0.22f, leaf);
+    } else { // two-tier pine
+        COLORREF needle = RGB(35, 115, 55);
+        Prism(x, y, 0.3f * h, 1.25f * h, 0.62f, 0.0f, 7, rot, needle);
+        Prism(x, y, 0.9f * h, 2.0f * h, 0.45f, 0.0f, 7, rot + 0.2f, snow ? RGB(225, 232, 240) : needle);
+    }
+}
+
+static void RockMesh(const FpThing *t) {
+    int s = t->seed;
+    Prism(t->x, t->y, 0.0f, 0.32f + (s % 5) * 0.03f, 0.42f, 0.2f, 5, (s % 9) * 0.5f, RGB(120, 120, 128));
+}
+
+static void FireMesh(const FpThing *t) {
+    float x = t->x, y = t->y, fl = 0.08f * sinf(GetTickCount() / 90.0f + t->seed);
+    Prism(x, y, 0.0f, 0.1f, 0.32f, 0.3f, 6, 0.3f, RGB(95, 65, 40));
+    face_glow = 1;
+    Prism(x, y, 0.1f, 0.62f + fl, 0.22f, 0.0f, 5, GetTickCount() / 400.0f, RGB(240, 120, 30));
+    face_bias = 0.05f;
+    Prism(x, y, 0.1f, 0.4f - fl, 0.12f, 0.0f, 5, -(GetTickCount() / 300.0f), RGB(255, 220, 90));
+    face_bias = 0.0f; face_glow = 0;
+}
+
+static void HomeMesh(const FpThing *t, int night) {
+    float x0 = t->x - 0.8f, x1 = t->x + 0.8f, y0 = t->y - 0.6f, y1 = t->y + 0.6f, wh = 0.95f, rz = 1.6f, o = 0.12f;
+    float c[3] = { t->x, t->y, 0.7f };
+    COLORREF wall = RGB(225, 205, 160), roof = RGB(165, 60, 45);
+    float w1[4][3] = { { x0, y1, 0 }, { x1, y1, 0 }, { x1, y1, wh }, { x0, y1, wh } };
+    float w2[4][3] = { { x0, y0, 0 }, { x1, y0, 0 }, { x1, y0, wh }, { x0, y0, wh } };
+    float w3[5][3] = { { x0, y0, 0 }, { x0, y1, 0 }, { x0, y1, wh }, { x0, t->y, rz }, { x0, y0, wh } };
+    float w4[5][3] = { { x1, y0, 0 }, { x1, y1, 0 }, { x1, y1, wh }, { x1, t->y, rz }, { x1, y0, wh } };
+    AddFace(w1, 4, wall, c, 0); AddFace(w2, 4, wall, c, 0); AddFace(w3, 5, wall, c, 0); AddFace(w4, 5, wall, c, 0);
+    float r1[4][3] = { { x0 - o, y1 + o, wh - 0.08f }, { x1 + o, y1 + o, wh - 0.08f }, { x1 + o, t->y, rz }, { x0 - o, t->y, rz } };
+    float r2[4][3] = { { x0 - o, y0 - o, wh - 0.08f }, { x1 + o, y0 - o, wh - 0.08f }, { x1 + o, t->y, rz }, { x0 - o, t->y, rz } };
+    AddFace(r1, 4, roof, c, 0); AddFace(r2, 4, roof, c, 0);
+    face_bias = 0.08f;
+    float door[4][3] = { { t->x - 0.17f, y1 + 0.01f, 0 }, { t->x + 0.17f, y1 + 0.01f, 0 }, { t->x + 0.17f, y1 + 0.01f, 0.58f }, { t->x - 0.17f, y1 + 0.01f, 0.58f } };
+    AddFace(door, 4, RGB(105, 70, 40), c, 0);
+    face_glow = night; // windows glow at night
+    for (int k = 0; k < 2; k++) {
+        float wx = k ? x1 + 0.01f : x0 - 0.01f;
+        float w[4][3] = { { wx, t->y - 0.18f, 0.4f }, { wx, t->y + 0.18f, 0.4f }, { wx, t->y + 0.18f, 0.7f }, { wx, t->y - 0.18f, 0.7f } };
+        AddFace(w, 4, night ? RGB(255, 205, 110) : RGB(85, 115, 150), c, 0);
+    }
+    face_glow = 0; face_bias = 0.0f;
+}
+
+static void GroundMesh(void) {
+    COLORREF g = GroundColor();
+    for (int r = (int)player_y - FP_RANGE; r <= (int)player_y + FP_RANGE; r++)
+        for (int c = (int)player_x - FP_RANGE; c <= (int)player_x + FP_RANGE; c++) {
+            if (r < 0 || c < 0 || r >= MAP_SIZE || c >= MAP_SIZE) continue;
+            int t = VISUAL_MAP[r][c];
+            COLORREF col = t == 12 ? RGB(50, 120, 210) : (t == 10 && !in_cave) ? GetTileColor(10, 0) : g;
+            if (t == 12 && (r * 7 + c * 3 + (int)(GetTickCount() / 500)) % 9 == 0) col = RGB(75, 145, 225);
+            else if (t != 12) col = Dim(col, 0.96f + (abs(RainHash(r * 977 + c * 131)) % 5) * 0.01f);
+            float v[4][3] = { { (float)c, (float)r, 0 }, { c + 1.0f, (float)r, 0 }, { c + 1.0f, r + 1.0f, 0 }, { (float)c, r + 1.0f, 0 } };
+            AddFace(v, 4, col, NULL, 1);
+        }
+}
+
+// Past the polygon tiles the ground fades into the haze at the horizon.
+static void DrawGround(HDC hdc, float lit) {
+    int top = horizon < 0 ? 0 : horizon;
+    Box(hdc, 0, top, WINDOW_WIDTH, WINDOW_HEIGHT, Mix(Dim(GroundColor(), lit), haze, 0.85f));
+}
+
 static int FarFirst(const void *a, const void *b) {
     float da = ((const FpThing *)a)->depth, db = ((const FpThing *)b)->depth;
     return da < db ? 1 : da > db ? -1 : 0;
@@ -319,15 +466,22 @@ void DrawAfkView(HDC hdc) {
     if (NightVisionActive() && light < 0.6f) light = 0.6f;
     if (in_cave) light = 0.35f;
     float lit = 0.3f + 0.7f * light;
+    scene_lit = lit; haze = in_cave ? RGB(18, 16, 14) : Dim(RGB(185, 210, 235), 0.2f + 0.8f * light);
     DrawSky(hdc, light);
     DrawGround(hdc, lit);
+    face_count = 0;
+    GroundMesh();
     for (int i = 0; i < thing_count; i++) {
-        int sx, sy;
+        int sx, sy, k = things[i].kind;
         if (!Project(things[i].x, things[i].y, things[i].z, &sx, &sy, &things[i].depth)) things[i].depth = -1.0f;
+        if (k == FP_TREE) TreeMesh(&things[i]);
+        else if (k == FP_ROCK) RockMesh(&things[i]);
+        else if (k == FP_HOME) HomeMesh(&things[i], light < 0.35f);
+        else if (k == FP_FIRE) FireMesh(&things[i]);
+        else if (things[i].depth > 0.0f) AddSprite(i);
     }
-    qsort(things, thing_count, sizeof(FpThing), FarFirst);
     bobber_sx = -1;
-    for (int i = 0; i < thing_count; i++) if (things[i].depth > 0.0f) DrawThing(hdc, &things[i], lit);
+    DrawFaces(hdc, lit);
     DrawWeather(hdc);
     if (bobber_sx >= 0) { // the rod in hand, line out to the bobber
         int tip_x = WINDOW_WIDTH * 3 / 5, tip_y = WINDOW_HEIGHT * 2 / 5;
