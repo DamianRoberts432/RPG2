@@ -251,7 +251,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 ApplyCameraZoom(memHDC, view_zoom);
                 DrawAfkView(memHDC);
                 DrawPeyoteMelt(memHDC);
-                if (!AfkViewActive()) { DrawPlayerStatusHUD(memHDC); DrawLootPreview(memHDC); DrawBelt(memHDC); }
+                DrawPlayerStatusHUD(memHDC); // HP, MP and stamina stay on screen, AFK view included
+        if (!AfkViewActive()) { DrawLootPreview(memHDC); DrawBelt(memHDC); }
 
                 if (is_menu_open) DrawTabbedMenuOverlay(memHDC);
                 DrawStrategyGuideFlash(memHDC);
