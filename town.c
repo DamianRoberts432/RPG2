@@ -837,17 +837,18 @@ void DrawInteriorBackdrop(HDC hdc, int menu) {
         DrawZeldaStyleVillager(hdc, 700, F - 10, 6, 6.0f);
     } else if (menu == TM_CARDS) {
         DrawShelf(hdc, 400, 780, 230, 11); DrawShelf(hdc, 400, 780, 360, 12);
-        DrawZeldaStyleVillager(hdc, 190, F - 146, 10, 4.5f); // the kid, seated behind his table
-        TwBox(hdc, 70, F - 110, 330, F - 92, RGB(120, 80, 50));
-        TwBox(hdc, 90, F - 92, 104, F, RGB(90, 60, 36)); TwBox(hdc, 296, F - 92, 310, F, RGB(90, 60, 36));
-        for (int k = 0; k < 4; k++) TwBox(hdc, 110 + k * 46, F - 118, 140 + k * 46, F - 110, k % 2 ? RGB(180, 40, 50) : RGB(240, 240, 230));
+        const int kx = 60, ky = 120; // in front of the side wall, on the floor
+        DrawZeldaStyleVillager(hdc, 190 + kx, F - 146 + ky, 10, 4.8f); // the kid, seated behind his table
+        TwBox(hdc, 70 + kx, F - 110 + ky, 330 + kx, F - 92 + ky, RGB(120, 80, 50));
+        TwBox(hdc, 90 + kx, F - 92 + ky, 104 + kx, F + ky, RGB(90, 60, 36)); TwBox(hdc, 296 + kx, F - 92 + ky, 310 + kx, F + ky, RGB(90, 60, 36));
+        for (int k = 0; k < 4; k++) TwBox(hdc, 110 + kx + k * 46, F - 118 + ky, 140 + kx + k * 46, F - 110 + ky, k % 2 ? RGB(180, 40, 50) : RGB(240, 240, 230));
     } else if (menu == TM_PETS) {
         for (int k = 0; k < 3; k++) {
-            int x0 = 80 + k * 110, y0 = 400;
-            TwBox(hdc, x0, y0, x0 + 90, y0 + 90, RGB(60, 50, 40));
-            TwBox(hdc, x0 + 4, y0 + 4, x0 + 86, y0 + 86, RGB(70, 46, 28));
-            DrawPetFigure(hdc, x0 + 40, y0 + 82, 1.7f, k, k == 0 ? RGB(150, 100, 55) : k == 1 ? RGB(120, 120, 128) : RGB(70, 130, 60));
-            for (int x = x0 + 12; x < x0 + 90; x += 15) TwLine(hdc, x, y0, x, y0 + 90, 2, RGB(180, 170, 150));
+            int x0 = 110 + k * 92, y0 = F + 20; // cages sit on the floor in front of the side wall
+            TwBox(hdc, x0, y0, x0 + 84, y0 + 84, RGB(60, 50, 40));
+            TwBox(hdc, x0 + 4, y0 + 4, x0 + 80, y0 + 80, RGB(70, 46, 28));
+            DrawPetFigure(hdc, x0 + 38, y0 + 76, 1.6f, k, k == 0 ? RGB(150, 100, 55) : k == 1 ? RGB(120, 120, 128) : RGB(70, 130, 60));
+            for (int x = x0 + 12; x < x0 + 84; x += 14) TwLine(hdc, x, y0, x, y0 + 84, 2, RGB(180, 170, 150));
         }
         TwLine(hdc, 1000, 380, 1080, 380, 6, RGB(90, 60, 30));
         DrawPetFigure(hdc, 1040, 378, 1.4f, 3, RGB(150, 110, 70));
