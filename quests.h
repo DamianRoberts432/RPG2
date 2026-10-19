@@ -6,6 +6,7 @@
 #define QUEST_TEMPLATE_COUNT 8
 #define QUEST_TEMPLATE_MAX 16 // room for NewQuest lines from the Update folder
 extern int32_t village_quest[5]; // active, template, needed, progress, reward
+extern int quest_screen;
 
 int VillagerQuestTalk(void);
 void NoteQuestKill(int monster);

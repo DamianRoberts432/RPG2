@@ -227,6 +227,25 @@ void WorldMapClick(int x, int y) {
     map_cursor_x = wm_minx + gx; map_cursor_y = wm_miny + gy;
 }
 
+// One line about a map tile: the town (god, shops) or the land, plus any job
+// given there and any unclaimed cave treasure.
+static void TileInfo(int gx, int gy, char *info, size_t n) {
+    char nm[32];
+    uint8_t p = map_poi[gy][gx];
+    int b = GetVisitedBiomeAt(gx, gy), screen = gy * META_GRID_SIZE + gx;
+    if (p & (POI_VILLAGE | POI_CASTLE)) {
+        int town = screen + ((p & POI_TOWN_ALT) ? 30000 : 0);
+        int castle = (p & POI_CASTLE) != 0, d = TownDeityAt(town), shops = castle ? TownShopsToday(town) : 0;
+        TownNameAt(town, nm, sizeof(nm));
+        snprintf(info, n, "%s (%s) - god: %s, %s - card shop: %s - pet shop: %s", nm, castle ? "castle town" : "village",
+                 DeityName(d), DeityKind(d), !castle ? "none" : (shops & 2) ? "open today" : "closed today",
+                 !castle ? "none" : (shops & 1) ? "open today" : "closed today");
+    } else if (b >= 0) snprintf(info, n, "%s", biome_names[b]);
+    else { snprintf(info, n, "Unexplored"); return; }
+    if (village_quest[0] && quest_screen % 30000 == screen) strncat(info, " - your job was given here", n - strlen(info) - 1);
+    if (b == BIOME_MOUNTAIN && MountainHasCave(screen) && !(p & POI_TREASURE_FOUND)) strncat(info, " - cave treasure (unclaimed)", n - strlen(info) - 1);
+}
+
 void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
     // world_map_zoom 1 shows the whole 64x64 world; 2/4/8 show a window
     // centred on the hero's screen. Unexplored cells stay dark until visited.
@@ -334,18 +353,9 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
             Rectangle(hdc, cx - 1, cy - 1, cx + cs + 2, cy + cs + 2);
             SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(cur);
         }
-        char info[220], nm[32];
-        uint8_t p = map_poi[gy][gx];
-        int b = GetVisitedBiomeAt(gx, gy);
-        if (p & (POI_VILLAGE | POI_CASTLE)) {
-            int screen = gy * META_GRID_SIZE + gx + ((p & POI_TOWN_ALT) ? 30000 : 0);
-            int castle = (p & POI_CASTLE) != 0, d = TownDeityAt(screen), shops = castle ? TownShopsToday(screen) : 0;
-            TownNameAt(screen, nm, sizeof(nm));
-            snprintf(info, sizeof(info), "%s (%s) - god: %s, %s - card shop: %s - pet shop: %s", nm, castle ? "castle town" : "village",
-                     DeityName(d), DeityKind(d), !castle ? "none" : (shops & 2) ? "open today" : "closed today",
-                     !castle ? "none" : (shops & 1) ? "open today" : "closed today");
-        } else if (b >= 0) snprintf(info, sizeof(info), "%s%s", biome_names[b], gx == screen_grid_x && gy == screen_grid_y ? " - you are here" : "");
-        else snprintf(info, sizeof(info), "Unexplored");
+        char info[300];
+        TileInfo(gx, gy, info, sizeof(info));
+        if (gx == screen_grid_x && gy == screen_grid_y) strncat(info, " - you are here", sizeof(info) - strlen(info) - 1);
         SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(255, 255, 255));
         TextOut(hdc, left, top + rows * cs + 12, info, (int)strlen(info));
         SetTextColor(hdc, RGB(150, 160, 170));
@@ -368,25 +378,11 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
     DrawLegendSwatch(hdc, lx, ly + 182, RGB(215, 185, 110), "Desert");
     DrawLegendSwatch(hdc, lx, ly + 202, RGB(220, 228, 235), "Tundra");
 
-    // Towns you have found: name, patron god, and today's shops.
-    int ty = ly + 236;
-    char buf[128], name[32];
+    // Only your own tile and the highlighted one are described, not every town.
+    char here[300];
+    TileInfo(screen_grid_x, screen_grid_y, here, sizeof(here));
     SetTextColor(hdc, RGB(220, 225, 230));
-    TextOut(hdc, lx, ty, "TOWNS", 5);
-    for (int i = 0; i < town_n; i++) {
-        int screen = town_gy[i] * META_GRID_SIZE + town_gx[i] + ((town_poi[i] & POI_TOWN_ALT) ? 30000 : 0);
-        int castle = (town_poi[i] & POI_CASTLE) != 0, d = TownDeityAt(screen), shops = castle ? TownShopsToday(screen) : 0;
-        TownNameAt(screen, name, sizeof(name));
-        snprintf(buf, sizeof(buf), "%s (%s) - %s, %s", name, castle ? "castle town" : "village", DeityName(d), DeityKind(d));
-        SetTextColor(hdc, RGB(255, 240, 120));
-        TextOut(hdc, lx, ty + 22 + i * 38, buf, (int)strlen(buf));
-        snprintf(buf, sizeof(buf), "   Card shop: %s   Pet shop: %s", !castle ? "none" : (shops & 2) ? "open today" : "closed today",
-                 !castle ? "none" : (shops & 1) ? "open today" : "closed today");
-        SetTextColor(hdc, RGB(180, 200, 215));
-        TextOut(hdc, lx, ty + 40 + i * 38, buf, (int)strlen(buf));
-    }
-    if (town_more) {
-        snprintf(buf, sizeof(buf), "+%d more - zoom in to list them", town_more);
-        TextOut(hdc, lx, ty + 22 + town_n * 38, buf, (int)strlen(buf));
-    }
+    TextOut(hdc, lx, ly + 236, "YOU ARE HERE", 12);
+    SetTextColor(hdc, RGB(255, 240, 120));
+    TextOut(hdc, lx, ly + 258, here, (int)strlen(here));
 }

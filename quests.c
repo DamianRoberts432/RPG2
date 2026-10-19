@@ -8,6 +8,7 @@ static QuestTemplate quest_templates[QUEST_TEMPLATE_MAX] = {
 };
 static int quest_template_count = QUEST_TEMPLATE_COUNT;
 int32_t village_quest[5];
+int quest_screen = -1; // the town that gave the current job (shown on the map)
 
 #define QUEST_OFFER_PERCENT 35
 
@@ -48,6 +49,7 @@ int VillagerQuestTalk(void) {
     if (t->count <= 0) return 0;
     int need = t->count + player_level / 5;
     int reward = t->reward * (10 + player_level) / 10;
+    quest_screen = current_screen_index;
     village_quest[0] = 1; village_quest[1] = k; village_quest[2] = need; village_quest[3] = 0; village_quest[4] = reward;
     sprintf(arpg_action_log, "QUEST: \"Could you %s %d %s for me? I'll pay %d gold.\" (Any villager will pay.)",
             t->fetch ? "bring me" : "slay", need, Target(t, need), reward);
