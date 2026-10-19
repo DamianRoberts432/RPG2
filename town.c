@@ -1017,7 +1017,6 @@ void DrawFamiliar(HDC hdc) {
 #define FS(v) ((int)((v) * S))
         if (fire >= 0) { // curled up asleep by the fire
             TwDisc(hdc, sx, sy - FS(5), FS(11), FS(5), body); TwDisc(hdc, sx + m * FS(9), sy - FS(6), FS(5), FS(4), body);
-#undef FS
             return;
         }
         for (int l = 0; l < 3; l++) TwLine(hdc, sx + m * FS(-7 + l * 6), sy - FS(6), sx + m * FS(-7 + l * 6), sy, 2, body);
