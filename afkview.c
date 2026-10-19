@@ -138,12 +138,28 @@ static void DrawSky(HDC hdc, float light) {
     int gloomy = IsAdverseWeather();
     COLORREF top = Mix(RGB(6, 9, 26), RGB(70, 130, 220), light), low = Mix(RGB(26, 32, 62), RGB(175, 210, 245), light);
     if (gloomy) { top = Mix(top, Dim(RGB(130, 135, 145), 0.3f + 0.7f * light), 0.7f); low = Mix(low, Dim(RGB(160, 165, 170), 0.3f + 0.7f * light), 0.7f); }
-    for (int band = 0; band < 16; band++) Box(hdc, 0, band * h / 16, WINDOW_WIDTH, (band + 1) * h / 16, Mix(top, low, band / 15.0f));
+    if (h > 0) { // one smooth vertical gradient instead of stacked bands
+        TRIVERTEX v[2] = { { 0, 0, (COLOR16)(GetRValue(top) << 8), (COLOR16)(GetGValue(top) << 8), (COLOR16)(GetBValue(top) << 8), 0 },
+                           { WINDOW_WIDTH, h, (COLOR16)(GetRValue(low) << 8), (COLOR16)(GetGValue(low) << 8), (COLOR16)(GetBValue(low) << 8), 0 } };
+        GRADIENT_RECT gr = { 0, 1 };
+        GradientFill(hdc, v, 2, &gr, 1, GRADIENT_FILL_RECT_V);
+    }
     int x, y;
     if (light > 0.45f && !gloomy) { // the sun
         SkyPoint(-0.9f, 0.55f * light, &x, &y);
         Blob(hdc, x - 26, y - 26, x + 26, y + 26, RGB(255, 236, 170)); Blob(hdc, x - 18, y - 18, x + 18, y + 18, RGB(255, 250, 215));
         DrawSkyBeam(hdc, x, y, h, RGB(255, 240, 190), 45, BeamStrength(1));
+    }
+    if (light > 0.4f && !gloomy) { // a distant flock: little cursive v's drifting and flapping
+        float tb = GetTickCount() / 1000.0f;
+        for (int i = 0; i < 7; i++) {
+            float az = 1.9f + tb * 0.006f + (i % 4) * 0.035f + i * 0.012f, el = 0.30f + 0.025f * sinf(tb * 0.3f + i * 1.3f) + (i % 3) * 0.02f;
+            int bx, by; SkyPoint(az, el, &bx, &by);
+            if (bx < 0 || bx >= WINDOW_WIDTH || by < 0 || by >= h) continue;
+            int s = 3 + (i % 3), flap = (int)(sinf(tb * (5.0f + i % 3) + i) * 2.0f);
+            COLORREF bc = Dim(RGB(60, 65, 80), 0.6f + 0.4f * light);
+            Stroke(hdc, bx - s, by - 1 - flap, bx, by + 1, 1, bc); Stroke(hdc, bx, by + 1, bx + s, by - 1 - flap, 1, bc);
+        }
     }
     if (light >= 0.35f || gloomy) return;
     float k = (0.35f - light) / 0.35f;
@@ -156,8 +172,8 @@ static void DrawSky(HDC hdc, float light) {
         Box(hdc, x, y, x + sz - 1, y + sz - 1, RGB(lum, lum, lum));
     }
     SkyPoint(0.8f, 0.42f, &x, &y); // the moon; its phase follows the 30-day season
-    DrawSkyBeam(hdc, x, y, h, RGB(200, 215, 240), (int)(35 * k), BeamStrength(2));
-    if (x > -100) {
+    if (x > -100) { // moonlight is a soft halo, not a spotlight
+        for (int r = 4; r >= 1; r--) FillRectAlpha(hdc, x - 22 * r, y - 22 * r, 44 * r, 44 * r, RGB(200, 215, 240), (int)(7 * k));
         int mr = 22, moon = (int)(235 * k);
         float phase = (SeasonDay() % 30) / 30.0f;
         Blob(hdc, x - mr, y - mr, x + mr, y + mr, RGB(moon, moon, moon * 9 / 10));
@@ -238,7 +254,7 @@ static void DrawThing(HDC hdc, const FpThing *t, float lit) {
     case FP_CRITTER: {
         static const COLORREF fur[4] = { RGB(70, 120, 220), RGB(150, 95, 50), RGB(140, 115, 85), RGB(45, 40, 50) };
         COLORREF c = Dim(fur[t->seed & 3], lit + 0.1f);
-        int hop = (now / 250 + t->seed) % 4 == 0 ? (int)(0.06f * u) : 0;
+        int hop = (now / (190 + 60 * (t->seed % 3)) + t->seed) % 4 == 0 ? (int)(0.06f * u) : 0;
         if ((t->seed & 3) == 1) Blob(hdc, sx - (int)(0.32f * u), sy - (int)(0.45f * u) - hop, sx - (int)(0.08f * u), sy - (int)(0.1f * u) - hop, c);
         Blob(hdc, sx - (int)(0.12f * u), sy - (int)(0.22f * u) - hop, sx + (int)(0.12f * u), sy - hop, c);
         Blob(hdc, sx + (int)(0.04f * u), sy - (int)(0.32f * u) - hop, sx + (int)(0.2f * u), sy - (int)(0.16f * u) - hop, c);
@@ -453,7 +469,7 @@ static void AnimalMesh(const FpThing *t) {
     }
     if (kind == FP_FAMILIAR && t->seed == 2) type = 5; // toad
     if (kind == FP_FAMILIAR && t->seed >= 3) type = t->seed == 4 ? 2 : 6; // owl or hawk
-    float hop = (now / 250 + idx) % 4 == 0 ? 0.03f : 0.0f;
+    float hop = (now / (190 + 60 * (idx % 3)) + idx) % 4 == 0 ? 0.03f : 0.0f;
     if (type == 0 || type == 6) { // bird / hawk
         COLORREF c = type == 6 ? RGB(140, 100, 60) : RGB(70, 120, 220);
         float zb = (type == 6 ? 0.9f + sinf(now / 300.0f) * 0.05f : hop), f = type == 6 ? sinf(now / 150.0f) * 0.6f : -0.2f;
@@ -594,9 +610,14 @@ static void FireMesh(const FpThing *t) {
     float x = t->x, y = t->y, fl = 0.08f * sinf(GetTickCount() / 90.0f + t->seed);
     Prism(x, y, 0.0f, 0.1f, 0.32f, 0.3f, 6, 0.3f, RGB(95, 65, 40));
     face_glow = 1;
-    Prism(x, y, 0.1f, 0.62f + fl, 0.22f, 0.0f, 5, GetTickCount() / 400.0f, RGB(240, 120, 30));
+    DWORD now = GetTickCount(); // a smaller flame (the light it gives is unchanged)
+    Prism(x, y, 0.1f, 0.42f + fl * 0.7f, 0.15f, 0.0f, 5, now / 400.0f, RGB(240, 120, 30));
     face_bias = 0.05f;
-    Prism(x, y, 0.1f, 0.4f - fl, 0.12f, 0.0f, 5, -(GetTickCount() / 300.0f), RGB(255, 220, 90));
+    Prism(x, y, 0.1f, 0.28f - fl * 0.7f, 0.085f, 0.0f, 5, -(now / 300.0f), RGB(255, 220, 90));
+    face_bias = 0.08f; // flickering streaks inside: blue at the base, red and white tongues
+    Prism(x, y, 0.1f, 0.07f, 0.07f, 0.0f, 5, now / 250.0f, RGB(90, 130, 255));
+    static const COLORREF tongue[3] = { RGB(230, 50, 30), RGB(255, 250, 235), RGB(255, 170, 60) };
+    Prism(x + 0.03f * sinf(now / 170.0f), y, 0.14f, 0.2f + fl, 0.03f, 0.0f, 3, now / 200.0f, tongue[(now / 140 + t->seed) % 3]);
     face_bias = 0.0f; face_glow = 0;
 }
 
@@ -703,12 +724,20 @@ static float WindAcross(float *wx, float *wy) {
     return -*wx * sinf(yaw) + *wy * cosf(yaw);
 }
 
-static void CloudPuff(HDC hdc, int cx, int cy, int w, COLORREF c, int alpha) {
+static void CloudPuff(HDC hdc, int cx, int cy, int w, COLORREF c, int alpha, int seed) {
     int x0 = cx - w, y0 = cy - w / 2, W = 2 * w, H = w;
     if (W < 6 || x0 + W < 0 || x0 > WINDOW_WIDTH || y0 + H < 0) return;
     HDC t = CreateCompatibleDC(hdc); HBITMAP b = CreateCompatibleBitmap(hdc, W, H); HGDIOBJ ob = SelectObject(t, b);
     BitBlt(t, 0, 0, W, H, hdc, x0, y0, SRCCOPY);
-    Blob(t, 0, H / 3, W / 2, H - 1, c); Blob(t, W / 5, 0, W * 4 / 5, H - 1, c); Blob(t, W / 2, H / 4, W - 1, H - 1, c);
+    float tm = GetTickCount() / 9000.0f;
+    for (int k = 0; k < 5; k++) { // each lump swells and shrinks slowly, so no two clouds share a shape
+        float n = 0.5f + 0.25f * sinf(seed * 0.37f + k * 2.1f + tm) + 0.25f * cosf(seed * 0.11f + k * 1.3f - tm * 0.7f);
+        int lw = (int)(W * (0.28f + 0.22f * n)), lh = (int)(H * (0.5f + 0.45f * n));
+        int lx = (int)(W * (0.1f + 0.2f * k)) - lw / 2 + W / 10, ly = H - lh;
+        if (lx < 0) lx = 0;
+        if (lx + lw > W - 1) lw = W - 1 - lx;
+        Blob(t, lx, ly, lx + lw, H - 1, c);
+    }
     BLENDFUNCTION bf = { AC_SRC_OVER, 0, (BYTE)alpha, 0 };
     AlphaBlend(hdc, x0, y0, W, H, t, 0, 0, W, H, bf);
     SelectObject(t, ob); DeleteObject(b); DeleteDC(t);
@@ -723,16 +752,14 @@ static void DrawClouds(HDC hdc, float light) {
     int n = IsAdverseWeather() ? 12 : 3 + (int)(weather_intensity * 6.0f);
     for (int i = 0; i < n; i++) {
         int hs = RainHash(i * 977 + 31);
-        float bx = (float)(hs % 800) / 10.0f, by = (float)(hs / 800 % 800) / 10.0f;
-        float rx = fmodf(bx + wx * t * 0.05f - player_x + 4000.0f, 80.0f) - 40.0f;
-        float ry = fmodf(by + wy * t * 0.05f - player_y + 4000.0f, 80.0f) - 40.0f;
-        float d = sqrtf(rx * rx + ry * ry);
-        if (d < 6.0f) continue;
-        int x, y; SkyPoint(atan2f(ry, rx), atanf(9.0f / d), &x, &y);
+        // Pinned to bearings like the stars, drifting slowly with the wind, so a
+        // turning gaze slides them smoothly and they never jump or vanish.
+        float az = (hs % 6283) / 1000.0f + t * 0.004f * (wx - wy), el = 0.10f + (hs / 6283 % 300) / 1000.0f;
+        int x, y; SkyPoint(az, el, &x, &y);
         if (x < -400) continue;
-        int solid = i % 3 != 0, w = (int)(focal * (2.0f + (hs % 5) * 0.6f) / d);
+        int solid = i % 3 != 0, w = (int)(focal * (0.10f + (hs % 5) * 0.04f) * (0.7f + el));
         COLORREF c = IsAdverseWeather() ? RGB(120, 125, 135) : solid ? RGB(245, 245, 250) : RGB(215, 220, 230);
-        CloudPuff(hdc, x, y, w, Dim(c, k + 0.15f), solid ? 215 : 95);
+        CloudPuff(hdc, x, y, w, Dim(c, k + 0.15f), solid ? 215 : 95, hs);
     }
 }
 
@@ -742,14 +769,17 @@ static void DrawWeather(HDC hdc) {
     if (in_cave || current_biome == BIOME_CAVE) return;
     DWORD now = GetTickCount();
     float wx, wy, across = WindAcross(&wx, &wy);
+    // Particles hang in the world: turning or tilting the gaze slides them
+    // across the screen instead of dragging them along with the camera.
+    int pan = (int)(yaw / FP_FOV * WINDOW_WIDTH), tilt = WINDOW_HEIGHT / 2 - horizon;
     if (IsAdverseWeather()) {
         int snow = current_season == SEASON_WINTER || current_biome == BIOME_TUNDRA, n = 80 + (int)(weather_intensity * 120.0f);
         for (int i = 0; i < n; i++) {
-            int hsh = RainHash(i * 613 + 9);
-            int x = (int)(((hsh % WINDOW_WIDTH) + (int)(now * across / (snow ? 40.0f : 12.0f)) + 100 * WINDOW_WIDTH) % WINDOW_WIDTH);
-            int y = (int)((hsh / 3 % WINDOW_HEIGHT + now / (snow ? 12 : 2) * (2 + i % 3)) % WINDOW_HEIGHT);
-            if (snow) Box(hdc, x, y, x + 2, y + 2, RGB(240, 240, 245));
-            else Stroke(hdc, x, y, x + (int)(across * 2.0f), y + 14, 1, RGB(170, 185, 210));
+            int hsh = RainHash(i * 613 + 9), z = i % 3; // z: 0 far and small .. 2 near and big
+            int x = (int)(((hsh % WINDOW_WIDTH) + (int)(now * across * (1 + z) / (snow ? 80.0f : 24.0f)) - pan + 100 * WINDOW_WIDTH) % WINDOW_WIDTH);
+            int y = (int)(((hsh / 3 % WINDOW_HEIGHT) + (int)(now / (snow ? 12 : 2)) * (1 + z) - tilt + 100 * WINDOW_HEIGHT) % WINDOW_HEIGHT);
+            if (snow) Box(hdc, x, y, x + 1 + z * 2, y + 1 + z * 2, RGB(240 - (2 - z) * 25, 240 - (2 - z) * 22, 245 - (2 - z) * 15));
+            else Stroke(hdc, x, y, x + (int)(across * (1 + z)), y + 7 + z * 8, z == 2 ? 2 : 1, z ? RGB(170, 185, 210) : RGB(140, 155, 180));
         }
     }
     int trees = 0;
@@ -757,12 +787,12 @@ static void DrawWeather(HDC hdc) {
     if (!trees || (current_season != SEASON_FALL && abs(wind_dir) < 4) || snow_cover > 0.5f) return;
     COLORREF lc[3] = { RGB(210, 120, 40), RGB(220, 175, 50), RGB(90, 150, 55) };
     for (int i = 0; i < 26; i++) {
-        int hsh = RainHash(i * 311 + 77);
-        float fall = now / (35.0f + hsh % 20);
-        int x = (int)(((hsh % WINDOW_WIDTH) + (int)(now * across / 9.0f) + (int)(sinf(fall / 20.0f + i) * 30.0f) + 100 * WINDOW_WIDTH) % WINDOW_WIDTH);
-        int y = (int)((hsh / 7 % WINDOW_HEIGHT + (int)fall) % WINDOW_HEIGHT);
-        int f = (int)(sinf(now / 150.0f + i) * 4.0f);
-        POINT p[4] = { { x - 4, y }, { x, y - 2 + f / 2 }, { x + 4, y }, { x, y + 2 - f / 2 } };
+        int hsh = RainHash(i * 311 + 77), z = i % 3, s = 2 + z * 2;
+        float fall = now * (1 + z) / (70.0f + hsh % 40);
+        int x = (int)(((hsh % WINDOW_WIDTH) + (int)(now * across * (1 + z) / 18.0f) + (int)(sinf(fall / 20.0f + i) * 30.0f) - pan + 100 * WINDOW_WIDTH) % WINDOW_WIDTH);
+        int y = (int)(((hsh / 7 % WINDOW_HEIGHT) + (int)fall - tilt + 100 * WINDOW_HEIGHT) % WINDOW_HEIGHT);
+        int f = (int)(sinf(now / 150.0f + i) * s);
+        POINT p[4] = { { x - s, y }, { x, y - s / 2 + f / 2 }, { x + s, y }, { x, y + s / 2 - f / 2 } };
         Shape(hdc, p, 4, lc[current_season == SEASON_FALL ? i % 2 : 2]);
     }
 }
@@ -812,8 +842,8 @@ void DrawAfkView(HDC hdc) {
 
 // Walk-in village homes: X at a cottage door steps into a polygon room drawn
 // with the same flat-shaded faces as the AFK view, from a fixed camera by the
-// doorway. The hero walks about inside, X by the bed sleeps, and walking back
-// out through the door returns to the village.
+// doorway. Inside, everything is a menu (TM_HOME): sleep, set out furniture,
+// or Leave; B / ESC always steps back outside, so nobody gets stuck indoors.
 #define ROOM_HX 2.6f
 #define ROOM_HY 2.0f
 int inside_home = -1;
@@ -832,6 +862,7 @@ static int HomeDoorNear(void) {
 void LeaveHome(void) {
     if (inside_home < 0) return;
     inside_home = -1; player_x = out_x; player_y = out_y;
+    if (town_menu == TM_HOME) town_menu = TM_NONE;
     strcpy(arpg_action_log, "HOME: You step back outside.");
 }
 
@@ -850,13 +881,7 @@ int InteriorBlocks(float x, float y) {
 }
 
 int HomeInteract(void) {
-    if (inside_home >= 0) {
-        if (inside_home == 4 && PlaceFurniture()) return 1;
-        if (player_x < room_cx - ROOM_HX + 1.8f && player_y < room_cy - ROOM_HY + 2.6f) {
-            sleep_fade_frame = 1; strcpy(arpg_action_log, "HOME: You sleep soundly in the cottage bed.");
-        } else strcpy(arpg_action_log, "HOME: A snug cottage. Walk out the door to leave.");
-        return 1;
-    }
+    if (inside_home >= 0) { if (town_menu != TM_HOME) OpenTownMenu(TM_HOME); return 1; }
     int i = HomeDoorNear();
     if (i < 0 || (i == 4 && player_home[0] != 2)) return 0;
     StoreEnemy();
@@ -866,9 +891,9 @@ int HomeInteract(void) {
     }
     float hx, hy; VillageHomeCentre(i, &hx, &hy);
     inside_home = i; out_x = player_x; out_y = player_y; room_cx = hx; room_cy = hy;
-    player_x = room_cx; player_y = room_cy + ROOM_HY - 0.8f;
+    player_x = room_cx - 0.3f; player_y = room_cy + 0.9f;
+    OpenTownMenu(TM_HOME);
     if (i == 4) { if (!PlaceFurniture()) strcpy(arpg_action_log, "HOME: Welcome home. Furniture you buy goes in when you come inside."); }
-    else strcpy(arpg_action_log, "HOME: \"Come in, come in! Mind the hearth.\"");
     return 1;
 }
 
@@ -958,7 +983,7 @@ static void DrawHomeFurniture(float x0, float x1, float y0, float y1, float cx, 
 
 void DrawHomeInterior(HDC hdc) {
     if (inside_home < 0) return;
-    if (player_y > room_cy + ROOM_HY - 0.35f && fabsf(player_x - room_cx) < 0.7f) { LeaveHome(); return; }
+    if (town_menu != TM_HOME) { LeaveHome(); return; }
     float x0 = room_cx - ROOM_HX, x1 = room_cx + ROOM_HX, y0 = room_cy - ROOM_HY, y1 = room_cy + ROOM_HY, cx = room_cx, cy = room_cy;
     int night = (fabs(sin(day_night_cycle_accumulator)) < 0.35f); DWORD now = GetTickCount();
     COLORREF wood = RGB(120, 80, 45), dark = RGB(85, 55, 32), stone = RGB(130, 125, 120), wall = RGB(222, 200, 158);
@@ -1002,9 +1027,6 @@ void DrawHomeInterior(HDC hdc) {
     FpThing h = { player_x, player_y, 0.0f, 0.0f, FP_NPC, (14 << 4) | 15 };
     HumanMesh(&h);
     DrawFaces(hdc, scene_lit);
-    SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(240, 225, 190));
-    const char *hint = "Walk out through the door to leave   |   X by the bed: sleep";
-    TextOut(hdc, WINDOW_WIDTH / 2 - 230, WINDOW_HEIGHT - 150, hint, (int)strlen(hint));
 }
 
 // Shop and castle rooms: the same polygon room, framed so the floor meets the

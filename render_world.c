@@ -325,7 +325,7 @@ void DrawEnvironmentalCritters(HDC hdc) {
             continue;
         }
         int sx, sy; GetIsoCoords(critters[i].x, critters[i].y, &sx, &sy);
-        int jump_bob = (critters[i].state == 1) ? (int)(sin(world_tick * 8.0f) * 4.0f) : 0;
+        int jump_bob = (critters[i].state == 1) ? (int)(sin(world_tick * (6.0f + 2.0f * (i % 3)) + i * 1.9f) * 4.0f) : 0; // three hop timings
         if (critters[i].type == 0) { // bluebird: hops on the ground, flaps when flying
             int t = critters[i].timer, flying = critters[i].state == 2;
             int lift = flying ? 22 : (t <= 8 ? (int)(sin(t * 3.14159f / 8.0f) * 6.0f) : 0);
@@ -407,12 +407,12 @@ void DrawEnvironmentalCritters(HDC hdc) {
     }
 }
 
-// Night eyes peering out of the tree line: at most a couple of yellow pairs.
-// Red pairs foreshadow what comes after level 25 and are rare before it.
-// Pairs stay put for ~9 seconds, blink now and then, and never sit right
-// next to the hero.
+// Night eyes peering out of the tree line once the hero reaches level 5: at
+// most a couple of yellow pairs. Red pairs foreshadow what comes after level
+// 25 and are rare before it. Pairs stare from one spot for ~14 seconds, blink
+// slowly now and then, and never sit right next to the hero.
 void DrawNightEyes(HDC hdc) {
-    if (current_biome == BIOME_CAVE || current_biome == BIOME_CASTLE) return;
+    if (player_level < 5 || current_biome == BIOME_CAVE || current_biome == BIOME_CASTLE) return;
     if ((float)fabs(sin(day_night_cycle_accumulator)) >= 0.35f) return;
     int trees[256], n = 0;
     for (int r = 0; r < MAP_SIZE && n < 256; r++) for (int c = 0; c < MAP_SIZE && n < 256; c++) {
@@ -422,18 +422,20 @@ void DrawNightEyes(HDC hdc) {
     }
     if (n == 0) return;
     DWORD now = GetTickCount();
-    unsigned int h0 = (unsigned int)RainHash(current_screen_index * 977 + (int)(now / 9000));
+    unsigned int h0 = (unsigned int)RainHash(current_screen_index * 977 + (int)(now / 14000));
     int yellow = (int)(h0 % 3);
     int red_chance = (player_level >= 25) ? 30 : 3;
     int red = (int)((h0 >> 8) % 100) < red_chance;
     for (int k = 0; k < yellow + red; k++) {
         unsigned int h = (unsigned int)RainHash((int)h0 + k * 131);
-        if (((now / 120) + h) % 30 == 0) continue; // brief blink
+        int ph = (int)((now + h * 37u) % 5200u), open = 3; // slow blink: lids close and reopen over ~0.9 s
+        if (ph < 900) open = ph < 450 ? 3 - ph * 3 / 450 : (ph - 450) * 3 / 450;
+        if (open <= 0) continue;
         int t = trees[h % (unsigned int)n];
         int sx, sy; GetIsoCoords((float)(t % MAP_SIZE), (float)(t / MAP_SIZE), &sx, &sy);
         int ex = sx - 6 + (int)(h % 13), ey = sy - 4 - (int)((h >> 5) % 6);
         HBRUSH b = CreateSolidBrush((red && k == yellow) ? RGB(235, 30, 25) : RGB(240, 215, 60));
-        RECT left = { ex - 4, ey, ex - 1, ey + 2 }, right = { ex + 1, ey, ex + 4, ey + 2 };
+        RECT left = { ex - 4, ey + 1 - (open + 1) / 2, ex - 1, ey + 1 + open / 2 }, right = { ex + 1, ey + 1 - (open + 1) / 2, ex + 4, ey + 1 + open / 2 };
         FillRect(hdc, &left, b); FillRect(hdc, &right, b); DeleteObject(b);
     }
 }
@@ -563,7 +565,7 @@ void DrawBedroll(HDC hdc) {
 }
 
 // Very slight zoom-in of the gameplay view (HUD is drawn afterwards, unscaled).
-static const float zoom_levels[3] = { 1.08f, 1.18f, 1.30f }; // far (default), closer, closest
+static const float zoom_levels[3] = { 1.08f, 1.25f, 1.42f }; // far (default), closer, closest
 static int zoom_index = 0;
 #define CAMERA_ZOOM zoom_levels[zoom_index]
 static float afk_amount; // 0..1 while the AFK camera has eased in

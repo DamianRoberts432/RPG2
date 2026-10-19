@@ -290,6 +290,10 @@ void TryCardDrop(int monster); // monster < 0 for chests and fishing
 extern int stamina_rest_timer;
 #define STAMINA_REST_FRAMES_REQUIRED 45
 extern float player_hp, max_player_hp;
+extern DWORD hero_held_until;
+extern int hero_hop_frame;
+void HurtHero(float dmg);
+void EnemyAttackHero(int e);
 extern float current_payload_weight;
 extern float day_night_cycle_accumulator;
 extern WeatherType current_weather;

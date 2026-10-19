@@ -57,6 +57,12 @@ int TryFarmPlot(int x, int y) {
 int TryTillGround(int x, int y) {
     if (!HasInventoryItem("Hoe") || !FarmableBiome()) return 0;
     if (x < 1 || y < 1 || x >= MAP_SIZE - 1 || y >= MAP_SIZE - 1 || VISUAL_MAP[y][x] != 0) return 0;
+    int near_home = 0; // only your homestead or villagers' farmland can be tilled
+    for (int i = 0; i < 5 && !near_home; i++) {
+        float hx, hy;
+        if (VillageHomeCentre(i, &hx, &hy) && (hx - x) * (hx - x) + (hy - y) * (hy - y) < 7.0f * 7.0f) near_home = 1;
+    }
+    if (!near_home) return 0;
     for (int i = 0; i < MAX_FARM_PLOTS; i++) if (!farm_plots[i].active) {
         farm_plots[i] = (FarmPlot){ 1, current_screen_index, 0, 0, (int8_t)x, (int8_t)y, { 0, 0 } };
         strcpy(arpg_action_log, "FARM: Tilled the soil. Press X with Seeds to plant.");

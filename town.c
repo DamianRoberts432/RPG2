@@ -11,7 +11,7 @@ static char town_note[160] = "";
 
 typedef struct { char text[96]; int action, arg; } TownRow;
 enum { A_LEAVE, A_REPAIR, A_FORGE, A_RECYCLE, A_SMITH_BUY, A_CARD, A_PACK, A_KID, A_PET, A_KING,
-       A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE, A_GUIDE, A_PET_SIZE, A_PET_COLOR };
+       A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE, A_GUIDE, A_PET_SIZE, A_PET_COLOR, A_SLEEP, A_FURNISH };
 #define TOWN_ROWS 24
 static TownRow rows[TOWN_ROWS];
 static int row_count = 0;
@@ -92,7 +92,7 @@ typedef struct { const char *name; int set, pt, ability; } CardDef;
 static const char *card_sets[3] = { "Wild Creatures", "Angels", "Goetia Demons" };
 int card_pool_size = CARD_PRINTED;
 static CardDef card_defs[CARD_COUNT] = {
-    { "Skeleton", 0, 1, AB_NONE }, { "Zombie", 0, 2, AB_NONE }, { "Dracula", 0, 3, AB_FIRST_STRIKE },
+    { "Skeleton", 0, 1, AB_NONE }, { "Zombie", 0, 2, AB_NONE }, { "Vampire", 0, 3, AB_FIRST_STRIKE },
     { "Goblin", 0, 1, AB_FIRST_STRIKE }, { "Satyr", 0, 2, AB_FIRST_STRIKE }, { "Yeti", 0, 3, AB_PUMP3 },
     { "Sphinx", 0, 3, AB_NONE }, { "Bigfoot", 0, 3, AB_PUMP3 }, { "Bunyip", 0, 2, AB_NONE },
     { "Bluebird", 0, 1, AB_FIRST_STRIKE }, { "Squirrel", 0, 1, AB_NONE }, { "Owl", 0, 2, AB_FIRST_STRIKE }, { "Bat", 0, 1, AB_NONE },
@@ -289,6 +289,10 @@ static int OwnedFamiliarSlot(void) {
 static void BuildRows(void) {
     char t[96], nm[48];
     row_count = 0;
+    if (town_menu == TM_HOME) {
+        AddRow(A_SLEEP, 0, inside_home == 4 ? "Sleep in your bed" : "Rest in the guest bed");
+        if (inside_home == 4) AddRow(A_FURNISH, 0, "Set out new furniture");
+    }
     if (town_menu == TM_SMITH) {
         for (int i = 0; i < player_item_count; i++) {
             InventoryItem *it = &player_inventory[i];
@@ -404,6 +408,8 @@ static void RowInfo(const TownRow *r, char *out, size_t n) {
     case A_GUIDE: snprintf(out, n, "Secret card combos: read it from your pack for a 2-second peek. Stealing it means jail."); break;
     case A_KID: snprintf(out, n, "A kid sits at the corner table shuffling a test deck. He won't play for ante."); break;
     case A_PRACTICE: snprintf(out, n, "Three duels, one card each. Both cards hit at once unless one has First Strike; death curses and blessings land on the next card. His cards and yours are on the right."); break;
+    case A_SLEEP: snprintf(out, n, "Sleep until the next morning or evening. You wake rested."); break;
+    case A_FURNISH: snprintf(out, n, "Furniture bought from the merchant is set out in your home."); break;
     case A_PET_SIZE: case A_PET_COLOR: snprintf(out, n, "Choose the size and coat colour of your dog or cat. Change it here any time."); break;
     case A_PET: snprintf(out, n, "%s  |  %s  |  %s", familiars[r->arg].name, familiars[r->arg].nocturnal ? "Nocturnal" : "Diurnal", familiars[r->arg].trait); break;
     case A_KING: snprintf(out, n, "Legendary quests open at level %d. Quests completed: %d.", LEGENDARY_QUEST_LEVEL, legendary_quests_done); break;
@@ -425,7 +431,7 @@ static void Say(const char *fmt, ...) {
     snprintf(arpg_action_log, sizeof(arpg_action_log), "%s", town_note);
 }
 
-static const char *greetings[9] = { "",
+static const char *greetings[10] = { "",
     "BLACKSMITH: Steel needs mending, or something finer? Pick a job.",
     "CARD SHOP: Ten fresh cards on the counter today. The kid at the table can teach you.",
     "PET SHOP: Every familiar here needs a seasoned keeper.",
@@ -433,7 +439,8 @@ static const char *greetings[9] = { "",
     "BANKER: Your gold is safe in the vault.",
     "BEGGAR: Spare a coin or a crust, kind traveler?",
     "",
-    "CHEST: Pick an item to take out, or something from your pack to store." };
+    "CHEST: Pick an item to take out, or something from your pack to store.",
+    "HOME: \"Come in, come in! Mind the hearth.\"" };
 
 void OpenTownMenu(int menu) {
     town_menu = menu; town_cursor = 0; menu_screen = current_screen_index;
@@ -444,7 +451,7 @@ void OpenTownMenu(int menu) {
 }
 
 void TownMenuMove(int step) { BuildRows(); if (row_count > 0) town_cursor = (town_cursor + step + row_count) % row_count; }
-void TownMenuBack(void) { town_menu = TM_NONE; }
+void TownMenuBack(void) { int was_home = town_menu == TM_HOME; town_menu = TM_NONE; if (was_home) LeaveHome(); }
 
 float TownDamageMult(void) {
     if (blessing_type < 0 || GetTickCount() > blessing_until) return 1.0f;
@@ -519,6 +526,8 @@ void TownMenuConfirm(void) {
     TownRow r = rows[town_cursor];
     switch (r.action) {
     case A_LEAVE: TownMenuBack(); return;
+    case A_SLEEP: sleep_fade_frame = 1; Say("HOME: You sleep soundly in the %s bed.", inside_home == 4 ? "warm" : "cottage"); return;
+    case A_FURNISH: if (PlaceFurniture()) Say("%s", arpg_action_log); else Say("HOME: Nothing new to set out. The merchant sells furniture."); return;
     case A_REPAIR: {
         InventoryItem *it = &player_inventory[r.arg];
         int cost = ShopPrice(it->durability_max - it->durability_current);
@@ -595,7 +604,7 @@ void TownMenuConfirm(void) {
         return; }
     case A_KING:
         if (player_level < LEGENDARY_QUEST_LEVEL) Say("KING: Legendary deeds are not for the untested. Return when you reach level %d.", LEGENDARY_QUEST_LEVEL);
-        else if (legendary_quest == 0) { legendary_quest = 1; Say("KING: A Legendary quest! Slay a mythic beast - Yeti, Sphinx, Bigfoot, Bunyip - or Dracula himself, then return to me."); }
+        else if (legendary_quest == 0) { legendary_quest = 1; Say("KING: A Legendary quest! Slay a mythic beast - Yeti, Sphinx, Bigfoot, Bunyip - or a Vampire lord, then return to me."); }
         else if (legendary_quest == 1) Say("KING: The beast still lives. Seek it in the wild lands beyond these walls.");
         else {
             legendary_quest = 0; legendary_quests_done++; gold_count += 10000; KarmaAdjust(5, 0, -5, 10);
@@ -802,7 +811,7 @@ static void DrawPetFigure(HDC hdc, int cx, int cy, float s, int kind, COLORREF c
 }
 
 void DrawInteriorBackdrop(HDC hdc, int menu) {
-    if (menu == TM_BEGGAR || menu == TM_CHEST) return;
+    if (menu == TM_BEGGAR || menu == TM_CHEST || menu == TM_HOME) return;
     const int W = WINDOW_WIDTH, H = WINDOW_HEIGHT, F = INT_FLOOR_Y;
     int stone = menu == TM_KING || menu == TM_BANK, shrine = menu == TM_ALTAR;
     COLORREF wall = shrine ? RGB(40, 30, 52) : stone ? RGB(96, 96, 104) : RGB(116, 78, 46);
@@ -828,17 +837,18 @@ void DrawInteriorBackdrop(HDC hdc, int menu) {
         DrawZeldaStyleVillager(hdc, 700, F - 10, 6, 6.0f);
     } else if (menu == TM_CARDS) {
         DrawShelf(hdc, 400, 780, 230, 11); DrawShelf(hdc, 400, 780, 360, 12);
-        DrawZeldaStyleVillager(hdc, 190, F - 146, 10, 4.5f); // the kid, seated behind his table
-        TwBox(hdc, 70, F - 110, 330, F - 92, RGB(120, 80, 50));
-        TwBox(hdc, 90, F - 92, 104, F, RGB(90, 60, 36)); TwBox(hdc, 296, F - 92, 310, F, RGB(90, 60, 36));
-        for (int k = 0; k < 4; k++) TwBox(hdc, 110 + k * 46, F - 118, 140 + k * 46, F - 110, k % 2 ? RGB(180, 40, 50) : RGB(240, 240, 230));
+        const int kx = 60, ky = 120; // in front of the side wall, on the floor
+        DrawZeldaStyleVillager(hdc, 190 + kx, F - 146 + ky, 10, 4.8f); // the kid, seated behind his table
+        TwBox(hdc, 70 + kx, F - 110 + ky, 330 + kx, F - 92 + ky, RGB(120, 80, 50));
+        TwBox(hdc, 90 + kx, F - 92 + ky, 104 + kx, F + ky, RGB(90, 60, 36)); TwBox(hdc, 296 + kx, F - 92 + ky, 310 + kx, F + ky, RGB(90, 60, 36));
+        for (int k = 0; k < 4; k++) TwBox(hdc, 110 + kx + k * 46, F - 118 + ky, 140 + kx + k * 46, F - 110 + ky, k % 2 ? RGB(180, 40, 50) : RGB(240, 240, 230));
     } else if (menu == TM_PETS) {
         for (int k = 0; k < 3; k++) {
-            int x0 = 80 + k * 110, y0 = 400;
-            TwBox(hdc, x0, y0, x0 + 90, y0 + 90, RGB(60, 50, 40));
-            TwBox(hdc, x0 + 4, y0 + 4, x0 + 86, y0 + 86, RGB(70, 46, 28));
-            DrawPetFigure(hdc, x0 + 40, y0 + 82, 1.7f, k, k == 0 ? RGB(150, 100, 55) : k == 1 ? RGB(120, 120, 128) : RGB(70, 130, 60));
-            for (int x = x0 + 12; x < x0 + 90; x += 15) TwLine(hdc, x, y0, x, y0 + 90, 2, RGB(180, 170, 150));
+            int x0 = 110 + k * 92, y0 = F + 20; // cages sit on the floor in front of the side wall
+            TwBox(hdc, x0, y0, x0 + 84, y0 + 84, RGB(60, 50, 40));
+            TwBox(hdc, x0 + 4, y0 + 4, x0 + 80, y0 + 80, RGB(70, 46, 28));
+            DrawPetFigure(hdc, x0 + 38, y0 + 76, 1.6f, k, k == 0 ? RGB(150, 100, 55) : k == 1 ? RGB(120, 120, 128) : RGB(70, 130, 60));
+            for (int x = x0 + 12; x < x0 + 84; x += 14) TwLine(hdc, x, y0, x, y0 + 84, 2, RGB(180, 170, 150));
         }
         TwLine(hdc, 1000, 380, 1080, 380, 6, RGB(90, 60, 30));
         DrawPetFigure(hdc, 1040, 378, 1.4f, 3, RGB(150, 110, 70));
@@ -953,9 +963,10 @@ void DrawTownMenu(HDC hdc) {
     if (menu_screen != current_screen_index) { town_menu = TM_NONE; return; }
     BuildRows();
     DrawInteriorBackdrop(hdc, town_menu);
-    static const char *titles[9] = { "", "BLACKSMITH", "CARD SHOP", "PET SHOP", "THRONE ROOM", "TOWN BANK", "BEGGAR", "ALTAR", "CHEST" };
+    static const char *titles[10] = { "", "BLACKSMITH", "CARD SHOP", "PET SHOP", "THRONE ROOM", "TOWN BANK", "BEGGAR", "ALTAR", "CHEST", "HOME" };
     RECT box = { 1100, 70, 1790, 910 };
     if (town_menu == TM_BEGGAR || town_menu == TM_CHEST) { box.left = 560; box.right = 1260; box.top = 200; box.bottom = 700; }
+    if (town_menu == TM_HOME) { box.left = 1240; box.right = 1840; box.top = 470; box.bottom = 860; }
     int table = KidTableVisible();
     if (table) { box.left = 40; box.right = 760; }
     TwBox(hdc, box.left, box.top, box.right, box.bottom, RGB(18, 20, 28));
@@ -977,7 +988,7 @@ void DrawTownMenu(HDC hdc) {
     SetTextColor(hdc, RGB(230, 230, 230));
     TextOut(hdc, box.left + 20, box.top + 42, line, (int)strlen(line));
 
-    int visible = town_menu == TM_BEGGAR ? 6 : 14;
+    int visible = town_menu == TM_BEGGAR || town_menu == TM_HOME ? 6 : 14;
     int start = town_cursor - visible / 2;
     if (start > row_count - visible) start = row_count - visible;
     if (start < 0) start = 0;

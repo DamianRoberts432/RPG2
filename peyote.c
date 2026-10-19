@@ -49,9 +49,14 @@ void EatPeyote(void) {
     strcpy(arpg_action_log, "PEYOTE: The colours begin to melt...");
 }
 
-// Heat-mirage melt: the finished frame is copied, then laid back in thin
-// bands, each slid sideways and up or down by the same crossing swells as the
-// water (WaveAt), under a slow colour wash. Works in the AFK view too.
+// Gentle melt: the finished frame is copied and laid back in thin bands that
+// sway only a few pixels, under slowly drifting bands of saturated colour
+// (a soft rainbow sheen rather than a desert haze). Works in the AFK view too.
+static COLORREF HueColor(float h) {
+    float r = 0.5f + 0.5f * sinf(h), g = 0.5f + 0.5f * sinf(h + 2.094f), b = 0.5f + 0.5f * sinf(h + 4.189f);
+    float mx = r > g ? (r > b ? r : b) : (g > b ? g : b), mn = r < g ? (r < b ? r : b) : (g < b ? g : b), k = mx > mn ? 1.0f / (mx - mn) : 1.0f;
+    return RGB((int)((r - mn) * k * 255), (int)((g - mn) * k * 255), (int)((b - mn) * k * 255));
+}
 void DrawPeyoteMelt(HDC hdc) {
     DWORD now = GetTickCount();
     if (!peyote_until || now >= peyote_until) return;
@@ -60,10 +65,10 @@ void DrawPeyoteMelt(HDC hdc) {
     if (!copy) { copy = CreateCompatibleDC(hdc); bmp = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT); SelectObject(copy, bmp); }
     BitBlt(copy, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, hdc, 0, 0, SRCCOPY);
     for (int y = 0; y < WINDOW_HEIGHT; y += 4) {
-        int dx = (int)(WaveAt(y * 0.02f, 0.0f, t) * 14.0f * fade), dy = (int)(WaveAt(0.0f, y * 0.03f, t * 0.7f) * 3.0f * fade);
-        BitBlt(hdc, dx, y, WINDOW_WIDTH, 4, copy, 0, y + dy, SRCCOPY);
+        int dx = (int)(WaveAt(y * 0.008f, 0.0f, t * 0.35f) * 3.0f * fade);
+        BitBlt(hdc, dx, y, WINDOW_WIDTH, 4, copy, 0, y, SRCCOPY);
     }
-    float h = t * 0.4f;
-    COLORREF c = RGB((int)(127 + 127 * sinf(h)), (int)(127 + 127 * sinf(h + 2.1f)), (int)(127 + 127 * sinf(h + 4.2f)));
-    FillRectAlpha(hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, c, (int)(30 * fade));
+    const int bands = 14, bh = WINDOW_HEIGHT / bands + 1;
+    for (int k = 0; k < bands; k++)
+        FillRectAlpha(hdc, 0, k * bh, WINDOW_WIDTH, bh, HueColor(t * 0.25f + k * 0.45f), (int)(26 * fade));
 }
