@@ -171,6 +171,9 @@ One real second is one game minute, so a day lasts 24 real minutes and each 30-d
 - **Dark vision:** at night (and in caves) the dark closes in beyond what your race can see: Human 5.5 tiles, Halfling 6, Elf 7.5, Dwarf and Gnome 8.5, Night Vision 10. The AFK view fogs in to the same distance. Campfires and village lamps push the dark back with a warm glow on trees, the hero, villagers and monsters.
 - **Campfire edge:** monsters kept out by a fire take turns lurking at the edge of the light, hiding on the dark side of a nearby tree, or stalking a nearby animal.
 - **Roaming monsters:** monsters that aren't chasing you walk to a tree, the water's edge, an animal or a look-out spot, linger there a while, then move on.
+- **Big trees:** old giants (many in forests) have a high crown; it turns lacy when you walk behind it so you can still see yourself. In AFK they tower over you and block part of the sky.
+- **Living watercolour (AFK):** water colours bleed softly, canopies sway, butterflies drift and flowers nod.
+- **NPC routines:** villagers sweep, farm, fetch water or enjoy a tree; the blacksmith hammers and quenches; the merchant checks his barrels and stares, then walks over, if you smash them (raises town heat).
 - **Clothes and trim:** on the start screen pick a clothes colour ([8]) and a trim colour ([9]) for the hem, belt, collar and hood edge. Under a hood your chin shows and your eyes are two glowing points.
 - **AFK world:** Yeti, Bigfoot, Sphinx and Bunyip appear at their real size and shape, the Vampire wears his cape, and towns show their barrels, torches, fire pits, altar, castle stall and merchant tent.
 - **Vampires** (formerly Dracula): carry **Garlic** (merchant) and they won't come for you; a **Silver Dagger** (merchant) does double damage to them.
