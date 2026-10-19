@@ -1,5 +1,7 @@
 #include "game.h"
 
+static DWORD cast_at = 0; // the bobber flies out in an arc for CAST_MS
+#define CAST_MS 450
 static int fish_state = 0; // 0 idle, 1 bobber floating, 2 fish nibbling (bobber dips)
 static float bobber_x, bobber_y, cast_x, cast_y;
 static DWORD next_event = 0, dip_until = 0, rumble_until = 0;
@@ -35,7 +37,7 @@ void CastFishingLine(void) {
     cast_x = player_x; cast_y = player_y;
     fishy = IsFacingFishWater();
     dips_left = fishy ? 2 + rand() % 3 : 0;
-    fish_state = 1; fishing_active = 1;
+    fish_state = 1; fishing_active = 1; cast_at = GetTickCount();
     next_event = GetTickCount() + 1500 + rand() % 2500;
     strcpy(arpg_action_log, "FISHING: You cast your line. When the bobber dips, press X.");
 }
@@ -78,10 +80,23 @@ void DrawFishing(HDC hdc) {
     GetIsoCoords(player_x, player_y, &px, &py);
     GetIsoCoords(bobber_x, bobber_y, &bx, &by);
     int bob = fish_state == 2 ? 4 : (int)(sin(GetTickCount() / 300.0) * 1.5);
-    HPEN line = CreatePen(PS_SOLID, 1, RGB(225, 225, 225)); HGDIOBJ op = SelectObject(hdc, line);
-    MoveToEx(hdc, px + 8, py - 30, NULL); LineTo(hdc, bx, by - 3 + bob);
+    // Rod held in the hand, tipped out toward the water; it bends when a fish nibbles.
+    int dir = bx >= px ? 1 : -1;
+    int hx = px + dir * 5, hy = py - 16;
+    float t = (GetTickCount() - cast_at) / (float)CAST_MS; if (t > 1.0f) t = 1.0f;
+    int tipx = hx + dir * (t < 1.0f ? (int)(6 + 16 * t) : 22), tipy = hy - (t < 1.0f ? (int)(32 - 12 * t) : 20) + (fish_state == 2 ? 6 : 0);
+    HPEN rod = CreatePen(PS_SOLID, 2, RGB(120, 80, 40)); HGDIOBJ op = SelectObject(hdc, rod);
+    MoveToEx(hdc, hx, hy, NULL); LineTo(hdc, tipx, tipy);
+    SelectObject(hdc, op); DeleteObject(rod);
+    if (t < 1.0f) { // still flying: arc from the rod tip to where it lands
+        bx = (int)(tipx + (bx - tipx) * t); by = (int)(tipy + (by - tipy) * t - sin(t * 3.14159f) * 30.0f); bob = 0;
+    }
+    HPEN line = CreatePen(PS_SOLID, 1, RGB(225, 225, 225)); op = SelectObject(hdc, line);
+    POINT sag[4] = { { tipx, tipy }, { tipx + (bx - tipx) / 3, tipy + (by - tipy) / 3 + (t < 1.0f ? 0 : 10) },
+                     { tipx + 2 * (bx - tipx) / 3, tipy + 2 * (by - tipy) / 3 + (t < 1.0f ? 0 : 8) }, { bx, by - 3 + bob } };
+    PolyBezier(hdc, sag, 4);
     SelectObject(hdc, op); DeleteObject(line);
-    if (fish_state == 2) {
+    if (fish_state == 2 && t >= 1.0f) {
         HPEN ring = CreatePen(PS_SOLID, 1, RGB(200, 230, 255)); op = SelectObject(hdc, ring);
         HGDIOBJ ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
         Ellipse(hdc, bx - 9, by - 2, bx + 9, by + 5);
