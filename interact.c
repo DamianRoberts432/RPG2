@@ -62,6 +62,7 @@ void HandleContextInteract(void) {
     }
     for (int i = 0; i < village_npc_count; i++) {
         if (!IsNearPoint(village_npcs[i].x, village_npcs[i].y, 1.5f)) continue;
+        if (QuestDeliverTo(village_npcs[i].type)) return;
         if (village_npcs[i].type == 1) {
             vendor_menu_open = 1;
             vendor_tab = 0;
