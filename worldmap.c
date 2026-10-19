@@ -280,8 +280,6 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
     HBRUSH sand = CreateSolidBrush(RGB(225, 205, 140));
     HBRUSH treasure = CreateSolidBrush(RGB(245, 200, 40));
     HBRUSH treasure_edge = CreateSolidBrush(RGB(90, 60, 15));
-    int town_gx[10], town_gy[10], town_n = 0, town_more = 0;
-    uint8_t town_poi[10];
 
     for (int gy = min_y; gy <= max_y; gy++) for (int gx = min_x; gx <= max_x; gx++) {
         int cx = left + (gx - min_x) * cs, cy = top + (gy - min_y) * cs;
@@ -314,15 +312,10 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
             FillSub(hdc, cx, cy, q, 0, 3, 1, 1, castle_tower);
             FillSub(hdc, cx, cy, q, 3, 3, 1, 1, castle_tower);
         }
-        if (poi & (POI_VILLAGE | POI_CASTLE)) {
-            if (town_n < 10) {
-                town_gx[town_n] = gx; town_gy[town_n] = gy; town_poi[town_n] = poi; town_n++;
-                if (cs >= 64) { // zoomed in far enough to write the name on the tile
-                    char nm[32]; TownNameAt(gy * META_GRID_SIZE + gx + ((poi & POI_TOWN_ALT) ? 30000 : 0), nm, sizeof(nm));
-                    SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(255, 240, 120));
-                    TextOut(hdc, cx + 2, cy + cs - 16, nm, (int)strlen(nm));
-                }
-            } else town_more++;
+        if ((poi & (POI_VILLAGE | POI_CASTLE)) && cs >= 64) { // zoomed in far enough to write the name on the tile
+            char nm[32]; TownNameAt(gy * META_GRID_SIZE + gx + ((poi & POI_TOWN_ALT) ? 30000 : 0), nm, sizeof(nm));
+            SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(255, 240, 120));
+            TextOut(hdc, cx + 2, cy + cs - 16, nm, (int)strlen(nm));
         }
         // Some Mountain screens hide a cave; its treasure marker disappears
         // once that cave's treasure has been claimed.

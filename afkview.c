@@ -107,6 +107,23 @@ static void SkyPoint(float az, float el, int *x, int *y) {
     *y = horizon - (int)(el * WINDOW_HEIGHT * 0.8f);
 }
 
+// Now and then (about one 25 s spell in four) a soft shaft of sun or moon
+// light slants down to the ground, fading in and out over a few seconds.
+static float BeamStrength(int salt) {
+    DWORD now = GetTickCount(), cyc = now / 25000, t = now % 25000;
+    if (RainHash((int)cyc * 7 + salt) % 4 || t > 15000) return 0.0f;
+    return t < 3000 ? t / 3000.0f : t > 12000 ? (15000 - t) / 3000.0f : 1.0f;
+}
+
+static void DrawSkyBeam(HDC hdc, int x, int y, int h, COLORREF c, int alpha, float k) {
+    if (k <= 0.0f || x < -200 || x > WINDOW_WIDTH + 200) return;
+    for (int yy = y; yy < h + 80 && yy < WINDOW_HEIGHT; yy += 8) {
+        float t = (float)(yy - y) / (h + 80 - y + 1);
+        int w = 20 + (int)(t * 120), cx = x - (int)((yy - y) * 0.35f);
+        FillRectAlpha(hdc, cx - w / 2, yy, w, 8, c, (int)(alpha * k * (1.0f - 0.6f * t)));
+    }
+}
+
 static void DrawSky(HDC hdc, float light) {
     int h = horizon < 0 ? 0 : horizon > WINDOW_HEIGHT ? WINDOW_HEIGHT : horizon;
     if (in_cave || current_biome == BIOME_CAVE) { Box(hdc, 0, 0, WINDOW_WIDTH, h, RGB(28, 24, 22)); return; }
@@ -118,6 +135,7 @@ static void DrawSky(HDC hdc, float light) {
     if (light > 0.45f && !gloomy) { // the sun
         SkyPoint(-0.9f, 0.55f * light, &x, &y);
         Blob(hdc, x - 26, y - 26, x + 26, y + 26, RGB(255, 236, 170)); Blob(hdc, x - 18, y - 18, x + 18, y + 18, RGB(255, 250, 215));
+        DrawSkyBeam(hdc, x, y, h, RGB(255, 240, 190), 45, BeamStrength(1));
     }
     if (light >= 0.35f || gloomy) return;
     float k = (0.35f - light) / 0.35f;
@@ -130,6 +148,7 @@ static void DrawSky(HDC hdc, float light) {
         Box(hdc, x, y, x + sz - 1, y + sz - 1, RGB(lum, lum, lum));
     }
     SkyPoint(0.8f, 0.42f, &x, &y); // the moon; its phase follows the 30-day season
+    DrawSkyBeam(hdc, x, y, h, RGB(200, 215, 240), (int)(35 * k), BeamStrength(2));
     if (x > -100) {
         int mr = 22, moon = (int)(235 * k);
         float phase = (SeasonDay() % 30) / 30.0f;
