@@ -14,7 +14,7 @@
 #define FP_MAX_THINGS 240
 #define GAZE_MS 6500
 
-enum { FP_TREE, FP_ROCK, FP_HOME, FP_FIRE, FP_BUTTERFLY, FP_CRITTER, FP_FAMILIAR, FP_BOBBER };
+enum { FP_TREE, FP_ROCK, FP_HOME, FP_FIRE, FP_BUTTERFLY, FP_CRITTER, FP_FAMILIAR, FP_BOBBER, FP_ENEMY, FP_NPC };
 typedef struct { float x, y, z, depth; int kind, seed; } FpThing;
 static FpThing things[FP_MAX_THINGS];
 static int thing_count, horizon, bobber_sx = -1, bobber_sy;
@@ -97,6 +97,13 @@ static void GatherThings(void) {
     for (int i = 0; i < MAX_CRITTERS; i++)
         if (critters[i].active && !critters[i].hidden) AddThing(critters[i].x, critters[i].y, 0.0f, FP_CRITTER, i * 8 + (critters[i].type & 7));
     if (familiar_visible) AddThing(familiar_world_x, familiar_world_y, 0.0f, FP_FAMILIAR, familiar_visible - 1);
+    for (int i = 0; i < MAX_ENEMIES; i++) { // the live one is held in enemy_x/enemy_y
+        int cur = i == current_enemy;
+        float hp = cur ? enemy_hearts : enemies[i].hearts;
+        if (hp > 0.0f) AddThing(cur ? enemy_x : enemies[i].x, cur ? enemy_y : enemies[i].y, 0.0f, FP_ENEMY, i * 32 + ((cur ? active_monster : enemies[i].type) & 31));
+    }
+    for (int i = 0; i < village_npc_count; i++)
+        if (village_npcs[i].type != 8) AddThing(village_npcs[i].x, village_npcs[i].y, 0.0f, FP_NPC, i * 16 + (village_npcs[i].type & 15));
     float bx, by; int nibble;
     if (FishingBobberPos(&bx, &by, &nibble)) AddThing(bx, by, 0.0f, FP_BOBBER, nibble);
 }
@@ -403,8 +410,8 @@ static void Wing(float cx, float cy, float z, float len, float span, float f, in
 }
 
 static float HeadingFor(int key, float x, float y) {
-    static float lx[64], ly[64], hd[64];
-    key &= 63;
+    static float lx[128], ly[128], hd[128];
+    key &= 127;
     float dx = x - lx[key], dy = y - ly[key], d2 = dx * dx + dy * dy;
     if (d2 >= 4.0f) hd[key] = atan2f(player_y - y, player_x - x); // just appeared: facing the hero
     else if (d2 > 0.00002f) hd[key] = Wrap(hd[key] + Wrap(atan2f(dy, dx) - hd[key]) * 0.2f);
@@ -485,6 +492,67 @@ static void AnimalMesh(const FpThing *t) {
         OBox(x, y, 0.05f, 0.035f, hop + 0.08f, hop + 0.11f, 0.015f, 0.015f, c); OBox(x, y, 0.05f, -0.035f, hop + 0.08f, hop + 0.11f, 0.015f, 0.015f, c);
         Eyes(x, y, 0.066f, 0.035f, hop + 0.095f, 0.008f, black);
     }
+}
+
+// Ground shadows thrown away from nearby campfires and torches at night.
+extern int village_light_count;
+static void FireShadows(float x, float y, float tall) {
+    if (scene_lit > 0.65f || in_cave) return;
+    float lx[MAX_CAMPFIRES + MAX_VILLAGE_LIGHTS], ly[MAX_CAMPFIRES + MAX_VILLAGE_LIGHTS]; int n = 0;
+    for (int i = 0; i < MAX_CAMPFIRES; i++)
+        if (campfires[i].active && campfires[i].screen_id == current_screen_index) { lx[n] = campfires[i].x; ly[n++] = campfires[i].y; }
+    for (int i = 0; i < village_light_count && i < MAX_VILLAGE_LIGHTS; i++) { lx[n] = village_lights[i].x; ly[n++] = village_lights[i].y; }
+    float saved = face_bias; face_bias = 0.02f; face_glow = 1;
+    for (int i = 0; i < n; i++) {
+        float dx = x - lx[i], dy = y - ly[i], d = sqrtf(dx * dx + dy * dy);
+        if (d < 0.2f || d > 6.0f) continue;
+        dx /= d; dy /= d;
+        float len = tall * (0.8f + d * 0.35f), w = 0.1f, flick = 1.0f + sinf(GetTickCount() / 90.0f + i) * 0.06f;
+        float v[4][3] = { { x - dy * w, y + dx * w, 0.01f }, { x + dy * w, y - dx * w, 0.01f },
+                          { x + dx * len * flick + dy * w * 1.6f, y + dy * len * flick - dx * w * 1.6f, 0.01f },
+                          { x + dx * len * flick - dy * w * 1.6f, y + dy * len * flick + dx * w * 1.6f, 0.01f } };
+        float below[3] = { x, y, -1.0f };
+        AddFace(v, 4, RGB(14, 16, 14), below, 0);
+    }
+    face_bias = saved; face_glow = 0;
+}
+
+// Monsters and villagers as low-poly people: legs that stride, a body,
+// arms (the leading one swings a weapon up close), a head and eye dots.
+static void HumanMesh(const FpThing *t) {
+    DWORD now = GetTickCount();
+    int enemy = t->kind == FP_ENEMY, idx = enemy ? t->seed >> 5 : t->seed >> 4, type = enemy ? t->seed & 31 : t->seed & 15;
+    float h = HeadingFor((enemy ? 100 : 108) + (idx & 15), t->x, t->y), x = t->x, y = t->y;
+    hcos = cosf(h); hsin = sinf(h);
+    float S = 1.0f; int horns = 0, crown = 0;
+    COLORREF skin = RGB(225, 185, 150), cloth = RGB(70, 100, 170), legs = RGB(70, 55, 45), eye = RGB(12, 10, 10);
+    if (enemy) {
+        S = IS_MYTHIC_MONSTER(type) ? 2.0f : 1.0f;
+        if (type == MONSTER_ZOMBIE) { skin = RGB(150, 175, 135); cloth = RGB(95, 80, 60); }
+        else if (type == MONSTER_SKELLY) { skin = RGB(225, 225, 215); cloth = skin; legs = skin; }
+        else if (type == MONSTER_GOBLIN) { skin = RGB(90, 140, 60); cloth = RGB(110, 80, 50); S = 0.8f; }
+        else if (type == MONSTER_SATYR) { skin = RGB(185, 140, 100); cloth = skin; legs = RGB(110, 80, 55); horns = 1; }
+        else { skin = RGB(150, 140, 160); cloth = RGB(90, 85, 100); }
+        eye = RGB(230, 60, 40);
+    } else {
+        static const COLORREF jobs[10] = { RGB(70, 100, 170), RGB(60, 130, 70), RGB(120, 110, 100), RGB(60, 55, 50), RGB(210, 130, 50),
+                                           RGB(170, 50, 50), RGB(110, 50, 140), RGB(120, 95, 70), RGB(90, 90, 90), RGB(30, 30, 35) };
+        cloth = jobs[type % 10]; crown = type == 6;
+    }
+    float dx = player_x - x, dy = player_y - y, swing = 0.0f;
+    if (enemy && dx * dx + dy * dy < 2.6f) { float ph = fmodf(now / 455.0f, 1.0f); if (ph < 0.45f) swing = sinf(ph / 0.45f * 3.14159f); }
+    float st = sinf(now / 140.0f + idx) * 0.04f * S;
+    FireShadows(x, y, 0.75f * S);
+    OBox(x, y, st, 0.05f * S, 0.0f, 0.32f * S, 0.035f * S, 0.035f * S, legs);
+    OBox(x, y, -st, -0.05f * S, 0.0f, 0.32f * S, 0.035f * S, 0.035f * S, legs);
+    OBox(x, y, 0.0f, 0.0f, 0.32f * S, 0.6f * S, 0.06f * S, 0.1f * S, cloth);
+    OBox(x, y, -st, -0.13f * S, 0.36f * S, 0.58f * S, 0.03f * S, 0.03f * S, cloth);
+    OBox(x, y, st + swing * 0.12f * S, 0.13f * S, (0.36f + swing * 0.18f) * S, (0.58f + swing * 0.18f) * S, 0.03f * S, 0.03f * S, cloth);
+    if (swing > 0.0f) OBox(x, y, (0.1f + swing * 0.2f) * S, 0.13f * S, (0.5f + swing * 0.1f) * S, (0.54f + swing * 0.1f) * S, 0.12f * S, 0.015f * S, RGB(200, 205, 215));
+    OBox(x, y, 0.0f, 0.0f, 0.6f * S, 0.74f * S, 0.06f * S, 0.06f * S, skin);
+    if (horns) { Cone(x, y, 0.0f, 0.04f * S, 0.74f * S, 0.82f * S, 0.015f * S, RGB(230, 220, 190)); Cone(x, y, 0.0f, -0.04f * S, 0.74f * S, 0.82f * S, 0.015f * S, RGB(230, 220, 190)); }
+    if (crown) OBox(x, y, 0.0f, 0.0f, 0.74f * S, 0.79f * S, 0.055f * S, 0.055f * S, RGB(235, 195, 60));
+    Eyes(x, y, 0.063f * S, 0.025f * S, 0.69f * S, 0.01f * S, eye);
 }
 
 static void TreeMesh(const FpThing *t) {
@@ -577,7 +645,7 @@ static int FarFirst(const void *a, const void *b) {
 // butterflies before trees and rocks, with a long look up at the sky now and then.
 static void UpdateGaze(int fresh) {
     static DWORD gaze_until; static int gaze_n; static float target_yaw, target_pitch;
-    static const int interest[8] = { 10, 6, 18, 50, 40, 32, 45, 95 };
+    static const int interest[10] = { 10, 6, 18, 50, 40, 32, 45, 95, 60, 30 };
     DWORD now = GetTickCount();
     if (fresh) {
         yaw = player_facing == FACE_DOWN ? 1.5708f : player_facing == FACE_UP ? -1.5708f : player_facing == FACE_LEFT ? 3.14159f : 0.0f;
@@ -717,6 +785,7 @@ void DrawAfkView(HDC hdc) {
         else if (k == FP_HOME) HomeMesh(&things[i], light < 0.35f);
         else if (k == FP_FIRE) FireMesh(&things[i]);
         else if (k == FP_BUTTERFLY || k == FP_CRITTER || k == FP_FAMILIAR) AnimalMesh(&things[i]);
+        else if (k == FP_ENEMY || k == FP_NPC) HumanMesh(&things[i]);
         else if (things[i].depth > 0.0f) AddSprite(i);
     }
     bobber_sx = -1;
