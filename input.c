@@ -82,8 +82,8 @@ void ProcessGamepadInput(void) {
         
         static DWORD last_tab_gp = 0;
         if (is_menu_open && (GetTickCount() - last_tab_gp > 200)) {
-            if (buttons & XINPUT_GAMEPAD_LEFT_SHOULDER) { current_menu_tab = (current_menu_tab - 1 + 3) % 3; last_tab_gp = GetTickCount(); }
-            if (buttons & XINPUT_GAMEPAD_RIGHT_SHOULDER) { current_menu_tab = (current_menu_tab + 1) % 3; last_tab_gp = GetTickCount(); }
+            if (buttons & XINPUT_GAMEPAD_LEFT_SHOULDER) { current_menu_tab = MenuTabStep(current_menu_tab, -1); last_tab_gp = GetTickCount(); }
+            if (buttons & XINPUT_GAMEPAD_RIGHT_SHOULDER) { current_menu_tab = MenuTabStep(current_menu_tab, 1); last_tab_gp = GetTickCount(); }
             if (current_menu_tab == 1) {
                 if (state.Gamepad.bLeftTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD && world_map_zoom > 1) { world_map_zoom /= 2; last_tab_gp = GetTickCount(); }
                 if (state.Gamepad.bRightTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD && world_map_zoom < 8) { world_map_zoom *= 2; last_tab_gp = GetTickCount(); }
@@ -94,6 +94,10 @@ void ProcessGamepadInput(void) {
             }
             
             if (current_menu_tab == 2 && (buttons & XINPUT_GAMEPAD_BACK)) { RequestDeleteSave(); last_tab_gp = GetTickCount(); }
+            if (current_menu_tab == MENU_TAB_CARDS) {
+                if (buttons & XINPUT_GAMEPAD_DPAD_UP) { CardInspectorMove(-1); last_tab_gp = GetTickCount(); }
+                if (buttons & XINPUT_GAMEPAD_DPAD_DOWN) { CardInspectorMove(1); last_tab_gp = GetTickCount(); }
+            }
             if (current_menu_tab == 0 && (buttons & XINPUT_GAMEPAD_Y)) { stat_assign_mode = !stat_assign_mode; last_tab_gp = GetTickCount(); }
             if (current_menu_tab == 0 && stat_assign_mode) {
                 if (buttons & XINPUT_GAMEPAD_DPAD_UP) { stat_cursor = (stat_cursor + STAT_COUNT - 1) % STAT_COUNT; last_tab_gp = GetTickCount(); }
@@ -278,8 +282,8 @@ void ProcessGamepadInput(void) {
 
     static DWORD last_tab_kb = 0;
     if (is_menu_open && (GetTickCount() - last_tab_kb > 200)) {
-        if (GetAsyncKeyState('Q') & 0x8000) { current_menu_tab = (current_menu_tab - 1 + 3) % 3; last_tab_kb = GetTickCount(); }
-        if (GetAsyncKeyState('E') & 0x8000) { current_menu_tab = (current_menu_tab + 1) % 3; last_tab_kb = GetTickCount(); }
+        if (GetAsyncKeyState('Q') & 0x8000) { current_menu_tab = MenuTabStep(current_menu_tab, -1); last_tab_kb = GetTickCount(); }
+        if (GetAsyncKeyState('E') & 0x8000) { current_menu_tab = MenuTabStep(current_menu_tab, 1); last_tab_kb = GetTickCount(); }
         if (current_menu_tab == 1) {
             if ((GetAsyncKeyState(VK_OEM_MINUS) & 0x8000) && world_map_zoom > 1) { world_map_zoom /= 2; last_tab_kb = GetTickCount(); }
             if ((GetAsyncKeyState(VK_OEM_PLUS) & 0x8000) && world_map_zoom < 8) { world_map_zoom *= 2; last_tab_kb = GetTickCount(); }
@@ -289,6 +293,10 @@ void ProcessGamepadInput(void) {
             if (GetAsyncKeyState(VK_DOWN) & 0x8000) { WorldMapMoveCursor(0, 1); last_tab_kb = GetTickCount(); }
         }
         
+        if (current_menu_tab == MENU_TAB_CARDS) {
+            if (GetAsyncKeyState(VK_UP) & 0x8000) { CardInspectorMove(-1); last_tab_kb = GetTickCount(); }
+            if (GetAsyncKeyState(VK_DOWN) & 0x8000) { CardInspectorMove(1); last_tab_kb = GetTickCount(); }
+        }
         if (current_menu_tab == 0 && (GetAsyncKeyState('P') & 0x8000)) { stat_assign_mode = !stat_assign_mode; last_tab_kb = GetTickCount(); }
         if (current_menu_tab == 0 && stat_assign_mode) {
             if (GetAsyncKeyState(VK_UP) & 0x8000) { stat_cursor = (stat_cursor + STAT_COUNT - 1) % STAT_COUNT; last_tab_kb = GetTickCount(); }

@@ -90,7 +90,7 @@ void HandleInventoryPrimaryAction(void) {
     } else if (strcmp(item->name, "Wood") == 0 && AddWoodToNearbyFire()) {
         // handled inside AddWoodToNearbyFire()
     } else if (strcmp(item->name, "Strategy Guide") == 0) {
-        guide_flash_until = GetTickCount() + GUIDE_FLASH_MS;
+        guide_flash_until = GetTickCount() + GUIDE_FLASH_MS; card_guide_unlocked = 1;
         strcpy(arpg_action_log, "A&D STRATEGY GUIDE: secret card combos revealed!");
     } else if (strcmp(item->name, "Peyote") == 0) {
         EatPeyote();
