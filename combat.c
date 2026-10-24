@@ -5,6 +5,12 @@ const char *MonsterName(MonsterType m) {
     return names[m];
 }
 
+// On full-moon nights (every 8th day of a season) some beasts of the open land are werewolves:
+// a Bigfoot in a grey wolf's coat, whose hide only silver cuts through.
+int werewolf_active = 0;
+static int FullMoonNight(int is_night) { return is_night && SeasonDay() % 8 == 0; }
+static const char *FoeName(void) { return werewolf_active ? "Werewolf" : MonsterName(active_monster); }
+
 // The mythic beast (if any) that belongs in the current land, following where
 // each legend comes from: Yeti - snowy Himalayan peaks, Sphinx - Egyptian
 // desert, Bigfoot - deep northern forest, Bunyip - Australian swamps/billabongs.
@@ -59,12 +65,18 @@ void TriggerMonsterRespawn(void) {
         active_monster = r < 32 ? MONSTER_SKELLY : r < 64 ? MONSTER_ZOMBIE :
                          (r < 82 || !satyr_land) ? MONSTER_GOBLIN : MONSTER_SATYR;
     }
+    werewolf_active = 0;
+    if (!in_cave && FullMoonNight(is_night) && rand() % 100 < 25 &&
+        (current_biome == BIOME_FOREST || current_biome == BIOME_GRASSLANDS || current_biome == BIOME_PRAIRIE)) {
+        active_monster = MONSTER_BIGFOOT; werewolf_active = 1;
+        strcpy(arpg_action_log, "The full moon rises... a WEREWOLF hunts tonight! Only silver bites deep.");
+    }
     if (active_monster == MONSTER_ZOMBIE && !in_cave) ZombieRisesFromWater();
     static const float base_hearts[] = { 3.0f, 3.0f, 6.0f, 2.0f, 3.5f, 9.0f, 9.0f, 8.0f, 8.0f };
     enemy_hearts = base_hearts[active_monster] + (is_night ? 0.5f : 0.0f);
     if (IS_MYTHIC_MONSTER(active_monster)) {
         size_t n = strlen(arpg_action_log);
-        snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  |  A %s roams this land!", MonsterName(active_monster));
+        snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  |  A %s roams this land!", FoeName());
     }
 }
 
@@ -169,6 +181,7 @@ void UpdateDebrisTwigs(void) {
 #define OVERKILL_BLOOD 1.0f // hearts of damage past zero that trigger an extra spray
 void HandleEnemyDamage(float dmg) {
     if (fabs(sin(day_night_cycle_accumulator)) < 0.35f) dmg *= 0.9f;
+    if (werewolf_active) dmg *= SilverWeaponEquipped() ? 2.0f : 0.35f;
     int crit = dmg > 0.0f && rand() % 100 < 5 + 2 * stat_spent[4]; // each LCK point spent: +2% crit
     if (crit) dmg *= 2.0f;
     enemy_hearts -= dmg;
@@ -224,8 +237,8 @@ void HandleEnemyDamage(float dmg) {
             }
             sprintf(arpg_action_log, "LEVEL UP! Reached Level %d! %d attribute points to spend (Hero tab: Y / P).", player_level, stat_points);
         } else {
-            if (hoard) sprintf(arpg_action_log, "VICTORY: The %s falls! +%d XP, its hoard of %d gold spills out!", MonsterName(active_monster), gained_xp, hoard);
-            else sprintf(arpg_action_log, "VICTORY: %s slain! +%d XP", MonsterName(active_monster), gained_xp);
+            if (hoard) sprintf(arpg_action_log, "VICTORY: The %s falls! +%d XP, its hoard of %d gold spills out!", FoeName(), gained_xp, hoard);
+            else sprintf(arpg_action_log, "VICTORY: %s slain! +%d XP", FoeName(), gained_xp);
         }
         if (coins) { size_t n = strlen(arpg_action_log); snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  %d gold dropped", coins); }
         if (monster_card_links[active_monster].kills < 65535) monster_card_links[active_monster].kills++;

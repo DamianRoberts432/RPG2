@@ -154,6 +154,7 @@ int CardGuideUnlocked(void);
 void CardInspectorMove(int d);
 void DrawCardInspector(HDC hdc, int x, int y, int w, int h);
 int MenuTabStep(int cur, int dir);
+extern int werewolf_active;
 int AdvTalk(int npc_type);
 void AdvNote(char kind, int monster);
 void AdvTick(void);
