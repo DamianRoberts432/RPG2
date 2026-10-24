@@ -138,10 +138,11 @@ static void NoteQuestProgress(int kind, const char *what) {
     else snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  |  QUEST: %d / %d %s", village_quest[3], village_quest[2], what);
 }
 
-void NoteQuestPlanted(void) { NoteQuestProgress(Q_FARM, "planted"); }
-void NoteQuestFish(void) { NoteQuestProgress(Q_FISH, "fish"); }
+void NoteQuestPlanted(void) { NoteQuestProgress(Q_FARM, "planted"); AdvNote('P', 0); }
+void NoteQuestFish(void) { NoteQuestProgress(Q_FISH, "fish"); AdvNote('F', 0); }
 
 void NoteQuestKill(int monster) {
+    AdvNote('K', monster);
     QuestTemplate *t = ActiveQuest();
     if (!t || t->fetch != Q_SLAY || t->monster != monster || village_quest[3] >= village_quest[2]) return;
     village_quest[3]++;

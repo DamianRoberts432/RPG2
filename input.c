@@ -98,6 +98,12 @@ void ProcessGamepadInput(void) {
                 if (buttons & XINPUT_GAMEPAD_DPAD_UP) { CardInspectorMove(-1); last_tab_gp = GetTickCount(); }
                 if (buttons & XINPUT_GAMEPAD_DPAD_DOWN) { CardInspectorMove(1); last_tab_gp = GetTickCount(); }
             }
+            if (current_menu_tab == MENU_TAB_QUESTS) {
+                int u = (buttons & XINPUT_GAMEPAD_DPAD_UP) != 0, d = (buttons & XINPUT_GAMEPAD_DPAD_DOWN) != 0;
+                int l = (buttons & XINPUT_GAMEPAD_DPAD_LEFT) != 0, r = (buttons & XINPUT_GAMEPAD_DPAD_RIGHT) != 0;
+                int t = (buttons & XINPUT_GAMEPAD_A) != 0, a = (buttons & XINPUT_GAMEPAD_Y) != 0;
+                if (u || d || l || r || t || a) { AdvJournalInput(u, d, l, r, t, a); last_tab_gp = GetTickCount(); }
+            }
             if (current_menu_tab == 0 && (buttons & XINPUT_GAMEPAD_Y)) { stat_assign_mode = !stat_assign_mode; last_tab_gp = GetTickCount(); }
             if (current_menu_tab == 0 && stat_assign_mode) {
                 if (buttons & XINPUT_GAMEPAD_DPAD_UP) { stat_cursor = (stat_cursor + STAT_COUNT - 1) % STAT_COUNT; last_tab_gp = GetTickCount(); }
@@ -296,6 +302,13 @@ void ProcessGamepadInput(void) {
         if (current_menu_tab == MENU_TAB_CARDS) {
             if (GetAsyncKeyState(VK_UP) & 0x8000) { CardInspectorMove(-1); last_tab_kb = GetTickCount(); }
             if (GetAsyncKeyState(VK_DOWN) & 0x8000) { CardInspectorMove(1); last_tab_kb = GetTickCount(); }
+        }
+        if (current_menu_tab == MENU_TAB_QUESTS) {
+            int u = (GetAsyncKeyState(VK_UP) & 0x8000) != 0, d = (GetAsyncKeyState(VK_DOWN) & 0x8000) != 0;
+            int l = (GetAsyncKeyState(VK_LEFT) & 0x8000) != 0, r = (GetAsyncKeyState(VK_RIGHT) & 0x8000) != 0;
+            int t = (GetAsyncKeyState('T') & 0x8000) != 0;
+            int a = (GetAsyncKeyState(VK_DELETE) & 0x8000) != 0 || (GetAsyncKeyState('4') & 0x8000) != 0;
+            if (u || d || l || r || t || a) { AdvJournalInput(u, d, l, r, t, a); last_tab_kb = GetTickCount(); }
         }
         if (current_menu_tab == 0 && (GetAsyncKeyState('P') & 0x8000)) { stat_assign_mode = !stat_assign_mode; last_tab_kb = GetTickCount(); }
         if (current_menu_tab == 0 && stat_assign_mode) {

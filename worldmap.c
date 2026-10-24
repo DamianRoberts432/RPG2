@@ -95,6 +95,7 @@ int SaveWorldMapState(void) {
     ok = ok && fwrite(outfit, sizeof(outfit), 1, f) == 1;
     int32_t extra[8] = { familiar_size, familiar_color, card_guide_unlocked, 0, 0, 0, 0, 0 };
     ok = ok && fwrite(extra, sizeof(extra), 1, f) == 1;
+    ok = ok && AdvSave(f);
     ok = (fclose(f) == 0) && ok;
     if (!ok) { remove(SAVE_TEMP_NAME); return 0; }
     return MoveFileExA(SAVE_TEMP_NAME, SAVE_FILE_NAME, MOVEFILE_REPLACE_EXISTING) != 0;
@@ -150,6 +151,7 @@ int LoadWorldMapState(void) {
     int has_outfit = has_home && fread(outfit, sizeof(outfit), 1, f) == 1;
     int32_t extra[8];
     int has_extra = has_outfit && fread(extra, sizeof(extra), 1, f) == 1;
+    if (has_extra) AdvLoad(f);
     fclose(f);
     if (!ok) return 0;
     memcpy(visited_biomes, biomes, sizeof(biomes));

@@ -105,6 +105,7 @@ void DrawPlayerStatusHUD(HDC hdc) {
     TextOut(hdc, 20, HUD_DATE_Y + 20, line, (int)strlen(line));
     sprintf(line, "Region: %s%s", biome_names[current_biome], stat_points > 0 ? "  |  Attribute points to spend!" : "");
     TextOut(hdc, 20, HUD_DATE_Y + 40, line, (int)strlen(line));
+    DrawTrackedQuest(hdc, 20, HUD_DATE_Y + 60);
 }
 
 // Clear Buy/Sell shop UI: a boxed panel with an underlined tab header (shown
@@ -334,10 +335,10 @@ void DrawTabbedMenuOverlay(HDC hdc) {
     HGDIOBJ old_b = SelectObject(hdc, GetStockObject(NULL_BRUSH));
     Rectangle(hdc, 60, 40, WINDOW_WIDTH - 60, WINDOW_HEIGHT - 60);
 
-    const char* tab_titles[] = { "[ LB ] HERO & INVENTORY", "[ 2 ] WORLD MAP", "[ RB ] OPTIONS", "CARDS" };
+    const char* tab_titles[] = { "[ LB ] HERO & INVENTORY", "[ 2 ] WORLD MAP", "[ RB ] OPTIONS", "QUESTS", "CARDS" };
     if (current_menu_tab == MENU_TAB_CARDS && !CardGuideUnlocked()) current_menu_tab = 0;
     HFONT underline_font = GetMenuUnderlineFont();
-    for (int t = 0; t < (CardGuideUnlocked() ? 4 : 3); t++) {
+    for (int t = 0; t < (CardGuideUnlocked() ? 5 : 4); t++) {
         RECT tab_r = { 70 + t * 220, 50, 280 + t * 220, 80 };
         HBRUSH tab_b = CreateSolidBrush((t == current_menu_tab) ? RGB(45, 80, 120) : RGB(30, 35, 45));
         FillRect(hdc, &tab_r, tab_b); DeleteObject(tab_b);
@@ -488,6 +489,8 @@ void DrawTabbedMenuOverlay(HDC hdc) {
                 SeasonDay(), DAYS_PER_SEASON, weather_names[current_weather],
                 fabs(wind_gust) > 0.3f ? ", windy" : "", weather_source_label);
         TextOut(hdc, 90, WINDOW_HEIGHT - 95, buf, (int)strlen(buf));
+    } else if (current_menu_tab == MENU_TAB_QUESTS) {
+        DrawQuestJournal(hdc, 90, 100, WINDOW_WIDTH - 240, WINDOW_HEIGHT - 220);
     } else if (current_menu_tab == MENU_TAB_CARDS) {
         DrawCardInspector(hdc, 90, 100, WINDOW_WIDTH - 240, WINDOW_HEIGHT - 220);
     } else { 
@@ -555,6 +558,6 @@ void DrawLootPreview(HDC hdc) {
 }
 
 int MenuTabStep(int cur, int dir) {
-    int n = CardGuideUnlocked() ? 4 : 3;
+    int n = CardGuideUnlocked() ? 5 : 4;
     return (cur + dir + n) % n;
 }
