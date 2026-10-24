@@ -365,6 +365,14 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
             DeleteObject(hr); DeleteObject(hw);
             if (cs >= 64) { SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(255, 255, 255)); TextOut(hdc, cx + 2, cy + 2, "Home", 4); }
         }
+        for (int c = 0; c < MAX_CHESTS; c++) { // the Treasure Map marks your chests with a red X
+            if (!chests[c].active || chests[c].screen_id != gy * META_GRID_SIZE + gx || !HasInventoryItem("Treasure Map")) continue;
+            HPEN xp = CreatePen(PS_SOLID, cs >= 16 ? 2 : 1, RGB(230, 30, 30)); HGDIOBJ op = SelectObject(hdc, xp);
+            MoveToEx(hdc, cx + 1, cy + 1, NULL); LineTo(hdc, cx + cs - 1, cy + cs - 1);
+            MoveToEx(hdc, cx + cs - 1, cy + 1, NULL); LineTo(hdc, cx + 1, cy + cs - 1);
+            SelectObject(hdc, op); DeleteObject(xp);
+            break;
+        }
         if ((poi & (POI_VILLAGE | POI_CASTLE)) && cs >= 64) { // zoomed in far enough to write the name on the tile
             char nm[32]; TownNameAt(gy * META_GRID_SIZE + gx + ((poi & POI_TOWN_ALT) ? 30000 : 0), nm, sizeof(nm));
             SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(255, 240, 120));

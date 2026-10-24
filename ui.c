@@ -137,6 +137,7 @@ static const char *ItemBlurb(const char *name) {
     if (strcmp(name, "Garlic") == 0) return "Carried: Vampires won't come for you.";
     if (strcmp(name, "Silver Dagger") == 0) return "Silver: double damage to Vampires and Werewolves.";
     if (strcmp(name, "Canoe") == 0 || strcmp(name, "Raft") == 0 || strcmp(name, "Boat") == 0) return "Carry it to paddle across water.";
+    if (strcmp(name, "Treasure Map") == 0) return "Red X's on the World Map mark where your chests are.";
     return "";
 }
 
