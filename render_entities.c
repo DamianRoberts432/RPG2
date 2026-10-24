@@ -514,7 +514,10 @@ static void DrawBunyip(HDC hdc, int sx, int sy, int face_dir) {
 static void DrawMythicBeast(HDC hdc, int sx, int sy, int face_dir) {
     switch (active_monster) {
         case MONSTER_YETI: DrawApeBeast(hdc, sx, sy, face_dir, RGB(235, 240, 248), RGB(120, 140, 165)); break;
-        case MONSTER_BIGFOOT: DrawApeBeast(hdc, sx, sy, face_dir, RGB(105, 70, 40), RGB(160, 120, 85)); break;
+        case MONSTER_BIGFOOT:
+            if (werewolf_active) DrawApeBeast(hdc, sx, sy, face_dir, RGB(95, 95, 102), RGB(150, 150, 158));
+            else DrawApeBeast(hdc, sx, sy, face_dir, RGB(105, 70, 40), RGB(160, 120, 85));
+            break;
         case MONSTER_SPHINX: DrawSphinx(hdc, sx, sy, face_dir); break;
         default: DrawBunyip(hdc, sx, sy, face_dir); break;
     }

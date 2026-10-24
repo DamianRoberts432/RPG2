@@ -1204,7 +1204,9 @@ void BuildChest(void) {
     memset(&chests[slot], 0, sizeof(chests[slot]));
     chests[slot].active = 1; chests[slot].screen_id = current_screen_index; chests[slot].x = x; chests[slot].y = y;
     chests[slot].last_day = ChestDay();
-    strcpy(arpg_action_log, "CHEST: Built a chest. Hide it among trees, away from paths, or thieves may find it.");
+    if (!HasInventoryItem("Treasure Map")) AddStackableItem("Treasure Map", "Tool", 1);
+    RecalculateCarriedWeight();
+    strcpy(arpg_action_log, "CHEST: Built a chest. A red X on your Treasure Map (World Map tab) marks it. Hide it among trees, away from paths.");
 }
 
 int OpenNearbyChest(void) {

@@ -146,13 +146,24 @@ int IsBigTree(int tile_seed);
 void DrawBigCrown(HDC hdc, int sx, int sy, int tile_seed);
 extern const char *sex_names[], *beard_names[], *eye_names[], *hair_names[];
 void CycleCreationField(int field, int dir);
-#define MENU_TAB_CARDS 3
+#define MENU_TAB_CARDS 4
+#define MENU_TAB_QUESTS 3
 extern int card_guide_unlocked;
 extern int familiar_size, familiar_color;
 int CardGuideUnlocked(void);
 void CardInspectorMove(int d);
 void DrawCardInspector(HDC hdc, int x, int y, int w, int h);
 int MenuTabStep(int cur, int dir);
+extern int werewolf_active;
+float AdvTownPriceMult(void);
+int AdvTalk(int npc_type);
+void AdvNote(char kind, int monster);
+void AdvTick(void);
+int AdvSave(FILE *f);
+int AdvLoad(FILE *f);
+void DrawQuestJournal(HDC hdc, int x, int y, int w, int h);
+void DrawTrackedQuest(HDC hdc, int x, int y);
+void AdvJournalInput(int up, int down, int left, int right, int track, int abandon);
 // Clothes: "Head", "Cloak" and "Clothes" slots, wearable by every class.
 const char *WornItem(const char *slot);
 int IsClothingSlot(const char *slot);

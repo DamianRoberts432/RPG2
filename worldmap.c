@@ -95,6 +95,7 @@ int SaveWorldMapState(void) {
     ok = ok && fwrite(outfit, sizeof(outfit), 1, f) == 1;
     int32_t extra[8] = { familiar_size, familiar_color, card_guide_unlocked, 0, 0, 0, 0, 0 };
     ok = ok && fwrite(extra, sizeof(extra), 1, f) == 1;
+    ok = ok && AdvSave(f);
     ok = (fclose(f) == 0) && ok;
     if (!ok) { remove(SAVE_TEMP_NAME); return 0; }
     return MoveFileExA(SAVE_TEMP_NAME, SAVE_FILE_NAME, MOVEFILE_REPLACE_EXISTING) != 0;
@@ -150,6 +151,7 @@ int LoadWorldMapState(void) {
     int has_outfit = has_home && fread(outfit, sizeof(outfit), 1, f) == 1;
     int32_t extra[8];
     int has_extra = has_outfit && fread(extra, sizeof(extra), 1, f) == 1;
+    if (has_extra) AdvLoad(f);
     fclose(f);
     if (!ok) return 0;
     memcpy(visited_biomes, biomes, sizeof(biomes));
@@ -362,6 +364,14 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
             FillSub(hdc, cx, cy, q, 3, 2, 1, 1, hr); FillSub(hdc, cx, cy, q, 3, 3, 1, 1, hw);
             DeleteObject(hr); DeleteObject(hw);
             if (cs >= 64) { SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(255, 255, 255)); TextOut(hdc, cx + 2, cy + 2, "Home", 4); }
+        }
+        for (int c = 0; c < MAX_CHESTS; c++) { // the Treasure Map marks your chests with a red X
+            if (!chests[c].active || chests[c].screen_id != gy * META_GRID_SIZE + gx || !HasInventoryItem("Treasure Map")) continue;
+            HPEN xp = CreatePen(PS_SOLID, cs >= 16 ? 2 : 1, RGB(230, 30, 30)); HGDIOBJ op = SelectObject(hdc, xp);
+            MoveToEx(hdc, cx + 1, cy + 1, NULL); LineTo(hdc, cx + cs - 1, cy + cs - 1);
+            MoveToEx(hdc, cx + cs - 1, cy + 1, NULL); LineTo(hdc, cx + 1, cy + cs - 1);
+            SelectObject(hdc, op); DeleteObject(xp);
+            break;
         }
         if ((poi & (POI_VILLAGE | POI_CASTLE)) && cs >= 64) { // zoomed in far enough to write the name on the tile
             char nm[32]; TownNameAt(gy * META_GRID_SIZE + gx + ((poi & POI_TOWN_ALT) ? 30000 : 0), nm, sizeof(nm));

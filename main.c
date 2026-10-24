@@ -51,7 +51,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
         else {
             ProcessGamepadInput(); UpdateGamePhysics();
             
-            UpdatePlayerArrow(); UpdateThrownSpear();
+            UpdatePlayerArrow(); UpdateThrownSpear(); AdvTick();
             
             if (!in_cave && (player_x <= 0.5f || player_x >= (MAP_SIZE - 1.5f) || player_y <= 0.5f || player_y >= (MAP_SIZE - 1.5f))) {
                 // Leaving the Castle steps to its real neighbouring cell like any

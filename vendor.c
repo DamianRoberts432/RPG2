@@ -19,7 +19,7 @@ void RestockMerchant(void) {
 
 // Each CHR point spent takes 3% off merchant prices.
 int ShopPrice(int base) {
-    int price = base * (100 - 3 * stat_spent[6]) / 100;
+    int price = (int)(base * (100 - 3 * stat_spent[6]) / 100 * AdvTownPriceMult());
     return price < 1 ? 1 : price;
 }
 
