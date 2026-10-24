@@ -663,8 +663,8 @@ void TownMenuConfirm(void) {
         if (gold_count < 1000000) { Say("CARD SHOP: The A&D Strategy Guide costs 1,000,000 gold."); return; }
         gold_count -= 1000000;
         AddStackableItem("Strategy Guide", "Tool", 1); RecalculateCarriedWeight();
-        guide_flash_until = GetTickCount() + GUIDE_FLASH_MS;
-        Say("CARD SHOP: The A&D Ultimate Strategy Guide is yours. Read it from your pack.");
+        guide_flash_until = GetTickCount() + GUIDE_FLASH_MS; card_guide_unlocked = 1;
+        Say("CARD SHOP: The A&D Ultimate Strategy Guide is yours. Read it from your pack; the CARDS tab in your menu is open for good.");
         return;
     case A_KID: kid_line = (kid_line + 1) % KID_LINE_COUNT; Say("%s", kid_lines[kid_line]); return;
     case A_PRACTICE: PracticeHand(r.arg); return;
@@ -1243,5 +1243,42 @@ void DrawChests(HDC hdc) {
         TwBox(hdc, sx - 11, sy - 4, sx + 11, sy + 10, RGB(120, 78, 40));
         TwBox(hdc, sx - 12, sy - 9, sx + 12, sy - 3, RGB(150, 100, 52));
         TwBox(hdc, sx - 2, sy - 4, sx + 2, sy + 2, RGB(220, 190, 70));
+    }
+}
+
+// --- Card inspector: the menu's CARDS tab, opened for good by the Strategy Guide ---
+int card_guide_unlocked = 0;
+static int inspector_cursor = 0;
+int CardGuideUnlocked(void) { return card_guide_unlocked || HasInventoryItem("Strategy Guide"); }
+void CardInspectorMove(int d) { if (card_pool_size > 0) inspector_cursor = (inspector_cursor + d + card_pool_size) % card_pool_size; }
+void DrawCardInspector(HDC hdc, int x, int y, int w, int h) {
+    static const char *combo[4] = { "SECRET COMBOS", "Skeleton + Zombie + Vampire  ->  NIGHT TERROR",
+                                    "Yeti + Bigfoot + Satyr  ->  WILD HUNT", "Sphinx + Bunyip + Goblin  ->  RIDDLE OF THE DEEP" };
+    char buf[320];
+    SetBkMode(hdc, TRANSPARENT);
+    SetTextColor(hdc, RGB(255, 215, 0));
+    snprintf(buf, sizeof(buf), "CARD INSPECTOR (A&D Strategy Guide)   Binder: %d / %d   UP/DOWN to browse", CardCount(), card_pool_size);
+    TextOut(hdc, x, y, buf, (int)strlen(buf));
+    int rows = (h - 80) / 22; if (rows < 5) rows = 5;
+    int first = inspector_cursor - rows / 2;
+    if (first > card_pool_size - rows) first = card_pool_size - rows;
+    if (first < 0) first = 0;
+    for (int r = 0; r < rows && first + r < card_pool_size; r++) {
+        int c = first + r, ry = y + 34 + r * 22;
+        const CardDef *d = &card_defs[c];
+        SetTextColor(hdc, c == inspector_cursor ? RGB(255, 255, 255) : HasCard(c) ? RGB(150, 220, 255) : RGB(130, 130, 140));
+        if (c == inspector_cursor) TextOut(hdc, x, ry, ">", 1);
+        TextOut(hdc, x + 16, ry, d->name, (int)strlen(d->name));
+        TextOut(hdc, x + 220, ry, card_sets[d->set], (int)strlen(card_sets[d->set]));
+        snprintf(buf, sizeof(buf), "%d/%d", d->pt, d->pt); TextOut(hdc, x + 400, ry, buf, (int)strlen(buf));
+        if (HasCard(c)) TextOut(hdc, x + 450, ry, "owned", 5);
+    }
+    RECT tr = { x + w / 2, y + 34, x + w, y + 150 };
+    CardDetails(inspector_cursor, buf, sizeof(buf));
+    SetTextColor(hdc, RGB(235, 225, 205));
+    DrawText(hdc, buf, -1, &tr, DT_WORDBREAK | DT_LEFT);
+    for (int i = 0; i < 4; i++) {
+        SetTextColor(hdc, i == 0 ? RGB(255, 215, 0) : RGB(220, 200, 170));
+        TextOut(hdc, x + w / 2, y + 180 + i * 24, combo[i], (int)strlen(combo[i]));
     }
 }

@@ -57,7 +57,7 @@ void HandleVendorBrowse(void) {
     if (!IsNearMerchant()) return;
     MerchantItem *offer = &merchant_catalog[merchant_selection];
     if (strcmp(offer->name, "Strategy Guide") == 0) {
-        guide_flash_until = GetTickCount() + GUIDE_FLASH_MS;
+        guide_flash_until = GetTickCount() + GUIDE_FLASH_MS; card_guide_unlocked = 1;
         strcpy(arpg_action_log, "You browse the A&D Strategy Guide. Buy it to keep it.");
     } else if (offer->requires_treasure_hunt && cave_treasure_hunts_found <= 0) {
         strcpy(arpg_action_log, "MARKET: This treasure-hunt item is still a rumor to this merchant.");

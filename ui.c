@@ -120,7 +120,7 @@ static WeaponStats *FindWeaponStats(const char *name) {
 }
 
 static const char *ItemBlurb(const char *name) {
-    if (strcmp(name, "Strategy Guide") == 0) return "Secret card combos. Browse it here, or buy it.";
+    if (strcmp(name, "Strategy Guide") == 0) return "Secret card combos. Owning it opens the CARDS tab in your menu for good.";
     if (strcmp(name, "Matches") == 0) return "Light a campfire from the inventory (needs 2 Wood).";
     if (strcmp(name, "Fish") == 0 || strcmp(name, "Apple") == 0 || strcmp(name, "Turnip") == 0) return "Eat to restore health.";
     if (strcmp(name, "Hoe") == 0) return "X on bare grass tills a farm plot.";
@@ -334,9 +334,10 @@ void DrawTabbedMenuOverlay(HDC hdc) {
     HGDIOBJ old_b = SelectObject(hdc, GetStockObject(NULL_BRUSH));
     Rectangle(hdc, 60, 40, WINDOW_WIDTH - 60, WINDOW_HEIGHT - 60);
 
-    const char* tab_titles[] = { "[ LB ] HERO & INVENTORY", "[ 2 ] WORLD MAP", "[ RB ] OPTIONS" };
+    const char* tab_titles[] = { "[ LB ] HERO & INVENTORY", "[ 2 ] WORLD MAP", "[ RB ] OPTIONS", "CARDS" };
+    if (current_menu_tab == MENU_TAB_CARDS && !CardGuideUnlocked()) current_menu_tab = 0;
     HFONT underline_font = GetMenuUnderlineFont();
-    for (int t = 0; t < 3; t++) {
+    for (int t = 0; t < (CardGuideUnlocked() ? 4 : 3); t++) {
         RECT tab_r = { 70 + t * 220, 50, 280 + t * 220, 80 };
         HBRUSH tab_b = CreateSolidBrush((t == current_menu_tab) ? RGB(45, 80, 120) : RGB(30, 35, 45));
         FillRect(hdc, &tab_r, tab_b); DeleteObject(tab_b);
@@ -487,6 +488,8 @@ void DrawTabbedMenuOverlay(HDC hdc) {
                 SeasonDay(), DAYS_PER_SEASON, weather_names[current_weather],
                 fabs(wind_gust) > 0.3f ? ", windy" : "", weather_source_label);
         TextOut(hdc, 90, WINDOW_HEIGHT - 95, buf, (int)strlen(buf));
+    } else if (current_menu_tab == MENU_TAB_CARDS) {
+        DrawCardInspector(hdc, 90, 100, WINDOW_WIDTH - 240, WINDOW_HEIGHT - 220);
     } else { 
         TextOut(hdc, 90, 100, "GAME VARIABLE OPTIONS:", 22);
         sprintf(buf, "[1] XP Multiplier: %.1fx   (Modify with Left/Right Arrow)", opt_xp_mult); TextOut(hdc, 100, 140, buf, (int)strlen(buf));
@@ -549,4 +552,9 @@ void DrawLootPreview(HDC hdc) {
     for (int k = 0; k < n; k++) { SetTextColor(hdc, cols[k]); TextOut(hdc, l + 18, t + 32 + k * 20, lines[k], (int)strlen(lines[k])); }
     SetTextColor(hdc, RGB(150, 150, 150));
     TextOut(hdc, l + 12, t + h - 20, "X / A to pick up", 16);
+}
+
+int MenuTabStep(int cur, int dir) {
+    int n = CardGuideUnlocked() ? 4 : 3;
+    return (cur + dir + n) % n;
 }

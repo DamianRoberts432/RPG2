@@ -146,6 +146,13 @@ int IsBigTree(int tile_seed);
 void DrawBigCrown(HDC hdc, int sx, int sy, int tile_seed);
 extern const char *sex_names[], *beard_names[], *eye_names[], *hair_names[];
 void CycleCreationField(int field, int dir);
+#define MENU_TAB_CARDS 3
+extern int card_guide_unlocked;
+extern int familiar_size, familiar_color;
+int CardGuideUnlocked(void);
+void CardInspectorMove(int d);
+void DrawCardInspector(HDC hdc, int x, int y, int w, int h);
+int MenuTabStep(int cur, int dir);
 // Clothes: "Head", "Cloak" and "Clothes" slots, wearable by every class.
 const char *WornItem(const char *slot);
 int IsClothingSlot(const char *slot);

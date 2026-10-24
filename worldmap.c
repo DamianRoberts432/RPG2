@@ -93,6 +93,8 @@ int SaveWorldMapState(void) {
     ok = ok && fwrite(player_home, sizeof(player_home), 1, f) == 1;
     int32_t outfit[2] = { hero_cloth, hero_trim };
     ok = ok && fwrite(outfit, sizeof(outfit), 1, f) == 1;
+    int32_t extra[8] = { familiar_size, familiar_color, card_guide_unlocked, 0, 0, 0, 0, 0 };
+    ok = ok && fwrite(extra, sizeof(extra), 1, f) == 1;
     ok = (fclose(f) == 0) && ok;
     if (!ok) { remove(SAVE_TEMP_NAME); return 0; }
     return MoveFileExA(SAVE_TEMP_NAME, SAVE_FILE_NAME, MOVEFILE_REPLACE_EXISTING) != 0;
@@ -146,6 +148,8 @@ int LoadWorldMapState(void) {
     int has_home = has_world && fread(saved_home, sizeof(saved_home), 1, f) == 1;
     int32_t outfit[2];
     int has_outfit = has_home && fread(outfit, sizeof(outfit), 1, f) == 1;
+    int32_t extra[8];
+    int has_extra = has_outfit && fread(extra, sizeof(extra), 1, f) == 1;
     fclose(f);
     if (!ok) return 0;
     memcpy(visited_biomes, biomes, sizeof(biomes));
@@ -157,6 +161,11 @@ int LoadWorldMapState(void) {
         for (int i = 0; i < STAT_COUNT; i++) stat_spent[i] = (hero[4 + i] < 0 || hero[4 + i] > STAT_CAP) ? 0 : hero[4 + i];
     }
     if (has_karma) karma = saved_karma;
+    if (has_extra) {
+        familiar_size = (extra[0] >= 0 && extra[0] <= 2) ? extra[0] : 1;
+        familiar_color = extra[1] & 3;
+        card_guide_unlocked = extra[2] != 0;
+    }
     if (has_cards) {
         memcpy(card_collection_bits, cards, sizeof(cards));
         memcpy(deck_of_cards_bits, deck, sizeof(deck));
