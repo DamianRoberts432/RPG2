@@ -135,6 +135,17 @@ Talking to a shopkeeper takes you inside their building (merchant included).
 - **Start screen looks**: Body, Beard, Eyes and Hair (the colour shows age). These can only be changed on the start screen.
 - **World memory**: trees you cut and rocks you mine stay gone (trees regrow after 3 game days, rocks after 10, never on tilled soil). A cleared screen fills back up with monsters slowly over 6 game hours. Angry monsters close behind you follow you to the next screen. Snow melted by a campfire fills back in only while it snows.
 
+## Quests
+
+- **330 quests** are built from 110 tales out of world mythology and classic RPG jobs (the Troll Under the Bridge, Rescue the Princess, the Golden Fleece, Baba Yaga's Hut, the Lost Anvil...). Each tale comes in 3 versions that are harder, higher level and rarer: Common, Uncommon, Rare and Legendary.
+- Villagers, shopkeepers, guards and (from level 25) the King may offer one when you talk to them. Press X again to accept.
+- Quests unfold step by step. A step may send you to someone in another town ("visit my brother in Briarville"), into a cave, to a certain land, out under the night sky, or after monsters, fish, crops or items. Later steps stay hidden as **???** until you finish the one before.
+- **QUESTS tab** (menu): filters ACTIVE / READY / HERE / HUNTS / ERRANDS / DONE, sorted so the tracked quest and the ones ready to hand in come first. LEFT/RIGHT filter, UP/DOWN pick, **A or T** tracks a quest on the HUD, **Y or DEL twice** abandons it, which puts it back in the world for someone to offer again.
+- **Sister and rival towns:** towns of the same god are sisters, and Light/Dark and Voodoo/Eldritch towns are rivals. Quests done for a town's sisters make its shop cheaper; quests done for its rivals make it dearer.
+- **Werewolves** hunt open land on full-moon nights (every 8th day of a season). Only silver cuts through their hide.
+- **Treasure Map:** building a chest gives you one, and a red X on the World Map marks each of your chests.
+- **CARDS tab:** owning the Strategy Guide opens it for good. It lists every card with its set, power, ability and whether you own it.
+
 ## World map and saving
 
 The **Hero** tab also shows your **Karma** (Soul, Miasma from dark magic, Town Heat from crimes, Grapevine fame, and a life mark for each boss type slain), your **card collection** (each kill, cave treasure and fish catch has a 2% chance to give a card; monsters usually drop their own card), and the **bestiary** kill count per monster. These are saved with your hero. Food, materials and matches stack up to 99 per slot. The merchant now sells a **Spear** and an **A&D Strategy Guide** (use it from the inventory for a 2-second peek at secret card combos). A **Yeti** stays calm until you get within 3 tiles or hit it - then it charges. Races give small stat bonuses, and natural pairings (Elf Wizard, Human Knight, Dwarf Warrior, Halfling Rogue, Gnome Necromancer) get +1 to their key stat.
