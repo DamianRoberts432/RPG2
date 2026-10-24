@@ -383,3 +383,20 @@ int AdvLoad(FILE *f) {
     adv_tracked = (t >= 0 && t < AdvCount() && AdvActive(t)) ? t : -1;
     return 1;
 }
+
+// Towns that share a god are sisters; Light/Dark and Voodoo/Eldritch towns are
+// rivals. Quests done for a sister town lower prices here, for a rival raise them.
+float AdvTownPriceMult(void) {
+    int here = AdvHereTown();
+    if (here < 0) return 1.0f;
+    int god = TownDeityAt(here), sisters = 0, rivals = 0;
+    for (int q = 0, n = AdvCount(); q < n; q++) {
+        if (adv_state[q] != ADV_DONE || adv_giver_town[q] < 0) continue;
+        int g = TownDeityAt(adv_giver_town[q]);
+        if (g == god) sisters++;
+        else if (g == (god ^ 1)) rivals++;
+    }
+    if (sisters > 10) sisters = 10;
+    if (rivals > 8) rivals = 8;
+    return 1.0f - 0.02f * sisters + 0.03f * rivals;
+}
