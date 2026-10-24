@@ -298,6 +298,16 @@ void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed) {
         HBRUSH stone = CreateSolidBrush(RGB(100, 105, 115)); HGDIOBJ old = SelectObject(hdc, stone);
         POINT poly[] = {{sx - 6, sy + 2}, {sx + 8, sy}, {sx + 4, sy + 8}, {sx - 4, sy + 6}};
         Polygon(hdc, poly, 4); SelectObject(hdc, old); DeleteObject(stone);
+        unsigned int v = (unsigned int)RainHash(seed * 13 + 5) % 3u;
+        if (v == 0) { // mossy stone
+            HBRUSH moss = CreateSolidBrush(RGB(85, 125, 60)); HGDIOBJ om = SelectObject(hdc, moss);
+            POINT m[] = {{sx - 5, sy + 2}, {sx + 3, sy + 1}, {sx, sy + 4}, {sx - 3, sy + 4}};
+            Polygon(hdc, m, 4); SelectObject(hdc, om); DeleteObject(moss);
+        } else if (v == 1) { // cracked stone
+            HPEN crack = CreatePen(PS_SOLID, 1, RGB(50, 52, 60)); HGDIOBJ oc = SelectObject(hdc, crack);
+            MoveToEx(hdc, sx + 2, sy + 1, NULL); LineTo(hdc, sx, sy + 4); LineTo(hdc, sx + 3, sy + 7);
+            SelectObject(hdc, oc); DeleteObject(crack);
+        }
     } else if (type == 4) { // sand: dark specks and wind lines over the dunes
         unsigned int h = (unsigned int)RainHash(seed * 7 + 3);
         for (int k = 0; k < 3; k++)
@@ -311,6 +321,15 @@ void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed) {
         HBRUSH snow = CreateSolidBrush(RGB(235, 240, 250)); HGDIOBJ old = SelectObject(hdc, snow);
         Ellipse(hdc, sx - 6, sy + 1, sx + 6, sy + 9); SelectObject(hdc, old); DeleteObject(snow);
     } else if (type == 6) { // Grasslands tall grass tuft: single blades that lean a little in the wind
+        if ((unsigned int)RainHash(seed * 17 + 9) % 5u == 0) { // wild weeds: broad leaves and a seed head
+            HBRUSH leaf = CreateSolidBrush(RGB(90, 135, 50)); HGDIOBJ ol = SelectObject(hdc, leaf);
+            POINT l1[] = {{sx, sy + 9}, {sx - 7, sy + 3}, {sx - 2, sy + 6}}, l2[] = {{sx, sy + 9}, {sx + 7, sy + 2}, {sx + 2, sy + 6}};
+            POINT l3[] = {{sx, sy + 9}, {sx - 1, sy - 2}, {sx + 2, sy + 5}};
+            Polygon(hdc, l1, 3); Polygon(hdc, l2, 3); Polygon(hdc, l3, 3);
+            SelectObject(hdc, ol); DeleteObject(leaf);
+            SetPixel(hdc, sx - 1, sy - 3, RGB(205, 190, 120)); SetPixel(hdc, sx, sy - 4, RGB(205, 190, 120));
+            return;
+        }
         HPEN blade = CreatePen(PS_SOLID, 1, RGB(150, 210, 90)); HGDIOBJ old = SelectObject(hdc, blade);
         int lean = (int)(sin(world_tick * 1.5f + sx * 0.1f) * 1.5f);
         int hx, hy; GetIsoCoords(player_x, player_y, &hx, &hy);
