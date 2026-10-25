@@ -672,7 +672,7 @@ int hero_hop_frame = 0;    // counts down while the hero is mid-hop
 static int NearestTownCell(void) {
     int best = -1, best_d = 1 << 30;
     for (int gy = 0; gy < META_GRID_SIZE; gy++) for (int gx = 0; gx < META_GRID_SIZE; gx++) {
-        if (!IsMapCastle(gx, gy)) continue;
+        if (!WorldIsTown(gx, gy)) continue;
         int d = (gx - screen_grid_x) * (gx - screen_grid_x) + (gy - screen_grid_y) * (gy - screen_grid_y);
         if (d < best_d) { best_d = d; best = gy * META_GRID_SIZE + gx; }
     }

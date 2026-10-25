@@ -149,7 +149,7 @@ static void DrawShopItemCard(HDC hdc) {
     if (vendor_tab == 0) {
         MerchantItem *o = &merchant_catalog[merchant_selection];
         if ((o->requires_treasure_hunt && cave_treasure_hunts_found <= 0) || MerchSeasonLocked(o)) return;
-        name = o->name; slot = o->slot; price = ShopPrice(o->base_price * (int)o->rarity);
+        name = o->name; slot = o->slot; price = ItemShopPrice(o);
         rarity = o->rarity == RARITY_LEGENDARY ? "Legendary" : o->rarity == RARITY_RARE ? "Rare" : o->rarity == RARITY_UNCOMMON ? "Uncommon" : "Common";
     } else {
         if (player_item_count == 0) return;
@@ -225,7 +225,7 @@ void DrawVendorShopOverlay(HDC hdc) {
             MerchantItem *offer = &merchant_catalog[i];
             const char *rarity_tag = offer->rarity == RARITY_LEGENDARY ? "Legendary" :
                 offer->rarity == RARITY_RARE ? "Rare" : offer->rarity == RARITY_UNCOMMON ? "Uncommon" : "Common";
-            int price = ShopPrice(offer->base_price * (int)offer->rarity);
+            int price = ItemShopPrice(offer);
             int locked = (offer->requires_treasure_hunt && cave_treasure_hunts_found <= 0) || MerchSeasonLocked(offer);
             SetTextColor(hdc, (i == merchant_selection) ? RGB(255, 255, 0) : RGB(210, 210, 210));
             char stock_str[16];

@@ -26,7 +26,7 @@ int ShopPrice(int base) {
 void HandleVendorBuy(void) {
     if (!IsNearMerchant()) { strcpy(arpg_action_log, "MARKET: No vendor nearby."); return; }
     MerchantItem *offer = &merchant_catalog[merchant_selection];
-    int price = ShopPrice(offer->base_price * (int)offer->rarity);
+    int price = ItemShopPrice(offer);
     if (offer->requires_treasure_hunt && cave_treasure_hunts_found <= 0) {
         strcpy(arpg_action_log, "MARKET: This treasure-hunt item is still a rumor to this merchant."); return;
     }
@@ -62,7 +62,7 @@ void HandleVendorBrowse(void) {
     } else if (offer->requires_treasure_hunt && cave_treasure_hunts_found <= 0) {
         strcpy(arpg_action_log, "MARKET: This treasure-hunt item is still a rumor to this merchant.");
     } else {
-        sprintf(arpg_action_log, "You look over the %s. %d gold.", offer->name, ShopPrice(offer->base_price * (int)offer->rarity));
+        sprintf(arpg_action_log, "You look over the %s. %d gold.", offer->name, ItemShopPrice(offer));
     }
 }
 
@@ -92,8 +92,11 @@ void HandleVendorSell(void) {
     else {
         for (int i = 0; i < WEAPON_CATALOG_COUNT; i++) if (strcmp(item->name, weapon_catalog[i].name) == 0) price = weapon_catalog[i].price / 2;
     }
-    gold_count += price * item->quantity;
-    sprintf(arpg_action_log, "MARKET: Sold %s for %d gold.", item->name, price * item->quantity);
+    int total = (int)(price * item->quantity * EconomySellMult(item->name) + 0.5f);
+    if (total < 1) total = 1;
+    gold_count += total;
+    EconomyNoteSold(item->name, item->quantity);
+    sprintf(arpg_action_log, "MARKET: Sold %s for %d gold.", item->name, total);
     for (int i = selected_inv_index; i < player_item_count - 1; i++) player_inventory[i] = player_inventory[i + 1];
     player_item_count--;
     if (selected_inv_index >= player_item_count && player_item_count > 0) selected_inv_index = player_item_count - 1;

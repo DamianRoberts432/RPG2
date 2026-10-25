@@ -256,3 +256,11 @@ Each module has a matching .h with its function prototypes.
 - **Vitality (VIT)**, the old STA stat, sets your HP bar: 100 + 10 per point.
 - If you're knocked out you wake in the nearest castle town you've found. A townsman says he carried you there and his son fetched your things. Nothing is lost.
 - Homes, shops, altars and the castle are menus: **B / ESC** or **Leave** always takes you back outside.
+
+### The world, highways, Elysium and prices
+
+- **Whole world at the start:** the whole 64x64 world (biomes, 12 towns, about 45 villages and 6 dwarf holds) is laid out from a world seed when the game starts. The seed is kept in your save, so towns don't move. The map still only shows places you've been.
+- **Elysium:** the hub and trading town, where every new hero starts. Depending on the world it sits in the heartland, by an ocean port, on a lakeshore, in a forest or in the desert. Elysium always has every shop open and pays 25% more for what you sell.
+- **Highways:** stone roads join all the towns along the shortest network. A highway screen has a cleared road from the centre to each edge it leads to.
+- **Dwarf holds:** villages up in the mountains are always dwarf holds: short, bearded folk with their own greetings.
+- **Supply and demand:** what grows around a town is cheaper there (wood near forests, stone near mountains, fish near water, food near farmland), and deserts make food and fish dearer. Selling a lot of one thing in a town lowers what it pays, and that recovers by about 40% each day.

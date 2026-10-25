@@ -473,5 +473,6 @@ extern int cam_y;
 #include "afkview.h"
 #include "quests.h"
 #include "update.h"
+#include "worldgen.h"
 
 #endif // GAME_H

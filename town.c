@@ -49,11 +49,13 @@ const char *DeityKind(int d) { return deity_kinds[d & 3]; }
 void TownNameAt(int screen, char *out, size_t n) {
     static const char *a[16] = { "Ash", "Briar", "Cold", "Elder", "Fern", "Gold", "Holly", "Iron", "Mill", "Oak", "Raven", "Stone", "Thorn", "Wolf", "Willow", "Amber" };
     static const char *b[10] = { "ford", "brook", "dale", "haven", "wick", "stead", "moor", "field", "crest", "hollow" };
+    if (screen >= 30000 && WorldSiteAt((screen - 30000) % META_GRID_SIZE, (screen - 30000) / META_GRID_SIZE) == SITE_ELYSIUM) { snprintf(out, n, "Elysium"); return; }
     unsigned int h = (unsigned int)RainHash(screen * 389 + 11);
     snprintf(out, n, "%s%s", a[h % 16u], b[(h >> 4) % 10u]);
 }
 // Bit 0: pet shop, bit 1: card shop. They only set up in castle towns, and only some days.
 int TownShopsToday(int screen) {
+    if (screen >= 30000 && WorldSiteAt((screen - 30000) % META_GRID_SIZE, (screen - 30000) / META_GRID_SIZE) == SITE_ELYSIUM) return 3; // the hub always has every shop
     unsigned int roll = (unsigned int)RainHash(screen * 7919 + SeasonDay());
     return (int)(roll % 2) | (int)(((roll >> 3) % 2) << 1);
 }
