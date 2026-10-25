@@ -68,13 +68,13 @@ void GenerateVillageNPCs(void) {
 CaveRecord *FindOrCreateCaveRecord(int origin_cell) {
     int free_slot = -1;
     for (int i = 0; i < MAX_CAVE_RECORDS; i++) {
-        if (cave_records[i].valid && cave_records[i].origin_cell == origin_cell) return &cave_records[i];
+        if (cave_records[i].valid && CaveRoom(cave_records[i].origin_cell) == CaveRoom(origin_cell)) return &cave_records[i];
         if (free_slot == -1 && !cave_records[i].valid) free_slot = i;
     }
     if (free_slot == -1) free_slot = 0; // extremely unlikely to ever fill up; reuse slot 0 defensively
     cave_records[free_slot].valid = 1;
     cave_records[free_slot].origin_cell = origin_cell;
-    cave_records[free_slot].treasure_claimed = IsMapTreasureFound(origin_cell); // remembered across saves
+    cave_records[free_slot].treasure_claimed = CaveRoomClaimed(origin_cell); // remembered across saves
     return &cave_records[free_slot];
 }
 
@@ -90,13 +90,13 @@ void EnterCave(void) {
     cave_return_player_y = player_y;
     in_cave = 1;
     pending_forced_biome = BIOME_CAVE;
-    GenerateProceduralScreen(20000 + current_cave_origin_cell);
+    GenerateProceduralScreen(20000 + CaveRoom(current_cave_origin_cell));
     CaveRecord *rec = FindOrCreateCaveRecord(current_cave_origin_cell);
     player_x = 15.0f; player_y = 15.0f;
     if (rec->treasure_claimed) {
         strcpy(arpg_action_log, "CAVE: This cavern's treasure has already been found. Find the way out.");
     } else {
-        strcpy(arpg_action_log, "CAVE: Entered the Subterranean Caverns! Find the treasure to leave.");
+        strcpy(arpg_action_log, "CAVE: Entered the great cavern network. Each of its 8 chambers hides one chest; find this one to leave.");
     }
 }
 
@@ -115,6 +115,7 @@ void ClaimCaveTreasureAndExit(void) {
     if (!rec->treasure_claimed) {
         rec->treasure_claimed = 1;
         MarkMapTreasureFound(current_cave_origin_cell);
+        ClaimCaveRoom(current_cave_origin_cell);
         cave_treasure_hunts_found++;
         int loot = LOOT_SHORT_SWORD + rand() % (LOOT_RUSTY_SWORD - LOOT_SHORT_SWORD + 1);
         int gold = 40 + rand() % 81;
