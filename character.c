@@ -153,7 +153,7 @@ int CardCount(void) {
 
 // 2% chance per kill, chest or catch; a monster usually drops its own card.
 void TryCardDrop(int monster) {
-    if (rand() % 100 >= CARD_DROP_PERCENT) return;
+    if (rand() % 1000 >= CARD_DROP_PERMILLE) return;
     int id = (monster >= 0 && rand() % 2 == 0) ? monster_card_links[monster].card_id
              : RandomPoolCard(MONSTER_TYPE_COUNT);
     int is_new = !HasCard(id);
