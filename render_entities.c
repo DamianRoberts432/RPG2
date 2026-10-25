@@ -617,7 +617,8 @@ void DrawDynamicEnemy(HDC hdc) {
         DrawZombieBody(hdc, sx, sy, seed, face_dir, arms_out, RGB(165, 185, 150));
         EndScaledDraw(hdc, mode);
     } else if (active_monster == MONSTER_GOBLIN) {
-        DrawGoblin(hdc, sx, sy, face_dir);
+        if (bounty_hunter_active) DrawBountyHunter(hdc, sx, sy, face_dir);
+        else DrawGoblin(hdc, sx, sy, face_dir);
     } else if (active_monster == MONSTER_SATYR) {
         DrawSatyr(hdc, sx, sy, face_dir);
     } else if (IS_MYTHIC_MONSTER(active_monster)) {

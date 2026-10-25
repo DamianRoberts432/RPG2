@@ -9,7 +9,7 @@ const char *MonsterName(MonsterType m) {
 // a Bigfoot in a grey wolf's coat, whose hide only silver cuts through.
 int werewolf_active = 0;
 static int FullMoonNight(int is_night) { return is_night && SeasonDay() % 8 == 0; }
-static const char *FoeName(void) { return werewolf_active ? "Werewolf" : MonsterName(active_monster); }
+static const char *FoeName(void) { return bounty_hunter_active ? "Bounty Hunter" : werewolf_active ? "Werewolf" : MonsterName(active_monster); }
 
 // The mythic beast (if any) that belongs in the current land, following where
 // each legend comes from: Yeti - snowy Himalayan peaks, Sphinx - Egyptian
@@ -71,9 +71,15 @@ void TriggerMonsterRespawn(void) {
         active_monster = MONSTER_BIGFOOT; werewolf_active = 1;
         strcpy(arpg_action_log, "The full moon rises... a WEREWOLF hunts tonight! Only silver bites deep.");
     }
+    bounty_hunter_active = 0;
+    if (!werewolf_active && !in_cave && village_npc_count == 0 && IsOutlaw() && rand() % 100 < 20) {
+        active_monster = MONSTER_GOBLIN; bounty_hunter_active = 1;
+        strcpy(arpg_action_log, "A BOUNTY HUNTER has tracked you down! Pay your fine to a town guard to call them off.");
+    }
     if (active_monster == MONSTER_ZOMBIE && !in_cave) ZombieRisesFromWater();
     static const float base_hearts[] = { 3.0f, 3.0f, 6.0f, 2.0f, 3.5f, 9.0f, 9.0f, 8.0f, 8.0f };
     enemy_hearts = base_hearts[active_monster] + (is_night ? 0.5f : 0.0f);
+    if (bounty_hunter_active) enemy_hearts = 6.0f;
     if (IS_MYTHIC_MONSTER(active_monster)) {
         size_t n = strlen(arpg_action_log);
         snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  |  A %s roams this land!", FoeName());

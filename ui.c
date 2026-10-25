@@ -103,7 +103,7 @@ void DrawPlayerStatusHUD(HDC hdc) {
     sprintf(line, "Weather: %s%s", underground ? "Underground" : weather_names[current_weather],
             (!underground && fabs(wind_gust) > 0.3f) ? "  |  Windy" : "");
     TextOut(hdc, 20, HUD_DATE_Y + 20, line, (int)strlen(line));
-    sprintf(line, "Region: %s%s", biome_names[current_biome], stat_points > 0 ? "  |  Attribute points to spend!" : "");
+    sprintf(line, "Region: %s%s%s", biome_names[current_biome], stat_points > 0 ? "  |  Attribute points to spend!" : "", IsOutlaw() ? "  |  WANTED" : "");
     TextOut(hdc, 20, HUD_DATE_Y + 40, line, (int)strlen(line));
     DrawTrackedQuest(hdc, 20, HUD_DATE_Y + 60);
 }
