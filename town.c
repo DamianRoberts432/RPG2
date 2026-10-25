@@ -1234,12 +1234,15 @@ void DrawFamiliar(HDC hdc) {
             float dx = c->x - fx, dy = c->y - fy;
             if (dx * dx + dy * dy < best) { best = dx * dx + dy * dy; px = c->x; py = c->y; }
         }
-        if (k == 1) for (int i = 0; i < MAX_BUTTERFLIES; i++) {
+        if (k == 1 || best >= 64.0f) for (int i = 0; i < MAX_BUTTERFLIES; i++) { // dogs settle for sniffing at a butterfly
             if (!butterflies[i].active) continue;
             float dx = butterflies[i].x - fx, dy = butterflies[i].y - fy;
             if (dx * dx + dy * dy < best) { best = dx * dx + dy * dy; px = butterflies[i].x; py = butterflies[i].y; }
         }
         if (best < 64.0f) { float d = sqrtf(best) + 0.001f; tx = px - (px - fx) / d * 1.2f; ty = py - (py - fy) / d * 1.2f; }
+    }
+    else if (k <= 1 && AfkViewMs() >= 0) { // between chases it wanders playfully around the hero
+        tx += sinf(GetTickCount() / 2300.0f) * 1.1f; ty += cosf(GetTickCount() / 3100.0f) * 0.8f;
     }
     if (fabsf(fx - tx) > 10.0f || fabsf(fy - ty) > 10.0f) { fx = tx; fy = ty; }
     fx += (tx - fx) * 0.05f; fy += (ty - fy) * 0.05f;

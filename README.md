@@ -264,3 +264,11 @@ Each module has a matching .h with its function prototypes.
 - **Highways:** stone roads join all the towns along the shortest network. A highway screen has a cleared road from the centre to each edge it leads to.
 - **Dwarf holds:** villages up in the mountains are always dwarf holds: short, bearded folk with their own greetings.
 - **Supply and demand:** what grows around a town is cheaper there (wood near forests, stone near mountains, fish near water, food near farmland), and deserts make food and fish dearer. Selling a lot of one thing in a town lowers what it pays, and that recovers by about 40% each day.
+
+### AFK view: bodies and pets
+
+- **Rounder bodies:** people and monsters in the AFK view have six-sided rounded torsos, heads and limbs. Legs bend at the knee as they stride and arms swing with a soft elbow. Zombies lurch slowly with their arms held out.
+- **Pets:** the dog and cat have rounded bodies, necks and tails, and their legs bend as they trot.
+  - The cat paws at a butterfly close by and, with nothing to chase, crouches, wiggles and pounces on leaves. It also chases birds and butterflies.
+  - The dog chases squirrels, lifts its nose to sniff the air near butterflies, and wags its tail.
+  - Between chases both wander playfully around you, and they never catch anything.

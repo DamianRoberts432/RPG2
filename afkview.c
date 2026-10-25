@@ -1,3 +1,4 @@
+#include <string.h>
 #include "game.h"
 
 // 1st-person AFK view. After AFK_DELAY_MS with no input the camera zooms into
@@ -414,6 +415,37 @@ static void Cone(float cx, float cy, float along, float side, float z0, float z1
     Prism(cx + hcos * along - hsin * side, cy + hsin * along + hcos * side, z0, z1, r, 0.0f, 4, 0.0f, col);
 }
 
+// A six-sided tube between two points (along/side/z on the figure): rounded limbs, bodies and tails.
+static void Bone(float cx, float cy, float a0, float s0, float z0, float a1, float s1, float z1, float r0, float r1, COLORREF col) {
+    float p0[3] = { cx + hcos * a0 - hsin * s0, cy + hsin * a0 + hcos * s0, z0 }, p1[3] = { cx + hcos * a1 - hsin * s1, cy + hsin * a1 + hcos * s1, z1 };
+    float d[3] = { p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2] }, dl = sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]) + 1e-6f;
+    for (int i = 0; i < 3; i++) d[i] /= dl;
+    float u[3] = { -d[1], d[0], 0.0f }, ul = sqrtf(u[0] * u[0] + u[1] * u[1]);
+    if (ul < 0.01f) { u[0] = -hsin; u[1] = hcos; ul = 1.0f; }
+    for (int i = 0; i < 3; i++) u[i] /= ul;
+    float w[3] = { d[1] * u[2] - d[2] * u[1], d[2] * u[0] - d[0] * u[2], d[0] * u[1] - d[1] * u[0] };
+    float c[3] = { (p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2, (p0[2] + p1[2]) / 2 }, ring[2][6][3];
+    for (int k = 0; k < 6; k++) {
+        float ca = cosf(k * 1.0472f), sa = sinf(k * 1.0472f);
+        for (int i = 0; i < 3; i++) { ring[0][k][i] = p0[i] + (u[i] * ca + w[i] * sa) * r0; ring[1][k][i] = p1[i] + (u[i] * ca + w[i] * sa) * r1; }
+    }
+    for (int k = 0; k < 6; k++) {
+        int j = (k + 1) % 6; float v[4][3];
+        memcpy(v[0], ring[0][k], sizeof(v[0])); memcpy(v[1], ring[0][j], sizeof(v[0])); memcpy(v[2], ring[1][j], sizeof(v[0])); memcpy(v[3], ring[1][k], sizeof(v[0]));
+        AddFace(v, 4, col, c, 0);
+    }
+    AddFace(ring[0], 6, col, c, 0); AddFace(ring[1], 6, col, c, 0);
+}
+
+// Two-part limb from a hip or shoulder: th swings it forward from straight down,
+// bend folds the lower part at the knee (negative) or elbow (positive).
+static void Limb(float x, float y, float a, float s, float z, float l1, float l2, float th, float bend, float r, COLORREF upper, COLORREF lower) {
+    float ka = a + sinf(th) * l1, kz = z - cosf(th) * l1, t2 = th + bend, fa = ka + sinf(t2) * l2, fz = kz - cosf(t2) * l2;
+    if (fz < 0.0f) fz = 0.0f;
+    Bone(x, y, a, s, z, ka, s, kz, r, r * 0.85f, upper);
+    Bone(x, y, ka, s, kz, fa, s, fz, r * 0.85f, r * 0.7f, lower);
+}
+
 // Two dots on the front of a head (drawn just in front of it).
 static void Eyes(float cx, float cy, float along, float side, float z, float e, COLORREF col) {
     float saved = face_bias; face_bias = 0.05f; face_glow = 1;
@@ -456,16 +488,46 @@ static void AnimalMesh(const FpThing *t) {
                                               { RGB(120, 120, 128), RGB(220, 130, 50), RGB(35, 35, 40), RGB(240, 240, 240) } };
         int cat = t->seed == 1;
         COLORREF c = coats[cat][familiar_color & 3], dark = Dim(c, 0.7f);
-        float S = familiar_size == 0 ? 0.75f : familiar_size == 2 ? 1.3f : 1.0f, st = sinf(now / 110.0f) * 0.02f * S;
-        for (int l = 0; l < 4; l++) OBox(x, y, (l < 2 ? 0.11f : -0.11f) * S + (l % 2 ? st : -st), (l % 2 ? 0.05f : -0.05f) * S, 0.0f, 0.14f * S, 0.025f * S, 0.025f * S, dark);
-        OBox(x, y, 0.0f, 0.0f, 0.13f * S, 0.27f * S, (cat ? 0.15f : 0.17f) * S, (cat ? 0.055f : 0.07f) * S, c);
-        OBox(x, y, 0.2f * S, 0.0f, 0.24f * S, 0.38f * S, 0.07f * S, 0.065f * S, c);
-        if (cat) { Cone(x, y, 0.19f * S, 0.04f * S, 0.38f * S, 0.46f * S, 0.03f * S, c); Cone(x, y, 0.19f * S, -0.04f * S, 0.38f * S, 0.46f * S, 0.03f * S, c);
-                   OBox(x, y, -0.17f * S, 0.0f, 0.2f * S, 0.32f * S, 0.02f * S, 0.02f * S, c); OBox(x, y, -0.2f * S, 0.0f, 0.32f * S, 0.46f * S, 0.02f * S, 0.02f * S, c); }
-        else { OBox(x, y, 0.29f * S, 0.0f, 0.25f * S, 0.31f * S, 0.04f * S, 0.035f * S, dark); OBox(x, y, 0.335f * S, 0.0f, 0.29f * S, 0.315f * S, 0.008f * S, 0.015f * S, black);
-               OBox(x, y, 0.18f * S, 0.075f * S, 0.27f * S, 0.37f * S, 0.025f * S, 0.012f * S, dark); OBox(x, y, 0.18f * S, -0.075f * S, 0.27f * S, 0.37f * S, 0.025f * S, 0.012f * S, dark);
-               OBox(x, y, -0.2f * S, sinf(now / 90.0f) * 0.03f * S, 0.24f * S, 0.34f * S, 0.03f * S, 0.015f * S, c); }
-        Eyes(x, y, 0.273f * S, 0.03f * S, 0.33f * S, 0.012f * S, cat ? RGB(110, 190, 60) : black);
+        float S = familiar_size == 0 ? 0.75f : familiar_size == 2 ? 1.3f : 1.0f;
+        // Its attention: a butterfly close by (the cat paws at it, the dog sniffs the air) or nothing (the cat pounces on leaves).
+        float bd = 4.0f, bx = 0.0f, by = 0.0f;
+        for (int i = 0; i < MAX_BUTTERFLIES; i++) if (butterflies[i].active) {
+            float dx = butterflies[i].x - x, dy = butterflies[i].y - y;
+            if (dx * dx + dy * dy < bd) { bd = dx * dx + dy * dy; bx = butterflies[i].x; by = butterflies[i].y; }
+        }
+        int near_fly = bd < 2.6f;
+        if (near_fly) { float fa = atan2f(by - y, bx - x); hcos = cosf(fa); hsin = sinf(fa); }
+        static float lfx, lfy; float mv = fabsf(x - lfx) + fabsf(y - lfy); lfx = x; lfy = y;
+        float gait = mv > 0.004f ? 1.0f : 0.15f, ph = now / (cat ? 120.0f : 105.0f), pc = fmodf(now / 2600.0f, 1.0f), crouch = 0.0f, leap = 0.0f;
+        if (cat && !near_fly && gait < 0.5f) { // stalk low, wiggle, then spring at a leaf
+            if (pc < 0.55f) crouch = pc / 0.55f; else if (pc < 0.75f) crouch = 1.0f; else if (pc < 0.9f) leap = sinf((pc - 0.75f) / 0.15f * 3.14159f);
+        }
+        float lz = (leap * 0.12f - crouch * 0.05f) * S, paw = cat && near_fly ? fmaxf(0.0f, sinf(now / 160.0f)) : 0.0f;
+        for (int l = 0; l < 4; l++) {
+            int front = l < 2; float sd = (l % 2 ? 0.05f : -0.05f) * S, a0 = (front ? 0.11f : -0.11f) * S, p = ph + (l == 0 || l == 3 ? 0.0f : 3.14159f);
+            float th = sinf(p) * 0.5f * gait + (front ? 0.7f : -0.7f) * leap;
+            float bend = front ? 0.35f * fmaxf(0.0f, sinf(p + 1.2f)) * gait : -(0.4f + 0.3f * fmaxf(0.0f, sinf(p + 1.2f)) * gait);
+            if (l == 0 && paw > 0.0f) { th = 1.2f * paw; bend = 0.6f * paw; }
+            Limb(x, y, a0, sd, 0.17f * S + lz, 0.085f * S, 0.085f * S, th, bend - crouch * 0.6f * (front ? -1.0f : 1.0f), 0.024f * S, dark, dark);
+        }
+        float bl = (cat ? 0.15f : 0.17f) * S, br = (cat ? 0.06f : 0.075f) * S, bz = 0.21f * S + lz - crouch * 0.03f * S;
+        Bone(x, y, -bl, 0.0f, bz, bl, 0.0f, bz + 0.015f * S, br, br * 1.05f, c);
+        float sniff = !cat && near_fly ? 0.06f * S + sinf(now / 90.0f) * 0.012f * S : 0.0f, hz = 0.31f * S + lz + sniff - crouch * 0.05f * S;
+        Bone(x, y, bl * 0.8f, 0.0f, bz + 0.02f * S, 0.18f * S, 0.0f, hz, 0.045f * S, 0.04f * S, c); // neck
+        Bone(x, y, 0.16f * S, 0.0f, hz, 0.25f * S, 0.0f, hz - 0.005f * S, (cat ? 0.058f : 0.062f) * S, (cat ? 0.05f : 0.052f) * S, c);
+        if (cat) {
+            Cone(x, y, 0.2f * S, 0.035f * S, hz + 0.04f * S, hz + 0.11f * S, 0.026f * S, c); Cone(x, y, 0.2f * S, -0.035f * S, hz + 0.04f * S, hz + 0.11f * S, 0.026f * S, c);
+            float lash = sinf(now / (crouch > 0.5f ? 120.0f : 420.0f)) * 0.04f * S;
+            Bone(x, y, -bl, 0.0f, bz + 0.02f * S, -bl - 0.05f * S, lash * 0.5f, bz + 0.12f * S, 0.02f * S, 0.018f * S, c);
+            Bone(x, y, -bl - 0.05f * S, lash * 0.5f, bz + 0.12f * S, -bl - 0.03f * S, lash, bz + 0.24f * S, 0.018f * S, 0.014f * S, c);
+        } else {
+            Bone(x, y, 0.25f * S, 0.0f, hz - 0.01f * S, 0.33f * S, 0.0f, hz - 0.025f * S, 0.034f * S, 0.03f * S, dark); // snout
+            OBox(x, y, 0.335f * S, 0.0f, hz - 0.015f * S, hz + 0.005f * S, 0.008f * S, 0.014f * S, black);
+            for (int k = -1; k <= 1; k += 2) Bone(x, y, 0.19f * S, k * 0.055f * S, hz + 0.035f * S, 0.21f * S, k * 0.075f * S, hz - 0.045f * S, 0.02f * S, 0.016f * S, dark); // floppy ears
+            float wag = sinf(now / 90.0f) * 0.04f * S;
+            Bone(x, y, -bl, 0.0f, bz + 0.03f * S, -bl - 0.08f * S, wag, bz + 0.12f * S, 0.022f * S, 0.012f * S, c);
+        }
+        Eyes(x, y, 0.255f * S, 0.028f * S, hz + 0.015f * S, 0.011f * S, cat ? RGB(110, 190, 60) : black);
         return;
     }
     if (kind == FP_BUTTERFLY) { // a lazy looping drift on top of its real path
@@ -628,13 +690,20 @@ static void HumanMesh(const FpThing *t) {
         OBox(x, y, -0.07f * S, 0.0f, 0.18f * S, 0.66f * S, 0.02f * S, 0.15f * S, RGB(25, 12, 18));
         face_bias = 0.01f; OBox(x, y, -0.065f * S, 0.0f, 0.18f * S, 0.62f * S, 0.015f * S, 0.13f * S, RGB(150, 20, 35)); face_bias = 0.0f;
     }
-    OBox(x, y, st, 0.05f * S, 0.0f, 0.32f * S, 0.035f * S, 0.035f * S, legs);
-    OBox(x, y, -st, -0.05f * S, 0.0f, 0.32f * S, 0.035f * S, 0.035f * S, legs);
-    OBox(x, y, 0.0f, 0.0f, 0.32f * S, 0.6f * S, 0.06f * S, 0.1f * S, cloth);
-    OBox(x, y, -st, -0.13f * S, 0.36f * S, 0.58f * S, 0.03f * S, 0.03f * S, cloth);
-    OBox(x, y, st + swing * 0.12f * S, 0.13f * S, (0.36f + swing * 0.18f) * S, (0.58f + swing * 0.18f) * S, 0.03f * S, 0.03f * S, cloth);
+    int zomb = enemy && type == MONSTER_ZOMBIE; // zombies lurch slowly with arms out
+    float ph = now / (zomb ? 260.0f : 140.0f) + idx, bob = fabsf(sinf(ph)) * 0.012f * S;
+    for (int k = -1; k <= 1; k += 2) { // legs: the thigh swings and the knee folds as the foot comes through
+        float p = ph + (k > 0 ? 0.0f : 3.14159f), th = sinf(p) * 0.42f, bend = -(0.15f + 0.75f * fmaxf(0.0f, sinf(p + 1.3f)));
+        Limb(x, y, 0.0f, k * 0.05f * S, 0.33f * S + bob, 0.17f * S, 0.17f * S, th, bend, 0.034f * S, legs, legs);
+    }
+    Prism(x, y, 0.31f * S + bob, 0.6f * S + bob, 0.085f * S, 0.1f * S, 6, h, cloth); // rounded torso, broader at the shoulders
+    for (int k = -1; k <= 1; k += 2) { // arms swing against the legs with a soft elbow; the lead arm raises the weapon
+        float p = ph + (k > 0 ? 3.14159f : 0.0f), lead = k > 0 ? swing : 0.0f;
+        float th = sinf(p) * (zomb ? 0.1f : 0.35f) + (zomb ? 1.35f : 0.0f) + lead * 1.9f, bend = 0.25f + 0.25f * fmaxf(0.0f, sinf(p)) + lead * 0.4f;
+        Limb(x, y, 0.0f, k * 0.12f * S, 0.57f * S + bob, 0.13f * S, 0.12f * S, th, zomb ? 0.1f : bend, 0.028f * S, cloth, skin);
+    }
     if (swing > 0.0f) OBox(x, y, (0.1f + swing * 0.2f) * S, 0.13f * S, (0.5f + swing * 0.1f) * S, (0.54f + swing * 0.1f) * S, 0.12f * S, 0.015f * S, RGB(200, 205, 215));
-    OBox(x, y, 0.0f, 0.0f, 0.6f * S, 0.74f * S, 0.06f * S, 0.06f * S, skin);
+    Prism(x, y, 0.6f * S, 0.75f * S, 0.058f * S, 0.05f * S, 6, h, skin); // head
     if (horns) { Cone(x, y, 0.0f, 0.04f * S, 0.74f * S, 0.82f * S, 0.015f * S, RGB(230, 220, 190)); Cone(x, y, 0.0f, -0.04f * S, 0.74f * S, 0.82f * S, 0.015f * S, RGB(230, 220, 190)); }
     if (crown) OBox(x, y, 0.0f, 0.0f, 0.74f * S, 0.79f * S, 0.055f * S, 0.055f * S, RGB(235, 195, 60));
     if (hero) {
