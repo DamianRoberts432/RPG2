@@ -265,6 +265,11 @@ Each module has a matching .h with its function prototypes.
 - **Dwarf holds:** villages up in the mountains are always dwarf holds: short, bearded folk with their own greetings.
 - **Supply and demand:** what grows around a town is cheaper there (wood near forests, stone near mountains, fish near water, food near farmland), and deserts make food and fish dearer. Selling a lot of one thing in a town lowers what it pays, and that recovers by about 40% each day.
 
+### Hero facing and sprites
+
+- The hero turns to face all 8 directions you can move and attack in. From behind you see the back of the head with no face; side views show one eye and a nose; diagonals turn the face part-way. Weapons and the bow are held toward the side being faced, and the AFK view starts looking the same way.
+- **Hand-drawn sprites:** put `hero_s.bmp`, `hero_sw.bmp`, `hero_w.bmp`, `hero_nw.bmp`, `hero_n.bmp`, `hero_ne.bmp`, `hero_e.bmp` and `hero_se.bmp` in the `sprites` folder (see `sprites/README.txt`). Magenta is see-through, feet go at the bottom edge, and missing right-side pictures are mirrored from the left-side ones. Directions without a picture use the drawn hero.
+
 ### AFK view: bodies and pets
 
 - **Rounder bodies:** people and monsters in the AFK view have six-sided rounded torsos, heads and limbs. Legs bend at the knee as they stride and arms swing with a soft elbow. Zombies lurch slowly with their arms held out.

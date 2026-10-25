@@ -2,6 +2,57 @@
 
 static void PenLine(HDC hdc, int w, COLORREF c, int x1, int y1, int x2, int y2);
 
+// The hero's facing as one of 8 screen directions: 0 S (toward you), 1 SW, 2 W,
+// 3 NW, 4 N (away), 5 NE, 6 E, 7 SE. Same screen vector the slash uses.
+int HeroDir8(void) {
+    float vx = facing_x - facing_y, vy = (facing_x + facing_y) * 0.5f;
+    int i = (int)floorf((float)atan2(vx, vy) / 0.785398f + 0.5f);
+    static const int from_octant[9] = { 4, 3, 2, 1, 0, 7, 6, 5, 4 };
+    if (i < -4) i = -4;
+    if (i > 4) i = 4;
+    return from_octant[i + 4];
+}
+static void Dir8Vec(int d, float *vx, float *vy) { float a = -d * 0.785398f; *vx = sinf(a); *vy = cosf(a); }
+
+// Hand-drawn hero sprites: sprites/hero_<dir>.bmp, magenta = see-through.
+// A missing east-side picture is mirrored from its west-side twin.
+static HBITMAP hero_spr[8]; static int hero_spr_w[8], hero_spr_h[8], hero_spr_loaded;
+static HBITMAP MirrorBitmap(HBITMAP src, int w, int h) {
+    HDC screen = GetDC(NULL), s = CreateCompatibleDC(screen), d = CreateCompatibleDC(screen);
+    HBITMAP out = CreateCompatibleBitmap(screen, w, h); ReleaseDC(NULL, screen);
+    HGDIOBJ os = SelectObject(s, src), od = SelectObject(d, out);
+    StretchBlt(d, w - 1, 0, -w, h, s, 0, 0, w, h, SRCCOPY);
+    SelectObject(s, os); SelectObject(d, od); DeleteDC(s); DeleteDC(d);
+    return out;
+}
+static void LoadHeroSprites(void) {
+    static const char *names[8] = { "s", "sw", "w", "nw", "n", "ne", "e", "se" };
+    hero_spr_loaded = 1;
+    for (int d = 0; d < 8; d++) {
+        char path[64]; snprintf(path, sizeof path, "sprites/hero_%s.bmp", names[d]);
+        hero_spr[d] = (HBITMAP)LoadImageA(NULL, path, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION);
+        if (hero_spr[d]) { BITMAP bm; GetObject(hero_spr[d], sizeof bm, &bm); hero_spr_w[d] = bm.bmWidth; hero_spr_h[d] = bm.bmHeight; }
+    }
+    static const int twin[3][2] = { { 1, 7 }, { 2, 6 }, { 3, 5 } };
+    for (int k = 0; k < 3; k++) for (int j = 0; j < 2; j++) {
+        int have = twin[k][j], miss = twin[k][1 - j];
+        if (hero_spr[have] && !hero_spr[miss]) {
+            hero_spr[miss] = MirrorBitmap(hero_spr[have], hero_spr_w[have], hero_spr_h[have]);
+            hero_spr_w[miss] = hero_spr_w[have]; hero_spr_h[miss] = hero_spr_h[have];
+        }
+    }
+}
+// Draws the sprite for this direction with the feet on the shadow; 0 if there is none.
+static int DrawHeroSprite(HDC hdc, int sx, int sy, float scale, int dir) {
+    if (!hero_spr_loaded) LoadHeroSprites();
+    if (!hero_spr[dir] || hero_spr_h[dir] <= 0) return 0;
+    int h = (int)(36 * scale), w = hero_spr_w[dir] * h / hero_spr_h[dir];
+    HDC m = CreateCompatibleDC(hdc); HGDIOBJ om = SelectObject(m, hero_spr[dir]);
+    TransparentBlt(hdc, sx - w / 2, sy + (int)(21 * scale) - h, w, h, m, 0, 0, hero_spr_w[dir], hero_spr_h[dir], RGB(255, 0, 255));
+    SelectObject(m, om); DeleteDC(m);
+    return 1;
+}
+
 void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) {
     int sx = render_x; int sy = render_y;
     float scale = override_scale;
@@ -18,6 +69,13 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
     
     HBRUSH shadow_b = CreateSolidBrush(RGB(15, 20, 26)); HGDIOBJ old = SelectObject(hdc, shadow_b); 
     Ellipse(hdc, sx - (int)(10 * scale), sy + (int)(14 * scale), sx + (int)(10 * scale), sy + (int)(22 * scale)); SelectObject(hdc, old); DeleteObject(shadow_b);
+
+    // Menus and portraits show the hero facing you; in play the 8-way facing.
+    int dir = override_scale == 1.0f ? HeroDir8() : 0;
+    int back = dir >= 3 && dir <= 5, side = (dir >= 1 && dir <= 3) ? -1 : dir >= 5 ? 1 : 0, profile = dir == 2 || dir == 6;
+    int bl = side < 0 || (side == 0 && back); // weapon/bow held on the left of the picture
+    float wvx, wvy; Dir8Vec(dir, &wvx, &wvy);
+    int spr = DrawHeroSprite(hdc, sx, sy, scale, dir);
 
     COLORREF body_color = RGB(245, 225, 195);
     COLORREF hat_color  = RGB(55, 185, 90);
@@ -37,6 +95,7 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
     if (clothes) body_color = ClothingColor(clothes);
     if (head_wear) hat_color = ClothingColor(head_wear);
 
+    if (!spr) {
     HBRUSH body_b = CreateSolidBrush(body_color); HGDIOBJ prev_body = SelectObject(hdc, body_b);
     POINT body[] = {
         {sx - (int)(6 * scale), sy + (int)(6 * scale)}, 
@@ -55,8 +114,11 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         int hw = hero_sex ? 9 : 8;
         PenLine(hdc, trim_w, trim, sx - (int)((hw - 1) * scale), sy + (int)(19 * scale), sx + (int)((hw - 1) * scale), sy + (int)(19 * scale));
         PenLine(hdc, trim_w, trim, sx - (int)(5 * scale), sy + (int)(13 * scale), sx + (int)(5 * scale), sy + (int)(13 * scale));
-        PenLine(hdc, trim_w, trim, sx - (int)(4 * scale), sy + (int)(6 * scale), sx, sy + (int)(10 * scale));
-        PenLine(hdc, trim_w, trim, sx, sy + (int)(10 * scale), sx + (int)(4 * scale), sy + (int)(6 * scale));
+        if (!back) { // the V collar is on the front
+            int cx = sx + side * (int)((profile ? 3 : 2) * scale);
+            PenLine(hdc, trim_w, trim, cx - (int)(4 * scale), sy + (int)(6 * scale), cx, sy + (int)(10 * scale));
+            PenLine(hdc, trim_w, trim, cx, sy + (int)(10 * scale), cx + (int)(4 * scale), sy + (int)(6 * scale));
+        }
     }
     if (cloak) { // two panels hanging from the shoulders, open at the front
         COLORREF cc = ClothingColor(cloak);
@@ -70,12 +132,13 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         SelectObject(hdc, pcp); SelectObject(hdc, pcb); DeleteObject(cb); DeleteObject(cp);
     }
 
-    if (hero_beard > 0) {
+    if (hero_beard > 0 && !back) {
         HBRUSH beard_b = CreateSolidBrush(HeroHairColor()); HGDIOBJ prev_beard = SelectObject(hdc, beard_b);
+        int bx = sx + side * (int)((profile ? 4 : 2) * scale), bw = profile ? 4 : 6;
         POINT beard[] = {
-            {sx - (int)(6 * scale), sy + (int)(6 * scale)},
-            {sx + (int)(6 * scale), sy + (int)(6 * scale)},
-            {sx, sy + (int)((hero_beard == 2 ? 18 : 12) * scale)}
+            {bx - (int)(bw * scale), sy + (int)(6 * scale)},
+            {bx + (int)(bw * scale), sy + (int)(6 * scale)},
+            {bx + side * (int)(2 * scale), sy + (int)((hero_beard == 2 ? 18 : 12) * scale)}
         };
         Polygon(hdc, beard, 3); SelectObject(hdc, prev_beard); DeleteObject(beard_b);
     }
@@ -87,42 +150,42 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         SelectObject(hdc, prev_ear_p); DeleteObject(ear_p);
     }
 
+    }
+
     // The secondary bow is shown in hand only while it is being drawn.
     WeaponType shown_weapon = (is_charging_bow && bow_equipped) ? WEAPON_BOW : active_weapon;
+    // At rest the blade points the way the hero faces; straight up/down it tilts off to one side.
+    int hand_x = sx + (int)(wvx * 7) + (side ? 0 : back ? -7 : 7), hand_y = sy + 11 + (int)(wvy * 3);
+    int tip_x = hand_x + (int)(wvx * 12) + (side ? 0 : back ? -4 : 4), tip_y = hand_y + (int)(wvy * 8);
     if (shown_weapon == WEAPON_SWORD) {
         HPEN p = CreatePen(PS_SOLID, 2, RGB(200, 210, 220)); HGDIOBJ prev_p = SelectObject(hdc, p);
         if (sword_swipe_frame > 0) {
             DrawSlash(hdc, sx, sy);
         } else {
-            if (player_facing == FACE_UP || player_facing == FACE_LEFT) { MoveToEx(hdc, sx - 8, sy + 8, NULL); LineTo(hdc, sx - 16, sy - 4); }
-            else { MoveToEx(hdc, sx + 6, sy + 12, NULL); LineTo(hdc, sx + 16, sy + 20); }
+            MoveToEx(hdc, hand_x, hand_y, NULL); LineTo(hdc, tip_x, tip_y);
         }
         SelectObject(hdc, prev_p); DeleteObject(p);
     } else if (shown_weapon == WEAPON_AXE) {
         HPEN p = CreatePen(PS_SOLID, 2, RGB(135, 95, 60)); HGDIOBJ prev_p = SelectObject(hdc, p);
         if (sword_swipe_frame > 0) {
             DrawSlash(hdc, sx, sy);
-        } else if (player_facing == FACE_UP || player_facing == FACE_LEFT) { MoveToEx(hdc, sx - 6, sy + 8, NULL); LineTo(hdc, sx - 14, sy - 2); }
-        else { MoveToEx(hdc, sx + 6, sy + 10, NULL); LineTo(hdc, sx + 14, sy + 18); }
+        } else { MoveToEx(hdc, hand_x, hand_y, NULL); LineTo(hdc, (hand_x + tip_x * 3) / 4, (hand_y + tip_y * 3) / 4); }
         SelectObject(hdc, prev_p); DeleteObject(p);
     } else if (shown_weapon == WEAPON_SPEAR) {
         // Iso screen direction of the facing; the thrust pushes the spear out.
-        int fx = 1, fy = 1;
-        if (player_facing == FACE_UP) { fx = 1; fy = -1; }
-        else if (player_facing == FACE_DOWN) { fx = -1; fy = 1; }
-        else if (player_facing == FACE_LEFT) { fx = -1; fy = -1; }
+        float fx = wvx * 1.3f, fy = wvy * 1.3f;
         int len = sword_swipe_frame > 0 ? 32 : 20;
-        int bx = sx - fx * 6, by = sy + 8 - fy * 3;
-        int tx = bx + fx * len, ty = by + fy * len / 2;
+        int bx = sx - (int)(fx * 6), by = sy + 8 - (int)(fy * 3);
+        int tx = bx + (int)(fx * len), ty = by + (int)(fy * len / 2);
         HPEN shaft = CreatePen(PS_SOLID, 2, RGB(150, 110, 70)); HGDIOBJ prev_p = SelectObject(hdc, shaft);
         MoveToEx(hdc, bx, by, NULL); LineTo(hdc, tx, ty);
         HPEN tip = CreatePen(PS_SOLID, 3, RGB(210, 215, 225)); SelectObject(hdc, tip);
-        MoveToEx(hdc, tx, ty, NULL); LineTo(hdc, tx + fx * 5, ty + fy * 3);
+        MoveToEx(hdc, tx, ty, NULL); LineTo(hdc, tx + (int)(fx * 5), ty + (int)(fy * 3));
         SelectObject(hdc, prev_p); DeleteObject(shaft); DeleteObject(tip);
     } else {
         HPEN wood_pen = CreatePen(PS_SOLID, 2, RGB(235, 175, 45)); HGDIOBJ prev_wood_p = SelectObject(hdc, wood_pen);
         HPEN string_pen = CreatePen(PS_SOLID, 1, RGB(15, 18, 24)); 
-        if (player_facing == FACE_UP || player_facing == FACE_LEFT) { 
+        if (bl) { 
             Arc(hdc, sx + 4, sy + 4, sx + 16, sy + 20, sx + 10, sy + 20, sx + 10, sy + 4); 
             SelectObject(hdc, string_pen); MoveToEx(hdc, sx + 10, sy + 4, NULL); LineTo(hdc, sx + 10, sy + 20);
         } else { 
@@ -134,7 +197,7 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         // When bow is charging (drawn), display nocked arrow ready on the bow
         if (is_charging_bow) {
             HPEN arrow_pen = CreatePen(PS_SOLID, 1, RGB(220, 225, 235)); HGDIOBJ prev_arrow_p = SelectObject(hdc, arrow_pen);
-            if (player_facing == FACE_UP || player_facing == FACE_LEFT) { 
+            if (bl) { 
                 MoveToEx(hdc, sx + 4, sy + 12, NULL); LineTo(hdc, sx + 16, sy + 12); 
             } else { 
                 MoveToEx(hdc, sx - 16, sy + 12, NULL); LineTo(hdc, sx - 4, sy + 12); 
@@ -143,6 +206,7 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         }
     }
     
+    if (!spr) {
     if (selected_race == RACE_GNOME && !head_wear) {
         HBRUSH gnome_hat = CreateSolidBrush(RGB(220, 40, 40)); HGDIOBJ prev_hat = SelectObject(hdc, gnome_hat);
         POINT cap[] = {{sx, sy - (int)(32 * scale)}, {sx + (int)(7 * scale), sy + (int)(4 * scale)}, {sx - (int)(7 * scale), sy + (int)(4 * scale)}};
@@ -159,14 +223,17 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         MoveToEx(hdc, sx - HS(7), sy + HS(10), NULL); LineTo(hdc, sx - HS(4), sy + HS(5)); // drape folds
         MoveToEx(hdc, sx + HS(7), sy + HS(10), NULL); LineTo(hdc, sx + HS(4), sy + HS(5));
         HBRUSH shade = CreateSolidBrush(RGB(5, 4, 7)); SelectObject(hdc, shade); SelectObject(hdc, GetStockObject(NULL_PEN));
+        int hx = sx; sx += side * HS(profile ? 4 : 2); // the face opening turns with the hero
+        if (!back) {
         Ellipse(hdc, sx - HS(5), sy - HS(6), sx + HS(5), sy + HS(6));
         HBRUSH chin = CreateSolidBrush(selected_race == RACE_DWARF ? RGB(225, 180, 145) : RGB(235, 200, 165)); // the chin catches the light under the hood
         SelectObject(hdc, chin); Ellipse(hdc, sx - HS(3), sy + HS(1), sx + HS(3) + 1, sy + HS(6));
         COLORREF ec = HeroEyeColor(), glow = RGB((GetRValue(ec) + 255) / 2, (GetGValue(ec) + 255) / 2, (GetBValue(ec) + 255) / 2);
         HBRUSH halo = CreateSolidBrush(RGB(GetRValue(ec) / 2, GetGValue(ec) / 2, GetBValue(ec) / 2)), eyes = CreateSolidBrush(glow);
         int ew = scale >= 1.5f ? 2 : 1, ey = sy - HS(1);
-        for (int side = -1; side <= 1; side += 2) { // two glowing points in the shadow
-            int ex = sx + side * HS(2);
+        for (int eside = -1; eside <= 1; eside += 2) { // two glowing points in the shadow, one in profile
+            if (profile && eside != side) continue;
+            int ex = sx + eside * HS(2);
             SelectObject(hdc, halo); Ellipse(hdc, ex - ew - 1, ey - ew - 1, ex + ew + 2, ey + ew + 2);
             SelectObject(hdc, eyes); Ellipse(hdc, ex - ew + 1, ey - ew + 1, ex + ew, ey + ew);
         }
@@ -175,17 +242,20 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
             Ellipse(hdc, sx - HS(6), sy - HS(7), sx + HS(6), sy + HS(7));
             SelectObject(hdc, prev_fold); DeleteObject(tp);
         }
-        SelectObject(hdc, prev_fold); SelectObject(hdc, prev_hood); DeleteObject(fold); DeleteObject(hood); DeleteObject(shade);
         DeleteObject(chin); DeleteObject(halo); DeleteObject(eyes);
+        }
+        sx = hx;
+        SelectObject(hdc, prev_fold); SelectObject(hdc, prev_hood); DeleteObject(fold); DeleteObject(hood); DeleteObject(shade);
         if (selected_race == RACE_ELF) {
             HPEN ear_p = CreatePen(PS_SOLID, 2, RGB(245, 210, 170)); HGDIOBJ prev_ear_p = SelectObject(hdc, ear_p);
             MoveToEx(hdc, sx - HS(9), sy, NULL); LineTo(hdc, sx - HS(14), sy - HS(5));
             MoveToEx(hdc, sx + HS(9), sy, NULL); LineTo(hdc, sx + HS(14), sy - HS(5));
             SelectObject(hdc, prev_ear_p); DeleteObject(ear_p);
         }
-        if (hero_beard > 0) {
+        if (hero_beard > 0 && !back) {
             HBRUSH beard_b = CreateSolidBrush(HeroHairColor()); HGDIOBJ prev_beard = SelectObject(hdc, beard_b);
-            POINT beard[] = { {sx - HS(4), sy + HS(4)}, {sx + HS(4), sy + HS(4)}, {sx, sy + HS(hero_beard == 2 ? 17 : 11)} };
+            int bx = sx + side * HS(profile ? 4 : 2);
+            POINT beard[] = { {bx - HS(4), sy + HS(4)}, {bx + HS(4), sy + HS(4)}, {bx + side * HS(2), sy + HS(hero_beard == 2 ? 17 : 11)} };
             Polygon(hdc, beard, 3); SelectObject(hdc, prev_beard); DeleteObject(beard_b);
         }
 #undef HS
@@ -211,11 +281,33 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         int hair_len = hero_sex ? 15 : 9;
         POINT hl[] = { {sx - (int)(9 * scale), sy + (int)(4 * scale)}, {sx - (int)(5 * scale), sy + (int)(6 * scale)}, {sx - (int)(8 * scale), sy + (int)(hair_len * scale)} };
         POINT hr[] = { {sx + (int)(9 * scale), sy + (int)(4 * scale)}, {sx + (int)(5 * scale), sy + (int)(6 * scale)}, {sx + (int)(8 * scale), sy + (int)(hair_len * scale)} };
-        Polygon(hdc, hl, 3); Polygon(hdc, hr, 3);
+        if (side >= 0 || !profile) Polygon(hdc, hl, 3); // in profile only the far lock shows
+        if (side <= 0 || !profile) Polygon(hdc, hr, 3);
         HBRUSH eye_b = CreateSolidBrush(HeroEyeColor()); SelectObject(hdc, eye_b);
         int ew = scale >= 1.5f ? 2 : 1, ey = sy + (int)(3 * scale);
-        for (int side = -1; side <= 1; side += 2) { int ex = sx + side * (int)(4 * scale); Ellipse(hdc, ex - ew, ey - ew, ex + ew + 1, ey + ew + 1); }
+        if (back) { // the back of the head: hair, no face
+            SelectObject(hdc, hair_b);
+            Ellipse(hdc, sx - (int)(7 * scale), sy + (int)(1 * scale), sx + (int)(7 * scale), sy + (int)((hair_len - 1) * scale));
+        } else {
+            int fc = sx + side * (int)((profile ? 3 : 2) * scale); // the face slides toward the way the hero looks
+            HBRUSH skin = CreateSolidBrush(selected_race == RACE_DWARF ? RGB(225, 180, 145) : RGB(235, 200, 165)); SelectObject(hdc, skin);
+            int fw = profile ? 4 : 5;
+            Ellipse(hdc, fc - (int)(fw * scale), sy, fc + (int)(fw * scale) + 1, sy + (int)(9 * scale));
+            SelectObject(hdc, eye_b); DeleteObject(skin);
+            for (int eside = -1; eside <= 1; eside += 2) {
+                if (profile && eside != side) continue;
+                int ex = fc + eside * (int)((profile ? 2 : 4) * scale);
+                RECT er = { ex - ew + 1, ey - ew + 1, ex + ew + 1, ey + ew + 1 }; FillRect(hdc, &er, eye_b);
+            }
+            if (profile) { // a nose past the eye
+                HBRUSH nose = CreateSolidBrush(selected_race == RACE_DWARF ? RGB(225, 180, 145) : RGB(235, 200, 165)); SelectObject(hdc, nose);
+                POINT n[] = { {sx + side * (int)(7 * scale), sy + (int)(3 * scale)}, {sx + side * (int)(10 * scale), sy + (int)(6 * scale)}, {sx + side * (int)(7 * scale), sy + (int)(7 * scale)} };
+                Polygon(hdc, n, 3); SelectObject(hdc, eye_b); DeleteObject(nose);
+            }
+        }
         SelectObject(hdc, prev_hp); SelectObject(hdc, prev_hb); DeleteObject(hair_b); DeleteObject(eye_b);
+    }
+
     }
 
     // Distinct charging ring on hero indicates bow is held and charging; projectile is only released post-release
