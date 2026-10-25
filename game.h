@@ -154,6 +154,9 @@ int CardGuideUnlocked(void);
 void CardInspectorMove(int d);
 void DrawCardInspector(HDC hdc, int x, int y, int w, int h);
 int MenuTabStep(int cur, int dir);
+void MsgLogUpdate(void);
+void DrawMsgLog(HDC hdc, int x, int y);
+void DrawMsgHistory(HDC hdc, int x, int y, int w, int lines);
 extern int werewolf_active;
 float AdvTownPriceMult(void);
 int AdvTalk(int npc_type);
@@ -330,7 +333,7 @@ void TryCardDrop(int monster); // monster < 0 for chests and fishing
 // Upper-left HUD: date/season/region lines start here; the action and
 // NPC dialogue log sits below them at HUD_LOG_Y.
 #define HUD_DATE_Y 16
-#define HUD_LOG_Y 82
+#define HUD_LOG_Y 100
 extern int stamina_rest_timer;
 #define STAMINA_REST_FRAMES_REQUIRED 45
 extern float player_hp, max_player_hp;
