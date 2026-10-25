@@ -146,6 +146,13 @@ Talking to a shopkeeper takes you inside their building (merchant included).
 - **Treasure Map:** building a chest gives you one, and a red X on the World Map marks each of your chests.
 - **CARDS tab:** owning the Strategy Guide opens it for good. It lists every card with its set, power, ability and whether you own it.
 
+## Outlaws, legacy and caves
+
+- **Outlaws:** crimes such as smashing barrels raise town heat. At 30 or more you are **WANTED** (shown on the HUD), and bounty hunters may track you down outside town. A town guard takes a fine (press X twice) to clear your name, and each night's sleep also cools the heat.
+- **Highwaymen:** a chest within 3 tiles of a worn road gets raided about every other day, even when trees hide it.
+- **Ancestral legacy:** deleting a save leaves a legacy for your next hero: 1 attribute point per 10 levels and per 25 quests done (5 at most), plus a tenth of your gold (500 at most).
+- **Cave network:** every cave entrance opens into one of 8 shared chambers, each with one chest. Once a chamber's chest is found, it stays found from every entrance.
+
 ## World map and saving
 
 The **Hero** tab also shows your **Karma** (Soul, Miasma from dark magic, Town Heat from crimes, Grapevine fame, and a life mark for each boss type slain), your **card collection** (each kill, cave treasure and fish catch has a 2% chance to give a card; monsters usually drop their own card), and the **bestiary** kill count per monster. These are saved with your hero. Food, materials and matches stack up to 99 per slot. The merchant now sells a **Spear** and an **A&D Strategy Guide** (use it from the inventory for a 2-second peek at secret card combos). A **Yeti** stays calm until you get within 3 tiles or hit it - then it charges. Races give small stat bonuses, and natural pairings (Elf Wizard, Human Knight, Dwarf Warrior, Halfling Rogue, Gnome Necromancer) get +1 to their key stat.
