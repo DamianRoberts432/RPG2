@@ -495,27 +495,39 @@ void DrawSolitaireSunMoonBeam(HDC hdc) {
 
     float ambient_intensity = (float)fabs(sin(day_night_cycle_accumulator));
     int is_night = (ambient_intensity < 0.35f);
+    if (ambient_intensity > 0.25f && ambient_intensity < 0.45f) return; // dawn and dusk: no beam
+
+    // Rare: only about one screen in five can get a beam, and there only now and
+    // then, fading in and out over a few seconds.
+    unsigned h = (unsigned)current_screen_index * 2654435761u;
+    if ((h >> 13) % 5) return;
+    DWORD now = GetTickCount(), cyc = now / 30000, t = now % 30000;
+    if (((h >> 7) + cyc * 40503u) % 3 || t > 18000) return;
+    float k = t < 3000 ? t / 3000.0f : t > 15000 ? (18000 - t) / 3000.0f : 1.0f;
 
     // Warm sunlight by day, cool moonlight by night.
     COLORREF beam_color = is_night ? RGB(210, 230, 255) : RGB(255, 235, 175);
 
-    float beam_world_x = 16.0f;
-    float beam_world_y = 16.0f;
-    float dist_dx = player_x - beam_world_x;
-    float dist_dy = player_y - beam_world_y;
-    float distance = (float)sqrt(dist_dx * dist_dx + dist_dy * dist_dy);
+    // The shaft comes from where the sun or moon is: from the right as it rises,
+    // straight down at its highest, from the left as it sets.
+    float s = (float)fmod(day_night_cycle_accumulator, 3.14159265);
+    if (s < 0) s += 3.14159265f;
+    s /= 3.14159265f;
+    float p = is_night ? (float)fmod(s + 0.5f, 1.0f) : s, dir = (p - 0.5f) * 2.0f;
+    if (dir < -1.0f) dir = -1.0f;
+    if (dir > 1.0f) dir = 1.0f;
+    float beam_world_x = 5.0f + (float)((h >> 3) % (MAP_SIZE - 10)), beam_world_y = 5.0f + (float)((h >> 9) % (MAP_SIZE - 10));
+    float dist_dx = player_x - beam_world_x, dist_dy = player_y - beam_world_y;
+    if (dist_dx * dist_dx + dist_dy * dist_dy < 16.0f) return;
 
-    if (distance < 4.0f) return;
-
-    int start_x, start_sy;
-    GetIsoCoords(beam_world_x, beam_world_y, &start_x, &start_sy);
-    start_x -= 80;
-
+    int ground_x, ground_y;
+    GetIsoCoords(beam_world_x, beam_world_y, &ground_x, &ground_y);
+    int top_x = ground_x - (int)(dir * 0.8f * ground_y);
     POINT solitaire_poly[] = {
-        {start_x, 0},
-        {start_x + 50, 0},
-        {start_x + 200, WINDOW_HEIGHT},
-        {start_x + 90, WINDOW_HEIGHT}
+        {top_x - 25, 0},
+        {top_x + 25, 0},
+        {ground_x + 75, ground_y + 20},
+        {ground_x - 75, ground_y + 20}
     };
 
     // True translucency via AlphaBlend: clip the destination to the beam's
@@ -536,7 +548,7 @@ void DrawSolitaireSunMoonBeam(HDC hdc) {
     FillRect(mem_dc, &full, fill_b);
     DeleteObject(fill_b);
 
-    BLENDFUNCTION blend = { AC_SRC_OVER, 0, 105, 0 };
+    BLENDFUNCTION blend = { AC_SRC_OVER, 0, (BYTE)(105 * k), 0 };
     AlphaBlend(hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, mem_dc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, blend);
 
     SelectObject(mem_dc, old_mem_bmp);
