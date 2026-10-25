@@ -124,11 +124,11 @@ static void SkyPoint(float az, float el, int *x, int *y) {
     *y = horizon - (int)(el * WINDOW_HEIGHT * 0.8f);
 }
 
-// Now and then (about one 25 s spell in four) a soft shaft of sun or moon
+// Now and then (about one 25 s spell in eight) a soft shaft of sun or moon
 // light slants down to the ground, fading in and out over a few seconds.
 static float BeamStrength(int salt) {
     DWORD now = GetTickCount(), cyc = now / 25000, t = now % 25000;
-    if (RainHash((int)cyc * 7 + salt) % 4 || t > 15000) return 0.0f;
+    if (RainHash((int)cyc * 7 + salt) % 8 || t > 15000) return 0.0f;
     return t < 3000 ? t / 3000.0f : t > 12000 ? (15000 - t) / 3000.0f : 1.0f;
 }
 
@@ -136,9 +136,43 @@ static void DrawSkyBeam(HDC hdc, int x, int y, int h, COLORREF c, int alpha, flo
     if (k <= 0.0f || x < -200 || x > WINDOW_WIDTH + 200) return;
     for (int yy = y; yy < h + 80 && yy < WINDOW_HEIGHT; yy += 8) {
         float t = (float)(yy - y) / (h + 80 - y + 1);
-        int w = 20 + (int)(t * 120), cx = x - (int)((yy - y) * 0.35f);
+        int w = 20 + (int)(t * 120), cx = x + (int)((WINDOW_WIDTH / 2 - x) * 0.45f * t); // falls away from the sun
         FillRectAlpha(hdc, cx - w / 2, yy, w, 8, c, (int)(alpha * k * (1.0f - 0.6f * t)));
     }
+}
+
+// The sun or moon: a disc with a smooth round glow, worked out per pixel so there are
+// no hard edges or square halos. phase < 0 is a full disc; otherwise only the moon's
+// lit part shows (0 new, 0.5 full) and the dark part is simply sky.
+static void SoftLight(HDC hdc, int cx, int cy, int disc_r, int glow_r, COLORREF disc, COLORREF glow, float glow_a, float phase, float fade) {
+    int S = 2 * glow_r + 2, x0 = cx - glow_r - 1, y0 = cy - glow_r - 1;
+    if (fade <= 0.0f || x0 + S < 0 || x0 > WINDOW_WIDTH || y0 + S < 0 || y0 > WINDOW_HEIGHT) return;
+    BITMAPINFO bi = { { sizeof(BITMAPINFOHEADER), S, -S, 1, 32, BI_RGB, 0, 0, 0, 0, 0 } };
+    void *bits = NULL; HBITMAP b = CreateDIBSection(hdc, &bi, DIB_RGB_COLORS, &bits, NULL, 0);
+    if (!b || !bits) { if (b) DeleteObject(b); return; }
+    float cp = phase < 0.0f ? -1.0f : cosf(phase * 6.2832f), lit = phase < 0.0f ? 1.0f : 0.5f - 0.5f * cp;
+    float ga = glow_a * (0.25f + 0.75f * lit) * fade, R = (float)disc_r;
+    unsigned char *px = (unsigned char *)bits;
+    for (int j = 0; j < S; j++)
+        for (int i = 0; i < S; i++, px += 4) {
+            float dx = i + 0.5f - (glow_r + 1), dy = j + 0.5f - (glow_r + 1), d = sqrtf(dx * dx + dy * dy);
+            float t = d / glow_r, g = t < 1.0f ? (1.0f - t) * (1.0f - t) * ga : 0.0f;
+            float cov = R + 0.5f - d; cov = cov < 0.0f ? 0.0f : cov > 1.0f ? 1.0f : cov;
+            if (cov > 0.0f && phase >= 0.0f) { // the terminator: an ellipse sweeping across the disc
+                float w = R * R - dy * dy, term = (w > 0.0f ? sqrtf(w) : 0.0f) * cp, side = phase <= 0.5f ? dx - term : -term - dx;
+                side += 0.5f; cov *= side < 0.0f ? 0.0f : side > 1.0f ? 1.0f : side;
+            }
+            cov *= fade;
+            float a = cov + g * (1.0f - cov);
+            px[0] = (unsigned char)(GetBValue(disc) * cov + GetBValue(glow) * g * (1.0f - cov));
+            px[1] = (unsigned char)(GetGValue(disc) * cov + GetGValue(glow) * g * (1.0f - cov));
+            px[2] = (unsigned char)(GetRValue(disc) * cov + GetRValue(glow) * g * (1.0f - cov));
+            px[3] = (unsigned char)(a * 255.0f);
+        }
+    HDC m = CreateCompatibleDC(hdc); HGDIOBJ om = SelectObject(m, b);
+    BLENDFUNCTION bf = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
+    AlphaBlend(hdc, x0, y0, S, S, m, 0, 0, S, S, bf);
+    SelectObject(m, om); DeleteDC(m); DeleteObject(b);
 }
 
 static void DrawSky(HDC hdc, float light) {
@@ -156,7 +190,7 @@ static void DrawSky(HDC hdc, float light) {
     int x, y;
     if (light > 0.45f && !gloomy) { // the sun
         SkyPoint(-0.9f, 0.55f * light, &x, &y);
-        Blob(hdc, x - 26, y - 26, x + 26, y + 26, RGB(255, 236, 170)); Blob(hdc, x - 18, y - 18, x + 18, y + 18, RGB(255, 250, 215));
+        SoftLight(hdc, x, y, 19, 85, RGB(255, 250, 220), RGB(255, 232, 160), 0.6f, -1.0f, 1.0f);
         DrawSkyBeam(hdc, x, y, h, RGB(255, 240, 190), 45, BeamStrength(1));
     }
     if (light > 0.4f && !gloomy) { // a distant flock: little cursive v's drifting and flapping
@@ -181,14 +215,8 @@ static void DrawSky(HDC hdc, float light) {
         Box(hdc, x, y, x + sz - 1, y + sz - 1, RGB(lum, lum, lum));
     }
     SkyPoint(0.8f, 0.42f, &x, &y); // the moon; its phase follows the 30-day season
-    if (x > -100) { // moonlight is a soft halo, not a spotlight
-        for (int r = 4; r >= 1; r--) FillRectAlpha(hdc, x - 22 * r, y - 22 * r, 44 * r, 44 * r, RGB(200, 215, 240), (int)(7 * k));
-        int mr = 22, moon = (int)(235 * k);
-        float phase = (SeasonDay() % 30) / 30.0f;
-        Blob(hdc, x - mr, y - mr, x + mr, y + mr, RGB(moon, moon, moon * 9 / 10));
-        int off = phase <= 0.5f ? (int)(phase * 4.0f * mr) : -(int)((1.0f - phase) * 4.0f * mr);
-        if (off < 2 * mr && off > -2 * mr) Blob(hdc, x - mr + off, y - mr, x + mr + off, y + mr, Mix(top, low, 0.45f));
-    }
+    if (x > -100) // moonlight is a soft round glow; the unlit part of the moon is just sky
+        SoftLight(hdc, x, y, 22, 95, RGB(240, 240, 222), RGB(200, 215, 240), 0.28f, (SeasonDay() % 30) / 30.0f, k);
     // A rare shooting star (one every ~40 s on average), pinned to the sky like
     // the stars so its trail glides smoothly when the gaze pans.
     DWORD cyc = now / 4000, t = now % 4000;
@@ -389,6 +417,33 @@ static void Prism(float x, float y, float z0, float z1, float r0, float r1, int 
     }
 }
 
+// A smooth surface of revolution through rings (z[i], r[i]). Neighbouring bands share
+// their edges exactly, so no overlapping seams poke through; cap0/cap1 close the ends.
+static void Lathe(float x, float y, const float *z, const float *r, int rings, int seg, float rot, int cap0, int cap1, COLORREF col) {
+    if (seg > 8) seg = 8;
+    for (int k = 0; k + 1 < rings; k++) {
+        float nr = z[k + 1] - z[k], nz = r[k] - r[k + 1], nl = sqrtf(nr * nr + nz * nz) + 1e-6f; // outward normal in (r, z)
+        nr /= nl; nz /= nl;
+        for (int i = 0; i < seg; i++) {
+            float a0 = rot + i * 6.2832f / seg, a1 = a0 + 6.2832f / seg, am = (a0 + a1) / 2;
+            float q[4][3] = { { x + cosf(a0) * r[k], y + sinf(a0) * r[k], z[k] }, { x + cosf(a1) * r[k], y + sinf(a1) * r[k], z[k] },
+                              { x + cosf(a1) * r[k + 1], y + sinf(a1) * r[k + 1], z[k + 1] }, { x + cosf(a0) * r[k + 1], y + sinf(a0) * r[k + 1], z[k + 1] } };
+            float c[3] = { 0, 0, 0 };
+            for (int j = 0; j < 4; j++) for (int d = 0; d < 3; d++) c[d] += q[j][d] / 4;
+            c[0] -= cosf(am) * nr * 0.05f; c[1] -= sinf(am) * nr * 0.05f; c[2] -= nz * 0.05f;
+            if (r[k] < 0.001f) { float t[3][3]; memcpy(t[0], q[0], sizeof t[0]); memcpy(t[1], q[2], sizeof t[0]); memcpy(t[2], q[3], sizeof t[0]); AddFace(t, 3, col, c, 0); }
+            else AddFace(q, r[k + 1] < 0.001f ? 3 : 4, col, c, 0);
+        }
+    }
+    for (int e = 0; e < 2; e++) {
+        int k = e ? rings - 1 : 0;
+        if (!(e ? cap1 : cap0) || r[k] < 0.001f) continue;
+        float v[8][3], c[3] = { x, y, z[k] + (e ? -1.0f : 1.0f) };
+        for (int i = 0; i < seg; i++) { float a = rot + i * 6.2832f / seg; v[i][0] = x + cosf(a) * r[k]; v[i][1] = y + sinf(a) * r[k]; v[i][2] = z[k]; }
+        AddFace(v, seg, col, c, 0);
+    }
+}
+
 // --- Low-poly animals and people ------------------------------------------
 // Oriented boxes, cones and hinged wings built from the same shaded faces as
 // the trees, so animals keep their gameplay look: legs, body, head, ears,
@@ -444,6 +499,25 @@ static void Limb(float x, float y, float a, float s, float z, float l1, float l2
     if (fz < 0.0f) fz = 0.0f;
     Bone(x, y, a, s, z, ka, s, kz, r, r * 0.85f, upper);
     Bone(x, y, ka, s, kz, fa, s, fz, r * 0.85f, r * 0.7f, lower);
+    float jr = r * 0.95f, jz[3] = { kz - jr, kz, kz + jr }, jw[3] = { 0.0f, jr, 0.0f }; // a rounded knee or elbow
+    Lathe(x + hcos * ka - hsin * s, y + hsin * ka + hcos * s, jz, jw, 3, 6, 0.0f, 0, 0, lower);
+}
+
+// A curved band around the figure from angle th0 to th1 (0 = straight ahead), with an
+// outside and a lining, the hem ring rippling by flutter: capes and high collars.
+static void CapeBand(float x, float y, float th0, float th1, int n, float z0, float r0, float z1, float r1, float flutter, COLORREF out, COLORREF lining) {
+    float tm = GetTickCount() / 300.0f;
+    for (int i = 0; i < n; i++) {
+        float t0 = th0 + (th1 - th0) * i / n, t1 = th0 + (th1 - th0) * (i + 1) / n, tmid = (t0 + t1) / 2;
+        float h0 = r1 + flutter * sinf(tm + i * 1.3f), h1 = r1 + flutter * sinf(tm + (i + 1) * 1.3f);
+        float pa[4] = { cosf(t0) * r0, cosf(t1) * r0, cosf(t1) * h1, cosf(t0) * h0 }, ps[4] = { sinf(t0) * r0, sinf(t1) * r0, sinf(t1) * h1, sinf(t0) * h0 }, pz[4] = { z0, z0, z1, z1 };
+        for (int side = 0; side < 2; side++) {
+            float v[4][3], sc = side ? 0.94f : 1.0f, reach = side ? 3.0f : 0.0f;
+            for (int k = 0; k < 4; k++) { v[k][0] = x + (hcos * pa[k] - hsin * ps[k]) * sc; v[k][1] = y + (hsin * pa[k] + hcos * ps[k]) * sc; v[k][2] = pz[k]; }
+            float c[3] = { x + (hcos * cosf(tmid) - hsin * sinf(tmid)) * reach, y + (hsin * cosf(tmid) + hcos * sinf(tmid)) * reach, (z0 + z1) / 2 };
+            AddFace(v, 4, side ? lining : out, c, 0);
+        }
+    }
 }
 
 // Two dots on the front of a head (drawn just in front of it).
@@ -686,9 +760,9 @@ static void HumanMesh(const FpThing *t) {
     int vamp = enemy && type == MONSTER_DRACULA;
     float st = sinf(now / 140.0f + idx) * 0.04f * S;
     FireShadows(x, y, 0.75f * S);
-    if (vamp) { // high-collared cape behind the body
-        OBox(x, y, -0.07f * S, 0.0f, 0.18f * S, 0.66f * S, 0.02f * S, 0.15f * S, RGB(25, 12, 18));
-        face_bias = 0.01f; OBox(x, y, -0.065f * S, 0.0f, 0.18f * S, 0.62f * S, 0.015f * S, 0.13f * S, RGB(150, 20, 35)); face_bias = 0.0f;
+    if (vamp) { // a cape curving round the back and flaring to the hem, under a high collar; red lining inside
+        CapeBand(x, y, 1.75f, 4.53f, 7, 0.66f * S, 0.11f * S, 0.14f * S, 0.21f * S, 0.012f * S, RGB(25, 12, 18), RGB(150, 20, 35));
+        CapeBand(x, y, 1.4f, 4.88f, 7, 0.6f * S, 0.085f * S, 0.8f * S, 0.13f * S, 0.0f, RGB(25, 12, 18), RGB(150, 20, 35));
     }
     int zomb = enemy && type == MONSTER_ZOMBIE; // zombies lurch slowly with arms out
     float ph = now / (zomb ? 260.0f : 140.0f) + idx, bob = fabsf(sinf(ph)) * 0.012f * S;
@@ -724,21 +798,25 @@ static void TreeMesh(const FpThing *t) {
     float x = t->x + ((s * 37) % 21 - 10) / 100.0f, y = t->y + ((s * 53) % 21 - 10) / 100.0f;
     float h = 0.85f + (s * 29 % 30) / 100.0f, rot = (s % 7) * 0.4f, W = 1.0f;
     if (IsBigTree(s)) { h *= 1.9f; W = 1.6f; } // old giants: their crowns close over part of the sky
-    Prism(x, y, 0.0f, 0.5f * h, 0.09f * W, 0.075f * W, 5, rot, RGB(110, 75, 45));
+    Prism(x, y, 0.0f, 0.46f * h, 0.09f * W, 0.075f * W, 5, rot, RGB(110, 75, 45));
     { float sw = (0.02f + 0.01f * abs(wind_dir)) * sinf(GetTickCount() / 1300.0f + s * 0.7f); x += sw; y += sw * 0.4f; } // canopy sways, trunk stays
     if (IsDeciduousTree(s)) { // round broadleaf, the same trees as in play
         COLORREF leaf = snow ? RGB(205, 215, 225) : current_season == SEASON_FALL ? (s % 2 ? RGB(210, 120, 40) : RGB(220, 175, 50)) : RGB(80, 160, 60);
-        Prism(x, y, 0.4f * h, 0.98f * h, 0.32f * W, 0.6f * W, 7, rot, leaf); // same ring at the seam, overlapped, so no gap
-        Prism(x, y, 0.95f * h, 1.5f * h, 0.61f * W, 0.28f * W, 7, rot, leaf);
+        // One rounded crown: every band shares its edges with the next, closed underneath.
+        float cz[6] = { 0.4f * h, 0.6f * h, 0.88f * h, 1.16f * h, 1.4f * h, 1.53f * h }, cr[6] = { 0.28f * W, 0.5f * W, 0.61f * W, 0.55f * W, 0.36f * W, 0.12f * W };
+        Lathe(x, y, cz, cr, 6, 8, rot, 1, 1, leaf);
         if (TreeHasApples(s)) // the apples really on this tree
             for (int a = 0; a < 6; a++) {
-                float an = rot + a * 1.05f, rr = 0.58f - (a % 2) * 0.12f;
+                float an = rot + a * 1.05f, rr = (0.62f - (a % 2) * 0.03f) * W;
                 Prism(x + cosf(an) * rr, y + sinf(an) * rr, (0.85f + (a % 3) * 0.18f) * h, (0.93f + (a % 3) * 0.18f) * h, 0.05f, 0.05f, 4, an, RGB(205, 35, 30));
             }
     } else { // two-tier pine
         COLORREF needle = RGB(35, 115, 55);
-        Prism(x, y, 0.3f * h, 1.15f * h, 0.62f * W, 0.22f * W, 7, rot, needle); // flat-topped skirt growing into the top cone
-        Prism(x, y, 0.9f * h, 2.0f * h, 0.45f * W, 0.0f, 7, rot + 0.2f, snow ? RGB(225, 232, 240) : needle);
+        // Skirt, then the top tier flaring out over it; both share the ring where they meet.
+        float lz[2] = { 0.3f * h, 1.0f * h }, lr[2] = { 0.62f * W, 0.27f * W };
+        float uz[3] = { 1.0f * h, 0.94f * h, 2.0f * h }, ur[3] = { 0.27f * W, 0.46f * W, 0.0f };
+        Lathe(x, y, lz, lr, 2, 8, rot, 1, 0, needle);
+        Lathe(x, y, uz, ur, 3, 8, rot, 0, 0, snow ? RGB(225, 232, 240) : needle);
     }
 }
 
@@ -921,23 +999,53 @@ static float WindAcross(float *wx, float *wy) {
     return -*wx * sinf(yaw) + *wy * cosf(yaw);
 }
 
+// A cloud as a soft density field from three layers of different shapes: long thin
+// wisps (faint), rounded lumps (the body) and small bright tops. Where they overlap
+// the density adds up, so it is thick in places and wispy at the edges, a little
+// darker underneath. Worked out per pixel at a third of screen resolution.
 static void CloudPuff(HDC hdc, int cx, int cy, int w, COLORREF c, int alpha, int seed) {
     int x0 = cx - w, y0 = cy - w / 2, W = 2 * w, H = w;
     if (W < 6 || x0 + W < 0 || x0 > WINDOW_WIDTH || y0 + H < 0) return;
-    HDC t = CreateCompatibleDC(hdc); HBITMAP b = CreateCompatibleBitmap(hdc, W, H); HGDIOBJ ob = SelectObject(t, b);
-    BitBlt(t, 0, 0, W, H, hdc, x0, y0, SRCCOPY);
-    float tm = GetTickCount() / 9000.0f;
-    for (int k = 0; k < 5; k++) { // each lump swells and shrinks slowly, so no two clouds share a shape
-        float n = 0.5f + 0.25f * sinf(seed * 0.37f + k * 2.1f + tm) + 0.25f * cosf(seed * 0.11f + k * 1.3f - tm * 0.7f);
-        int lw = (int)(W * (0.28f + 0.22f * n)), lh = (int)(H * (0.5f + 0.45f * n));
-        int lx = (int)(W * (0.1f + 0.2f * k)) - lw / 2 + W / 10, ly = H - lh;
-        if (lx < 0) lx = 0;
-        if (lx + lw > W - 1) lw = W - 1 - lx;
-        Blob(t, lx, ly, lx + lw, H - 1, c);
+    int q = W > 90 ? 3 : 1, sw = (W + q - 1) / q, sh = (H + q - 1) / q;
+    float tm = GetTickCount() / 9000.0f, bx[11], by[11], rx[11], ry[11], st[11], br[11];
+    int nb = 0;
+#define CR(k) ((RainHash(seed * 13 + (k)) & 1023) / 1023.0f)
+    for (int k = 0; k < 3; k++, nb++) { // wisps: wide and flat, low down
+        rx[nb] = 0.26f + 0.16f * CR(k); ry[nb] = 0.1f + 0.06f * (0.5f + 0.5f * sinf(seed + k * 2.1f + tm));
+        bx[nb] = rx[nb] + (1.0f - 2.0f * rx[nb]) * CR(k + 10); by[nb] = 0.68f + 0.14f * CR(k + 20); st[nb] = 0.5f; br[nb] = 0.0f;
     }
-    BLENDFUNCTION bf = { AC_SRC_OVER, 0, (BYTE)alpha, 0 };
-    AlphaBlend(hdc, x0, y0, W, H, t, 0, 0, W, H, bf);
-    SelectObject(t, ob); DeleteObject(b); DeleteDC(t);
+    for (int k = 0; k < 5; k++, nb++) { // lumps: each swells and shrinks slowly
+        float n = 0.5f + 0.25f * sinf(seed * 0.37f + k * 2.1f + tm) + 0.25f * cosf(seed * 0.11f + k * 1.3f - tm * 0.7f);
+        rx[nb] = 0.08f + 0.07f * n; ry[nb] = rx[nb] * 2.0f * (0.8f + 0.3f * CR(k + 30));
+        bx[nb] = 0.17f + 0.165f * k + 0.05f * (CR(k + 35) - 0.5f); by[nb] = 0.7f - ry[nb] * 0.55f - 0.08f * CR(k + 40); st[nb] = 0.75f; br[nb] = 0.2f;
+    }
+    for (int k = 0; k < 3; k++, nb++) { // bright tops where the light catches it
+        rx[nb] = 0.05f + 0.04f * (0.5f + 0.5f * sinf(seed * 0.5f + k * 1.7f + tm)); ry[nb] = rx[nb] * 1.7f;
+        bx[nb] = 0.25f + 0.5f * CR(k + 60); by[nb] = 0.3f + 0.15f * CR(k + 70); st[nb] = 0.55f; br[nb] = 1.0f;
+    }
+#undef CR
+    BITMAPINFO bi = { { sizeof(BITMAPINFOHEADER), sw, -sh, 1, 32, BI_RGB, 0, 0, 0, 0, 0 } };
+    void *bits = NULL; HBITMAP b = CreateDIBSection(hdc, &bi, DIB_RGB_COLORS, &bits, NULL, 0);
+    if (!b || !bits) { if (b) DeleteObject(b); return; }
+    unsigned char *px = (unsigned char *)bits;
+    float amax = alpha / 255.0f;
+    for (int j = 0; j < sh; j++)
+        for (int i = 0; i < sw; i++, px += 4) {
+            float u = (i + 0.5f) / sw, v = (j + 0.5f) / sh, D = 0.0f, B = 0.0f;
+            for (int k = 0; k < nb; k++) {
+                float du = (u - bx[k]) / rx[k], dv = (v - by[k]) / ry[k], d2 = du * du + dv * dv;
+                if (d2 < 1.0f) { float f = (1.0f - d2) * (1.0f - d2) * st[k]; D += f; B += f * br[k]; }
+            }
+            if (D <= 0.0f) { px[0] = px[1] = px[2] = px[3] = 0; continue; }
+            float a = (1.0f - expf(-2.4f * D)) * amax, lift = 0.5f * B / D, shade = 1.0f - 0.2f * v;
+            COLORREF col = Mix(Dim(c, shade), RGB(255, 255, 255), lift);
+            px[0] = (unsigned char)(GetBValue(col) * a); px[1] = (unsigned char)(GetGValue(col) * a);
+            px[2] = (unsigned char)(GetRValue(col) * a); px[3] = (unsigned char)(a * 255.0f);
+        }
+    HDC m = CreateCompatibleDC(hdc); HGDIOBJ om = SelectObject(m, b);
+    BLENDFUNCTION bf = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
+    AlphaBlend(hdc, x0, y0, W, H, m, 0, 0, sw, sh, bf);
+    SelectObject(m, om); DeleteDC(m); DeleteObject(b);
 }
 
 // Clouds sit high over an 80-tile patch around the hero and drift with the
