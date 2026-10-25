@@ -875,7 +875,7 @@ static void UpdateGaze(int fresh) {
     static const int interest[10] = { 10, 6, 18, 50, 40, 32, 45, 95, 60, 30 };
     DWORD now = GetTickCount();
     if (fresh) {
-        yaw = player_facing == FACE_DOWN ? 1.5708f : player_facing == FACE_UP ? -1.5708f : player_facing == FACE_LEFT ? 3.14159f : 0.0f;
+        yaw = (float)atan2(facing_y, facing_x); // look the way the hero faces, diagonals included
         pitch = 0.0f; target_yaw = yaw; target_pitch = 0.0f; gaze_until = now + 2500;
     }
     if (now >= gaze_until) {
