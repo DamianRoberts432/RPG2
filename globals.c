@@ -243,6 +243,7 @@ MerchantItem merchant_catalog[MERCH_CAPACITY] = {
     { "Padded Gambeson", "Clothes", 0, 45, 1, 1, RARITY_UNCOMMON, 0 },
     // Your own house and its furniture (see home.c).
     { "House Supplies",  "Material", 0, 250, 1, 1, RARITY_COMMON, 0 },
+    { "Wood Cart",       "Tool", 0, 300, 1, 1, RARITY_COMMON, 0 },
     { "Bookshelf",       "Material", 0,  60, 1, 1, RARITY_COMMON, 0 },
     { "Armchair",        "Material", 0,  45, 1, 1, RARITY_COMMON, 0 },
     { "Potted Plant",    "Material", 0,  15, 1, 1, RARITY_COMMON, 0 },
