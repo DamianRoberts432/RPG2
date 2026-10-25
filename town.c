@@ -1,5 +1,7 @@
 #include "game.h"
 #include <stdarg.h>
+#include <string.h>
+#include "cards_data.h"
 
 int town_menu = TM_NONE, town_cursor = 0;
 int bank_gold = 0, legendary_quest = 0, legendary_quests_done = 0;
@@ -84,28 +86,67 @@ int EquippedForgeBonus(void) {
 static int ForgeCost(int bonus) { return 1000 * (bonus + 1); }
 
 // --- Cards -----------------------------------------------------------------
-// Only three sets are in print while the card rules are being revised: Wild
-// Creatures (the bestiary monsters plus the animals you meet), Angels and the
-// Goetia demons. Every card is a 1/1, 2/2 or 3/3; anything more comes from an
-// ability. Ids 0-8 are the monster cards linked to the bestiary.
+// Set 0, the Starter Set, is the bestiary monsters (ids 0-8, linked to the
+// bestiary) and the wild animals. Every other set comes from card_set_table
+// in cards_data.c. Every card is a 1/1, 2/2 or 3/3, and only 2/2s and 3/3s
+// have abilities, so the 1/1s are plain pawns.
 enum { AB_NONE, AB_FIRST_STRIKE, AB_PUMP3, AB_CURSE, AB_BLESS_BOTH, AB_BLESS_STR, AB_BLESS_LIFE };
 typedef struct { const char *name; int set, pt, ability; } CardDef;
-static const char *card_sets[3] = { "Wild Creatures", "Angels", "Goetia Demons" };
-int card_pool_size = CARD_PRINTED;
+#define STARTER_CARDS 13
+#define MAX_CARD_SETS 16
+int card_pool_size = STARTER_CARDS;
 static CardDef card_defs[CARD_COUNT] = {
     { "Skeleton", 0, 1, AB_NONE }, { "Zombie", 0, 2, AB_NONE }, { "Vampire", 0, 3, AB_FIRST_STRIKE },
-    { "Goblin", 0, 1, AB_FIRST_STRIKE }, { "Satyr", 0, 2, AB_FIRST_STRIKE }, { "Yeti", 0, 3, AB_PUMP3 },
+    { "Goblin", 0, 1, AB_NONE }, { "Satyr", 0, 2, AB_FIRST_STRIKE }, { "Yeti", 0, 3, AB_PUMP3 },
     { "Sphinx", 0, 3, AB_NONE }, { "Bigfoot", 0, 3, AB_PUMP3 }, { "Bunyip", 0, 2, AB_NONE },
-    { "Bluebird", 0, 1, AB_FIRST_STRIKE }, { "Squirrel", 0, 1, AB_NONE }, { "Owl", 0, 2, AB_FIRST_STRIKE }, { "Bat", 0, 1, AB_NONE },
-    { "Cherub", 1, 1, AB_BLESS_BOTH }, { "Guardian Angel", 1, 1, AB_BLESS_LIFE }, { "Herald Angel", 1, 1, AB_BLESS_STR },
-    { "Choir Angel", 1, 1, AB_BLESS_BOTH }, { "Virtue", 1, 2, AB_NONE }, { "Power", 1, 2, AB_FIRST_STRIKE },
-    { "Dominion", 1, 2, AB_NONE }, { "Principality", 1, 2, AB_NONE }, { "Throne", 1, 3, AB_NONE },
-    { "Seraph", 1, 3, AB_FIRST_STRIKE }, { "Gabriel", 1, 3, AB_NONE }, { "Michael", 1, 3, AB_FIRST_STRIKE },
-    { "Vassago", 2, 1, AB_CURSE }, { "Samigina", 2, 1, AB_CURSE }, { "Valefor", 2, 1, AB_CURSE },
-    { "Furfur", 2, 1, AB_CURSE }, { "Barbatos", 2, 2, AB_NONE }, { "Marbas", 2, 2, AB_FIRST_STRIKE },
-    { "Amon", 2, 2, AB_NONE }, { "Gusion", 2, 2, AB_NONE }, { "Paimon", 2, 3, AB_NONE },
-    { "Bael", 2, 3, AB_FIRST_STRIKE }, { "Asmoday", 2, 3, AB_NONE }, { "Belial", 2, 3, AB_FIRST_STRIKE },
+    { "Bluebird", 0, 1, AB_NONE }, { "Squirrel", 0, 1, AB_NONE }, { "Owl", 0, 2, AB_FIRST_STRIKE }, { "Bat", 0, 1, AB_NONE },
 };
+static int set_first[MAX_CARD_SETS], set_size[MAX_CARD_SETS] = { STARTER_CARDS }, card_set_n = 1;
+static char card_name_store[CARD_COUNT][32];
+
+const char *CardSetName(int s) { return s >= 0 && s < card_set_n ? card_set_table[s].name : "Update"; }
+
+static int FlavorAbility(int flavor, int pt, int k) {
+    static const int holy2[2] = { AB_BLESS_STR, AB_BLESS_LIFE }, holy3[2] = { AB_BLESS_BOTH, AB_FIRST_STRIKE };
+    static const int mix2[3] = { AB_FIRST_STRIKE, AB_BLESS_STR, AB_CURSE }, mix3[3] = { AB_FIRST_STRIKE, AB_BLESS_BOTH, AB_CURSE };
+    if (pt < 2) return AB_NONE;
+    switch (flavor) {
+    case FL_HOLY: return pt == 2 ? holy2[k % 2] : holy3[k % 2];
+    case FL_INFERNAL: return pt == 2 || k % 2 ? AB_CURSE : AB_FIRST_STRIKE;
+    case FL_ARCANE: return pt == 2 ? (k % 2 ? AB_CURSE : AB_BLESS_BOTH) : mix3[k % 3];
+    case FL_MYTH: return pt == 2 ? mix2[k % 3] : mix3[k % 3];
+    }
+    return AB_NONE;
+}
+
+// Builds the cards of every released set: per 6 cards one 3/3 (rare), two 2/2
+// (uncommon) and three 1/1 (common); the Major Arcana are all 2/2 or 3/3.
+void InitCardSets(void) {
+    static int done = 0;
+    if (done) return;
+    done = 1;
+    int id = STARTER_CARDS;
+    card_set_n = card_set_table_n < MAX_CARD_SETS ? card_set_table_n : MAX_CARD_SETS;
+    for (int s = 1; s < card_set_n; s++) {
+        set_first[s] = id;
+        for (int l = 0; l < 3; l++) {
+            const char *p = card_set_table[s].lists[l].names;
+            int flavor = card_set_table[s].lists[l].flavor;
+            for (int k = 0; p && *p && id < CARD_COUNT; k++, id++) {
+                const char *e = strchr(p, ',');
+                int len = e ? (int)(e - p) : (int)strlen(p), keep = len > 31 ? 31 : len;
+                memcpy(card_name_store[id], p, keep);
+                card_name_store[id][keep] = 0;
+                int pt = flavor == FL_ARCANE ? (k % 2 ? 2 : 3) : k % 6 == 0 ? 3 : k % 3 == 1 ? 2 : 1;
+                int idx = flavor == FL_ARCANE ? k / 2 : pt == 3 ? k / 6 : k / 3;
+                card_defs[id] = (CardDef){ card_name_store[id], s, pt, FlavorAbility(flavor, pt, idx) };
+                p += e ? len + 1 : len;
+            }
+        }
+        set_size[s] = id - set_first[s];
+    }
+    card_pool_size = id;
+}
 static int card_offers[10], card_offer_screen = -1, card_offer_day = -1;
 
 static int PoolId(int id) { return id >= 0 && id < CARD_POOL ? id : 0; }
@@ -113,17 +154,19 @@ static int PoolId(int id) { return id >= 0 && id < CARD_POOL ? id : 0; }
 // NewCard lines from the Update folder. Stats are clamped to the rarity cap
 // (1 = 1/1, 2 = 2/2, 3 = 3/3) so new cards can't outclass the base set.
 int AddRuntimeCard(const char *name, int set, int rarity, int atk, int hp, int ability) {
-    static char names[CARD_COUNT - CARD_PRINTED][32];
-    if (!name[0]) return 0;
+    static char names[64][32];
+    static int used = 0;
+    InitCardSets();
+    if (!name[0] || used >= 64) return 0;
     for (int i = 0; i < card_pool_size; i++) if (_stricmp(card_defs[i].name, name) == 0) return 1;
     if (card_pool_size >= CARD_COUNT) return 0;
     int cap = rarity < 1 ? 1 : rarity > 3 ? 3 : rarity;
     int pt = atk > hp ? atk : hp;
     if (pt > cap) pt = cap;
     if (pt < 1) pt = 1;
-    char *slot = names[card_pool_size - CARD_PRINTED];
+    char *slot = names[used++];
     snprintf(slot, 32, "%s", name);
-    card_defs[card_pool_size++] = (CardDef){ slot, set < 0 || set > 2 ? 0 : set, pt, ability < 0 || ability > AB_BLESS_LIFE ? AB_NONE : ability };
+    card_defs[card_pool_size++] = (CardDef){ slot, set < 0 || set >= card_set_n ? 0 : set, pt, ability < 0 || ability > AB_BLESS_LIFE ? AB_NONE : ability };
     return 1;
 }
 
@@ -133,14 +176,16 @@ static int CardRarity(int id) { return card_defs[PoolId(id)].pt - 1; }
 static int CardPrice(int id) { static const int p[3] = { 600, 2500, 15000 }; return p[CardRarity(id)]; }
 static int CardAbility(int id) { return card_defs[PoolId(id)].ability; }
 // Drops and packs favor small cards: 70% 1/1, 25% 2/2, 5% 3/3.
-int RandomPoolCard(int first) {
+static int RandomCardIn(int first, int end) {
     int roll = rand() % 100, pt = roll < 70 ? 1 : roll < 95 ? 2 : 3, n = 0;
-    for (int i = first; i < CARD_POOL; i++) n += card_defs[i].pt == pt;
-    if (n == 0) return first + rand() % (CARD_POOL - first);
+    for (int i = first; i < end; i++) n += card_defs[i].pt == pt;
+    if (n == 0) return first + rand() % (end - first);
     int k = rand() % n;
-    for (int i = first; i < CARD_POOL; i++) if (card_defs[i].pt == pt && k-- == 0) return i;
+    for (int i = first; i < end; i++) if (card_defs[i].pt == pt && k-- == 0) return i;
     return first;
 }
+int RandomPoolCard(int first) { InitCardSets(); return RandomCardIn(first, CARD_POOL); }
+static int RandomSetCard(int s) { InitCardSets(); return RandomCardIn(set_first[s], set_first[s] + set_size[s]); }
 static int CardBasePower(int id) { int c = PoolId(id); return card_defs[c].pt + (card_defs[c].ability == AB_PUMP3 ? 3 : 0); }
 
 static const char *AbilityText(int ab) {
@@ -158,7 +203,7 @@ static const char *AbilityText(int ab) {
 static void CardDetails(int id, char *out, size_t n) {
     static const char *rar[3] = { "Common", "Uncommon", "Rare" };
     int c = PoolId(id), pt = card_defs[c].pt;
-    snprintf(out, n, "%s  |  %s  |  %s  |  %d/%d%s\n%s%s", card_defs[c].name, card_sets[card_defs[c].set], rar[pt - 1], pt, pt,
+    snprintf(out, n, "%s  |  %s  |  %s  |  %d/%d%s\n%s%s", card_defs[c].name, CardSetName(card_defs[c].set), rar[pt - 1], pt, pt,
              HasCard(c) ? "  |  (owned)" : "", AbilityText(card_defs[c].ability),
              c < MONSTER_TYPE_COUNT ? "  Monster card: beat enough of its kind and it may drop." : "");
 }
@@ -182,10 +227,11 @@ static const char *kid_lines[] = {
     "KID: Wanna learn? It's three on three. You pick the order you lay your three; I lead with mine as dealt.",
     "KID: Every card is a 1/1, 2/2 or 3/3. Bigger numbers come from abilities - Yeti and Bigfoot are 3/3 with +3/+3.",
     "KID: Both cards hit at the same time, like a real stack. Unless one has First Strike - then it hits first.",
-    "KID: Don't just lead with your biggest! A Demon 1/1 that dies curses my next card -2/-2. An Angel blesses yours.",
+    "KID: Don't just lead with your biggest! A cursed Demon that dies hits my next card -2/-2. A blessed Angel helps yours.",
     "KID: Monster cards drop from the beasts themselves. Beat enough of one kind and you might get its card.",
     "KID: Some kids play for ante - each puts a card in the pot and the winner keeps both. Not me.",
-    "KID: Right now it's just Angels, Goetia demons and the creatures out in the wild. More sets are coming!",
+    "KID: Right now there's the Starter Set and Angels & Goetia. The 1/1s are plain pawns - only 2/2s and 3/3s have tricks.",
+    "KID: Every set has its own boosters and boxes, so a Starter booster only ever has Starter cards.",
 };
 #define KID_LINE_COUNT ((int)(sizeof(kid_lines) / sizeof(kid_lines[0])))
 
@@ -346,11 +392,16 @@ static void BuildRows(void) {
             snprintf(t, sizeof(t), "%s%s - %d gold", nm, HasCard(card_offers[k]) ? " (owned)" : "", CardPrice(card_offers[k]));
             AddRow(A_CARD, k, t);
         }
-        AddRow(A_PACK, 3, "3-card booster - 20,000 gold");
-        AddRow(A_PACK, 7, "7-card pack - 40,000 gold");
-        AddRow(A_PACK, 60, "60-card box - 350,000 gold");
-        snprintf(t, sizeof(t), "Master Base Box (all %d cards) - 1,000,000 gold", CARD_POOL);
-        AddRow(A_PACK, 0, t);
+        InitCardSets();
+        for (int s = 0; s < card_set_n; s++) {
+            const CardSetDef *d = &card_set_table[s];
+            snprintf(t, sizeof(t), "%s booster (3 cards) - %d gold", d->name, d->booster_price);
+            AddRow(A_PACK, s * 1000 + 3, t);
+            snprintf(t, sizeof(t), "%s box (60 cards) - %d gold", d->name, d->box_price);
+            AddRow(A_PACK, s * 1000 + 60, t);
+            snprintf(t, sizeof(t), "Complete %s (all %d) - %d gold", d->name, set_size[s], d->box_price * 3);
+            AddRow(A_PACK, s * 1000, t);
+        }
         AddRow(A_GUIDE, 0, "Card Game Strategy Guide - 1,000,000 gold");
         AddRow(A_KID, 0, "Talk to the kid at the table");
         int left = kid_round_screen == current_screen_index ? KID_MAX_ROUNDS - kid_rounds : KID_MAX_ROUNDS;
@@ -430,8 +481,8 @@ static void RowInfo(const TownRow *r, char *out, size_t n) {
                  strcmp(slot, "Armor") == 0 ? "2 Leather and 1 Iron" : strcmp(slot, "Shield") == 0 ? "2 Wood and 1 Rope" : "2 Iron and 1 Wood"); break; }
     case A_CARD: CardDetails(card_offers[r->arg], out, n); break;
     case A_PACK:
-        if (r->arg == 0) snprintf(out, n, "One of every card in print. Completes your binder. Collection: %d / %d.", CardCount(), CARD_POOL);
-        else snprintf(out, n, "%d random cards. Collection: %d / %d.", r->arg, CardCount(), CARD_POOL);
+        if (r->arg % 1000 == 0) snprintf(out, n, "One of every %s card. Collection: %d / %d.", CardSetName(r->arg / 1000), CardCount(), CARD_POOL);
+        else snprintf(out, n, "%d random cards, all from the %s. Sets never mix. Collection: %d / %d.", r->arg % 1000, CardSetName(r->arg / 1000), CardCount(), CARD_POOL);
         break;
     case A_GUIDE: snprintf(out, n, "Secret card combos: read it from your pack for a 2-second peek. Stealing it means jail."); break;
     case A_KID: snprintf(out, n, "A kid sits at the corner table shuffling a test deck. He won't play for ante."); break;
@@ -547,25 +598,43 @@ void NoteLegendaryKill(int monster) {
 }
 
 #define MASTER_BOX_PRICE 1000000
-static void BuyCardPack(int count) {
+// Each set sells its own boosters and boxes; pulls never mix sets.
+// arg = set * 1000 + cards (3 = booster, 60 = box, 0 = the complete set).
+static void BuyCardPack(int arg) {
+    InitCardSets();
+    int s = arg / 1000, count = arg % 1000;
+    if (s < 0 || s >= card_set_n) return;
+    const CardSetDef *d = &card_set_table[s];
+    int owned = 0;
+    for (int i = 0; i < set_size[s]; i++) owned += HasCard(set_first[s] + i);
     if (count == 0) {
-        if (CardCount() >= CARD_POOL) { Say("CARD SHOP: You already own every card in print."); return; }
-        if (gold_count < MASTER_BOX_PRICE) { Say("CARD SHOP: The Master Base Box costs %d gold.", MASTER_BOX_PRICE); return; }
-        gold_count -= MASTER_BOX_PRICE;
-        for (int id = 0; id < CARD_POOL; id++) GainCard(id);
-        Say("CARD SHOP: The Master Base Box! Your binder is complete (%d / %d).", CardCount(), CARD_POOL);
+        if (owned >= set_size[s]) { Say("CARD SHOP: You already own every %s card.", d->name); return; }
+        if (gold_count < d->box_price * 3) { Say("CARD SHOP: The complete %s costs %d gold.", d->name, d->box_price * 3); return; }
+        gold_count -= d->box_price * 3;
+        for (int i = 0; i < set_size[s]; i++) GainCard(set_first[s] + i);
+        Say("CARD SHOP: The complete %s! You own all %d of its cards.", d->name, set_size[s]);
         return;
     }
-    int price = count == 3 ? CARD_BOOSTER_PRICE : count == 7 ? 40000 : 350000;
+    int price = count == 3 ? d->booster_price : d->box_price;
     if (gold_count < price) { Say("CARD SHOP: That costs %d gold.", price); return; }
     gold_count -= price;
     int fresh = 0;
     for (int k = 0; k < count; k++) {
-        int id = RandomPoolCard(0);
-        if (!HasCard(id)) fresh++;
+        int id = RandomSetCard(s);
+        if (!HasCard(id)) { fresh++; owned++; }
         GainCard(id);
     }
-    Say("CARD SHOP: Opened %d cards - %d new! (%d / %d)", count, fresh, CardCount(), CARD_POOL);
+    Say("CARD SHOP: Opened a %s %s - %d new! (%d / %d)", d->name, count == 3 ? "booster" : "box", fresh, owned, set_size[s]);
+}
+
+// The card kid hints at the next set that isn't out yet.
+static void KidSetHint(void) {
+    for (int i = 0; i < future_set_n; i++) {
+        int out = 0;
+        for (int s = 0; s < card_set_table_n; s++) out |= strcmp(card_set_table[s].name, future_set_names[i]) == 0;
+        if (!out) { Say("KID: Psst - my cousin saw a poster in Elysium. A %s set is coming! I'm saving up.", future_set_names[i]); return; }
+    }
+    Say("KID: Every set ever printed is out now. Good luck finishing your binder!");
 }
 
 static int TakeOffering(const char *a, const char *b, const char *c) {
@@ -694,7 +763,11 @@ void TownMenuConfirm(void) {
         guide_flash_until = GetTickCount() + GUIDE_FLASH_MS; card_guide_unlocked = 1;
         Say("CARD SHOP: The Card Game Strategy Guide is yours. Read it from your pack; the CARDS tab in your menu is open for good.");
         return;
-    case A_KID: kid_line = (kid_line + 1) % KID_LINE_COUNT; Say("%s", kid_lines[kid_line]); return;
+    case A_KID:
+        kid_line = (kid_line + 1) % (KID_LINE_COUNT + 1);
+        if (kid_line == KID_LINE_COUNT) KidSetHint();
+        else Say("%s", kid_lines[kid_line]);
+        return;
     case A_PRACTICE: PracticeHand(r.arg); return;
     case A_PET_SIZE: familiar_size = (familiar_size + 1) % 3; Say("PET SHOP: A %s companion it is.", familiar_size == 0 ? "small" : familiar_size == 1 ? "medium" : "large"); return;
     case A_PET_COLOR: familiar_color = (familiar_color + 1) % 4; Say("PET SHOP: Coat %d of 4 - a fine look.", familiar_color + 1); return;
@@ -1012,7 +1085,7 @@ static void DrawCard(HDC hdc, int x, int y, int id, int num, int result) {
     char buf[96];
     int w = 330, h = 160, p = CardBasePower(id);
     TwBox(hdc, x, y, x + w, y + h, RGB(24, 24, 30));
-    TwBox(hdc, x, y, x + w, y + 30, set_col[c->set]);
+    TwBox(hdc, x, y, x + w, y + 30, set_col[c->set == 0 ? 0 : c->ability == AB_CURSE ? 2 : 1]);
     HPEN pen = CreatePen(PS_SOLID, 3, result > 0 ? RGB(90, 230, 110) : result < 0 ? RGB(230, 80, 70) : RGB(120, 120, 130));
     HGDIOBJ op = SelectObject(hdc, pen), ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
     Rectangle(hdc, x, y, x + w, y + h);
@@ -1024,7 +1097,7 @@ static void DrawCard(HDC hdc, int x, int y, int id, int num, int result) {
     snprintf(buf, sizeof(buf), "%d/%d", p, p);
     TextOut(hdc, x + w - 50, y + 6, buf, (int)strlen(buf));
     SetTextColor(hdc, RGB(180, 180, 190));
-    snprintf(buf, sizeof(buf), "%s  -  %s  -  base %d/%d", card_sets[c->set], rar[c->pt - 1], c->pt, c->pt);
+    snprintf(buf, sizeof(buf), "%s  -  %s  -  base %d/%d", CardSetName(c->set), rar[c->pt - 1], c->pt, c->pt);
     TextOut(hdc, x + 10, y + 36, buf, (int)strlen(buf));
     RECT tr = { x + 10, y + 60, x + w - 10, y + h - 6 };
     SetTextColor(hdc, RGB(170, 220, 255));
@@ -1283,11 +1356,12 @@ void DrawChests(HDC hdc) {
 int card_guide_unlocked = 0;
 static int inspector_cursor = 0;
 int CardGuideUnlocked(void) { return card_guide_unlocked || HasInventoryItem("Strategy Guide"); }
-void CardInspectorMove(int d) { if (card_pool_size > 0) inspector_cursor = (inspector_cursor + d + card_pool_size) % card_pool_size; }
+void CardInspectorMove(int d) { InitCardSets(); if (card_pool_size > 0) inspector_cursor = (inspector_cursor + d + card_pool_size) % card_pool_size; }
 void DrawCardInspector(HDC hdc, int x, int y, int w, int h) {
     static const char *combo[4] = { "SECRET COMBOS", "Skeleton + Zombie + Vampire  ->  NIGHT TERROR",
                                     "Yeti + Bigfoot + Satyr  ->  WILD HUNT", "Sphinx + Bunyip + Goblin  ->  RIDDLE OF THE DEEP" };
     char buf[320];
+    InitCardSets();
     SetBkMode(hdc, TRANSPARENT);
     SetTextColor(hdc, RGB(255, 215, 0));
     snprintf(buf, sizeof(buf), "CARD INSPECTOR (Card Game Strategy Guide)   Binder: %d / %d   UP/DOWN to browse", CardCount(), card_pool_size);
@@ -1302,7 +1376,7 @@ void DrawCardInspector(HDC hdc, int x, int y, int w, int h) {
         SetTextColor(hdc, c == inspector_cursor ? RGB(255, 255, 255) : HasCard(c) ? RGB(150, 220, 255) : RGB(130, 130, 140));
         if (c == inspector_cursor) TextOut(hdc, x, ry, ">", 1);
         TextOut(hdc, x + 16, ry, d->name, (int)strlen(d->name));
-        TextOut(hdc, x + 220, ry, card_sets[d->set], (int)strlen(card_sets[d->set]));
+        TextOut(hdc, x + 220, ry, CardSetName(d->set), (int)strlen(CardSetName(d->set)));
         snprintf(buf, sizeof(buf), "%d/%d", d->pt, d->pt); TextOut(hdc, x + 400, ry, buf, (int)strlen(buf));
         if (HasCard(c)) TextOut(hdc, x + 450, ry, "owned", 5);
     }
@@ -1313,5 +1387,15 @@ void DrawCardInspector(HDC hdc, int x, int y, int w, int h) {
     for (int i = 0; i < 4; i++) {
         SetTextColor(hdc, i == 0 ? RGB(255, 215, 0) : RGB(220, 200, 170));
         TextOut(hdc, x + w / 2, y + 180 + i * 24, combo[i], (int)strlen(combo[i]));
+    }
+    // Lists every released set, so new sets show up here by themselves.
+    SetTextColor(hdc, RGB(255, 215, 0));
+    TextOut(hdc, x + w / 2, y + 290, "SETS IN PRINT", 13);
+    for (int s = 0; s < card_set_n; s++) {
+        int owned = 0;
+        for (int i = 0; i < set_size[s]; i++) owned += HasCard(set_first[s] + i);
+        snprintf(buf, sizeof(buf), "%s  -  %d / %d", card_set_table[s].name, owned, set_size[s]);
+        SetTextColor(hdc, RGB(220, 200, 170));
+        TextOut(hdc, x + w / 2, y + 314 + s * 22, buf, (int)strlen(buf));
     }
 }

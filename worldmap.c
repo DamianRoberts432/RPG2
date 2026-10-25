@@ -71,8 +71,8 @@ int SaveWorldMapState(void) {
     for (int i = 0; i < STAT_COUNT; i++) hero[4 + i] = stat_spent[i];
     ok = ok && fwrite(hero, sizeof(hero), 1, f) == 1;
     ok = ok && fwrite(&karma, sizeof(karma), 1, f) == 1;
-    ok = ok && fwrite(card_collection_bits, sizeof(card_collection_bits), 1, f) == 1 &&
-         fwrite(deck_of_cards_bits, sizeof(deck_of_cards_bits), 1, f) == 1 &&
+    ok = ok && fwrite(card_collection_bits, CARD_BYTES_V1, 1, f) == 1 &&
+         fwrite(deck_of_cards_bits, CARD_BYTES_V1, 1, f) == 1 &&
          fwrite(monster_card_links, sizeof(monster_card_links), 1, f) == 1;
     // Backpack, purse and identity, so logging back in restores the same hero.
     int32_t pack[4] = { gold_count, player_item_count, (int32_t)selected_race, (int32_t)selected_class };
@@ -96,6 +96,8 @@ int SaveWorldMapState(void) {
     int32_t extra[8] = { familiar_size, familiar_color, card_guide_unlocked, cave_room_claimed, 0, 0, 0, 0 };
     ok = ok && fwrite(extra, sizeof(extra), 1, f) == 1;
     ok = ok && AdvSave(f);
+    ok = ok && fwrite(card_collection_bits + CARD_BYTES_V1, CARD_BYTES - CARD_BYTES_V1, 1, f) == 1 &&
+         fwrite(deck_of_cards_bits + CARD_BYTES_V1, CARD_BYTES - CARD_BYTES_V1, 1, f) == 1;
     ok = (fclose(f) == 0) && ok;
     if (!ok) { remove(SAVE_TEMP_NAME); return 0; }
     return MoveFileExA(SAVE_TEMP_NAME, SAVE_FILE_NAME, MOVEFILE_REPLACE_EXISTING) != 0;
@@ -118,7 +120,8 @@ int LoadWorldMapState(void) {
     int has_hero = has_cal && fread(hero, sizeof(hero), 1, f) == 1;
     KarmaState saved_karma;
     int has_karma = has_hero && fread(&saved_karma, sizeof(saved_karma), 1, f) == 1;
-    uint8_t cards[CARD_BYTES], deck[CARD_BYTES];
+    uint8_t cards[CARD_BYTES_V1], deck[CARD_BYTES_V1];
+    uint8_t cards2[CARD_BYTES - CARD_BYTES_V1], deck2[CARD_BYTES - CARD_BYTES_V1];
     MonsterCardLink links[MONSTER_TYPE_COUNT];
     int has_cards = has_karma && fread(cards, sizeof(cards), 1, f) == 1 && fread(deck, sizeof(deck), 1, f) == 1 &&
                     fread(links, sizeof(links), 1, f) == 1;
@@ -151,7 +154,7 @@ int LoadWorldMapState(void) {
     int has_outfit = has_home && fread(outfit, sizeof(outfit), 1, f) == 1;
     int32_t extra[8];
     int has_extra = has_outfit && fread(extra, sizeof(extra), 1, f) == 1;
-    if (has_extra) AdvLoad(f);
+    int has_cards2 = has_extra && AdvLoad(f) && fread(cards2, sizeof(cards2), 1, f) == 1 && fread(deck2, sizeof(deck2), 1, f) == 1;
     fclose(f);
     if (!ok) return 0;
     memcpy(visited_biomes, biomes, sizeof(biomes));
@@ -170,8 +173,11 @@ int LoadWorldMapState(void) {
         cave_room_claimed = extra[3] & 0xFF;
     }
     if (has_cards) {
+        memset(card_collection_bits, 0, sizeof(card_collection_bits));
+        memset(deck_of_cards_bits, 0, sizeof(deck_of_cards_bits));
         memcpy(card_collection_bits, cards, sizeof(cards));
         memcpy(deck_of_cards_bits, deck, sizeof(deck));
+        if (has_cards2) { memcpy(card_collection_bits + CARD_BYTES_V1, cards2, sizeof(cards2)); memcpy(deck_of_cards_bits + CARD_BYTES_V1, deck2, sizeof(deck2)); }
         FillEmptyDeck();
         for (int i = 0; i < MONSTER_TYPE_COUNT; i++) monster_card_links[i].kills = links[i].kills;
     }
@@ -374,6 +380,7 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
             SelectObject(hdc, op); DeleteObject(xp);
             break;
         }
+        if (poi & (POI_VILLAGE | POI_CASTLE)) AdvMapDot(hdc, gy * META_GRID_SIZE + gx + ((poi & POI_TOWN_ALT) ? 30000 : 0), cx, cy, cs);
         if ((poi & (POI_VILLAGE | POI_CASTLE)) && cs >= 64) { // zoomed in far enough to write the name on the tile
             char nm[32]; TownNameAt(gy * META_GRID_SIZE + gx + ((poi & POI_TOWN_ALT) ? 30000 : 0), nm, sizeof(nm));
             SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(255, 240, 120));

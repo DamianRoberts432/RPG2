@@ -118,9 +118,10 @@ game.exe
 Talking to a shopkeeper takes you inside their building (merchant included).
 
 - **Blacksmith** (every town): repair any worn item, over-forge your weapon (+1 damage per forge up to +10, each forge costs 10% of its max durability), buy rare weapons (Katana, War Hammer, Great Axe) and recycle spare gear into Iron, Wood, Leather, String and Rope.
-- **Card shop** (some days): ten random cards, plus 3-card (20,000), 7-card (40,000) and 60-card (350,000) packs, and the **Master Base Box** (1,000,000) with one of every card in print. Packs and card drops favor small cards: 70% 1/1, 25% 2/2, 5% 3/3. Selecting a card shows its set, rarity, power/toughness and what its ability does.
-  - Only three sets are in print for now: **Wild Creatures** (the bestiary monsters plus bluebird, squirrel, owl, bat), **Angels** and **Goetia Demons** - 37 cards.
-  - Every card is a 1/1, 2/2 or 3/3. Abilities make the difference: **First Strike** hits before a card without it; **Mighty** (Yeti, Bigfoot) is +3/+3, so they fight as 6/6; a Demon 1/1's **death curse** gives the next enemy card -2/-2; an Angel 1/1's **death blessing** gives your next card +1/+1, +2/+0 or +0/+2.
+- **Card shop** (some days): ten random cards, plus a 3-card booster, a 60-card box and the complete set for **each set separately**. Pulls never mix sets, so a Starter booster only holds Starter cards. Packs and card drops favor small cards: 70% 1/1, 25% 2/2, 5% 3/3. Enemies drop cards 1.5% of the time. Selecting a card shows its set, rarity, power/toughness and what its ability does.
+  - Sets in print: the **Starter Set** (the bestiary monsters plus bluebird, squirrel, owl and bat, 13 cards; booster 2,000, box 30,000) and **Angels & Goetia** (the 72 angels of the Shem HaMephorash, the 72 Goetia demons and the 22 Major Arcana, 166 cards; booster 20,000, box 350,000). A complete set costs 3 boxes.
+  - Every card is a 1/1 (common), 2/2 (uncommon) or 3/3 (rare). Only 2/2s and 3/3s have abilities; the 1/1s are plain pawns. **First Strike** hits before a card without it. **Mighty** (Yeti, Bigfoot) is +3/+3, so they fight as 6/6. A **death curse** (demons) gives the next enemy card -2/-2. A **death blessing** (angels) gives your next card +1/+1, +2/+0 or +0/+2.
+  - **Releasing a new set:** nine mythology sets of 50 cards each (Greek, Norse, Egyptian, Celtic, Japanese, Hindu, Aztec, Slavic, Chinese) are already written in `cards_future.h`. To release one, uncomment its row in `card_set_table` in `cards_data.c`. The card shop, the Card Game Strategy Guide's SETS IN PRINT list and the card kid all pick it up automatically, and the kid hints at the next set that isn't out yet.
   - The kid at the corner table plays up to 10 practice hands per visit (no ante). You get three cards from the counter and pick the order to lay them; he leads with his left to right. The practice table on the right shows your three cards and his with their text, then the play-by-play: both cards deal damage at the same time unless one has First Strike, and death marks land on the next card in.
 - **Pet shop** (some days): familiars from level 3. Day familiars sleep in your pack from 9 PM to 6 AM, night ones by day.
 - **Castle towns** also have the **King** (Legendary quests from level 25: slay a mythic beast or a Vampire, then report back for 10,000 gold), a **Bank** vault, a **beggar** and an **altar**. Villages have an altar and sometimes a beggar.
@@ -145,6 +146,14 @@ Talking to a shopkeeper takes you inside their building (merchant included).
 - **Werewolves** hunt open land on full-moon nights (every 8th day of a season). Only silver cuts through their hide.
 - **Treasure Map:** building a chest gives you one, and a red X on the World Map marks each of your chests.
 - **CARDS tab:** owning the Strategy Guide opens it for good. It lists every card with its set, power, ability and whether you own it.
+
+## Asking for work
+
+- NPCs don't push quests on you. Villagers and guards open a Chat / Ask for work / Goodbye menu, every shop menu has an "Ask for work" option, and at the merchant you press LT or Q. Ask again to accept.
+- You can hold 3 quests at the start, plus 1 more every 4 levels.
+- Each quest belongs to fixed towns and a named giver. A finished big quest never comes back, and an abandoned one goes back to the person who gave it.
+- Small villager jobs can be repeated and grow with your level. The merchant's Wood Cart makes wood and stone weigh a quarter as much, and villagers then ask for 5x bigger hauls at 6x the pay.
+- World Map dots mark towns your quests point to: purple for the King, red for a boss, yellow for a cave or treasure, light blue for water, green for everything else.
 
 ## Outlaws, legacy and caves
 

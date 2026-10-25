@@ -125,6 +125,7 @@ static const char *ItemBlurb(const char *name) {
     if (strcmp(name, "Matches") == 0) return "Light a campfire from the inventory (needs 2 Wood).";
     if (strcmp(name, "Fish") == 0 || strcmp(name, "Apple") == 0 || strcmp(name, "Turnip") == 0) return "Eat to restore health.";
     if (strcmp(name, "Hoe") == 0) return "X on bare grass tills a farm plot.";
+    if (strcmp(name, "Wood Cart") == 0) return "Wood and stone weigh a quarter as much; villagers ask for bigger hauls.";
     if (strcmp(name, "House Supplies") == 0) return "X on open ground plans your house, X again changes the front.";
     for (int k = 0; k < FURNITURE_KINDS; k++) if (strcmp(name, furniture_names[k]) == 0) return "Furniture: goes into your house when you go inside.";
     if (strcmp(name, "Seeds") == 0) return "X on tilled soil plants turnips; ripe in 3 days.";

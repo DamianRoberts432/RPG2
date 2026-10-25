@@ -148,8 +148,8 @@ int WearEquippedBow(void) { return WearEquipped(1); }
 // carry limit while an item sits unequipped in the pack - see
 // RecalculateCarriedWeight(), which excludes anything currently worn/wielded.
 float GetNamedItemWeight(const char *name) {
-    if (strcmp(name, "Wood") == 0) return 0.4f;
-    if (strcmp(name, "Stone") == 0) return 0.6f;
+    if (strcmp(name, "Wood") == 0) return HasInventoryItem("Wood Cart") ? 0.1f : 0.4f;
+    if (strcmp(name, "Stone") == 0) return HasInventoryItem("Wood Cart") ? 0.15f : 0.6f;
     if (strcmp(name, "Short Sword") == 0) return 2.0f;
     if (strcmp(name, "Long Bow") == 0) return 2.0f;
     if (strcmp(name, "Short Bow") == 0) return 1.5f;
@@ -157,6 +157,7 @@ float GetNamedItemWeight(const char *name) {
     if (edited >= 0.0f) return edited;
     if (strcmp(name, "Dagger") == 0 || strcmp(name, "Silver Dagger") == 0) return 1.0f;
     if (strcmp(name, "Garlic") == 0) return 0.2f;
+    if (strcmp(name, "Wood Cart") == 0) return 6.0f;
     if (strcmp(name, "Hoe") == 0) return 2.0f;
     if (strcmp(name, "Seeds") == 0) return 0.1f;
     if (strcmp(name, "Turnip") == 0) return 0.5f;
