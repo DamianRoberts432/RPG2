@@ -492,6 +492,7 @@ void DrawTabbedMenuOverlay(HDC hdc) {
         TextOut(hdc, 90, WINDOW_HEIGHT - 95, buf, (int)strlen(buf));
     } else if (current_menu_tab == MENU_TAB_QUESTS) {
         DrawQuestJournal(hdc, 90, 100, WINDOW_WIDTH - 240, WINDOW_HEIGHT - 220);
+        DrawMsgHistory(hdc, 90 + (WINDOW_WIDTH - 240) / 2, WINDOW_HEIGHT - 370, (WINDOW_WIDTH - 240) / 2, 11);
     } else if (current_menu_tab == MENU_TAB_CARDS) {
         DrawCardInspector(hdc, 90, 100, WINDOW_WIDTH - 240, WINDOW_HEIGHT - 220);
     } else { 
@@ -561,4 +562,78 @@ void DrawLootPreview(HDC hdc) {
 int MenuTabStep(int cur, int dir) {
     int n = CardGuideUnlocked() ? 5 : 4;
     return (cur + dir + n) % n;
+}
+
+// --- Message log: the upper-left lines, and the history in the QUESTS tab ---
+#define MSG_LOG_MAX 40
+#define LOG_SHOW_MS 9000
+#define LOG_FADE_MS 3000
+typedef struct { char text[256]; DWORD t; } LogLine;
+static LogLine msg_log[MSG_LOG_MAX];
+static int msg_log_count = 0, msg_log_head = 0;
+static char msg_last_seen[256];
+
+static void PushLog(const char *s, size_t len) {
+    while (len > 0 && *s == ' ') { s++; len--; }
+    while (len > 0 && s[len - 1] == ' ') len--;
+    if (len == 0) return;
+    if (len > 255) len = 255;
+    LogLine *l = &msg_log[msg_log_head];
+    memcpy(l->text, s, len); l->text[len] = 0; l->t = GetTickCount();
+    msg_log_head = (msg_log_head + 1) % MSG_LOG_MAX;
+    if (msg_log_count < MSG_LOG_MAX) msg_log_count++;
+}
+// New text in arpg_action_log becomes new lines. Messages joined with "  |  " are
+// split into separate lines, and text tacked onto the end of the last message
+// only logs the new part.
+void MsgLogUpdate(void) {
+    if (strcmp(arpg_action_log, msg_last_seen) == 0) return;
+    const char *s = arpg_action_log;
+    size_t old = strlen(msg_last_seen);
+    if (old > 0 && strncmp(arpg_action_log, msg_last_seen, old) == 0) s += old;
+    for (;;) {
+        const char *bar = strstr(s, "  |  ");
+        if (!bar) { PushLog(s, strlen(s)); break; }
+        PushLog(s, (size_t)(bar - s));
+        s = bar + 5;
+    }
+    snprintf(msg_last_seen, sizeof(msg_last_seen), "%s", arpg_action_log);
+}
+static const LogLine *LogAt(int back) { return &msg_log[(msg_log_head - 1 - back + 2 * MSG_LOG_MAX) % MSG_LOG_MAX]; }
+
+// Upper left: up to 5 recent lines, oldest on top and newest underneath. Older
+// lines fade out after a while; the newest one always stays.
+void DrawMsgLog(HDC hdc, int x, int y) {
+    DWORD now = GetTickCount();
+    int shown = 0, idx[5];
+    for (int b = 0; b < msg_log_count && shown < 5; b++) {
+        if (b > 0 && now - LogAt(b)->t > LOG_SHOW_MS + LOG_FADE_MS) break;
+        idx[shown++] = b;
+    }
+    SetBkMode(hdc, TRANSPARENT);
+    for (int k = shown - 1; k >= 0; k--) {
+        const LogLine *l = LogAt(idx[k]);
+        DWORD age = now - l->t;
+        float a = (idx[k] == 0 || age <= LOG_SHOW_MS) ? 1.0f : 1.0f - (float)(age - LOG_SHOW_MS) / LOG_FADE_MS;
+        if (a < 0.0f) a = 0.0f;
+        int c = (int)(70 + 185 * a);
+        SetTextColor(hdc, RGB(c, c, c));
+        RECT r = { x, y, x + 1100, y + 60 };
+        int hgt = DrawText(hdc, l->text, -1, &r, DT_WORDBREAK | DT_LEFT | DT_NOPREFIX);
+        y += hgt > 0 ? hgt + 2 : 20;
+    }
+}
+
+// QUESTS tab: the last messages received, newest at the bottom.
+void DrawMsgHistory(HDC hdc, int x, int y, int w, int lines) {
+    SetBkMode(hdc, TRANSPARENT);
+    SetTextColor(hdc, RGB(255, 215, 0));
+    TextOut(hdc, x, y, "RECENT MESSAGES", 15);
+    int n = msg_log_count < lines ? msg_log_count : lines;
+    for (int k = 0; k < n; k++) {
+        const LogLine *l = LogAt(n - 1 - k);
+        SetTextColor(hdc, k == n - 1 ? RGB(240, 240, 240) : RGB(165, 170, 180));
+        RECT r = { x, y + 24 + k * 20, x + w, y + 44 + k * 20 };
+        DrawText(hdc, l->text, -1, &r, DT_SINGLELINE | DT_END_ELLIPSIS | DT_LEFT | DT_NOPREFIX);
+    }
 }

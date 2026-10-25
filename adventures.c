@@ -25,6 +25,10 @@ static int Variant(int q) { return q % ADV_VARIANTS; }
 int AdvRarity(int q) { int r = Motif(q)->rarity + (Variant(q) == 2); return r > 3 ? 3 : r; }
 int AdvLevel(int q) { return Motif(q)->level + Variant(q) * 4; }
 static int RoleIndex(char c) { for (int i = 0; i < 10; i++) if (role_codes[i] == c) return i; return 0; }
+static const char *GiverTag(int q) {
+    static const char *tags[10] = { "[VILLAGE]", "[MARKET]", "[GUARD]", "[SMITH]", "[PET SHOP]", "[CARDS]", "[KING]", "[BEGGAR]", "[SHRINE]", "[BANK]" };
+    return tags[RoleIndex(Motif(q)->giver)];
+}
 
 // Steps of quest q; returns how many before the final "return to the contact" step.
 static int ParseSteps(int q, AdvStep *out) {
@@ -180,7 +184,7 @@ int AdvTalk(int npc_type) {
     adv_contact_town[best] = here; adv_contact_role[best] = (uint8_t)npc_type;
     offer_q = best; offer_until_adv = GetTickCount() + 12000;
     char line[200]; StepLine(best, 0, line, sizeof(line));
-    snprintf(arpg_action_log, sizeof(arpg_action_log), "QUEST (%s) %s: \"%s\" X again: yes. Walk away: no.", rarity_names[AdvRarity(best)], Motif(best)->title, line);
+    snprintf(arpg_action_log, sizeof(arpg_action_log), "QUEST %s (%s) %s: \"%s\" X again: yes. Walk away: no.", GiverTag(best), rarity_names[AdvRarity(best)], Motif(best)->title, line);
     return 1;
 }
 
@@ -222,24 +226,12 @@ void AdvTick(void) {
 // --- Quest journal: the QUESTS tab of the menu -------------------------------
 static int jr_filter = 0, jr_cursor = 0, abandon_q = -1;
 static DWORD abandon_until = 0;
-static const char *filter_names[6] = { "ACTIVE", "READY", "HERE", "HUNTS", "ERRANDS", "DONE" };
+static const char *filter_names[2] = { "ACTIVE", "DONE" };
 static int AdvReady(int q) {
     AdvStep st; CurStep(q, &st);
     return st.type == 'R' || (st.type == 'G' && GetMaterialCount(st.item) >= st.count);
 }
-static int PassFilter(int q) {
-    if (jr_filter == 5) return adv_state[q] == ADV_DONE;
-    if (!AdvActive(q)) return 0;
-    AdvStep st; CurStep(q, &st);
-    int here = AdvHereTown();
-    switch (jr_filter) {
-    case 1: return AdvReady(q);
-    case 2: return here >= 0 && (here == adv_far_town[q] || here == adv_contact_town[q] || here == adv_giver_town[q]);
-    case 3: return st.type == 'K';
-    case 4: return st.type != 'K';
-    }
-    return 1;
-}
+static int PassFilter(int q) { return jr_filter == 1 ? adv_state[q] == ADV_DONE : AdvActive(q); }
 // Tracked first, then ready to hand in, then rarest, then in table order.
 static int BuildList(int *out) {
     static int key[ADV_MAX];
@@ -256,8 +248,8 @@ static int BuildList(int *out) {
 
 void AdvJournalInput(int up, int down, int left, int right, int track, int abandon) {
     static int list[ADV_MAX];
-    if (left) { jr_filter = (jr_filter + 5) % 6; jr_cursor = 0; }
-    if (right) { jr_filter = (jr_filter + 1) % 6; jr_cursor = 0; }
+    if (left) { jr_filter = (jr_filter + 1) % 2; jr_cursor = 0; }
+    if (right) { jr_filter = (jr_filter + 1) % 2; jr_cursor = 0; }
     int n = BuildList(list);
     if (n == 0) return;
     if (up) jr_cursor = (jr_cursor + n - 1) % n;
@@ -292,16 +284,16 @@ void DrawQuestJournal(HDC hdc, int x, int y, int w, int h) {
     SetTextColor(hdc, RGB(255, 215, 0));
     snprintf(buf, sizeof(buf), "QUEST JOURNAL   Active: %d   Done: %d   Still out in the world: %d", active, done, total - active - done);
     TextOut(hdc, x, y, buf, (int)strlen(buf));
-    for (int f = 0; f < 6; f++) {
+    for (int f = 0; f < 2; f++) {
         RECT r = { x + f * 110, y + 26, x + f * 110 + 104, y + 48 };
         HBRUSH b = CreateSolidBrush(f == jr_filter ? RGB(45, 80, 120) : RGB(30, 35, 45)); FillRect(hdc, &r, b); DeleteObject(b);
         SetTextColor(hdc, f == jr_filter ? RGB(255, 255, 255) : RGB(140, 150, 160));
         DrawText(hdc, filter_names[f], -1, &r, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
     }
     const char *help = "LEFT/RIGHT: filter   UP/DOWN: pick   A or T: track on HUD   Y or DEL twice: abandon";
-    SetTextColor(hdc, RGB(150, 160, 170)); TextOut(hdc, x + 680, y + 30, help, (int)strlen(help));
+    SetTextColor(hdc, RGB(150, 160, 170)); TextOut(hdc, x + 240, y + 30, help, (int)strlen(help));
     if (n == 0) {
-        const char *none = jr_filter == 5 ? "No finished quests yet." : "Nothing here. Talk to villagers, shopkeepers, guards and (from level 25) the King to find quests.";
+        const char *none = jr_filter == 1 ? "No finished quests yet." : "Nothing here. Talk to villagers, shopkeepers, guards and (from level 25) the King to find quests.";
         SetTextColor(hdc, RGB(200, 200, 200)); TextOut(hdc, x, y + 70, none, (int)strlen(none));
         return;
     }
@@ -317,7 +309,9 @@ void DrawQuestJournal(HDC hdc, int x, int y, int w, int h) {
         if (first + r == jr_cursor) { RECT hl = { x - 4, ry - 1, x + lw, ry + 20 }; HBRUSH b = CreateSolidBrush(RGB(40, 55, 75)); FillRect(hdc, &hl, b); DeleteObject(b); }
         SetTextColor(hdc, rarity_colors[AdvRarity(q)]);
         snprintf(buf, sizeof(buf), "%s%s", q == adv_tracked ? "* " : "", Motif(q)->title);
-        TextOut(hdc, x, ry, buf, (int)strlen(buf));
+        TextOut(hdc, x + 100, ry, buf, (int)strlen(buf));
+        SetTextColor(hdc, Motif(q)->giver == 'k' ? RGB(255, 200, 60) : RGB(150, 190, 220));
+        TextOut(hdc, x, ry, GiverTag(q), (int)strlen(GiverTag(q)));
         if (adv_state[q] == ADV_DONE) snprintf(buf, sizeof(buf), "%s  done", town);
         else snprintf(buf, sizeof(buf), "%s  step %d/%d%s", town, i + 1, StepTotal(q), AdvReady(q) ? "  READY" : "");
         SetTextColor(hdc, RGB(160, 170, 180)); TextOut(hdc, x + lw - 250, ry, buf, (int)strlen(buf));
@@ -325,7 +319,8 @@ void DrawQuestJournal(HDC hdc, int x, int y, int w, int h) {
     int q = list[jr_cursor], dx = x + w / 2, dy = y + 60, steps = StepTotal(q), r = AdvRarity(q);
     AdvStep cur; int ci = CurStep(q, &cur);
     if (adv_state[q] == ADV_DONE) ci = steps;
-    SetTextColor(hdc, rarity_colors[r]); TextOut(hdc, dx, dy, Motif(q)->title, (int)strlen(Motif(q)->title));
+    snprintf(buf, sizeof(buf), "%s  %s", GiverTag(q), Motif(q)->title);
+    SetTextColor(hdc, rarity_colors[r]); TextOut(hdc, dx, dy, buf, (int)strlen(buf));
     TownLabel(adv_giver_town[q], town, sizeof(town));
     snprintf(buf, sizeof(buf), "%s  |  %s  |  level %d+  |  from the %s of %s", rarity_names[r], Motif(q)->origin, AdvLevel(q),
              role_names[RoleIndex(Motif(q)->giver)], town);
@@ -357,7 +352,7 @@ void DrawTrackedQuest(HDC hdc, int x, int y) {
     AdvStep st; int i = CurStep(q, &st);
     char line[220], prog[48], buf[320];
     StepLine(q, i, line, sizeof(line)); ProgressText(q, &st, prog, sizeof(prog));
-    snprintf(buf, sizeof(buf), "Quest: %s - %s%s", Motif(q)->title, line, prog);
+    snprintf(buf, sizeof(buf), "Quest %s %s - %s%s", GiverTag(q), Motif(q)->title, line, prog);
     SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, rarity_colors[AdvRarity(q)]);
     TextOut(hdc, x, y, buf, (int)strlen(buf));
 }
