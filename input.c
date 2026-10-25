@@ -147,6 +147,7 @@ void ProcessGamepadInput(void) {
                 if (buttons & XINPUT_GAMEPAD_DPAD_RIGHT) { dx = 1.0f; player_facing = FACE_RIGHT; }
                 if (buttons & XINPUT_GAMEPAD_DPAD_UP)    { dy = -1.0f; player_facing = FACE_UP; }
                 if (buttons & XINPUT_GAMEPAD_DPAD_DOWN)  { dy = 1.0f; player_facing = FACE_DOWN; }
+                SetHeroFacing8(dx, dy);
             }
 
             static DWORD last_interact_gp = 0;
@@ -394,6 +395,7 @@ void ProcessGamepadInput(void) {
             if (GetAsyncKeyState(VK_RIGHT) & 0x8000) { dx = 1.0f; player_facing = FACE_RIGHT; }
             if (GetAsyncKeyState(VK_UP) & 0x8000)    { dy = -1.0f; player_facing = FACE_UP; }
             if (GetAsyncKeyState(VK_DOWN) & 0x8000)  { dy = 1.0f; player_facing = FACE_DOWN; }
+            SetHeroFacing8(dx, dy);
         }
 
         int town_busy_kb = town_menu;

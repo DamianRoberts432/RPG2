@@ -291,11 +291,7 @@ int IsFacingEnemyWithin(float dot_threshold) {
     float dist = (float)sqrt(ex * ex + ey * ey);
     if (dist < 0.001f) return 1;
     ex /= dist; ey /= dist;
-    float fx = 0.0f, fy = 0.0f;
-    if (player_facing == FACE_UP) fy = -1.0f;
-    else if (player_facing == FACE_DOWN) fy = 1.0f;
-    else if (player_facing == FACE_LEFT) fx = -1.0f;
-    else fx = 1.0f;
+    float fx = facing_x, fy = facing_y; // 8-direction facing
     float dot = ex * fx + ey * fy;
     return dot > dot_threshold;
 }
@@ -727,4 +723,22 @@ void EnemyAttackHero(int e) {
     if (active_monster == MONSTER_ZOMBIE) { hero_held_until = now + 550; strcpy(arpg_action_log, "ZOMBIE: It grabs you and bites!"); }
     else if (active_monster == MONSTER_BIGFOOT || active_monster == MONSTER_YETI) strcpy(arpg_action_log, "A huge arm swats you!");
     HurtHero(dmg);
+}
+
+// The hero faces any of 8 directions (diagonals included).
+float facing_x = 0.0f, facing_y = 1.0f;
+void SetHeroFacing8(float dx, float dy) {
+    if (dx == 0.0f && dy == 0.0f) return;
+    float l = (float)sqrt(dx * dx + dy * dy);
+    facing_x = dx / l; facing_y = dy / l;
+}
+// A sword/axe slash: three streaks sweeping across the facing direction on screen.
+void DrawSlash(HDC hdc, int sx, int sy) {
+    float a0 = (float)atan2((facing_x + facing_y) * 0.5f, facing_x - facing_y);
+    float sweep = (10 - sword_swipe_frame) * 0.16f - 0.8f;
+    for (int k = 0; k < 3; k++) {
+        float a = a0 + sweep - k * 0.14f; int r = 24 - k * 4;
+        MoveToEx(hdc, sx + (int)(cos(a) * 6), sy + 4 + (int)(sin(a) * 3), NULL);
+        LineTo(hdc, sx + (int)(cos(a) * r), sy + 4 + (int)(sin(a) * r * 0.6f));
+    }
 }

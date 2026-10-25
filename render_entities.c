@@ -92,7 +92,7 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
     if (shown_weapon == WEAPON_SWORD) {
         HPEN p = CreatePen(PS_SOLID, 2, RGB(200, 210, 220)); HGDIOBJ prev_p = SelectObject(hdc, p);
         if (sword_swipe_frame > 0) {
-            Arc(hdc, sx - 16, sy - 16, sx + 16, sy + 16, sx - 16, sy, sx + 16, sy);
+            DrawSlash(hdc, sx, sy);
         } else {
             if (player_facing == FACE_UP || player_facing == FACE_LEFT) { MoveToEx(hdc, sx - 8, sy + 8, NULL); LineTo(hdc, sx - 16, sy - 4); }
             else { MoveToEx(hdc, sx + 6, sy + 12, NULL); LineTo(hdc, sx + 16, sy + 20); }
@@ -101,7 +101,7 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
     } else if (shown_weapon == WEAPON_AXE) {
         HPEN p = CreatePen(PS_SOLID, 2, RGB(135, 95, 60)); HGDIOBJ prev_p = SelectObject(hdc, p);
         if (sword_swipe_frame > 0) {
-            Arc(hdc, sx - 16, sy - 16, sx + 16, sy + 16, sx - 16, sy, sx + 16, sy);
+            DrawSlash(hdc, sx, sy);
         } else if (player_facing == FACE_UP || player_facing == FACE_LEFT) { MoveToEx(hdc, sx - 6, sy + 8, NULL); LineTo(hdc, sx - 14, sy - 2); }
         else { MoveToEx(hdc, sx + 6, sy + 10, NULL); LineTo(hdc, sx + 14, sy + 18); }
         SelectObject(hdc, prev_p); DeleteObject(p);
