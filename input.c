@@ -27,6 +27,7 @@ void RequestDeleteSave(void) {
         return;
     }
     armed_at = 0;
+    WriteLegacy();
     if (DeleteSaveFile()) strcpy(arpg_action_log, "SAVE DELETED. Quit and restart for a fresh world (saving is off until then).");
     else strcpy(arpg_action_log, "DELETE SAVE: could not delete rpg2_save.dat.");
 }
@@ -68,7 +69,7 @@ void ProcessGamepadInput(void) {
                     }
                 } else if (buttons & XINPUT_GAMEPAD_A) {
                     if (IsNameValid()) {
-                        is_character_creation = 0;
+                        is_character_creation = 0; ApplyLegacy();
                         creation_error_msg[0] = '\0';
                         sprintf(arpg_action_log, "FORGED: Engine live! Playing as %s %s", race_names[selected_race], class_names[selected_class]);
                     } else {
@@ -238,7 +239,7 @@ void ProcessGamepadInput(void) {
             // shortcut), but while the Name field is selected it is treated
             // as a typed space character instead (see typing block below).
             if (selected_creation_field != 0 && (GetAsyncKeyState(VK_SPACE) & 0x8000)) {
-                is_character_creation = 0; ApplyClassAndRaceStats();
+                is_character_creation = 0; ApplyLegacy(); ApplyClassAndRaceStats();
                 sprintf(arpg_action_log, "FORGED: Engine live! Playing as %s %s", race_names[selected_race], class_names[selected_class]);
             }
         }
@@ -249,7 +250,7 @@ void ProcessGamepadInput(void) {
         static int enter_was_down = 0;
         int enter_down = (GetAsyncKeyState(VK_RETURN) & 0x8000) != 0;
         if (enter_down && !enter_was_down) {
-            is_character_creation = 0; ApplyClassAndRaceStats();
+            is_character_creation = 0; ApplyLegacy(); ApplyClassAndRaceStats();
             sprintf(arpg_action_log, "FORGED: Engine live! Playing as %s %s", race_names[selected_race], class_names[selected_class]);
         }
         enter_was_down = enter_down;

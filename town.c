@@ -1221,6 +1221,7 @@ int OpenNearbyChest(void) {
 
 // A chest with few trees around it is in the open; each day there is a 1 in 4
 // chance someone breaks in and takes half of what's inside.
+int ChestNearRoad(const StashChest *c);
 void CheckChestBreakIns(void) {
     for (int i = 0; i < MAX_CHESTS; i++) {
         StashChest *c = &chests[i];
@@ -1231,10 +1232,12 @@ void CheckChestBreakIns(void) {
             int tx = (int)c->x + dx, ty = (int)c->y + dy;
             if (tx >= 0 && tx < MAP_SIZE && ty >= 0 && ty < MAP_SIZE && VISUAL_MAP[ty][tx] == 11) trees++;
         }
-        if (trees >= 3 || c->count == 0 || rand() % 4) continue;
+        int road = ChestNearRoad(c);
+        if (c->count == 0 || (road ? rand() % 2 : (trees >= 3 || rand() % 4))) continue;
         int lose = (c->count + 1) / 2;
         for (int k = 0; k < lose; k++) { int j = rand() % c->count; c->items[j] = c->items[--c->count]; }
-        strcpy(arpg_action_log, "CHEST: Your chest has been broken into! Some items are gone.");
+        strcpy(arpg_action_log, road ? "CHEST: Highwaymen working the road broke into your chest! Some items are gone."
+                                     : "CHEST: Your chest has been broken into! Some items are gone.");
     }
 }
 

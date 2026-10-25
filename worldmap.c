@@ -93,7 +93,7 @@ int SaveWorldMapState(void) {
     ok = ok && fwrite(player_home, sizeof(player_home), 1, f) == 1;
     int32_t outfit[2] = { hero_cloth, hero_trim };
     ok = ok && fwrite(outfit, sizeof(outfit), 1, f) == 1;
-    int32_t extra[8] = { familiar_size, familiar_color, card_guide_unlocked, 0, 0, 0, 0, 0 };
+    int32_t extra[8] = { familiar_size, familiar_color, card_guide_unlocked, cave_room_claimed, 0, 0, 0, 0 };
     ok = ok && fwrite(extra, sizeof(extra), 1, f) == 1;
     ok = ok && AdvSave(f);
     ok = (fclose(f) == 0) && ok;
@@ -167,6 +167,7 @@ int LoadWorldMapState(void) {
         familiar_size = (extra[0] >= 0 && extra[0] <= 2) ? extra[0] : 1;
         familiar_color = extra[1] & 3;
         card_guide_unlocked = extra[2] != 0;
+        cave_room_claimed = extra[3] & 0xFF;
     }
     if (has_cards) {
         memcpy(card_collection_bits, cards, sizeof(cards));
@@ -380,7 +381,7 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
         }
         // Some Mountain screens hide a cave; its treasure marker disappears
         // once that cave's treasure has been claimed.
-        if (biome == BIOME_MOUNTAIN && MountainHasCave(gy * META_GRID_SIZE + gx) && !(poi & POI_TREASURE_FOUND)) {
+        if (biome == BIOME_MOUNTAIN && MountainHasCave(gy * META_GRID_SIZE + gx) && !(poi & POI_TREASURE_FOUND) && !CaveRoomClaimed(gy * META_GRID_SIZE + gx)) {
             FillSub(hdc, cx, cy, q, 1, 1, 2, 2, treasure_edge);
             RECT inner = { cx + q + 1, cy + q + 1, cx + 3 * q - 1, cy + 3 * q - 1 };
             if (inner.right <= inner.left) inner.right = inner.left + 1;
