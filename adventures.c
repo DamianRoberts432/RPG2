@@ -161,6 +161,15 @@ int AdvTalk(int npc_type) {
             }
         }
     }
+    return 0;
+}
+
+int AdvOfferPending(void) { return offer_q >= 0 && offer_q < AdvCount() && GetTickCount() < offer_until_adv && adv_state[offer_q] == 0; }
+
+// "Ask for work": accept the standing offer, or get a new one that fits your level.
+int AdvAskForWork(int npc_type) {
+    int here = AdvHereTown(), n = AdvCount();
+    if (here < 0 || npc_type < 0 || npc_type > 9) return 0;
     if (offer_q >= 0 && offer_q < n && GetTickCount() < offer_until_adv && adv_state[offer_q] == 0) {
         int q = offer_q; offer_q = -1;
         adv_state[q] = 1; adv_prog[q] = 0; adv_giver_town[q] = here; adv_contact_town[q] = here; adv_contact_role[q] = (uint8_t)npc_type;
@@ -169,8 +178,12 @@ int AdvTalk(int npc_type) {
         return 1;
     }
     offer_q = -1;
-    if (npc_type == 0 && village_quest[0]) return 0; // let the villager settle their small job first
-    if (rand() % 100 >= (npc_type == 0 ? 30 : 20)) return 0;
+    int active = 0, cap = 3 + player_level / 4;
+    for (int q = 0; q < n; q++) if (AdvActive(q)) active++;
+    if (active >= cap) {
+        snprintf(arpg_action_log, sizeof(arpg_action_log), "\"You've enough on your plate (%d quests). Finish or abandon one first.\"", active);
+        return 1;
+    }
     int roll = rand() % 100, want = roll < 60 ? 0 : roll < 85 ? 1 : roll < 97 ? 2 : 3, best = -1, start = rand() % n;
     for (int pass = 0; pass < 2 && best < 0; pass++)
         for (int k = 0; k < n; k++) {
@@ -184,7 +197,7 @@ int AdvTalk(int npc_type) {
     adv_contact_town[best] = here; adv_contact_role[best] = (uint8_t)npc_type;
     offer_q = best; offer_until_adv = GetTickCount() + 12000;
     char line[200]; StepLine(best, 0, line, sizeof(line));
-    snprintf(arpg_action_log, sizeof(arpg_action_log), "QUEST %s (%s) %s: \"%s\" X again: yes. Walk away: no.", GiverTag(best), rarity_names[AdvRarity(best)], Motif(best)->title, line);
+    snprintf(arpg_action_log, sizeof(arpg_action_log), "QUEST %s (%s) %s: \"%s\" Ask again to accept.", GiverTag(best), rarity_names[AdvRarity(best)], Motif(best)->title, line);
     return 1;
 }
 

@@ -30,6 +30,8 @@ static const struct { int type; const char *who; } recipients[] = {
 
 static int offer_k = -1, offer_need, offer_reward;
 static DWORD offer_until;
+int villager_job_ask = 0;
+int VillagerOfferPending(void) { return offer_k >= 0 && GetTickCount() < offer_until; }
 
 static const char *Plural(const char *name, int n) {
     static char buf[40];
@@ -102,7 +104,7 @@ int VillagerQuestTalk(void) {
         return 1;
     }
     offer_k = -1;
-    if (rand() % 100 >= QUEST_OFFER_PERCENT) return 0;
+    if (!villager_job_ask) return 0; // villagers only offer jobs when asked
     int k = rand() % quest_template_count;
     QuestTemplate *q = &quest_templates[k];
     if (q->count <= 0) return 0;
@@ -176,4 +178,18 @@ int NewQuestTemplate(int n, const char *name, int reward) {
     snprintf(t->name, sizeof(t->name), "%s", name);
     t->reward = reward;
     return 1;
+}
+
+// "Ask for work" in a talk or shop menu. Asking again accepts the offer.
+void AskForWork(int npc_type) {
+    int done;
+    if (npc_type == 0 || npc_type == 2) {
+        villager_job_ask = 1;
+        if (VillagerOfferPending()) done = VillagerQuestTalk();
+        else if (AdvOfferPending()) done = AdvAskForWork(npc_type);
+        else if (rand() % 2) done = VillagerQuestTalk() || AdvAskForWork(npc_type);
+        else done = AdvAskForWork(npc_type) || VillagerQuestTalk();
+        villager_job_ask = 0;
+    } else done = AdvAskForWork(npc_type);
+    if (!done) strcpy(arpg_action_log, "\"Nothing I need help with right now. Come back another day.\"");
 }

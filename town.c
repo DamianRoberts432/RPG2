@@ -11,7 +11,7 @@ static char town_note[160] = "";
 
 typedef struct { char text[96]; int action, arg; } TownRow;
 enum { A_LEAVE, A_REPAIR, A_FORGE, A_RECYCLE, A_SMITH_BUY, A_CARD, A_PACK, A_KID, A_PET, A_KING,
-       A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE, A_GUIDE, A_PET_SIZE, A_PET_COLOR, A_SLEEP, A_FURNISH, A_BINDER, A_BINDER_CARD, A_BINDER_PAGE };
+       A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE, A_GUIDE, A_PET_SIZE, A_PET_COLOR, A_SLEEP, A_FURNISH, A_BINDER, A_BINDER_CARD, A_BINDER_PAGE, A_TALK_CHAT, A_ASK_WORK };
 #define TOWN_ROWS 24
 static TownRow rows[TOWN_ROWS];
 static int row_count = 0;
@@ -311,6 +311,7 @@ static void BuildRows(void) {
         }
     }
     if (town_menu == TM_SMITH) {
+        AddRow(A_ASK_WORK, 0, "Ask for work");
         for (int i = 0; i < player_item_count; i++) {
             InventoryItem *it = &player_inventory[i];
             if (it->durability_max <= 0 || it->durability_max >= 99999 || it->durability_current >= it->durability_max) continue;
@@ -338,6 +339,7 @@ static void BuildRows(void) {
             AddRow(A_RECYCLE, i, t);
         }
     } else if (town_menu == TM_CARDS) {
+        AddRow(A_ASK_WORK, 0, "Ask for work");
         RollCardOffers();
         for (int k = 0; k < 10; k++) {
             CardName(card_offers[k], nm, sizeof(nm));
@@ -365,6 +367,7 @@ static void BuildRows(void) {
             AddRow(A_PRACTICE, 0, t);
         }
     } else if (town_menu == TM_PETS) {
+        AddRow(A_ASK_WORK, 0, "Ask for work");
         for (int k = 0; k < FAMILIAR_COUNT; k++) {
             snprintf(t, sizeof(t), "%s - %d gold%s", familiars[k].name, familiars[k].price,
                      player_level < FAMILIAR_UNLOCK_LEVEL ? "  (needs level 3)" : "");
@@ -374,16 +377,23 @@ static void BuildRows(void) {
         snprintf(t, sizeof(t), "Familiar size: %s (press to change)", sizes[familiar_size]); AddRow(A_PET_SIZE, 0, t);
         snprintf(t, sizeof(t), "Familiar coat: %d of 4 (press to change)", familiar_color + 1); AddRow(A_PET_COLOR, 0, t);
     } else if (town_menu == TM_KING) {
+        AddRow(A_ASK_WORK, 0, "Ask for work");
         AddRow(A_KING, 0, legendary_quest == 2 ? "Report your Legendary victory" :
                           legendary_quest == 1 ? "Ask about your Legendary quest" : "Ask the King for a Legendary quest");
     } else if (town_menu == TM_BANK) {
+        AddRow(A_ASK_WORK, 0, "Ask for work");
         AddRow(A_DEPOSIT, 100, "Deposit 100 gold");
         AddRow(A_DEPOSIT, 1000, "Deposit 1,000 gold");
         AddRow(A_DEPOSIT, -1, "Deposit all gold");
         AddRow(A_WITHDRAW, 100, "Withdraw 100 gold");
         AddRow(A_WITHDRAW, 1000, "Withdraw 1,000 gold");
         AddRow(A_WITHDRAW, -1, "Withdraw everything");
+    } else if (town_menu == TM_TALK) {
+        AddRow(A_TALK_CHAT, 0, "Chat");
+        AddRow(A_ASK_WORK, 0, "Ask for work");
+        AddRow(A_LEAVE, 0, "Goodbye");
     } else if (town_menu == TM_BEGGAR) {
+        AddRow(A_ASK_WORK, 0, "Ask for work");
         AddRow(A_ALMS_GOLD, 10, "Give 10 gold");
         AddRow(A_ALMS_GOLD, 100, "Give 100 gold");
         AddRow(A_ALMS_FOOD, 0, "Give some food");
@@ -396,6 +406,7 @@ static void BuildRows(void) {
             snprintf(t, sizeof(t), "Store %s x%d", player_inventory[i].name, player_inventory[i].quantity); AddRow(A_STORE, i, t);
         }
     } else if (town_menu == TM_ALTAR) {
+        AddRow(A_ASK_WORK, 0, "Ask for work");
         static const char *offer[4] = { "Offer Incense", "Offer a Chaos Relic", "Offer Tarot Card, Rum Bottle and Cigar", "Offer a Fish from the deep" };
         int d = TownDeity();
         snprintf(t, sizeof(t), "Pray to %s", deity_names[d]);
@@ -467,7 +478,7 @@ void OpenTownMenu(int menu) {
     vendor_menu_open = 0; town_note[0] = 0;
     BuildRows();
     if (menu == TM_ALTAR) Say("ALTAR: A %s shrine to %s. The air grows still as you kneel.", deity_kinds[TownDeity()], deity_names[TownDeity()]);
-    else Say("%s", greetings[menu]);
+    else if (menu < TM_TALK) Say("%s", greetings[menu]);
 }
 
 void TownMenuMove(int step) { BuildRows(); if (row_count > 0) town_cursor = (town_cursor + step + row_count) % row_count; }
@@ -588,12 +599,29 @@ static void Offer(int d) {
     deity_favor[d] += 3;
 }
 
+static int talk_npc = -1, talk_npc_type = 0;
+static int TownMenuNpcType(void) {
+    switch (town_menu) {
+    case TM_SMITH: return 3; case TM_PETS: return 4; case TM_CARDS: return 5; case TM_KING: return 6;
+    case TM_BEGGAR: return 7; case TM_ALTAR: return 8; case TM_BANK: return 9;
+    }
+    return talk_npc_type;
+}
+// Villagers and guards: X opens a small talk menu (chat, ask for work, goodbye).
+void OpenVillagerTalk(int i) {
+    talk_npc = i; talk_npc_type = village_npcs[i].type;
+    OpenTownMenu(TM_TALK);
+    Say("%s", village_npcs[i].dialogue);
+}
+
 void TownMenuConfirm(void) {
     BuildRows();
     if (row_count <= 0) return;
     TownRow r = rows[town_cursor];
     switch (r.action) {
     case A_LEAVE: binder_open = 0; TownMenuBack(); return;
+    case A_TALK_CHAT: if (talk_npc >= 0 && talk_npc < village_npc_count) Say("%s", village_npcs[talk_npc].dialogue); return;
+    case A_ASK_WORK: AskForWork(TownMenuNpcType()); return;
     case A_BINDER: binder_open = r.arg; binder_page = 0; town_cursor = 0;
         Say("HOME: Deck %d / %d. A on a card moves it between your deck and the binder.", DeckCount(), DECK_MAX); return;
     case A_BINDER_PAGE: binder_page = r.arg; town_cursor = 0; return;
