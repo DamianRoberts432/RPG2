@@ -444,7 +444,6 @@ static void BuildRows(void) {
     } else if (town_menu == TM_TALK) {
         AddRow(A_TALK_CHAT, 0, "Chat");
         AddRow(A_ASK_WORK, 0, "Ask for work");
-        AddRow(A_LEAVE, 0, "Goodbye");
     } else if (town_menu == TM_BEGGAR) {
         AddRow(A_ASK_WORK, 0, "Ask for work");
         AddRow(A_ALMS_GOLD, 10, "Give 10 gold");
@@ -993,7 +992,7 @@ static void DrawPetFigure(HDC hdc, int cx, int cy, float s, int kind, COLORREF c
 }
 
 void DrawInteriorBackdrop(HDC hdc, int menu) {
-    if (menu == TM_BEGGAR || menu == TM_CHEST || menu == TM_HOME) return;
+    if (menu == TM_BEGGAR || menu == TM_CHEST || menu == TM_HOME || menu == TM_TALK) return;
     const int W = WINDOW_WIDTH, H = WINDOW_HEIGHT, F = INT_FLOOR_Y;
     int stone = menu == TM_KING || menu == TM_BANK, shrine = menu == TM_ALTAR;
     COLORREF wall = shrine ? RGB(40, 30, 52) : stone ? RGB(96, 96, 104) : RGB(116, 78, 46);
@@ -1146,7 +1145,8 @@ void DrawTownMenu(HDC hdc) {
     if (menu_screen != current_screen_index) { town_menu = TM_NONE; return; }
     BuildRows();
     DrawInteriorBackdrop(hdc, town_menu);
-    static const char *titles[10] = { "", "BLACKSMITH", "CARD SHOP", "PET SHOP", "THRONE ROOM", "TOWN BANK", "BEGGAR", "ALTAR", "CHEST", "HOME" };
+    static const char *titles[11] = { "", "BLACKSMITH", "CARD SHOP", "PET SHOP", "THRONE ROOM", "TOWN BANK", "BEGGAR", "ALTAR", "CHEST", "HOME", "" };
+    const char *title = town_menu == TM_TALK ? (talk_npc_type == 2 ? "GUARD" : "VILLAGER") : town_menu > 0 && town_menu < 11 ? titles[town_menu] : "";
     RECT box = { 1100, 70, 1790, 910 };
     if (town_menu == TM_BEGGAR || town_menu == TM_CHEST) { box.left = 560; box.right = 1260; box.top = 200; box.bottom = 700; }
     if (town_menu == TM_HOME) { box.left = 1240; box.right = 1840; box.top = binder_open ? 120 : 470; box.bottom = 860; }
@@ -1161,7 +1161,7 @@ void DrawTownMenu(HDC hdc) {
     SetBkMode(hdc, TRANSPARENT);
     HGDIOBJ prev_font = SelectObject(hdc, GetMenuUnderlineFont());
     SetTextColor(hdc, RGB(255, 235, 100));
-    TextOut(hdc, box.left + 20, box.top + 12, titles[town_menu], (int)strlen(titles[town_menu]));
+    TextOut(hdc, box.left + 20, box.top + 12, title, (int)strlen(title));
     SelectObject(hdc, prev_font);
 
     char line[200];
