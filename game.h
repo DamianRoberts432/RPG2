@@ -154,6 +154,7 @@ int CardGuideUnlocked(void);
 void CardInspectorMove(int d);
 void DrawCardInspector(HDC hdc, int x, int y, int w, int h);
 int MenuTabStep(int cur, int dir);
+void AdvMapDot(HDC hdc, int town_key, int cx, int cy, int cs);
 void AskForWork(int npc_type);
 int AdvAskForWork(int npc_type);
 int AdvOfferPending(void);

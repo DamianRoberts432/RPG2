@@ -25,6 +25,11 @@ static int Variant(int q) { return q % ADV_VARIANTS; }
 int AdvRarity(int q) { int r = Motif(q)->rarity + (Variant(q) == 2); return r > 3 ? 3 : r; }
 int AdvLevel(int q) { return Motif(q)->level + Variant(q) * 4; }
 static int RoleIndex(char c) { for (int i = 0; i < 10; i++) if (role_codes[i] == c) return i; return 0; }
+static const char *GiverName(int q) {
+    static const char *names[24] = { "James", "Marta", "Osric", "Elin", "Tomas", "Brida", "Halvard", "Wren", "Aldric", "Maud", "Corin", "Isolde",
+                                     "Garth", "Nell", "Rowan", "Agnes", "Edric", "Lise", "Bram", "Hilde", "Piers", "Sabine", "Ulric", "Tamsin" };
+    return names[(q / ADV_VARIANTS * 7 + q % ADV_VARIANTS) % 24];
+}
 static const char *GiverTag(int q) {
     static const char *tags[10] = { "[VILLAGE]", "[MARKET]", "[GUARD]", "[SMITH]", "[PET SHOP]", "[CARDS]", "[KING]", "[BEGGAR]", "[SHRINE]", "[BANK]" };
     return tags[RoleIndex(Motif(q)->giver)];
@@ -192,11 +197,15 @@ int AdvAskForWork(int npc_type) {
         for (int k = 0; k < n; k++) {
             int q = (start + k) % n, r = AdvRarity(q);
             if (adv_state[q] != 0 || AdvLevel(q) > player_level || RoleIndex(Motif(q)->giver) != npc_type) continue;
+            // Each quest belongs to fixed towns: once given (or abandoned) only its own giver offers it again,
+            // and before that only about 1 town in 4 has it, always the same ones.
+            if (adv_giver_town[q] != 0 ? adv_giver_town[q] != here : ((unsigned int)RainHash(here * 31 + q) & 3u) != 0) continue;
             if (pass == 0 ? r != want : r > want) continue;
             best = q; break;
         }
     if (best < 0) return 0;
-    adv_far_town[best] = PickFarTown(here, strstr(Motif(best)->steps, "Vk") != NULL);
+    if (adv_far_town[best] == 0 || adv_giver_town[best] != here) adv_far_town[best] = PickFarTown(here, strstr(Motif(best)->steps, "Vk") != NULL);
+    adv_giver_town[best] = here;
     adv_contact_town[best] = here; adv_contact_role[best] = (uint8_t)npc_type;
     offer_q = best; offer_until_adv = GetTickCount() + 12000;
     char line[200]; StepLine(best, 0, line, sizeof(line));
@@ -338,8 +347,8 @@ void DrawQuestJournal(HDC hdc, int x, int y, int w, int h) {
     snprintf(buf, sizeof(buf), "%s  %s", GiverTag(q), Motif(q)->title);
     SetTextColor(hdc, rarity_colors[r]); TextOut(hdc, dx, dy, buf, (int)strlen(buf));
     TownLabel(adv_giver_town[q], town, sizeof(town));
-    snprintf(buf, sizeof(buf), "%s  |  %s  |  level %d+  |  from the %s of %s", rarity_names[r], Motif(q)->origin, AdvLevel(q),
-             role_names[RoleIndex(Motif(q)->giver)], town);
+    snprintf(buf, sizeof(buf), "%s  |  %s  |  level %d+  |  from %s, the %s of %s", rarity_names[r], Motif(q)->origin, AdvLevel(q),
+             GiverName(q), role_names[RoleIndex(Motif(q)->giver)], town);
     SetTextColor(hdc, RGB(190, 200, 210)); TextOut(hdc, dx, dy + 24, buf, (int)strlen(buf));
     int sy = dy + 56;
     for (int k = 0; k < steps; k++) {
@@ -410,4 +419,21 @@ float AdvTownPriceMult(void) {
     if (sisters > 10) sisters = 10;
     if (rivals > 8) rivals = 8;
     return 1.0f - 0.02f * sisters + 0.03f * rivals;
+}
+
+// World map dots on towns your active quests point to: purple King, red boss,
+// yellow cave/treasure, light blue water, green for everything else.
+void AdvMapDot(HDC hdc, int town_key, int cx, int cy, int cs) {
+    int dots = 0;
+    for (int q = 0, n = AdvCount(); q < n && dots < 4; q++) {
+        if (!AdvActive(q) || (adv_far_town[q] != town_key && adv_contact_town[q] != town_key)) continue;
+        AdvStep st; CurStep(q, &st);
+        COLORREF c = Motif(q)->giver == 'k' ? RGB(190, 90, 230) : (st.type == 'K' && IS_BOSS_MONSTER(st.monster)) ? RGB(230, 40, 40) :
+                     st.type == 'C' ? RGB(250, 220, 40) : (st.type == 'B' && st.biome >= 9) ? RGB(110, 200, 255) : RGB(60, 210, 80);
+        int d = cs >= 16 ? cs / 6 : 2, x = cx + 2 + dots * (d + 2), y = cy + 2;
+        HBRUSH b = CreateSolidBrush(c); HGDIOBJ ob = SelectObject(hdc, b);
+        Ellipse(hdc, x, y, x + d + 1, y + d + 1);
+        SelectObject(hdc, ob); DeleteObject(b);
+        dots++;
+    }
 }

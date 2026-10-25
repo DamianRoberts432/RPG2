@@ -374,6 +374,7 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
             SelectObject(hdc, op); DeleteObject(xp);
             break;
         }
+        if (poi & (POI_VILLAGE | POI_CASTLE)) AdvMapDot(hdc, gy * META_GRID_SIZE + gx + ((poi & POI_TOWN_ALT) ? 30000 : 0), cx, cy, cs);
         if ((poi & (POI_VILLAGE | POI_CASTLE)) && cs >= 64) { // zoomed in far enough to write the name on the tile
             char nm[32]; TownNameAt(gy * META_GRID_SIZE + gx + ((poi & POI_TOWN_ALT) ? 30000 : 0), nm, sizeof(nm));
             SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(255, 240, 120));
