@@ -120,7 +120,13 @@ void ProcessGamepadInput(void) {
         }
 
         static DWORD last_menu_gp = 0;
-        if ((buttons & XINPUT_GAMEPAD_START) && (GetTickCount() - last_menu_gp > 300)) { is_menu_open = !is_menu_open; last_menu_gp = GetTickCount(); }
+        if ((buttons & XINPUT_GAMEPAD_START) && (GetTickCount() - last_menu_gp > 300)) { // START backs out of talk/shop menus first
+            if (town_menu) TownMenuBack();
+            else if (vendor_menu_open) { vendor_menu_open = 0; shop_action_menu = 0; }
+            else is_menu_open = !is_menu_open;
+            last_menu_gp = GetTickCount();
+        }
+        if ((buttons & XINPUT_GAMEPAD_B) && is_menu_open && (GetTickCount() - last_menu_gp > 300)) { is_menu_open = 0; last_menu_gp = GetTickCount(); return; }
         if (!is_menu_open) {
             // "Y" is the class special ability trigger (gameplay-only). Edge
             // detection ensures it fires exactly once per press, and the
@@ -188,6 +194,7 @@ void ProcessGamepadInput(void) {
             WeaponStats *held_weapon = GetEquippedWeaponStats();
             DWORD attack_delay_gp = held_weapon && held_weapon->attack_speed_mult < 1.0f ?
                 (DWORD)(350.0f / held_weapon->attack_speed_mult) : 350;
+            if (player_stamina < MELEE_SWING_STAMINA) attack_delay_gp = attack_delay_gp * 8 / 5; // tired arms swing slower
             if ((buttons & XINPUT_GAMEPAD_A) && (GetTickCount() - last_attack_gp > attack_delay_gp)) {
                 if (shopping) {
                     if (vendor_tab == 0) ShopConfirm(); else HandleVendorSell();
@@ -333,7 +340,13 @@ void ProcessGamepadInput(void) {
     }
 
     static DWORD last_menu_kb = 0;
-    if ((GetAsyncKeyState('M') || GetAsyncKeyState('I')) && (GetTickCount() - last_menu_kb > 300)) { is_menu_open = !is_menu_open; last_menu_kb = GetTickCount(); }
+    if ((GetAsyncKeyState('M') || GetAsyncKeyState('I')) && (GetTickCount() - last_menu_kb > 300)) {
+        if (town_menu) TownMenuBack();
+        else if (vendor_menu_open) { vendor_menu_open = 0; shop_action_menu = 0; }
+        else is_menu_open = !is_menu_open;
+        last_menu_kb = GetTickCount();
+    }
+    if ((GetAsyncKeyState(VK_ESCAPE) & 0x8000) && is_menu_open && (GetTickCount() - last_menu_kb > 300)) { is_menu_open = 0; last_menu_kb = GetTickCount(); }
 
     if (!is_menu_open) {
         // Keyboard "Y" mirrors the gamepad class special, also edge-triggered.
@@ -445,7 +458,8 @@ void ProcessGamepadInput(void) {
             float race_mult = GetRaceSpeedMultiplier();
             float speed = 0.15f * race_mult * WeightSpeedFactor() * (1.0f + 0.02f * stat_spent[1]); if (speed < 0.01f) speed = 0.0f;
             if (speed <= 0.0f) strcpy(arpg_action_log, "OVERLOADED: Too heavy to move! Drop something.");
-            if (running) { speed *= 1.6f; player_stamina -= 0.25f; }
+            if (running && !HeroExhausted()) { speed *= 1.6f; player_stamina -= 0.15f; }
+            if (HeroExhausted()) speed *= 0.6f;
             if (hero_hop_frame > 0) speed *= 1.3f;
             if (player_stamina <= 0.0f) {
                 speed *= 0.6f; // exhausted: can still walk, just slower

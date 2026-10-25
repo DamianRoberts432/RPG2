@@ -133,16 +133,32 @@ static void SpawnTintedBurst(float x, float y, float dir_x, float dir_y, uint32_
 
 void SpawnBloodBurst(float x, float y, float dir_x, float dir_y) { SpawnTintedBurst(x, y, dir_x, dir_y, RGB(200, 25, 25)); }
 
+// Swinging on an empty stamina bar is weak and slow; the third such swing in a row
+// leaves the hero exhausted for 10 seconds (no attacks, slow feet).
+DWORD exhaustion_until = 0;
+static int empty_swings = 0;
+int HeroExhausted(void) { return GetTickCount() < exhaustion_until; }
+
 void PerformMeleeAttack(void) {
     hit_splash_color = 0;
     WeaponStats *weapon = GetEquippedWeaponStats();
     float damage = (weapon ? (float)(weapon->damage + EquippedForgeBonus()) : 1.0f) * TownDamageMult();
     if (active_monster == MONSTER_DRACULA && SilverWeaponEquipped()) damage *= 2.0f;
     float stamina_cost = MELEE_SWING_STAMINA + (weapon ? weapon->stamina_cost * 2.0f : 0.0f);
-    if (player_stamina < stamina_cost) { strcpy(arpg_action_log, "Exhausted! Too tired to swing that weapon."); return; }
+    if (HeroExhausted()) { strcpy(arpg_action_log, "EXHAUSTED! Too spent to swing. Catch your breath."); return; }
+    int drained = player_stamina < stamina_cost;
+    if (drained) {
+        damage *= 0.5f;
+        if (++empty_swings >= 3) {
+            empty_swings = 0; exhaustion_until = GetTickCount() + 10000;
+            strcpy(arpg_action_log, "You're EXHAUSTED for 10 seconds! Back off and breathe.");
+            return;
+        }
+    } else empty_swings = 0;
     player_stamina -= (float)stamina_cost;
+    if (player_stamina < 0.0f) player_stamina = 0.0f;
     stamina_rest_timer = 0;
-    sword_swipe_frame = (weapon && weapon->attack_speed_mult < 1.0f) ? 14 : 10;
+    sword_swipe_frame = drained ? 18 : (weapon && weapon->attack_speed_mult < 1.0f) ? 14 : 10;
     SelectTargetEnemy();
     float m_dist = DistanceToEnemy();
     int spear = active_weapon == WEAPON_SPEAR;

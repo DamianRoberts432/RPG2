@@ -4,7 +4,7 @@
 #define YETI_AGGRO_RADIUS 3.0f
 #define YETI_CHARGE_SPEED 0.04f
 #define POISON_TICK_DAMAGE 0.2f
-#define WINDED_STAMINA_REGEN 0.3f
+#define WINDED_STAMINA_REGEN 0.45f
 // Prairie villages have four homes; castle towns have none (just stalls).
 int VillageHomeCentre(int i, float *x, float *y) {
     if (i == 4) return PlayerHomeCentre(x, y);

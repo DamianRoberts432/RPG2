@@ -91,7 +91,7 @@ void HandleInventoryPrimaryAction(void) {
         // handled inside AddWoodToNearbyFire()
     } else if (strcmp(item->name, "Strategy Guide") == 0) {
         guide_flash_until = GetTickCount() + GUIDE_FLASH_MS; card_guide_unlocked = 1;
-        strcpy(arpg_action_log, "A&D STRATEGY GUIDE: secret card combos revealed!");
+        strcpy(arpg_action_log, "CARD GAME STRATEGY GUIDE: secret card combos revealed!");
     } else if (strcmp(item->name, "Peyote") == 0) {
         EatPeyote();
     } else if (strcmp(item->name, "Fish") == 0 || strcmp(item->name, "Apple") == 0 || strcmp(item->name, "Turnip") == 0 ||
@@ -148,8 +148,8 @@ int WearEquippedBow(void) { return WearEquipped(1); }
 // carry limit while an item sits unequipped in the pack - see
 // RecalculateCarriedWeight(), which excludes anything currently worn/wielded.
 float GetNamedItemWeight(const char *name) {
-    if (strcmp(name, "Wood") == 0) return 1.0f;
-    if (strcmp(name, "Stone") == 0) return 1.0f;
+    if (strcmp(name, "Wood") == 0) return 0.4f;
+    if (strcmp(name, "Stone") == 0) return 0.6f;
     if (strcmp(name, "Short Sword") == 0) return 2.0f;
     if (strcmp(name, "Long Bow") == 0) return 2.0f;
     if (strcmp(name, "Short Bow") == 0) return 1.5f;
@@ -274,7 +274,7 @@ int AddStackableItem(const char *name, const char *slot, int quantity) {
 }
 
 float CarryLimit(void) {
-    return 100.0f;
+    return 150.0f + 10.0f * stat_spent[0]; // each STR point spent carries 10 more
 }
 
 // Returns the inventory slot index owning a stack named `name`, or -1 if the

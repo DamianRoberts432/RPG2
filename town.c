@@ -349,7 +349,7 @@ static void BuildRows(void) {
         AddRow(A_PACK, 60, "60-card box - 350,000 gold");
         snprintf(t, sizeof(t), "Master Base Box (all %d cards) - 1,000,000 gold", CARD_POOL);
         AddRow(A_PACK, 0, t);
-        AddRow(A_GUIDE, 0, "A&D Ultimate Strategy Guide - 1,000,000 gold");
+        AddRow(A_GUIDE, 0, "Card Game Strategy Guide - 1,000,000 gold");
         AddRow(A_KID, 0, "Talk to the kid at the table");
         int left = kid_round_screen == current_screen_index ? KID_MAX_ROUNDS - kid_rounds : KID_MAX_ROUNDS;
         if (kid_dealt && kid_round_screen == current_screen_index) {
@@ -659,12 +659,12 @@ void TownMenuConfirm(void) {
         return; }
     case A_PACK: BuyCardPack(r.arg); return;
     case A_GUIDE:
-        if (HasInventoryItem("Strategy Guide")) { Say("CARD SHOP: You already own the A&D Strategy Guide."); return; }
-        if (gold_count < 1000000) { Say("CARD SHOP: The A&D Strategy Guide costs 1,000,000 gold."); return; }
+        if (HasInventoryItem("Strategy Guide")) { Say("CARD SHOP: You already own the Card Game Strategy Guide."); return; }
+        if (gold_count < 1000000) { Say("CARD SHOP: The Card Game Strategy Guide costs 1,000,000 gold."); return; }
         gold_count -= 1000000;
         AddStackableItem("Strategy Guide", "Tool", 1); RecalculateCarriedWeight();
         guide_flash_until = GetTickCount() + GUIDE_FLASH_MS; card_guide_unlocked = 1;
-        Say("CARD SHOP: The A&D Ultimate Strategy Guide is yours. Read it from your pack; the CARDS tab in your menu is open for good.");
+        Say("CARD SHOP: The Card Game Strategy Guide is yours. Read it from your pack; the CARDS tab in your menu is open for good.");
         return;
     case A_KID: kid_line = (kid_line + 1) % KID_LINE_COUNT; Say("%s", kid_lines[kid_line]); return;
     case A_PRACTICE: PracticeHand(r.arg); return;
@@ -1262,7 +1262,7 @@ void DrawCardInspector(HDC hdc, int x, int y, int w, int h) {
     char buf[320];
     SetBkMode(hdc, TRANSPARENT);
     SetTextColor(hdc, RGB(255, 215, 0));
-    snprintf(buf, sizeof(buf), "CARD INSPECTOR (A&D Strategy Guide)   Binder: %d / %d   UP/DOWN to browse", CardCount(), card_pool_size);
+    snprintf(buf, sizeof(buf), "CARD INSPECTOR (Card Game Strategy Guide)   Binder: %d / %d   UP/DOWN to browse", CardCount(), card_pool_size);
     TextOut(hdc, x, y, buf, (int)strlen(buf));
     int rows = (h - 80) / 22; if (rows < 5) rows = 5;
     int first = inspector_cursor - rows / 2;
