@@ -146,6 +146,14 @@ Talking to a shopkeeper takes you inside their building (merchant included).
 - **Treasure Map:** building a chest gives you one, and a red X on the World Map marks each of your chests.
 - **CARDS tab:** owning the Strategy Guide opens it for good. It lists every card with its set, power, ability and whether you own it.
 
+## Asking for work
+
+- NPCs don't push quests on you. Villagers and guards open a Chat / Ask for work / Goodbye menu, every shop menu has an "Ask for work" option, and at the merchant you press LT or Q. Ask again to accept.
+- You can hold 3 quests at the start, plus 1 more every 4 levels.
+- Each quest belongs to fixed towns and a named giver. A finished big quest never comes back, and an abandoned one goes back to the person who gave it.
+- Small villager jobs can be repeated and grow with your level. The merchant's Wood Cart makes wood and stone weigh a quarter as much, and villagers then ask for 5x bigger hauls at 6x the pay.
+- World Map dots mark towns your quests point to: purple for the King, red for a boss, yellow for a cave or treasure, light blue for water, green for everything else.
+
 ## Outlaws, legacy and caves
 
 - **Outlaws:** crimes such as smashing barrels raise town heat. At 30 or more you are **WANTED** (shown on the HUD), and bounty hunters may track you down outside town. A town guard takes a fine (press X twice) to clear your name, and each night's sleep also cools the heat.
