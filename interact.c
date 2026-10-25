@@ -67,11 +67,12 @@ void HandleContextInteract(void) {
         if (village_npcs[i].type == 1) {
             vendor_menu_open = 1;
             vendor_tab = 0;
-            strcpy(arpg_action_log, "MARKET: LB Buy tab / RB Sell tab, SPACE confirms, ESC closes.");
+            strcpy(arpg_action_log, "MARKET: LB Buy / RB Sell, SPACE confirms, ESC or START closes, LT or Q asks for work.");
         } else if (village_npcs[i].type >= 3 && village_npcs[i].type <= 9) {
             static const int menus[7] = { TM_SMITH, TM_PETS, TM_CARDS, TM_KING, TM_BEGGAR, TM_ALTAR, TM_BANK };
             OpenTownMenu(menus[village_npcs[i].type - 3]);
-        } else if (village_npcs[i].type != 0 || !VillagerQuestTalk()) strcpy(arpg_action_log, village_npcs[i].dialogue);
+        } else if (village_npcs[i].type == 0 || village_npcs[i].type == 2) { if (!VillagerQuestTalk()) OpenVillagerTalk(i); }
+        else strcpy(arpg_action_log, village_npcs[i].dialogue);
         return;
     }
     if (HasInventoryItem("Fishing Pole") && IsFacingWater()) { CastFishingLine(); return; }

@@ -78,7 +78,7 @@ void DrawPlayerStatusHUD(HDC hdc) {
     RECT sta_fill = { bar_x, sta_y, bar_x + (int)(bar_w * sta_pct), sta_y + bar_h };
     HBRUSH sta_b = CreateSolidBrush(sta_color); FillRect(hdc, &sta_fill, sta_b); DeleteObject(sta_b);
 
-    if (player_stamina <= 0.0f) {
+    if (player_stamina <= 0.0f || HeroExhausted()) {
         SetTextColor(hdc, RGB(230, 70, 60));
         TextOut(hdc, bar_x, sta_y + bar_h + 2, "Exhausted!", 10);
     }
@@ -311,7 +311,7 @@ void DrawStrategyGuideFlash(HDC hdc) {
     SelectObject(hdc, old_b); SelectObject(hdc, old_p); DeleteObject(border);
     SetBkMode(hdc, TRANSPARENT);
     static const char *lines[] = {
-        "A&D STRATEGY GUIDE - SECRET CARD COMBOS",
+        "CARD GAME STRATEGY GUIDE - SECRET CARD COMBOS",
         "",
         "Skeleton + Zombie + Vampire   ->  NIGHT TERROR",
         "Yeti + Bigfoot + Satyr        ->  WILD HUNT",
@@ -354,6 +354,7 @@ void DrawTabbedMenuOverlay(HDC hdc) {
     char buf[256];
 
     if (current_menu_tab == 0) { 
+        DrawPanel(hdc, 70, 84, 800, 292); DrawPanel(hdc, 810, 84, 1310, 322); DrawPanel(hdc, 70, 296, 800, 550);
         DrawHeroAssetEx(hdc, 150, 200, 2.0f);
 
         const int info_x = 260;
@@ -491,11 +492,18 @@ void DrawTabbedMenuOverlay(HDC hdc) {
                 fabs(wind_gust) > 0.3f ? ", windy" : "", weather_source_label);
         TextOut(hdc, 90, WINDOW_HEIGHT - 95, buf, (int)strlen(buf));
     } else if (current_menu_tab == MENU_TAB_QUESTS) {
+        int mid = 90 + (WINDOW_WIDTH - 240) / 2;
+        DrawPanel(hdc, 80, 150, mid - 14, WINDOW_HEIGHT - 112);
+        DrawPanel(hdc, mid - 8, 150, WINDOW_WIDTH - 136, WINDOW_HEIGHT - 384);
+        DrawPanel(hdc, mid - 8, WINDOW_HEIGHT - 378, WINDOW_WIDTH - 136, WINDOW_HEIGHT - 112);
         DrawQuestJournal(hdc, 90, 100, WINDOW_WIDTH - 240, WINDOW_HEIGHT - 220);
         DrawMsgHistory(hdc, 90 + (WINDOW_WIDTH - 240) / 2, WINDOW_HEIGHT - 370, (WINDOW_WIDTH - 240) / 2, 11);
     } else if (current_menu_tab == MENU_TAB_CARDS) {
+        DrawPanel(hdc, 80, 126, 90 + (WINDOW_WIDTH - 240) / 2 - 14, WINDOW_HEIGHT - 112);
+        DrawPanel(hdc, 90 + (WINDOW_WIDTH - 240) / 2 - 8, 126, WINDOW_WIDTH - 136, 420);
         DrawCardInspector(hdc, 90, 100, WINDOW_WIDTH - 240, WINDOW_HEIGHT - 220);
     } else { 
+        DrawPanel(hdc, 80, 92, 900, 312);
         TextOut(hdc, 90, 100, "GAME VARIABLE OPTIONS:", 22);
         sprintf(buf, "[1] XP Multiplier: %.1fx   (Modify with Left/Right Arrow)", opt_xp_mult); TextOut(hdc, 100, 140, buf, (int)strlen(buf));
         sprintf(buf, "[2] Loot Multiplier: %.1fx", opt_loot_mult); TextOut(hdc, 100, 180, buf, (int)strlen(buf));
@@ -636,4 +644,13 @@ void DrawMsgHistory(HDC hdc, int x, int y, int w, int lines) {
         RECT r = { x, y + 24 + k * 20, x + w, y + 44 + k * 20 };
         DrawText(hdc, l->text, -1, &r, DT_SINGLELINE | DT_END_ELLIPSIS | DT_LEFT | DT_NOPREFIX);
     }
+}
+
+// A framed box behind a section of a menu.
+void DrawPanel(HDC hdc, int l, int t, int r, int b) {
+    HBRUSH fill = CreateSolidBrush(RGB(24, 30, 42));
+    HPEN edge = CreatePen(PS_SOLID, 1, RGB(70, 120, 160));
+    HGDIOBJ ob = SelectObject(hdc, fill), op = SelectObject(hdc, edge);
+    RoundRect(hdc, l, t, r, b, 14, 14);
+    SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(fill); DeleteObject(edge);
 }

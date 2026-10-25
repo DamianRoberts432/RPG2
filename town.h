@@ -5,7 +5,7 @@
 // beggars and altars. Talking to a keeper opens a Zelda 2-style interior
 // with a menu picked with up/down.
 
-enum { TM_NONE, TM_SMITH, TM_CARDS, TM_PETS, TM_KING, TM_BANK, TM_BEGGAR, TM_ALTAR, TM_CHEST, TM_HOME };
+enum { TM_NONE, TM_SMITH, TM_CARDS, TM_PETS, TM_KING, TM_BANK, TM_BEGGAR, TM_ALTAR, TM_CHEST, TM_HOME, TM_TALK };
 
 // Craftable storage chests (4 Wood) left in the world; saved with the hero.
 #define MAX_CHESTS 8

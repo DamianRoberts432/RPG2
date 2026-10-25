@@ -45,7 +45,7 @@ extern int merch_item_count;
 // than their matching cooldowns so pursuit suppression always lapses before
 // the ability can be used again.
 #define FACING_CONE_DOT_THRESHOLD 0.25f
-#define MELEE_SWING_STAMINA 8.0f // every swing tires the hero; heavy weapons cost more
+#define MELEE_SWING_STAMINA 5.0f // every swing tires the hero; heavy weapons cost more
 #define SPELL_COOLDOWN_MS     1500
 #define BACKSTEP_COOLDOWN_MS  2000
 #define SNEAK_COOLDOWN_MS     5000
@@ -154,6 +154,14 @@ int CardGuideUnlocked(void);
 void CardInspectorMove(int d);
 void DrawCardInspector(HDC hdc, int x, int y, int w, int h);
 int MenuTabStep(int cur, int dir);
+void AskForWork(int npc_type);
+int AdvAskForWork(int npc_type);
+int AdvOfferPending(void);
+void OpenVillagerTalk(int i);
+int VillagerOfferPending(void);
+extern int villager_job_ask;
+int HeroExhausted(void);
+void DrawPanel(HDC hdc, int l, int t, int r, int b);
 void MsgLogUpdate(void);
 void DrawMsgLog(HDC hdc, int x, int y);
 void DrawMsgHistory(HDC hdc, int x, int y, int w, int lines);
@@ -344,7 +352,7 @@ void TryCardDrop(int monster); // monster < 0 for chests and fishing
 #define HUD_DATE_Y 16
 #define HUD_LOG_Y 100
 extern int stamina_rest_timer;
-#define STAMINA_REST_FRAMES_REQUIRED 45
+#define STAMINA_REST_FRAMES_REQUIRED 30
 extern float player_hp, max_player_hp;
 extern DWORD hero_held_until;
 extern int hero_hop_frame;
