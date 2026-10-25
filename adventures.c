@@ -88,7 +88,10 @@ static void StepLine(int q, int i, char *out, size_t n) {
 }
 static void ProgressText(int q, const AdvStep *st, char *out, size_t n) {
     if (st->type == 'K' || st->type == 'F' || st->type == 'P') snprintf(out, n, "  (%d / %d)", adv_prog[q], st->count);
-    else if (st->type == 'G') snprintf(out, n, "  (you have %d / %d)", GetMaterialCount(st->item), st->count);
+    else if (st->type == 'G') {
+        char t[32]; TownLabel(adv_contact_town[q], t, sizeof(t));
+        snprintf(out, n, "  (bring them to the %s in %s; you have %d / %d)", role_names[adv_contact_role[q] % 10], t, GetMaterialCount(st->item), st->count);
+    }
     else out[0] = 0;
 }
 int AdvReward(int q) { return (40 + 25 * StepTotal(q)) * (1 + 2 * AdvRarity(q)) * (10 + AdvLevel(q)) / 10 * (2 + Variant(q)) / 2; }
@@ -146,7 +149,7 @@ int AdvTalk(int npc_type) {
         AdvStep st; CurStep(q, &st);
         if ((st.type == 'V' && here == adv_far_town[q] && RoleMatches(st.role, npc_type)) ||
             (st.type == 'L' && here == adv_contact_town[q] && RoleMatches(st.role, npc_type))) {
-            adv_contact_town[q] = here; adv_contact_role[q] = (uint8_t)npc_type;
+            if (st.type == 'V') { adv_contact_town[q] = here; adv_contact_role[q] = (uint8_t)npc_type; } // a local errand keeps the original contact
             AdvAdvance(q);
             return 1;
         }
