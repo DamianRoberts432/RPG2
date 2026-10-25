@@ -108,8 +108,10 @@ int VillagerQuestTalk(void) {
     int k = rand() % quest_template_count;
     QuestTemplate *q = &quest_templates[k];
     if (q->count <= 0) return 0;
-    int need = q->fetch == Q_DELIVER ? rand() % RECIPIENT_COUNT : q->count >= 25 ? q->count : q->count + player_level / 5;
+    // Small jobs grow with you: early on "bring 8 wood", later hauls of hundreds (a Wood Cart makes stone/wood hauls 5x bigger and pay 6x).
+    int need = q->fetch == Q_DELIVER ? rand() % RECIPIENT_COUNT : q->count >= 25 ? q->count * (1 + player_level / 10) : q->count + player_level / 2;
     int reward = q->reward * (10 + player_level) / 10;
+    if (q->fetch == Q_GATHER && HasInventoryItem("Wood Cart") && (strcmp(q->item, "Wood") == 0 || strcmp(q->item, "Stone") == 0)) { need *= 5; reward *= 6; }
     OfferText(q, need, reward);
     if (q->name[0]) {
         char buf[sizeof(arpg_action_log) + 48];
