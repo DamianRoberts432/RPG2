@@ -29,6 +29,7 @@ void RecordCurrentScreenOnMap(void) {
         else map_poi[gy][gx] &= (uint8_t)~POI_TOWN_ALT;
     }
     if (current_biome == BIOME_CASTLE) { map_poi[gy][gx] |= POI_CASTLE; return; }
+    map_poi[gy][gx] &= (uint8_t)~POI_CASTLE;
     if (village_npc_count > 0) map_poi[gy][gx] |= POI_VILLAGE;
     else map_poi[gy][gx] &= (uint8_t)~POI_VILLAGE;
 }
@@ -93,7 +94,7 @@ int SaveWorldMapState(void) {
     ok = ok && fwrite(player_home, sizeof(player_home), 1, f) == 1;
     int32_t outfit[2] = { hero_cloth, hero_trim };
     ok = ok && fwrite(outfit, sizeof(outfit), 1, f) == 1;
-    int32_t extra[8] = { familiar_size, familiar_color, card_guide_unlocked, cave_room_claimed, 0, 0, 0, 0 };
+    int32_t extra[8] = { familiar_size, familiar_color, card_guide_unlocked, cave_room_claimed, (int32_t)world_seed, 0, 0, 0 };
     ok = ok && fwrite(extra, sizeof(extra), 1, f) == 1;
     ok = ok && AdvSave(f);
     ok = ok && fwrite(card_collection_bits + CARD_BYTES_V1, CARD_BYTES - CARD_BYTES_V1, 1, f) == 1 &&
@@ -171,6 +172,7 @@ int LoadWorldMapState(void) {
         familiar_color = extra[1] & 3;
         card_guide_unlocked = extra[2] != 0;
         cave_room_claimed = extra[3] & 0xFF;
+        world_seed = (uint32_t)extra[4];
     }
     if (has_cards) {
         memset(card_collection_bits, 0, sizeof(card_collection_bits));

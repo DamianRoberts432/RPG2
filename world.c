@@ -21,7 +21,10 @@ void GenerateVillageNPCs(void) {
     village_light_count = 0;
     int is_market = current_biome == BIOME_CASTLE;
     // Fewer settlements: only about one Prairie screen in three holds a village.
-    if (!is_market && !(current_biome == BIOME_PRAIRIE && current_screen_index % 3 == 0)) return;
+    static const char *dwarf_greetings[3] = { "Dwarf: Mind your head, the hold was cut for us.", "Dwarf: Good stone in these hills. Good ale too.", "Dwarf: Elves? Hmph. Welcome anyway, traveler." };
+    int site = in_cave || current_screen_index >= 20000 ? SITE_NONE : WorldSiteAt(screen_grid_x, screen_grid_y);
+    village_dwarves = site == SITE_DWARF;
+    if (!is_market && site != SITE_VILLAGE && site != SITE_DWARF) return;
     int shift = (current_screen_index % 3) - 1;
     const float village_x[4] = { 11.0f, 15.0f, 19.0f, 15.0f };
     const float village_y[4] = { 11.0f, 10.0f, 11.0f, 18.0f };
@@ -52,7 +55,7 @@ void GenerateVillageNPCs(void) {
         for (int i = 0; i < 4; i++) {
             float nx = village_x[i] + shift + ((i & 1) ? 1.0f : -1.0f), ny = village_y[i] + 2.0f;
             village_npcs[i] = (NPCEntity){ nx, ny, nx, ny, 0, i * 17, FACE_DOWN,
-                villager_greetings[(current_screen_index + i) % 3], 100 + (i * 17) % 80 };
+                village_dwarves ? dwarf_greetings[(current_screen_index + i) % 3] : villager_greetings[(current_screen_index + i) % 3], 100 + (i * 17) % 80 };
         }
         village_npc_count = 4;
         float shrine_x = 13.5f + shift, beggar_x = 20.5f + shift; // in front of the homes, not inside them
@@ -349,7 +352,7 @@ void GenerateProceduralScreen(int index) {
             // biome that was drawn there before.
             current_biome = (BiomeType)recalled;
         } else {
-            current_biome = PickBiomeForScreen(grid_c, grid_r);
+            current_biome = (BiomeType)WorldBiomeAt(grid_c, grid_r);
         }
     }
 
@@ -486,6 +489,7 @@ void GenerateProceduralScreen(int index) {
             }
         }
     }
+    ClearHighwayTiles();
     GenerateVillageNPCs();
     if (current_biome == BIOME_SWAMP) { gator_x = 12.0f; gator_y = 12.0f; gator_active = 1; } else { gator_active = 0; }
     SpawnScreenEnemies();

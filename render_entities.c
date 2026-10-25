@@ -721,6 +721,7 @@ static void DrawNpcProp(HDC hdc, int sx, int sy, int i) {
 }
 
 void DrawZeldaStyleVillager(HDC hdc, int sx, int sy, int npc_index, float scale) {
+    if (village_dwarves) scale *= 0.85f; // dwarf holds: short, stocky and bearded
 #define VS(v) ((int)((v) * scale))
     static const COLORREF tunic_palette[] = { RGB(60, 150, 70), RGB(190, 90, 60), RGB(90, 110, 170), RGB(200, 170, 70) };
     static const COLORREF hair_palette[] = { RGB(80, 55, 35), RGB(230, 210, 120), RGB(40, 40, 45), RGB(150, 70, 40) };
@@ -770,6 +771,11 @@ void DrawZeldaStyleVillager(HDC hdc, int sx, int sy, int npc_index, float scale)
     }
     if (villager_facing == 2) Ellipse(hdc, sx - VS(4), sy - VS(14), sx + VS(4), sy - VS(7)); // back of the head
     SelectObject(hdc, old); DeleteObject(hair_b);
+    if (village_dwarves && villager_facing != 2) {
+        HBRUSH beard = CreateSolidBrush(hair); HGDIOBJ ob = SelectObject(hdc, beard);
+        POINT bd[] = { { sx - VS(4), sy - VS(9) }, { sx + VS(4), sy - VS(9) }, { sx, sy - VS(1) } };
+        Polygon(hdc, bd, 3); SelectObject(hdc, ob); DeleteObject(beard);
+    }
     if (villager_facing != 2) {
         HBRUSH eye = CreateSolidBrush(RGB(30, 25, 25));
         int ex = sx + villager_facing * VS(1.5f);

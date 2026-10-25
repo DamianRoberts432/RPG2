@@ -41,11 +41,15 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
     
     grass_brush = CreateSolidBrush(RGB(105, 185, 85)); creation_bg = CreateSolidBrush(RGB(15, 18, 24)); clean_null_pen = CreatePen(PS_NULL, 0, RGB(0,0,0));
     RecalculateCarriedWeight();
-    LoadWorldMapState();
+    int loaded = LoadWorldMapState();
+    if (!world_seed) world_seed = 1u + (uint32_t)(GetTickCount() % 2000000000u);
+    GenerateWholeWorld(world_seed);
+    if (!loaded) { screen_grid_x = elysium_gx; screen_grid_y = elysium_gy; }
+    screens_until_town = WorldIsTown(screen_grid_x, screen_grid_y) ? 0 : 1;
     InitCardSets();
     IngestUpdates();
     InitSeasonAndWeather();
-    ApplyClassAndRaceStats(); GenerateProceduralScreen(screen_grid_y * META_GRID_SIZE + screen_grid_x);
+    ApplyClassAndRaceStats(); GenerateProceduralScreen((screens_until_town == 0 ? 30000 : 0) + screen_grid_y * META_GRID_SIZE + screen_grid_x);
 
     while (msg.message != WM_QUIT) {
         if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) { TranslateMessage(&msg); DispatchMessage(&msg); } 
@@ -57,7 +61,6 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
             if (!in_cave && (player_x <= 0.5f || player_x >= (MAP_SIZE - 1.5f) || player_y <= 0.5f || player_y >= (MAP_SIZE - 1.5f))) {
                 // Leaving the Castle steps to its real neighbouring cell like any
                 // other screen instead of snapping back to the world centre.
-                int leaving_castle = (screens_until_town == 0);
                 {
                     // Direction-aware screen stepping: whichever edge the hero
                     // crossed determines which neighboring grid cell (and thus
@@ -80,13 +83,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                         if (player_y <= 0.5f) player_y = 2.0f;
                         else if (player_y >= (MAP_SIZE - 1.5f)) player_y = (float)(MAP_SIZE - 3);
                     } else {
-                        if (leaving_castle) screens_until_town = 3 + (rand() % 8);
-                        else screens_until_town--;
-                        // Known cells always look the way the map logged them: a
-                        // castle stays a castle, and a new castle only rises on
-                        // ground that hasn't been explored yet.
-                        if (IsMapCastle(new_gx, new_gy)) screens_until_town = 0;
-                        else if (screens_until_town <= 0 && GetVisitedBiomeAt(new_gx, new_gy) != -1) screens_until_town = 1;
+                        screens_until_town = WorldIsTown(new_gx, new_gy) ? 0 : 1;
                         screen_grid_x = new_gx; screen_grid_y = new_gy;
                         // Castle screens get their own id range (caves use 20000+)
                         // so they never share loot/campfires with an overworld cell.

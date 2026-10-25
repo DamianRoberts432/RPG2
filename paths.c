@@ -42,6 +42,7 @@ void UpdateFootpaths(void) {
 }
 
 void DrawFootpaths(HDC hdc) {
+    DrawHighway(hdc);
     float a = (float)fabs(sin(day_night_cycle_accumulator));
     if (a < 0.35f) a = 0.35f;
     HGDIOBJ old_pen = SelectObject(hdc, GetStockObject(NULL_PEN));
