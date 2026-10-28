@@ -488,5 +488,7 @@ void DrawWishingWell(HDC hdc);
 int TryWishingWell(void);
 enum { HOLIDAY_NONE, HOLIDAY_HALLOWEEN, HOLIDAY_WINTER_FEAST, HOLIDAY_NEW_YEAR };
 int HolidayToday(void);
+void SunShadowOffset(float *ox, float *oy);
+void DrawCanopyShadows(HDC hdc);
 
 #endif // GAME_H

@@ -68,7 +68,9 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
     int bob = (is_running && override_scale == 1.0f) ? (int)(sin(run_bob * 1.2f) * 1.5f) : 0; sy += bob;
     
     HBRUSH shadow_b = CreateSolidBrush(RGB(15, 20, 26)); HGDIOBJ old = SelectObject(hdc, shadow_b); 
-    Ellipse(hdc, sx - (int)(10 * scale), sy + (int)(14 * scale), sx + (int)(10 * scale), sy + (int)(22 * scale)); SelectObject(hdc, old); DeleteObject(shadow_b);
+    { float ox, oy; SunShadowOffset(&ox, &oy); // the shadow stretches away from the sun or moon
+      int lx = (int)(ox * 12 * scale), ly = (int)(oy * 4 * scale);
+      Ellipse(hdc, sx - (int)(10 * scale) + (lx < 0 ? lx : 0), sy + (int)(14 * scale), sx + (int)(10 * scale) + (lx > 0 ? lx : 0), sy + (int)(22 * scale) + ly); } SelectObject(hdc, old); DeleteObject(shadow_b);
 
     // Menus and portraits show the hero facing you; in play the 8-way facing.
     int dir = override_scale == 1.0f ? HeroDir8() : 0;

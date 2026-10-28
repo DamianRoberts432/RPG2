@@ -836,3 +836,47 @@ void DrawNightDarkness(HDC hdc) {
     BLENDFUNCTION bf = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
     AlphaBlend(hdc, 0, 0, LW * 4, LH * 4, ldc, 0, 0, LW, LH, bf);
 }
+
+// Direction shadows fall, from the sun by day and the moon by night: each light
+// rises on the right and sets on the left, so shadows swing right-to-left and
+// stretch long when it's low. ox is -1..1 (sideways), oy 0..1 (lengthening).
+void SunShadowOffset(float *ox, float *oy) {
+    float a = day_night_cycle_accumulator, elev = fabsf(sinf(a)), side = cosf(a) * (sinf(a) >= 0.0f ? 1.0f : -1.0f);
+    *ox = -side * (1.0f - elev * 0.6f);
+    *oy = 1.0f - elev;
+}
+
+// Tunic-style canopy shade: every tree drops a soft, lumpy shadow on the ground,
+// cast away from the sun or moon. All of it goes on one layer (a copy of the
+// frame) blended back at a fixed alpha, so the cost is a single blit whatever
+// the tree count - a Saturn would do the same with one half-transparent pass.
+void DrawCanopyShadows(HDC hdc) {
+    if (current_biome == BIOME_CAVE || in_cave) return;
+    float ox, oy; SunShadowOffset(&ox, &oy);
+    float lit = (float)fabs(sin(day_night_cycle_accumulator));
+    int alpha = lit < 0.35f ? 45 : current_weather == WEATHER_CLEAR ? 95 : 55;
+    HDC layer = NULL; HBITMAP bmp = NULL; HGDIOBJ old_bmp = NULL, old_br = NULL, old_pen = NULL;
+    HBRUSH shade = NULL;
+    for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) {
+        if (VISUAL_MAP[r][c] != 11) continue;
+        int sx, sy; GetIsoCoords((float)c, (float)r, &sx, &sy);
+        if (sx < -TILE_WIDTH * 2 || sx > WINDOW_WIDTH + TILE_WIDTH * 2 || sy < -TILE_HEIGHT * 4 || sy > WINDOW_HEIGHT + TILE_HEIGHT * 2) continue;
+        if (!layer) {
+            layer = CreateCompatibleDC(hdc); bmp = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT);
+            old_bmp = SelectObject(layer, bmp); BitBlt(layer, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, hdc, 0, 0, SRCCOPY);
+            shade = CreateSolidBrush(RGB(16, 28, 22)); old_br = SelectObject(layer, shade); old_pen = SelectObject(layer, GetStockObject(NULL_PEN));
+        }
+        int seed = r * MAP_SIZE + c, big = IsBigTree(seed), rad = TILE_WIDTH * (big ? 9 : 6) / 10;
+        int cx = sx + (int)(ox * TILE_WIDTH * 0.9f), cy = sy + TILE_HEIGHT / 2 + (int)(oy * TILE_HEIGHT * 0.6f);
+        for (int k = 0; k < 3; k++) { // three overlapping blobs give a leafy, uneven edge
+            unsigned h = (unsigned)RainHash(seed * 7 + k);
+            int bx = cx + (int)(h % 21) - 10, by = cy + (int)((h >> 5) % 11) - 5, br = rad * (70 + (int)((h >> 9) % 30)) / 100;
+            Ellipse(layer, bx - br, by - br / 2, bx + br, by + br / 2);
+        }
+    }
+    if (!layer) return;
+    SelectObject(layer, old_pen); SelectObject(layer, old_br); DeleteObject(shade);
+    BLENDFUNCTION bf = { AC_SRC_OVER, 0, (BYTE)alpha, 0 };
+    AlphaBlend(hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, layer, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, bf);
+    SelectObject(layer, old_bmp); DeleteObject(bmp); DeleteDC(layer);
+}
