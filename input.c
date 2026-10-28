@@ -9,10 +9,19 @@ int AnyPlayerInput(void) {
     XINPUT_STATE s; SecureZeroMemory(&s, sizeof(s));
     if (XInputGetState(0, &s) == ERROR_SUCCESS) {
         XINPUT_GAMEPAD *g = &s.Gamepad;
-        if (g->wButtons || g->bLeftTrigger > 30 || g->bRightTrigger > 30) return 1;
-        int dl = XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE, dr = XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE;
-        if (g->sThumbLX > dl || g->sThumbLX < -dl || g->sThumbLY > dl || g->sThumbLY < -dl) return 1;
-        if (g->sThumbRX > dr || g->sThumbRX < -dr || g->sThumbRY > dr || g->sThumbRY < -dr) return 1;
+        if (g->wButtons) return 1;
+        // Sticks and triggers count when pushed well over (walking, running) or when
+        // they move; a worn stick drifting slightly off centre no longer blocks AFK.
+        static int prev[6], have_prev = 0;
+        int now_v[6] = { g->sThumbLX, g->sThumbLY, g->sThumbRX, g->sThumbRY, g->bLeftTrigger * 128, g->bRightTrigger * 128 };
+        int active = 0;
+        for (int i = 0; i < 6; i++) {
+            if (now_v[i] > 18000 || now_v[i] < -18000) active = 1;
+            if (have_prev && abs(now_v[i] - prev[i]) > 4000) active = 1;
+            prev[i] = now_v[i];
+        }
+        have_prev = 1;
+        if (active) return 1;
     }
     return 0;
 }
