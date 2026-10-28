@@ -156,14 +156,6 @@ void ProcessGamepadInput(void) {
                 if (buttons & XINPUT_GAMEPAD_DPAD_RIGHT) { dx = 1.0f; player_facing = FACE_RIGHT; }
                 if (buttons & XINPUT_GAMEPAD_DPAD_UP)    { dy = -1.0f; player_facing = FACE_UP; }
                 if (buttons & XINPUT_GAMEPAD_DPAD_DOWN)  { dy = 1.0f; player_facing = FACE_DOWN; }
-                // Left stick: full 360-degree movement, speed scaled by how far it's pushed.
-                float lx = state.Gamepad.sThumbLX, ly = state.Gamepad.sThumbLY, lmag = sqrtf(lx * lx + ly * ly);
-                if (dx == 0.0f && dy == 0.0f && lmag > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) {
-                    float amt = (lmag - XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) / (32767.0f - XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
-                    if (amt > 1.0f) amt = 1.0f;
-                    dx = lx / lmag * amt; dy = -ly / lmag * amt;
-                    player_facing = fabsf(dx) > fabsf(dy) ? (dx < 0 ? FACE_LEFT : FACE_RIGHT) : (dy < 0 ? FACE_UP : FACE_DOWN);
-                }
                 SetHeroFacing8(dx, dy);
             }
 
