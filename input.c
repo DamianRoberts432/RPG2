@@ -9,10 +9,19 @@ int AnyPlayerInput(void) {
     XINPUT_STATE s; SecureZeroMemory(&s, sizeof(s));
     if (XInputGetState(0, &s) == ERROR_SUCCESS) {
         XINPUT_GAMEPAD *g = &s.Gamepad;
-        if (g->wButtons || g->bLeftTrigger > 30 || g->bRightTrigger > 30) return 1;
-        int dl = XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE, dr = XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE;
-        if (g->sThumbLX > dl || g->sThumbLX < -dl || g->sThumbLY > dl || g->sThumbLY < -dl) return 1;
-        if (g->sThumbRX > dr || g->sThumbRX < -dr || g->sThumbRY > dr || g->sThumbRY < -dr) return 1;
+        if (g->wButtons) return 1;
+        // Sticks and triggers count when pushed well over (walking, running) or when
+        // they move; a worn stick drifting slightly off centre no longer blocks AFK.
+        static int prev[6], have_prev = 0;
+        int now_v[6] = { g->sThumbLX, g->sThumbLY, g->sThumbRX, g->sThumbRY, g->bLeftTrigger * 128, g->bRightTrigger * 128 };
+        int active = 0;
+        for (int i = 0; i < 6; i++) {
+            if (now_v[i] > 18000 || now_v[i] < -18000) active = 1;
+            if (have_prev && abs(now_v[i] - prev[i]) > 4000) active = 1;
+            prev[i] = now_v[i];
+        }
+        have_prev = 1;
+        if (active) return 1;
     }
     return 0;
 }
@@ -203,7 +212,7 @@ void ProcessGamepadInput(void) {
             static DWORD last_attack_gp = 0;
             WeaponStats *held_weapon = GetEquippedWeaponStats();
             DWORD attack_delay_gp = held_weapon && held_weapon->attack_speed_mult < 1.0f ?
-                (DWORD)(260.0f / held_weapon->attack_speed_mult) : 260;
+                (DWORD)(180.0f / held_weapon->attack_speed_mult) : 180;
             if (player_stamina < MELEE_SWING_STAMINA) attack_delay_gp = attack_delay_gp * 8 / 5; // tired arms swing slower
             if ((buttons & XINPUT_GAMEPAD_A) && (GetTickCount() - last_attack_gp > attack_delay_gp)) {
                 if (shopping) {
@@ -427,7 +436,7 @@ void ProcessGamepadInput(void) {
         static DWORD last_attack_kb = 0;
         WeaponStats *held_weapon = GetEquippedWeaponStats();
         DWORD attack_delay_kb = held_weapon && held_weapon->attack_speed_mult < 1.0f ?
-            (DWORD)(260.0f / held_weapon->attack_speed_mult) : 260;
+            (DWORD)(180.0f / held_weapon->attack_speed_mult) : 180;
         if (((GetAsyncKeyState(VK_SPACE) | GetAsyncKeyState('Z')) & 0x8000) && (GetTickCount() - last_attack_kb > attack_delay_kb)) {
             if (shopping_kb) {
                 if (vendor_tab == 0) ShopConfirm(); else HandleVendorSell();
