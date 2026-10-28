@@ -197,3 +197,40 @@ void DrawBelt(HDC hdc) {
         if (it->quantity > 1) { snprintf(lab, sizeof(lab), "%d", it->quantity); SetTextColor(hdc, RGB(235, 235, 235)); TextOut(hdc, r.right - 16, r.bottom - 18, lab, (int)strlen(lab)); }
     }
 }
+
+// Quick-use wheel: hold BACK and the first 4 foods/potions on you ring the hero;
+// tap a D-pad direction (up, right, down, left) to use one. Movement pauses while held.
+static int wheel_open = 0;
+static int WheelItems(int *idx) {
+    int n = 0;
+    for (int i = 0; i < player_item_count && n < 4; i++) if (!strcmp(player_inventory[i].slot, "Food")) idx[n++] = i;
+    return n;
+}
+int QuickWheelUpdate(WORD buttons) {
+    static WORD prev = 0;
+    wheel_open = (buttons & XINPUT_GAMEPAD_BACK) != 0 && !is_menu_open;
+    WORD pressed = buttons & ~prev; prev = buttons;
+    if (!wheel_open) return 0;
+    static const WORD dirs[4] = { XINPUT_GAMEPAD_DPAD_UP, XINPUT_GAMEPAD_DPAD_RIGHT, XINPUT_GAMEPAD_DPAD_DOWN, XINPUT_GAMEPAD_DPAD_LEFT };
+    int idx[4], n = WheelItems(idx);
+    for (int k = 0; k < 4; k++) if ((pressed & dirs[k]) && k < n) { selected_inv_index = idx[k]; ConsumeSelectedFood(); }
+    return 1;
+}
+void DrawQuickWheel(HDC hdc) {
+    if (!wheel_open) return;
+    int idx[4], n = WheelItems(idx), cx = WINDOW_WIDTH / 2, cy = WINDOW_HEIGHT / 2 - 10;
+    static const int ox[4] = { 0, 70, 0, -70 }, oy[4] = { -70, 0, 70, 0 };
+    static const char *key[4] = { "Up", "Right", "Down", "Left" };
+    SetBkMode(hdc, TRANSPARENT);
+    for (int k = 0; k < 4; k++) {
+        RECT r = { cx + ox[k] - 52, cy + oy[k] - 20, cx + ox[k] + 52, cy + oy[k] + 20 };
+        FillRectAlpha(hdc, r.left, r.top, 104, 40, RGB(18, 22, 30), 190);
+        char line[48];
+        if (k < n) snprintf(line, sizeof(line), "%s x%d", player_inventory[idx[k]].name, player_inventory[idx[k]].quantity);
+        else snprintf(line, sizeof(line), "(empty)");
+        SetTextColor(hdc, k < n ? RGB(240, 230, 190) : RGB(120, 120, 130));
+        RECT t1 = { r.left, r.top + 2, r.right, r.top + 20 }, t2 = { r.left, r.top + 20, r.right, r.bottom };
+        DrawText(hdc, line, -1, &t1, DT_CENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+        SetTextColor(hdc, RGB(150, 190, 230)); DrawText(hdc, key[k], -1, &t2, DT_CENTER | DT_SINGLELINE);
+    }
+}

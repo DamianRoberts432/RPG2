@@ -142,7 +142,7 @@ void ProcessGamepadInput(void) {
             rs_was_down = rs_down_gp;
 
             int shopping = vendor_menu_open && IsNearMerchant();
-            if (!shopping && !town_menu) {
+            if (!shopping && !town_menu && !QuickWheelUpdate(buttons)) {
                 if (buttons & XINPUT_GAMEPAD_DPAD_LEFT)  { dx = -1.0f; player_facing = FACE_LEFT; }
                 if (buttons & XINPUT_GAMEPAD_DPAD_RIGHT) { dx = 1.0f; player_facing = FACE_RIGHT; }
                 if (buttons & XINPUT_GAMEPAD_DPAD_UP)    { dy = -1.0f; player_facing = FACE_UP; }

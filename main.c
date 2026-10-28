@@ -266,7 +266,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 DrawHomeInterior(memHDC);
                 DrawPeyoteMelt(memHDC);
                 if (!is_menu_open) DrawPlayerStatusHUD(memHDC); // HP, MP and stamina stay on screen, AFK view included
-        if (!AfkViewActive() && !is_menu_open) { DrawLootPreview(memHDC); DrawBelt(memHDC); }
+        if (!AfkViewActive() && !is_menu_open) { DrawLootPreview(memHDC); DrawBelt(memHDC); DrawQuickWheel(memHDC); }
 
                 if (is_menu_open) DrawTabbedMenuOverlay(memHDC);
                 DrawStrategyGuideFlash(memHDC);

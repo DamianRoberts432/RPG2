@@ -490,5 +490,8 @@ enum { HOLIDAY_NONE, HOLIDAY_HALLOWEEN, HOLIDAY_WINTER_FEAST, HOLIDAY_NEW_YEAR }
 int HolidayToday(void);
 void SunShadowOffset(float *ox, float *oy);
 void DrawCanopyShadows(HDC hdc);
+int QuickWheelUpdate(WORD buttons);
+void DrawQuickWheel(HDC hdc);
+float DoorwayCamera(void);
 
 #endif // GAME_H
