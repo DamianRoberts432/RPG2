@@ -33,9 +33,18 @@ static void RefreshBarrels(void) {
     } else if (village_npc_count > 0) {
         static const int hx[4] = { 11, 15, 19, 15 }, hy[4] = { 11, 10, 11, 18 };
         int shift = (current_screen_index % 3) - 1;
-        for (int i = 0; i < 4; i++) {
-            int x = hx[i] + shift + 2, y = hy[i] + 1;
-            if (x < MAP_SIZE - 1 && VISUAL_MAP[y][x] == 0) barrels[barrel_count++] = (Barrel){ (float)x, (float)y, 1 };
+        // Barrels stand against the sides of houses, never next to a shopkeeper or villager.
+        static const int ox[4] = { -3, 3, -3, 3 }, oy[4] = { -1, -1, 1, 1 };
+        for (int i = 0; i < 4; i++) for (int k = 0; k < 4; k++) {
+            int x = hx[i] + shift + ox[(k + i) % 4], y = hy[i] + oy[(k + i) % 4], near_npc = 0;
+            if (x < 1 || y < 1 || x >= MAP_SIZE - 1 || y >= MAP_SIZE - 1 || VISUAL_MAP[y][x] != 0) continue;
+            for (int n = 0; n < village_npc_count && !near_npc; n++) {
+                float ndx = village_npcs[n].home_x - x, ndy = village_npcs[n].home_y - y;
+                near_npc = ndx * ndx + ndy * ndy < 9.0f;
+            }
+            if (near_npc) continue;
+            barrels[barrel_count++] = (Barrel){ (float)x, (float)y, 1 };
+            break;
         }
     }
     int *mask = BrokenMask(0);
