@@ -668,6 +668,19 @@ void FireClassAbility(void) {
 // ---- The hero can be hurt (forgiving for now) ----
 DWORD hero_held_until = 0; // a zombie's grab holds the hero in place briefly
 int hero_hop_frame = 0;    // counts down while the hero is mid-hop
+int hero_hop_len = 18, hero_hop_double = 0;
+static float hero_hop_start = 0.0f, hero_hop_peak = 14.0f;
+// Height in pixels: the second hop of a double jump starts from wherever the first one was.
+float HeroHopHeight(void) {
+    if (hero_hop_frame <= 0) return 0.0f;
+    float t = (float)(hero_hop_len - hero_hop_frame) / hero_hop_len;
+    return hero_hop_start * (1.0f - t) + sinf(3.14159f * t) * hero_hop_peak;
+}
+void StartHeroHop(int second) {
+    hero_hop_start = second ? HeroHopHeight() : 0.0f;
+    hero_hop_double = second; hero_hop_len = second ? 24 : 18; hero_hop_peak = second ? 18.0f : 14.0f;
+    hero_hop_frame = hero_hop_len;
+}
 
 // Nearest known castle town on the world map, else -1.
 static int NearestTownCell(void) {

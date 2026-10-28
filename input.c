@@ -453,7 +453,10 @@ void ProcessGamepadInput(void) {
         UpdateMouseInput(&dx, &dy);
         static int hop_was_down = 0;
         int hop_down = gp_hop_down || (GetAsyncKeyState('J') & 0x8000) != 0;
-        if (hop_down && !hop_was_down && hero_hop_frame == 0 && player_stamina > 5.0f) { hero_hop_frame = 18; player_stamina -= 5.0f; }
+        if (hop_down && !hop_was_down && player_stamina > 5.0f) { // press again on the way down for a double jump
+            if (hero_hop_frame == 0) { StartHeroHop(0); player_stamina -= 5.0f; }
+            else if (!hero_hop_double && hero_hop_frame <= hero_hop_len / 2 + 2) { StartHeroHop(1); player_stamina -= 8.0f; }
+        }
         hop_was_down = hop_down;
         if (GetTickCount() < hero_held_until) { dx = 0.0f; dy = 0.0f; } // held by a zombie
         int running = (gp_run_held || (GetAsyncKeyState(VK_SHIFT) & 0x8000)) && player_stamina > 0.0f;
