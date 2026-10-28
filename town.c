@@ -14,7 +14,7 @@ static char town_note[160] = "";
 typedef struct { char text[96]; int action, arg; } TownRow;
 enum { A_LEAVE, A_REPAIR, A_FORGE, A_RECYCLE, A_SMITH_BUY, A_CARD, A_PACK, A_KID, A_PET, A_KING,
        A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE, A_GUIDE, A_PET_SIZE, A_PET_COLOR, A_SLEEP, A_FURNISH, A_BINDER, A_BINDER_CARD, A_BINDER_PAGE, A_TALK_CHAT, A_ASK_WORK };
-#define TOWN_ROWS 24
+#define TOWN_ROWS 64
 static TownRow rows[TOWN_ROWS];
 static int row_count = 0;
 static int binder_open = 0, binder_page = 0; // the Card Binder at home
