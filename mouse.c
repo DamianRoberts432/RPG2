@@ -189,6 +189,10 @@ void DrawBelt(HDC hdc) {
         if (k >= n) continue;
         InventoryItem *it = &player_inventory[idx[k]];
         Doodle(hdc, (r.left + r.right) / 2, (r.top + r.bottom) / 2 + 2, it);
+        if (it->durability_max > 0 && it->durability_current * 100 < it->durability_max * 15 && (world_frame / 15) % 2 == 0) {
+            HBRUSH warn = CreateSolidBrush(RGB(230, 40, 40)); RECT w1 = r, w2 = { r.left + 1, r.top + 1, r.right - 1, r.bottom - 1 };
+            FrameRect(hdc, &w1, warn); FrameRect(hdc, &w2, warn); DeleteObject(warn); // worn out: flashes red under 15%
+        }
         if (it->is_equipped) { HBRUSH eq = CreateSolidBrush(RGB(90, 200, 120)); RECT e = { r.left + 2, r.bottom - 4, r.right - 2, r.bottom - 2 }; FillRect(hdc, &e, eq); DeleteObject(eq); }
         if (it->quantity > 1) { snprintf(lab, sizeof(lab), "%d", it->quantity); SetTextColor(hdc, RGB(235, 235, 235)); TextOut(hdc, r.right - 16, r.bottom - 18, lab, (int)strlen(lab)); }
     }
