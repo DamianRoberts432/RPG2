@@ -65,12 +65,12 @@ void DrawPeyoteMelt(HDC hdc) {
     if (!copy) { copy = CreateCompatibleDC(hdc); bmp = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT); SelectObject(copy, bmp); }
     BitBlt(copy, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, hdc, 0, 0, SRCCOPY);
     for (int y = 0; y < WINDOW_HEIGHT; y += 4) {
-        int dx = (int)(WaveAt(y * 0.008f, 0.0f, t * 0.35f) * 3.0f * fade);
+        int dx = (int)(WaveAt(y * 0.008f, 0.0f, t * 0.25f) * 2.0f * fade);
         BitBlt(hdc, dx, y, WINDOW_WIDTH, 4, copy, 0, y, SRCCOPY);
     }
     const int bands = 14, bh = WINDOW_HEIGHT / bands + 1;
     for (int k = 0; k < bands; k++)
-        FillRectAlpha(hdc, 0, k * bh, WINDOW_WIDTH, bh, HueColor(t * 0.25f + k * 0.45f), (int)(26 * fade));
+        FillRectAlpha(hdc, 0, k * bh, WINDOW_WIDTH, bh, HueColor(t * 0.18f + k * 0.45f), (int)(18 * fade));
 }
 
 // Any weapon breaks cacti and peyote: one melee swing (or one arrow) fells a
