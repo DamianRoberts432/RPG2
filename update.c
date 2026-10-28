@@ -169,10 +169,35 @@ static int NewQuestLine(int n, char *cur) {
 }
 
 // Applies one line; returns 1 when every field in it was understood.
+// NewNPC,NPCID,Name,Job,Line: a named villager whose line joins the villagers' chatter ("Name the Job: Line").
+static int NewNpcLine(char *cur) {
+    char *f[3] = { 0 };
+    for (int i = 0; i < 3 && cur; i++) f[i] = NextField(&cur);
+    if (!f[2] || cur || !f[0][0] || !f[2][0]) return 0;
+    char line[160];
+    if (f[1][0]) snprintf(line, sizeof(line), "%s the %s: %s", f[0], f[1], f[2]);
+    else snprintf(line, sizeof(line), "%s: %s", f[0], f[2]);
+    return EditNpcField("Villager", "Dialogue", line);
+}
+
+// NewEconomy,EconomyID,ItemName,PricePercent: rescales an item's market price (10-1000%).
+static int NewEconomyLine(char *cur) {
+    char *f[2] = { 0 };
+    for (int i = 0; i < 2 && cur; i++) f[i] = NextField(&cur);
+    if (!f[1] || cur) return 0;
+    int pct = atoi(f[1]);
+    MerchantItem *it = FindMerchantItem(f[0]);
+    if (!it || pct < 10 || pct > 1000) return 0;
+    it->base_price = it->base_price * pct / 100 > 0 ? it->base_price * pct / 100 : 1;
+    return 1;
+}
+
 static int ApplyUpdateLine(char *line) {
     char *cur = line;
     char *cmd = NextField(&cur), *id = NextField(&cur);
     if (!cmd || !id || !cur) return 0;
+    if (_stricmp(cmd, "NewNPC") == 0) return NewNpcLine(cur);
+    if (_stricmp(cmd, "NewEconomy") == 0) return NewEconomyLine(cur);
     if (_stricmp(cmd, "NewCard") == 0) return NewCardLine(cur);
     if (_stricmp(cmd, "NewItem") == 0) return NewItemLine(cur);
     if (_stricmp(cmd, "NewDecor") == 0) return NewDecorLine(cur);

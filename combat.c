@@ -139,6 +139,7 @@ DWORD exhaustion_until = 0;
 static int empty_swings = 0;
 int HeroExhausted(void) { return GetTickCount() < exhaustion_until; }
 
+int melee_combo_step = 0; // 0 overhead, 1 side sweep, 2 thrust
 void PerformMeleeAttack(void) {
     hit_splash_color = 0;
     WeaponStats *weapon = GetEquippedWeaponStats();
@@ -159,10 +160,19 @@ void PerformMeleeAttack(void) {
     if (player_stamina < 0.0f) player_stamina = 0.0f;
     stamina_rest_timer = 0;
     sword_swipe_frame = drained ? 18 : (weapon && weapon->attack_speed_mult < 1.0f) ? 14 : 10;
+    MeleeHitDesertPlant();
     SelectTargetEnemy();
     float m_dist = DistanceToEnemy();
     int spear = active_weapon == WEAPON_SPEAR;
-    if (m_dist < (spear ? SPEAR_REACH : 1.8f) && (spear ? IsFacingEnemyWithin(SPEAR_THRUST_DOT) : IsFacingEnemy())) {
+    // Sword/axe 3-hit combo: swings within 0.8 s chain overhead -> side sweep (wide arc) -> thrust (long reach, 1.5x).
+    static DWORD last_swing = 0; DWORD now_swing = GetTickCount();
+    melee_combo_step = (!spear && now_swing - last_swing < 800) ? (melee_combo_step + 1) % 3 : 0;
+    last_swing = now_swing;
+    float reach = spear ? SPEAR_REACH : melee_combo_step == 2 ? 2.4f : 1.8f;
+    int facing_ok = spear ? IsFacingEnemyWithin(SPEAR_THRUST_DOT) : melee_combo_step == 1 ? IsFacingEnemyWithin(-0.2f) :
+                    melee_combo_step == 2 ? IsFacingEnemyWithin(0.8f) : IsFacingEnemy();
+    if (melee_combo_step == 1) damage *= 1.1f; else if (melee_combo_step == 2) damage *= 1.5f;
+    if (m_dist < reach && facing_ok) {
         int broke = WearEquippedWeapon();
         HandleEnemyDamage(damage * (1.0f + 0.08f * stat_spent[0]));
         if (broke) strcpy(arpg_action_log, "Your weapon broke!");
@@ -220,6 +230,8 @@ void HandleEnemyDamage(float dmg) {
         if (-enemy_hearts >= OVERKILL_BLOOD) { SpawnBloodBurst(enemy_x, enemy_y, k_dx, k_dy); SpawnBloodBurst(enemy_x, enemy_y, k_dx, k_dy); }
         int is_night = fabs(sin(day_night_cycle_accumulator)) < 0.35f;
         int gained_xp = (int)(((10 + rand() % 7 + (is_night ? 2 : 0)) * opt_xp_mult) * ((is_night && night_bonus_active) ? 1.25f : 1.0f));
+        if (HolidayToday() == HOLIDAY_NEW_YEAR) gained_xp *= 2;
+        else if (HolidayToday() == HOLIDAY_HALLOWEEN && is_night) gained_xp = gained_xp * 3 / 2;
         float loot_multiplier = opt_loot_mult * (is_night ? 1.5f : 1.0f);
         // Ordinary (junk) drops are 60% rarer than they used to be, to cut ground clutter.
         int loot_chance = (int)(70.0f * JUNK_DROP_RATE * loot_multiplier) + 3 * stat_spent[4];
@@ -442,7 +454,7 @@ static int ArrowBlockedAt(float x, float y) {
     int tx = (int)x, ty = (int)y;
     if (tx == player_arrow.origin_tx && ty == player_arrow.origin_ty) return 0;
     uint8_t t = VISUAL_MAP[ty][tx];
-    if (PeyoteAt(tx, ty)) { HitPeyote(tx, ty); return 1; }
+    if (t == 7) { BreakDesertPlant(tx, ty, 0); return 1; }
     return t == 11 || t == 1 || t == 3;
 }
 
@@ -667,6 +679,19 @@ void FireClassAbility(void) {
 // ---- The hero can be hurt (forgiving for now) ----
 DWORD hero_held_until = 0; // a zombie's grab holds the hero in place briefly
 int hero_hop_frame = 0;    // counts down while the hero is mid-hop
+int hero_hop_len = 18, hero_hop_double = 0;
+static float hero_hop_start = 0.0f, hero_hop_peak = 14.0f;
+// Height in pixels: the second hop of a double jump starts from wherever the first one was.
+float HeroHopHeight(void) {
+    if (hero_hop_frame <= 0) return 0.0f;
+    float t = (float)(hero_hop_len - hero_hop_frame) / hero_hop_len;
+    return hero_hop_start * (1.0f - t) + sinf(3.14159f * t) * hero_hop_peak;
+}
+void StartHeroHop(int second) {
+    hero_hop_start = second ? HeroHopHeight() : 0.0f;
+    hero_hop_double = second; hero_hop_len = second ? 24 : 18; hero_hop_peak = second ? 18.0f : 14.0f;
+    hero_hop_frame = hero_hop_len;
+}
 
 // Nearest known castle town on the world map, else -1.
 static int NearestTownCell(void) {
@@ -699,7 +724,12 @@ static void RescueHero(void) {
 void HurtHero(float dmg) {
     if (dmg <= 0.0f || player_hp <= 0.0f) return;
     player_hp -= dmg;
-    if (player_hp <= 0.0f) { player_hp = 0.0f; RescueHero(); }
+    if (player_hp <= 0.0f) {
+        player_hp = 0.0f;
+        char cause[24]; snprintf(cause, sizeof(cause), "Fell to %s", MonsterName(active_monster));
+        RecordHallEntry(cause, 0);
+        RescueHero();
+    }
 }
 
 // Called for each live monster (selected into enemy_x/enemy_y/active_monster).

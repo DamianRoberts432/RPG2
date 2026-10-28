@@ -362,6 +362,9 @@ extern int stamina_rest_timer;
 extern float player_hp, max_player_hp;
 extern DWORD hero_held_until;
 extern int hero_hop_frame;
+extern int hero_hop_len, hero_hop_double, melee_combo_step;
+float HeroHopHeight(void);
+void StartHeroHop(int second);
 void HurtHero(float dmg);
 void EnemyAttackHero(int e);
 float RaceVisionTiles(void);
@@ -474,5 +477,21 @@ extern int cam_y;
 #include "quests.h"
 #include "update.h"
 #include "worldgen.h"
+
+extern char town_banner[48];
+extern DWORD town_banner_until;
+void DrawTownBanner(HDC hdc);
+void RecordHallEntry(const char *cause, int retired);
+void DrawHallOfRecords(HDC hdc, int x, int y);
+int WellSpot(int *tx, int *ty);
+void DrawWishingWell(HDC hdc);
+int TryWishingWell(void);
+enum { HOLIDAY_NONE, HOLIDAY_HALLOWEEN, HOLIDAY_WINTER_FEAST, HOLIDAY_NEW_YEAR };
+int HolidayToday(void);
+void SunShadowOffset(float *ox, float *oy);
+void DrawCanopyShadows(HDC hdc);
+int QuickWheelUpdate(WORD buttons);
+void DrawQuickWheel(HDC hdc);
+float DoorwayCamera(void);
 
 #endif // GAME_H

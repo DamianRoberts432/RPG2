@@ -344,7 +344,8 @@ void GenerateProceduralScreen(int index) {
         pending_forced_biome = -1;
     } else if (screens_until_town == 0) {
         current_biome = BIOME_CASTLE;
-        { char town[48]; TownNameAt(30000 + screen_grid_y * META_GRID_SIZE + screen_grid_x, town, sizeof(town)); sprintf(arpg_action_log, "DISCOVERY: Arrived at the gates of %s!", town); }
+        { char town[48]; TownNameAt(30000 + screen_grid_y * META_GRID_SIZE + screen_grid_x, town, sizeof(town)); sprintf(arpg_action_log, "DISCOVERY: Arrived at the gates of %s!", town);
+          snprintf(town_banner, sizeof(town_banner), "%s", town); town_banner_until = GetTickCount() + 4000; }
     } else {
         int recalled = GetVisitedBiomeAt(grid_c, grid_r);
         if (recalled != -1) {
@@ -828,3 +829,6 @@ void UpdateCritters(void) {
         if (critter->y > MAP_SIZE - 3) critter->y = MAP_SIZE - 3;
     }
 }
+
+char town_banner[48];
+DWORD town_banner_until;

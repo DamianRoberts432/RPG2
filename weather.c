@@ -272,9 +272,22 @@ static void ApplyLiveWeather(void) {
              cfg_has_coords ? "your coordinates" : cfg_city, weather_names[current_weather]);
 }
 
+// Holidays from the PC's calendar (bounded: one small modifier each).
+int HolidayToday(void) {
+    SYSTEMTIME t; GetLocalTime(&t);
+    if (t.wMonth == 10 && t.wDay >= 24) return HOLIDAY_HALLOWEEN;
+    if (t.wMonth == 12 && t.wDay >= 20) return HOLIDAY_WINTER_FEAST;
+    if (t.wMonth == 1 && t.wDay == 1) return HOLIDAY_NEW_YEAR;
+    return HOLIDAY_NONE;
+}
+
 void InitSeasonAndWeather(void) {
     SYSTEMTIME now;
     GetLocalTime(&now);
+    static const char *holiday_msg[4] = { "", "HALLOWEEN: The dead are restless - night kills give 50% more XP.",
+                                          "WINTER FEAST: Merchants are generous - 15% off everything.",
+                                          "NEW YEAR: A fresh start - double XP all day!" };
+    if (HolidayToday()) strcpy(arpg_action_log, holiday_msg[HolidayToday()]);
     weather_rng ^= (uint32_t)GetTickCount() * 2654435761u;
     if (!calendar_restored) SetSeasonFromDate(&now);
     UpdateDaylightFromClock();

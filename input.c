@@ -142,11 +142,19 @@ void ProcessGamepadInput(void) {
             rs_was_down = rs_down_gp;
 
             int shopping = vendor_menu_open && IsNearMerchant();
-            if (!shopping && !town_menu) {
+            if (!shopping && !town_menu && !QuickWheelUpdate(buttons)) {
                 if (buttons & XINPUT_GAMEPAD_DPAD_LEFT)  { dx = -1.0f; player_facing = FACE_LEFT; }
                 if (buttons & XINPUT_GAMEPAD_DPAD_RIGHT) { dx = 1.0f; player_facing = FACE_RIGHT; }
                 if (buttons & XINPUT_GAMEPAD_DPAD_UP)    { dy = -1.0f; player_facing = FACE_UP; }
                 if (buttons & XINPUT_GAMEPAD_DPAD_DOWN)  { dy = 1.0f; player_facing = FACE_DOWN; }
+                // Left stick: full 360-degree movement, speed scaled by how far it's pushed.
+                float lx = state.Gamepad.sThumbLX, ly = state.Gamepad.sThumbLY, lmag = sqrtf(lx * lx + ly * ly);
+                if (dx == 0.0f && dy == 0.0f && lmag > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) {
+                    float amt = (lmag - XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) / (32767.0f - XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+                    if (amt > 1.0f) amt = 1.0f;
+                    dx = lx / lmag * amt; dy = -ly / lmag * amt;
+                    player_facing = fabsf(dx) > fabsf(dy) ? (dx < 0 ? FACE_LEFT : FACE_RIGHT) : (dy < 0 ? FACE_UP : FACE_DOWN);
+                }
                 SetHeroFacing8(dx, dy);
             }
 
@@ -453,7 +461,10 @@ void ProcessGamepadInput(void) {
         UpdateMouseInput(&dx, &dy);
         static int hop_was_down = 0;
         int hop_down = gp_hop_down || (GetAsyncKeyState('J') & 0x8000) != 0;
-        if (hop_down && !hop_was_down && hero_hop_frame == 0 && player_stamina > 5.0f) { hero_hop_frame = 18; player_stamina -= 5.0f; }
+        if (hop_down && !hop_was_down && player_stamina > 5.0f) { // press again on the way down for a double jump
+            if (hero_hop_frame == 0) { StartHeroHop(0); player_stamina -= 5.0f; }
+            else if (!hero_hop_double && hero_hop_frame <= hero_hop_len / 2 + 2) { StartHeroHop(1); player_stamina -= 8.0f; }
+        }
         hop_was_down = hop_down;
         if (GetTickCount() < hero_held_until) { dx = 0.0f; dy = 0.0f; } // held by a zombie
         int running = (gp_run_held || (GetAsyncKeyState(VK_SHIFT) & 0x8000)) && player_stamina > 0.0f;

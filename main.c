@@ -110,6 +110,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
             cam_x = (int)((player_x - player_y) * (TILE_WIDTH / 2)); cam_y = (int)((player_x + player_y) * (TILE_HEIGHT / 2));
             float view_zoom = UpdateAfkCamera(AnyPlayerInput() || MouseBusy() || is_menu_open || vendor_menu_open || town_menu ||
                                               is_character_creation || sleep_fade_frame > 0 || inside_home >= 0);
+                view_zoom += DoorwayCamera();
             HDC hdc = GetDC(hwnd); HDC memHDC = CreateCompatibleDC(hdc); HBITMAP memBitmap = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT); SelectObject(memHDC, memBitmap);
             
             if (is_character_creation) {
@@ -215,6 +216,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 DrawSeasonalGroundCover(memHDC);
                 DrawFootpaths(memHDC);
                 DrawFarmPlots(memHDC);
+                DrawCanopyShadows(memHDC);
                 for (int r = 0; r < MAP_SIZE; r++) {
                     for (int c = 0; c < MAP_SIZE; c++) {
                         int sx, sy; GetIsoCoords((float)c, (float)r, &sx, &sy); if (sx < -TILE_WIDTH * 2 || sx > WINDOW_WIDTH + TILE_WIDTH * 2) continue;
@@ -265,7 +267,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 DrawHomeInterior(memHDC);
                 DrawPeyoteMelt(memHDC);
                 if (!is_menu_open) DrawPlayerStatusHUD(memHDC); // HP, MP and stamina stay on screen, AFK view included
-        if (!AfkViewActive() && !is_menu_open) { DrawLootPreview(memHDC); DrawBelt(memHDC); }
+        if (!AfkViewActive() && !is_menu_open) { DrawLootPreview(memHDC); DrawBelt(memHDC); DrawQuickWheel(memHDC); }
 
                 if (is_menu_open) DrawTabbedMenuOverlay(memHDC);
                 DrawStrategyGuideFlash(memHDC);
@@ -273,6 +275,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 SetTextColor(memHDC, RGB(255, 255, 255)); SetBkMode(memHDC, TRANSPARENT);
                 MsgLogUpdate();
                 if (!AfkViewActive() && !is_menu_open) DrawMsgLog(memHDC, 20, HUD_LOG_Y);
+                if (!AfkViewActive() && !is_menu_open) DrawTownBanner(memHDC);
                 if (vendor_menu_open && IsNearMerchant()) {
                     DrawVendorShopOverlay(memHDC);
                 }

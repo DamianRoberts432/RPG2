@@ -68,7 +68,9 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
     int bob = (is_running && override_scale == 1.0f) ? (int)(sin(run_bob * 1.2f) * 1.5f) : 0; sy += bob;
     
     HBRUSH shadow_b = CreateSolidBrush(RGB(15, 20, 26)); HGDIOBJ old = SelectObject(hdc, shadow_b); 
-    Ellipse(hdc, sx - (int)(10 * scale), sy + (int)(14 * scale), sx + (int)(10 * scale), sy + (int)(22 * scale)); SelectObject(hdc, old); DeleteObject(shadow_b);
+    { float ox, oy; SunShadowOffset(&ox, &oy); // the shadow stretches away from the sun or moon
+      int lx = (int)(ox * 12 * scale), ly = (int)(oy * 4 * scale);
+      Ellipse(hdc, sx - (int)(10 * scale) + (lx < 0 ? lx : 0), sy + (int)(14 * scale), sx + (int)(10 * scale) + (lx > 0 ? lx : 0), sy + (int)(22 * scale) + ly); } SelectObject(hdc, old); DeleteObject(shadow_b);
 
     // Menus and portraits show the hero facing you; in play the 8-way facing.
     int dir = override_scale == 1.0f ? HeroDir8() : 0;
@@ -174,7 +176,7 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
     } else if (shown_weapon == WEAPON_SPEAR) {
         // Iso screen direction of the facing; the thrust pushes the spear out.
         float fx = wvx * 1.3f, fy = wvy * 1.3f;
-        int len = sword_swipe_frame > 0 ? 32 : 20;
+        int len = sword_swipe_frame > 0 ? (melee_combo_step == 2 ? 44 : 32) : 20;
         int bx = sx - (int)(fx * 6), by = sy + 8 - (int)(fy * 3);
         int tx = bx + (int)(fx * len), ty = by + (int)(fy * len / 2);
         HPEN shaft = CreatePen(PS_SOLID, 2, RGB(150, 110, 70)); HGDIOBJ prev_p = SelectObject(hdc, shaft);
@@ -326,7 +328,7 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
 
 void DrawHeroAsset(HDC hdc) {
     int sx, sy; GetIsoCoords(player_x, player_y, &sx, &sy);
-    if (hero_hop_frame > 0) sy -= (int)(sinf(3.14159f * (18 - hero_hop_frame) / 18.0f) * 14.0f); // quick hop arc
+    if (hero_hop_frame > 0) sy -= (int)HeroHopHeight(); // hop arc (double jump climbs higher)
     DrawHeroAssetEx(hdc, sx, sy, 1.0f);
 }
 
@@ -939,6 +941,7 @@ void DrawVillage(HDC hdc) {
     // Every NPC (village and castle) uses the detailed villager figure at the
     // hero's scale. Their lines go to the action log in the upper left; only a
     // "..." bubble is drawn over the head of an NPC close enough to talk to.
+    DrawWishingWell(hdc);
     const float NPC_SCALE = 1.2f;
     for (int i = 0; i < village_npc_count; i++) {
         int sx, sy; GetIsoCoords(village_npcs[i].x, village_npcs[i].y, &sx, &sy);

@@ -277,3 +277,22 @@ Each module has a matching .h with its function prototypes.
   - The cat paws at a butterfly close by and, with nothing to chase, crouches, wiggles and pounces on leaves. It also chases birds and butterflies.
   - The dog chases squirrels, lifts its nose to sniff the air near butterflies, and wags its tail.
   - Between chases both wander playfully around you, and they never catch anything.
+
+### Tier 1 + 2 (Saturn-minded: fixed arrays, no heap, tiny save files)
+- **Town banner:** entering a town shows its name and your Town Heat.
+- **Worn gear:** a belt slot flashes red when the item is under 15% durability.
+- **Cacti and peyote:** any weapon breaks them. One swing or arrow fells a cactus; a swing splits peyote open (X to gather).
+- **Doorway camera:** near a cottage door the camera eases in and pans to just behind you, then glides back to isometric.
+- **World Map:** highways are drawn through places you've visited.
+- **Town menus** scroll (up to 64 rows), so the card shop has room for more sets.
+- **Hall of Records:** the Options tab lists your heroes' falls and retirements (`hall.dat`, last 16).
+- **Wishing wells** on town and village squares: 10 gold once a day for +25% damage for 5 minutes.
+- **Double jump:** press hop (LB / J) again on the way down.
+- **3-hit combo:** sword/axe swings within 0.8 s chain overhead, wide side sweep, long thrust (1.5x).
+- **Quick-use wheel:** hold BACK and tap a D-pad direction to eat or drink one of your first 4 foods/potions.
+- **Barrels** stand against house sides, away from shopkeepers.
+- **Caravans:** villagers in a town offer rides to the 3 nearest towns you've found, 200 gold.
+- **Holidays** (from the PC date): Halloween (Oct 24-31) night XP +50%, Winter Feast (Dec 20-31) 15% off, New Year's Day double XP.
+- **Left stick** moves in any direction; tilt sets speed.
+- **Shadows:** trees cast soft canopy shadows on the ground, and your shadow stretches away from the sun or moon.
+- **Update files:** `NewNPC,NPCID,Name,Job,Line` and `NewEconomy,EconomyID,ItemName,PricePercent`.
