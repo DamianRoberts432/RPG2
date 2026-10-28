@@ -174,7 +174,7 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
     } else if (shown_weapon == WEAPON_SPEAR) {
         // Iso screen direction of the facing; the thrust pushes the spear out.
         float fx = wvx * 1.3f, fy = wvy * 1.3f;
-        int len = sword_swipe_frame > 0 ? 32 : 20;
+        int len = sword_swipe_frame > 0 ? (melee_combo_step == 2 ? 44 : 32) : 20;
         int bx = sx - (int)(fx * 6), by = sy + 8 - (int)(fy * 3);
         int tx = bx + (int)(fx * len), ty = by + (int)(fy * len / 2);
         HPEN shaft = CreatePen(PS_SOLID, 2, RGB(150, 110, 70)); HGDIOBJ prev_p = SelectObject(hdc, shaft);

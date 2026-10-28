@@ -139,6 +139,7 @@ DWORD exhaustion_until = 0;
 static int empty_swings = 0;
 int HeroExhausted(void) { return GetTickCount() < exhaustion_until; }
 
+int melee_combo_step = 0; // 0 overhead, 1 side sweep, 2 thrust
 void PerformMeleeAttack(void) {
     hit_splash_color = 0;
     WeaponStats *weapon = GetEquippedWeaponStats();
@@ -163,7 +164,15 @@ void PerformMeleeAttack(void) {
     SelectTargetEnemy();
     float m_dist = DistanceToEnemy();
     int spear = active_weapon == WEAPON_SPEAR;
-    if (m_dist < (spear ? SPEAR_REACH : 1.8f) && (spear ? IsFacingEnemyWithin(SPEAR_THRUST_DOT) : IsFacingEnemy())) {
+    // Sword/axe 3-hit combo: swings within 0.8 s chain overhead -> side sweep (wide arc) -> thrust (long reach, 1.5x).
+    static DWORD last_swing = 0; DWORD now_swing = GetTickCount();
+    melee_combo_step = (!spear && now_swing - last_swing < 800) ? (melee_combo_step + 1) % 3 : 0;
+    last_swing = now_swing;
+    float reach = spear ? SPEAR_REACH : melee_combo_step == 2 ? 2.4f : 1.8f;
+    int facing_ok = spear ? IsFacingEnemyWithin(SPEAR_THRUST_DOT) : melee_combo_step == 1 ? IsFacingEnemyWithin(-0.2f) :
+                    melee_combo_step == 2 ? IsFacingEnemyWithin(0.8f) : IsFacingEnemy();
+    if (melee_combo_step == 1) damage *= 1.1f; else if (melee_combo_step == 2) damage *= 1.5f;
+    if (m_dist < reach && facing_ok) {
         int broke = WearEquippedWeapon();
         HandleEnemyDamage(damage * (1.0f + 0.08f * stat_spent[0]));
         if (broke) strcpy(arpg_action_log, "Your weapon broke!");
