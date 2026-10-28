@@ -356,6 +356,17 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
         else if (biome == BIOME_BEACH) { for (int c = 0; c < 4; c++) FillSub(hdc, cx, cy, q, c, 3, 1, 1, water); }
         else if (biome == BIOME_ISLAND) FillSub(hdc, cx, cy, q, 1, 1, 2, 2, sand);
 
+        int roads = biome >= 0 ? WorldRoadBits(gx, gy) : 0; // highways: stone lines from the centre to each linked edge
+        if (roads) {
+            HPEN hw_pen = CreatePen(PS_SOLID, cs >= 12 ? 3 : 2, RGB(196, 186, 160)); HGDIOBJ op = SelectObject(hdc, hw_pen);
+            int mx = cx + cs / 2, my = cy + cs / 2;
+            if (roads & 1) { MoveToEx(hdc, mx, my, NULL); LineTo(hdc, mx, cy); }
+            if (roads & 2) { MoveToEx(hdc, mx, my, NULL); LineTo(hdc, cx + cs, my); }
+            if (roads & 4) { MoveToEx(hdc, mx, my, NULL); LineTo(hdc, mx, cy + cs); }
+            if (roads & 8) { MoveToEx(hdc, mx, my, NULL); LineTo(hdc, cx, my); }
+            SelectObject(hdc, op); DeleteObject(hw_pen);
+        }
+
         if (poi & POI_VILLAGE) {
             FillSub(hdc, cx, cy, q, 0, 0, 1, 1, home);
             FillSub(hdc, cx, cy, q, 2, 0, 1, 1, home);
