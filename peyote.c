@@ -72,3 +72,31 @@ void DrawPeyoteMelt(HDC hdc) {
     for (int k = 0; k < bands; k++)
         FillRectAlpha(hdc, 0, k * bh, WINDOW_WIDTH, bh, HueColor(t * 0.25f + k * 0.45f), (int)(26 * fade));
 }
+
+// Any weapon breaks cacti and peyote: one melee swing (or one arrow) fells a
+// cactus, and a swing splits a peyote open at once (arrows still take two).
+int BreakDesertPlant(int tx, int ty, int melee) {
+    if (tx < 0 || ty < 0 || tx >= MAP_SIZE || ty >= MAP_SIZE || VISUAL_MAP[ty][tx] != 7) return 0;
+    SyncScreen();
+    if (PeyoteAt(tx, ty)) {
+        if (peyote_hits[ty][tx] >= 2) return 0;
+        if (melee) { peyote_hits[ty][tx] = 2; strcpy(arpg_action_log, "PEYOTE: Your blow splits it open. X to gather it."); }
+        else HitPeyote(tx, ty);
+        return 1;
+    }
+    VISUAL_MAP[ty][tx] = 0;
+    SpawnTreeDebris(tx + 0.5f, ty + 0.5f);
+    strcpy(arpg_action_log, "CACTUS: It topples over in a spray of green.");
+    return 1;
+}
+
+int MeleeHitDesertPlant(void) {
+    float fx = facing_x, fy = facing_y, d = sqrtf(fx * fx + fy * fy);
+    if (d < 0.01f) return 0;
+    fx /= d; fy /= d;
+    for (int k = 1; k <= 3; k++) {
+        float r = 0.5f * k;
+        if (BreakDesertPlant((int)(player_x + fx * r), (int)(player_y + fy * r), 1)) return 1;
+    }
+    return 0;
+}

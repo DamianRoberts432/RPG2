@@ -159,6 +159,7 @@ void PerformMeleeAttack(void) {
     if (player_stamina < 0.0f) player_stamina = 0.0f;
     stamina_rest_timer = 0;
     sword_swipe_frame = drained ? 18 : (weapon && weapon->attack_speed_mult < 1.0f) ? 14 : 10;
+    MeleeHitDesertPlant();
     SelectTargetEnemy();
     float m_dist = DistanceToEnemy();
     int spear = active_weapon == WEAPON_SPEAR;
@@ -442,7 +443,7 @@ static int ArrowBlockedAt(float x, float y) {
     int tx = (int)x, ty = (int)y;
     if (tx == player_arrow.origin_tx && ty == player_arrow.origin_ty) return 0;
     uint8_t t = VISUAL_MAP[ty][tx];
-    if (PeyoteAt(tx, ty)) { HitPeyote(tx, ty); return 1; }
+    if (t == 7) { BreakDesertPlant(tx, ty, 0); return 1; }
     return t == 11 || t == 1 || t == 3;
 }
 

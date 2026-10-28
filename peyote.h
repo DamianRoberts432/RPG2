@@ -6,6 +6,8 @@ int IsPeyoteSeed(int seed);
 int PeyoteAt(int tx, int ty);
 int PeyoteBroken(int seed);
 void HitPeyote(int tx, int ty);
+int BreakDesertPlant(int tx, int ty, int melee);
+int MeleeHitDesertPlant(void);
 int TryGatherPeyote(void);
 void EatPeyote(void);
 void DrawPeyoteMelt(HDC hdc);
