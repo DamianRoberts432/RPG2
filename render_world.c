@@ -880,3 +880,25 @@ void DrawCanopyShadows(HDC hdc) {
     AlphaBlend(hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, layer, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, bf);
     SelectObject(layer, old_bmp); DeleteObject(bmp); DeleteDC(layer);
 }
+
+// Doorways and archways: walking up to a cottage door, the camera eases in and
+// pans ahead along the hero's heading so it sits just behind them, then glides
+// back to the normal isometric view once they're through. Returns extra zoom.
+float DoorwayCamera(void) {
+    static float amt = 0.0f;
+    float target = 0.0f;
+    if (!AfkViewActive() && !is_menu_open && inside_home < 0 && !in_cave) {
+        for (int i = 0; i < 4; i++) {
+            float hx, hy;
+            if (!VillageHomeCentre(i, &hx, &hy)) continue;
+            float dx = player_x - hx, dy = player_y - (hy + HOME_HALF_Y), d = sqrtf(dx * dx + dy * dy);
+            if (d < 2.4f && 1.0f - d / 2.4f > target) target = 1.0f - d / 2.4f;
+        }
+    }
+    amt += (target - amt) * 0.08f;
+    if (amt < 0.002f) { amt = 0.0f; return 0.0f; }
+    float s = amt * amt * (3.0f - 2.0f * amt);
+    cam_x += (int)((facing_x - facing_y) * (TILE_WIDTH / 2) * 1.2f * s);
+    cam_y += (int)((facing_x + facing_y) * (TILE_HEIGHT / 2) * 1.2f * s) - (int)(10 * s);
+    return 0.55f * s;
+}
