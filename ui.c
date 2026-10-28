@@ -511,6 +511,8 @@ void DrawTabbedMenuOverlay(HDC hdc) {
         sprintf(buf, "[3] Day/Night Cycle Speed: %.1fx", opt_day_night_speed); TextOut(hdc, 100, 220, buf, (int)strlen(buf));
         SetTextColor(hdc, RGB(255, 120, 100));
         TextOut(hdc, 100, 280, "[9] / Back: Delete save file (press twice to confirm)", 53);
+        DrawPanel(hdc, 80, 330, 900, 570);
+        DrawHallOfRecords(hdc, 100, 340);
         SetTextColor(hdc, RGB(255, 255, 255));
     }
 

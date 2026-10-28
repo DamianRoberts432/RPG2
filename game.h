@@ -478,5 +478,7 @@ extern int cam_y;
 extern char town_banner[48];
 extern DWORD town_banner_until;
 void DrawTownBanner(HDC hdc);
+void RecordHallEntry(const char *cause, int retired);
+void DrawHallOfRecords(HDC hdc, int x, int y);
 
 #endif // GAME_H

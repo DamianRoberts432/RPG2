@@ -700,7 +700,12 @@ static void RescueHero(void) {
 void HurtHero(float dmg) {
     if (dmg <= 0.0f || player_hp <= 0.0f) return;
     player_hp -= dmg;
-    if (player_hp <= 0.0f) { player_hp = 0.0f; RescueHero(); }
+    if (player_hp <= 0.0f) {
+        player_hp = 0.0f;
+        char cause[24]; snprintf(cause, sizeof(cause), "Fell to %s", MonsterName(active_monster));
+        RecordHallEntry(cause, 0);
+        RescueHero();
+    }
 }
 
 // Called for each live monster (selected into enemy_x/enemy_y/active_monster).
