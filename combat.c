@@ -140,6 +140,7 @@ static int empty_swings = 0;
 int HeroExhausted(void) { return GetTickCount() < exhaustion_until; }
 
 int melee_combo_step = 0; // 0 overhead, 1 side sweep, 2 thrust
+static int sword_swipe_len = 10;
 void PerformMeleeAttack(void) {
     hit_splash_color = 0;
     WeaponStats *weapon = GetEquippedWeaponStats();
@@ -160,6 +161,7 @@ void PerformMeleeAttack(void) {
     if (player_stamina < 0.0f) player_stamina = 0.0f;
     stamina_rest_timer = 0;
     sword_swipe_frame = drained ? 18 : (weapon && weapon->attack_speed_mult < 1.0f) ? 14 : 10;
+    sword_swipe_len = sword_swipe_frame;
     MeleeHitDesertPlant();
     SelectTargetEnemy();
     float m_dist = DistanceToEnemy();
@@ -763,12 +765,25 @@ void SetHeroFacing8(float dx, float dy) {
     facing_x = dx / l; facing_y = dy / l;
 }
 // A sword/axe slash: three streaks sweeping across the facing direction on screen.
+// Each combo hit has its own shape: 1st an overhead chop falling from above the
+// head to the ground in front, 2nd a wide sweep right round the front, 3rd a thrust.
 void DrawSlash(HDC hdc, int sx, int sy) {
-    float a0 = (float)atan2((facing_x + facing_y) * 0.5f, facing_x - facing_y);
-    float sweep = (10 - sword_swipe_frame) * 0.16f - 0.8f;
+    float a0 = atan2f((facing_x + facing_y) * 0.5f, facing_x - facing_y);
+    float t = 1.0f - (float)sword_swipe_frame / (float)sword_swipe_len, ux = cosf(a0), uy = sinf(a0) * 0.6f;
+    int cy = sy + 4;
     for (int k = 0; k < 3; k++) {
-        float a = a0 + sweep - k * 0.14f; int r = 24 - k * 4;
-        MoveToEx(hdc, sx + (int)(cos(a) * 6), sy + 4 + (int)(sin(a) * 3), NULL);
-        LineTo(hdc, sx + (int)(cos(a) * r), sy + 4 + (int)(sin(a) * r * 0.6f));
+        if (melee_combo_step == 2) { // thrust: three streaks shooting straight out
+            int s = k - 1, reach = (int)(16 + t * 30) - (s ? 8 : 0), ox = (int)(-uy * s * 5), oy = (int)(ux * s * 3);
+            MoveToEx(hdc, sx + (int)(ux * 6) + ox, cy + (int)(uy * 6) + oy, NULL);
+            LineTo(hdc, sx + (int)(ux * reach) + ox, cy + (int)(uy * reach) + oy);
+        } else if (melee_combo_step == 1) { // side sweep: a wide arc across the front
+            float a = a0 + t * 2.6f - 1.3f - k * 0.22f; int r = 30 - k * 4;
+            MoveToEx(hdc, sx + (int)(cosf(a) * 6), cy + (int)(sinf(a) * 3), NULL);
+            LineTo(hdc, sx + (int)(cosf(a) * r), cy + (int)(sinf(a) * r * 0.6f));
+        } else { // overhead: the blade falls from straight up to the ground ahead
+            float p = 1.55f - t * 1.9f + k * 0.2f, r = 28.0f - k * 4;
+            MoveToEx(hdc, sx + (int)(ux * 5 * cosf(p)), cy + (int)(uy * 5 * cosf(p) - 5 * sinf(p)), NULL);
+            LineTo(hdc, sx + (int)(ux * r * cosf(p)), cy + (int)(uy * r * cosf(p) - r * sinf(p)));
+        }
     }
 }
