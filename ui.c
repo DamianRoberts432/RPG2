@@ -189,7 +189,6 @@ static void DrawShopItemCard(HDC hdc) {
 void DrawVendorShopOverlay(HDC hdc) {
     DrawInteriorBackdrop(hdc, TM_NONE);
     SetBkMode(hdc, TRANSPARENT); SetTextColor(hdc, RGB(255, 255, 255));
-    TextOut(hdc, 40, WINDOW_HEIGHT - 70, arpg_action_log, (int)strlen(arpg_action_log));
     RECT box = { 160, 90, 640, 420 };
     HBRUSH bg = CreateSolidBrush(RGB(18, 20, 28)); FillRect(hdc, &box, bg); DeleteObject(bg);
     HPEN border_p = CreatePen(PS_SOLID, 2, RGB(90, 200, 170)); HGDIOBJ old_p = SelectObject(hdc, border_p);
@@ -298,6 +297,7 @@ void DrawVendorShopOverlay(HDC hdc) {
     SetTextColor(hdc, RGB(150, 160, 170));
     TextOut(hdc, box.left + 20, box.bottom - 52, "UP/DOWN or [ ] / D-PAD: scroll", 30);
     DrawShopItemCard(hdc);
+    DrawConvoBox(hdc, 160, 436, WINDOW_WIDTH - 60, 640, "LT / Q: ask for work");
     DrawStrategyGuideFlash(hdc);
 }
 
@@ -646,6 +646,39 @@ void DrawMsgHistory(HDC hdc, int x, int y, int w, int lines) {
         SetTextColor(hdc, k == n - 1 ? RGB(240, 240, 240) : RGB(165, 170, 180));
         RECT r = { x, y + 24 + k * 20, x + w, y + 44 + k * 20 };
         DrawText(hdc, l->text, -1, &r, DT_SINGLELINE | DT_END_ELLIPSIS | DT_LEFT | DT_NOPREFIX);
+    }
+}
+
+// Conversation panel inside shop and talk windows: what was said since the
+// window opened (offers, replies, sales), newest at the bottom, so it shows
+// where you're looking instead of behind the window on the main screen.
+void DrawConvoBox(HDC hdc, int l, int t, int r, int b, const char *hint) {
+    static DWORD last_drawn = 0, opened_at = 0;
+    DWORD now = GetTickCount();
+    if (now - last_drawn > 250) opened_at = now - 1500; // just opened: keep the greeting
+    last_drawn = now;
+    MsgLogUpdate();
+    DrawPanel(hdc, l, t, r, b);
+    SetBkMode(hdc, TRANSPARENT);
+    SetTextColor(hdc, RGB(255, 215, 0));
+    TextOut(hdc, l + 14, t + 8, "CONVERSATION", 12);
+    if (hint && *hint) {
+        SIZE sz; GetTextExtentPoint32(hdc, hint, (int)strlen(hint), &sz);
+        SetTextColor(hdc, RGB(150, 160, 170));
+        TextOut(hdc, r - 14 - sz.cx, t + 8, hint, (int)strlen(hint));
+    }
+    int y = b - 8, w = r - l - 28;
+    for (int k = 0; k < msg_log_count && k < 6; k++) {
+        const LogLine *ln = LogAt(k);
+        if ((int)(ln->t - opened_at) < 0) break;
+        RECT m = { 0, 0, w, 0 };
+        DrawText(hdc, ln->text, -1, &m, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+        int h = m.bottom > 0 ? m.bottom : 18;
+        if (y - h - 4 < t + 32) break;
+        y -= h + 4;
+        RECT out = { l + 14, y, r - 14, y + h };
+        SetTextColor(hdc, k == 0 ? RGB(240, 240, 240) : RGB(150, 156, 168));
+        DrawText(hdc, ln->text, -1, &out, DT_WORDBREAK | DT_LEFT | DT_NOPREFIX);
     }
 }
 
