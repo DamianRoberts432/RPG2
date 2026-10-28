@@ -690,12 +690,12 @@ static void BeastMesh(float x, float y, int type, int idx, float swing) {
         float S = 1.9f, st = sinf(now / 220.0f + idx) * 0.05f * S;
         COLORREF fur = type == MONSTER_YETI ? RGB(232, 238, 246) : RGB(105, 70, 40), face = type == MONSTER_YETI ? RGB(120, 140, 165) : RGB(160, 120, 85);
         FireShadows(x, y, 1.2f * S);
-        OBox(x, y, st, 0.1f * S, 0.0f, 0.36f * S, 0.07f * S, 0.07f * S, fur);
-        OBox(x, y, -st, -0.1f * S, 0.0f, 0.36f * S, 0.07f * S, 0.07f * S, fur);
+        for (int side = -1; side <= 1; side += 2) // heavy rounded legs whose knees fold as they stomp
+            Limb(x, y, 0.0f, side * 0.1f * S, 0.38f * S, 0.19f * S, 0.19f * S, side * st * 5.0f, -(0.12f + fabsf(st) * 3.0f), 0.075f * S, fur, fur);
         Prism(x, y, 0.32f * S, 0.95f * S, 0.24f * S, 0.2f * S, 7, 0.0f, fur);
         for (int side = -1; side <= 1; side += 2) { // long arms that hang to the knees, raised together to club
             float lift = swing * (side > 0 ? 1.0f : 0.8f);
-            OBox(x, y, (0.02f + lift * 0.25f) * S, side * 0.28f * S, (0.28f + lift * 0.55f) * S, (0.9f + lift * 0.35f) * S, 0.06f * S, 0.06f * S, fur);
+            Limb(x, y, 0.02f * S, side * 0.28f * S, 0.9f * S, 0.3f * S, 0.32f * S, lift * 2.4f - side * st * 2.0f, 0.35f + lift * 0.5f, 0.065f * S, fur, fur);
         }
         OBox(x, y, 0.03f * S, 0.0f, 0.93f * S, 1.18f * S, 0.11f * S, 0.11f * S, fur);
         face_bias = 0.01f; OBox(x, y, 0.12f * S, 0.0f, 0.96f * S, 1.12f * S, 0.025f * S, 0.075f * S, face); face_bias = 0.0f;
@@ -704,7 +704,9 @@ static void BeastMesh(float x, float y, int type, int idx, float swing) {
         float S = 1.6f, st = sinf(now / 200.0f + idx) * 0.04f * S;
         COLORREF lion = RGB(200, 165, 100), skin = RGB(205, 165, 110), blue = RGB(40, 70, 160), gold = RGB(235, 195, 60);
         FireShadows(x, y, 0.8f * S);
-        for (int l = 0; l < 4; l++) OBox(x, y, (l < 2 ? 0.26f : -0.26f) * S + (l % 2 ? st : -st), (l % 2 ? 0.11f : -0.11f) * S, 0.0f, 0.32f * S, 0.05f * S, 0.05f * S, lion);
+        for (int l = 0; l < 4; l++) // lion legs: forelegs straight-ish, hind legs with a backward hock
+            Limb(x, y, (l < 2 ? 0.26f : -0.26f) * S, (l % 2 ? 0.11f : -0.11f) * S, 0.32f * S, 0.17f * S, 0.16f * S,
+                 (l % 2 ? st : -st) * 6.0f, l < 2 ? -0.15f : 0.35f, 0.05f * S, lion, lion);
         OBox(x, y, 0.0f, 0.0f, 0.28f * S, 0.55f * S, 0.38f * S, 0.16f * S, lion);
         OBox(x, y, -0.45f * S, 0.0f, 0.45f * S, 0.5f * S, 0.1f * S, 0.015f * S, lion);
         OBox(x, y, 0.36f * S, 0.0f, 0.5f * S, 0.95f * S, 0.09f * S, 0.14f * S, blue);
@@ -717,7 +719,9 @@ static void BeastMesh(float x, float y, int type, int idx, float swing) {
         float S = 1.6f, st = sinf(now / 260.0f + idx) * 0.03f * S;
         COLORREF hide = RGB(60, 70, 45);
         FireShadows(x, y, 0.5f * S);
-        for (int l = 0; l < 4; l++) OBox(x, y, (l < 2 ? 0.25f : -0.25f) * S + (l % 2 ? st : -st), (l % 2 ? 0.13f : -0.13f) * S, 0.0f, 0.16f * S, 0.05f * S, 0.05f * S, hide);
+        for (int l = 0; l < 4; l++) // short squat legs splayed out, knees bending as it waddles
+            Limb(x, y, (l < 2 ? 0.25f : -0.25f) * S, (l % 2 ? 0.13f : -0.13f) * S, 0.17f * S, 0.09f * S, 0.09f * S,
+                 (l % 2 ? st : -st) * 8.0f, l < 2 ? -0.3f : 0.3f, 0.05f * S, hide, hide);
         OBox(x, y, 0.0f, 0.0f, 0.12f * S, 0.38f * S, 0.4f * S, 0.2f * S, hide);
         OBox(x, y, -0.52f * S, 0.0f, 0.16f * S, 0.26f * S, 0.15f * S, 0.05f * S, hide);
         OBox(x, y, 0.48f * S, 0.0f, 0.2f * S, 0.42f * S, 0.12f * S, 0.12f * S, RGB(70, 80, 50));
