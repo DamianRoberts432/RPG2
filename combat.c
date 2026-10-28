@@ -230,6 +230,8 @@ void HandleEnemyDamage(float dmg) {
         if (-enemy_hearts >= OVERKILL_BLOOD) { SpawnBloodBurst(enemy_x, enemy_y, k_dx, k_dy); SpawnBloodBurst(enemy_x, enemy_y, k_dx, k_dy); }
         int is_night = fabs(sin(day_night_cycle_accumulator)) < 0.35f;
         int gained_xp = (int)(((10 + rand() % 7 + (is_night ? 2 : 0)) * opt_xp_mult) * ((is_night && night_bonus_active) ? 1.25f : 1.0f));
+        if (HolidayToday() == HOLIDAY_NEW_YEAR) gained_xp *= 2;
+        else if (HolidayToday() == HOLIDAY_HALLOWEEN && is_night) gained_xp = gained_xp * 3 / 2;
         float loot_multiplier = opt_loot_mult * (is_night ? 1.5f : 1.0f);
         // Ordinary (junk) drops are 60% rarer than they used to be, to cut ground clutter.
         int loot_chance = (int)(70.0f * JUNK_DROP_RATE * loot_multiplier) + 3 * stat_spent[4];

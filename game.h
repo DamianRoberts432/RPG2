@@ -486,5 +486,7 @@ void DrawHallOfRecords(HDC hdc, int x, int y);
 int WellSpot(int *tx, int *ty);
 void DrawWishingWell(HDC hdc);
 int TryWishingWell(void);
+enum { HOLIDAY_NONE, HOLIDAY_HALLOWEEN, HOLIDAY_WINTER_FEAST, HOLIDAY_NEW_YEAR };
+int HolidayToday(void);
 
 #endif // GAME_H
