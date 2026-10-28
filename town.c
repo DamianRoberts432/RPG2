@@ -1220,8 +1220,8 @@ void DrawTownMenu(HDC hdc) {
     SetTextColor(hdc, RGB(170, 220, 255));
     DrawText(hdc, info, -1, &ir, DT_WORDBREAK | DT_LEFT);
     RECT nr = { box.left + 20, ir.bottom + 6, box.right - 20, box.bottom - 40 };
-    SetTextColor(hdc, RGB(160, 240, 170));
-    DrawText(hdc, town_note, -1, &nr, DT_WORDBREAK | DT_LEFT);
+    if (nr.bottom - nr.top > 70) DrawConvoBox(hdc, box.left + 12, nr.top, box.right - 12, nr.bottom, "");
+    else { SetTextColor(hdc, RGB(160, 240, 170)); DrawText(hdc, town_note, -1, &nr, DT_WORDBREAK | DT_LEFT); }
     const char *hint = "Up/Down choose    A / SPACE select    B / ESC leave";
     SetTextColor(hdc, RGB(150, 150, 160));
     TextOut(hdc, box.left + 20, box.bottom - 30, hint, (int)strlen(hint));

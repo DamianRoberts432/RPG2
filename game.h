@@ -169,6 +169,7 @@ void DrawPanel(HDC hdc, int l, int t, int r, int b);
 void MsgLogUpdate(void);
 void DrawMsgLog(HDC hdc, int x, int y);
 void DrawMsgHistory(HDC hdc, int x, int y, int w, int lines);
+void DrawConvoBox(HDC hdc, int l, int t, int r, int b, const char *hint);
 extern int werewolf_active;
 extern int bounty_hunter_active, cave_room_claimed;
 int IsOutlaw(void);
