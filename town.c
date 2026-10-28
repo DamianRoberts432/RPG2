@@ -13,7 +13,7 @@ static char town_note[160] = "";
 
 typedef struct { char text[96]; int action, arg; } TownRow;
 enum { A_LEAVE, A_REPAIR, A_FORGE, A_RECYCLE, A_SMITH_BUY, A_CARD, A_PACK, A_KID, A_PET, A_KING,
-       A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE, A_GUIDE, A_PET_SIZE, A_PET_COLOR, A_SLEEP, A_FURNISH, A_BINDER, A_BINDER_CARD, A_BINDER_PAGE, A_TALK_CHAT, A_ASK_WORK };
+       A_CARAVAN, A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE, A_GUIDE, A_PET_SIZE, A_PET_COLOR, A_SLEEP, A_FURNISH, A_BINDER, A_BINDER_CARD, A_BINDER_PAGE, A_TALK_CHAT, A_ASK_WORK };
 #define TOWN_ROWS 64
 static TownRow rows[TOWN_ROWS];
 static int row_count = 0;
@@ -444,6 +444,23 @@ static void BuildRows(void) {
     } else if (town_menu == TM_TALK) {
         AddRow(A_TALK_CHAT, 0, "Chat");
         AddRow(A_ASK_WORK, 0, "Ask for work");
+        if (current_biome == BIOME_CASTLE && !in_cave) { // caravan to the 3 nearest towns you've found
+            int here = screen_grid_y * META_GRID_SIZE + screen_grid_x, pick[3] = { -1, -1, -1 }, pd[3] = { 1 << 30, 1 << 30, 1 << 30 };
+            for (int gy = 0; gy < META_GRID_SIZE; gy++) for (int gx = 0; gx < META_GRID_SIZE; gx++) {
+                int cell = gy * META_GRID_SIZE + gx;
+                if (cell == here || !IsMapCastle(gx, gy)) continue;
+                int d = (gx - screen_grid_x) * (gx - screen_grid_x) + (gy - screen_grid_y) * (gy - screen_grid_y);
+                for (int k = 0; k < 3; k++) if (d < pd[k]) {
+                    for (int j = 2; j > k; j--) { pd[j] = pd[j - 1]; pick[j] = pick[j - 1]; }
+                    pd[k] = d; pick[k] = cell; break;
+                }
+            }
+            for (int k = 0; k < 3; k++) if (pick[k] >= 0) {
+                char nm[48], label[80]; TownNameAt(30000 + pick[k], nm, sizeof(nm));
+                snprintf(label, sizeof(label), "Caravan to %s - 200 gold", nm);
+                AddRow(A_CARAVAN, pick[k], label);
+            }
+        }
     } else if (town_menu == TM_BEGGAR) {
         AddRow(A_ASK_WORK, 0, "Ask for work");
         AddRow(A_ALMS_GOLD, 10, "Give 10 gold");
@@ -692,6 +709,16 @@ void TownMenuConfirm(void) {
     case A_LEAVE: binder_open = 0; TownMenuBack(); return;
     case A_TALK_CHAT: if (talk_npc >= 0 && talk_npc < village_npc_count) Say("%s", village_npcs[talk_npc].dialogue); return;
     case A_ASK_WORK: AskForWork(TownMenuNpcType()); return;
+    case A_CARAVAN:
+        if (gold_count < 200) { Say("CARAVAN: The ride costs 200 gold."); return; }
+        gold_count -= 200; town_menu = TM_NONE;
+        screen_grid_x = r.arg % META_GRID_SIZE; screen_grid_y = r.arg / META_GRID_SIZE; screens_until_town = 0;
+        GenerateProceduralScreen(30000 + r.arg);
+        player_x = MAP_SIZE / 2.0f; player_y = MAP_SIZE / 2.0f;
+        for (int k = 0; k < MAP_SIZE / 2 && !PlayerCanStandAt(player_x, player_y); k++) player_x = MAP_SIZE / 2.0f + k * ((k & 1) ? 1 : -1);
+        TownNameAt(30000 + r.arg, town_banner, sizeof(town_banner)); town_banner_until = GetTickCount() + 4000;
+        Say("CARAVAN: After a long, dusty ride you climb down in %s.", town_banner);
+        return;
     case A_BINDER: binder_open = r.arg; binder_page = 0; town_cursor = 0;
         Say("HOME: Deck %d / %d. A on a card moves it between your deck and the binder.", DeckCount(), DECK_MAX); return;
     case A_BINDER_PAGE: binder_page = r.arg; town_cursor = 0; return;
