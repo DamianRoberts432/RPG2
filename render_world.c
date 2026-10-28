@@ -489,6 +489,36 @@ void DrawNightEyes(HDC hdc) {
     }
 }
 
+// Tints just the inside of a region at a fixed alpha, blitting only its bounding box.
+static void AlphaRegion(HDC hdc, HRGN rg, COLORREF col, int alpha) {
+    if (alpha <= 0) return;
+    RECT b; GetRgnBox(rg, &b);
+    if (b.left < 0) b.left = 0;
+    if (b.top < 0) b.top = 0;
+    if (b.right > WINDOW_WIDTH) b.right = WINDOW_WIDTH;
+    if (b.bottom > WINDOW_HEIGHT) b.bottom = WINDOW_HEIGHT;
+    int w = b.right - b.left, h = b.bottom - b.top;
+    if (w <= 0 || h <= 0) return;
+    HRGN old = CreateRectRgn(0, 0, 0, 0); int had = GetClipRgn(hdc, old);
+    SelectClipRgn(hdc, rg);
+    HDC m = CreateCompatibleDC(hdc); HBITMAP bm = CreateCompatibleBitmap(hdc, w, h); HGDIOBJ ob = SelectObject(m, bm);
+    HBRUSH br = CreateSolidBrush(col); RECT f = { 0, 0, w, h }; FillRect(m, &f, br); DeleteObject(br);
+    BLENDFUNCTION bf = { AC_SRC_OVER, 0, (BYTE)(alpha > 255 ? 255 : alpha), 0 };
+    AlphaBlend(hdc, b.left, b.top, w, h, m, 0, 0, w, h, bf);
+    SelectObject(m, ob); DeleteObject(bm); DeleteDC(m);
+    SelectClipRgn(hdc, had == 1 ? old : NULL); DeleteObject(old);
+}
+
+// A soft lens orb: a faint rim with a slightly denser core.
+static void OrbAt(HDC hdc, int x, int y, int r, COLORREF col, int alpha) {
+    for (int ring = 0; ring < 2; ring++) {
+        int rr = ring ? r * 2 / 3 : r;
+        HRGN rg = CreateEllipticRgn(x - rr, y - rr, x + rr + 1, y + rr + 1);
+        AlphaRegion(hdc, rg, col, alpha / 2 + ring * alpha / 2);
+        DeleteObject(rg);
+    }
+}
+
 void DrawSolitaireSunMoonBeam(HDC hdc) {
     if (current_biome == BIOME_CAVE) return;
     if (current_weather != WEATHER_CLEAR) return; // clouds, rain and snow hide the sun and moon
@@ -530,34 +560,29 @@ void DrawSolitaireSunMoonBeam(HDC hdc) {
         {ground_x - 75, ground_y + 20}
     };
 
-    // True translucency via AlphaBlend: clip the destination to the beam's
-    // trapezoid shape using a polygon region, then alpha-blend a solid-color
-    // source over just that clipped area. Unlike the previous 1-bit dithered
-    // pattern-brush trick (which still read as solid), this lets the scene
-    // underneath clearly show through the beam.
-    HRGN beam_rgn = CreatePolygonRgn(solitaire_poly, 4, WINDING);
-    HRGN old_clip_rgn = CreateRectRgn(0, 0, 0, 0);
-    int had_old_clip = GetClipRgn(hdc, old_clip_rgn);
-    SelectClipRgn(hdc, beam_rgn);
-
-    HDC mem_dc = CreateCompatibleDC(hdc);
-    HBITMAP mem_bmp = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT);
-    HGDIOBJ old_mem_bmp = SelectObject(mem_dc, mem_bmp);
-    HBRUSH fill_b = CreateSolidBrush(beam_color);
-    RECT full = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
-    FillRect(mem_dc, &full, fill_b);
-    DeleteObject(fill_b);
-
-    BLENDFUNCTION blend = { AC_SRC_OVER, 0, (BYTE)(105 * k), 0 };
-    AlphaBlend(hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, mem_dc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, blend);
-
-    SelectObject(mem_dc, old_mem_bmp);
-    DeleteObject(mem_bmp);
-    DeleteDC(mem_dc);
-
-    SelectClipRgn(hdc, had_old_clip == 1 ? old_clip_rgn : NULL);
-    DeleteObject(old_clip_rgn);
-    DeleteObject(beam_rgn);
+    // A soft, see-through shaft: three nested trapezoids, each only faintly lit,
+    // so the edges fade out instead of ending in a hard "tractor beam" wall.
+    for (int layer = 0; layer < 3; layer++) {
+        float w = 1.0f - layer * 0.3f;
+        POINT q[4] = { { top_x - (int)(22 * w), 0 }, { top_x + (int)(22 * w), 0 },
+                       { ground_x + (int)(70 * w), ground_y + 20 }, { ground_x - (int)(70 * w), ground_y + 20 } };
+        HRGN rg = CreatePolygonRgn(q, 4, WINDING);
+        AlphaRegion(hdc, rg, beam_color, (int)(16 * k));
+        DeleteObject(rg);
+    }
+    (void)solitaire_poly;
+    // Lens flare: little orbs strung along the line from the light through the
+    // screen centre, each with a red and a green fringe like light split by a lens.
+    int cxs = WINDOW_WIDTH / 2, cys = WINDOW_HEIGHT / 2;
+    static const float at[5] = { 0.35f, 0.6f, 0.9f, 1.25f, 1.55f };
+    static const int rad[5] = { 10, 22, 7, 30, 14 };
+    for (int i = 0; i < 5; i++) {
+        int ox = top_x + (int)((cxs - top_x) * at[i]), oy = (int)(cys * at[i]), r = rad[i];
+        OrbAt(hdc, ox - 2, oy, r + 2, RGB(255, 90, 80), (int)(12 * k));
+        OrbAt(hdc, ox + 2, oy, r + 2, RGB(90, 255, 140), (int)(12 * k));
+        OrbAt(hdc, ox, oy, r, is_night ? RGB(200, 220, 255) : RGB(255, 240, 200), (int)(20 * k));
+        OrbAt(hdc, ox, oy, r / 2, RGB(255, 255, 255), (int)(10 * k));
+    }
 }
 
 // Loot reads as a treasure pile: three stacks of gold coins with a few
