@@ -164,7 +164,7 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         if (sword_swipe_frame > 0) {
             DrawSlash(hdc, sx, sy);
         } else {
-            MoveToEx(hdc, hand_x, hand_y, NULL); LineTo(hdc, tip_x, tip_y);
+            DrawIronSword(hdc, hand_x, hand_y, hand_x + (tip_x - hand_x) * 3 / 2, hand_y + (tip_y - hand_y) * 3 / 2);
         }
         SelectObject(hdc, prev_p); DeleteObject(p);
     } else if (shown_weapon == WEAPON_AXE) {
