@@ -152,7 +152,7 @@ void UpdateMouseInput(float *dx, float *dy) {
     float ddx = tx - player_x, ddy = ty - player_y, d = (float)sqrt(ddx * ddx + ddy * ddy);
     player_facing = fabs(ddx) > fabs(ddy) ? (ddx < 0 ? FACE_LEFT : FACE_RIGHT) : (ddy < 0 ? FACE_UP : FACE_DOWN);
     if (target_enemy >= 0 && d < 1.5f) { // walked up to it: keep swinging until it falls
-        if (GetTickCount() - last_mouse_attack > 400) { PerformMeleeAttack(); last_mouse_attack = GetTickCount(); }
+        if (GetTickCount() - last_mouse_attack > 250) { PerformMeleeAttack(); last_mouse_attack = GetTickCount(); }
         return;
     }
     if (walk_interact && d < 1.1f) { walk_active = 0; walk_interact = 0; HandleContextInteract(); return; }

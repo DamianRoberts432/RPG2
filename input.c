@@ -212,7 +212,7 @@ void ProcessGamepadInput(void) {
             static DWORD last_attack_gp = 0;
             WeaponStats *held_weapon = GetEquippedWeaponStats();
             DWORD attack_delay_gp = held_weapon && held_weapon->attack_speed_mult < 1.0f ?
-                (DWORD)(260.0f / held_weapon->attack_speed_mult) : 260;
+                (DWORD)(180.0f / held_weapon->attack_speed_mult) : 180;
             if (player_stamina < MELEE_SWING_STAMINA) attack_delay_gp = attack_delay_gp * 8 / 5; // tired arms swing slower
             if ((buttons & XINPUT_GAMEPAD_A) && (GetTickCount() - last_attack_gp > attack_delay_gp)) {
                 if (shopping) {
@@ -436,7 +436,7 @@ void ProcessGamepadInput(void) {
         static DWORD last_attack_kb = 0;
         WeaponStats *held_weapon = GetEquippedWeaponStats();
         DWORD attack_delay_kb = held_weapon && held_weapon->attack_speed_mult < 1.0f ?
-            (DWORD)(260.0f / held_weapon->attack_speed_mult) : 260;
+            (DWORD)(180.0f / held_weapon->attack_speed_mult) : 180;
         if (((GetAsyncKeyState(VK_SPACE) | GetAsyncKeyState('Z')) & 0x8000) && (GetTickCount() - last_attack_kb > attack_delay_kb)) {
             if (shopping_kb) {
                 if (vendor_tab == 0) ShopConfirm(); else HandleVendorSell();
