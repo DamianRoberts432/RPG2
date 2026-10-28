@@ -1404,3 +1404,55 @@ void DrawCardInspector(HDC hdc, int x, int y, int w, int h) {
         TextOut(hdc, x + w / 2, y + 314 + s * 22, buf, (int)strlen(buf));
     }
 }
+
+// Wishing well on every town and village square: toss 10 gold once a day for a
+// small blessing (+25% damage for 5 minutes) and a little health back.
+static int well_screen = -2, well_tx = -1, well_ty = -1, well_day = -1;
+int WellSpot(int *tx, int *ty) {
+    if (village_npc_count < 3 || in_cave || inside_home >= 0) return 0;
+    if (well_screen != current_screen_index) {
+        well_screen = current_screen_index; well_tx = -1;
+        for (int k = 0; k < 24 && well_tx < 0; k++) {
+            int x = 13 + (k % 6), y = 20 + k / 6, clear = VISUAL_MAP[y][x] == 0 && VISUAL_MAP[y][x + 1] == 0;
+            for (int n = 0; n < village_npc_count && clear; n++) {
+                float dx = village_npcs[n].home_x - x, dy = village_npcs[n].home_y - y;
+                clear = dx * dx + dy * dy >= 9.0f;
+            }
+            if (clear) { well_tx = x; well_ty = y; }
+        }
+    }
+    if (well_tx < 0) return 0;
+    *tx = well_tx; *ty = well_ty;
+    return 1;
+}
+
+void DrawWishingWell(HDC hdc) {
+    int tx, ty, sx, sy;
+    if (!WellSpot(&tx, &ty)) return;
+    GetIsoCoords(tx + 0.5f, ty + 0.5f, &sx, &sy);
+    TwDisc(hdc, sx, sy, 20, 9, RGB(110, 108, 104));
+    TwBox(hdc, sx - 20, sy - 14, sx + 20, sy, RGB(130, 126, 120));
+    TwDisc(hdc, sx, sy - 14, 20, 9, RGB(150, 146, 140));
+    TwDisc(hdc, sx, sy - 14, 15, 6, RGB(40, 80, 130));
+    TwBox(hdc, sx - 19, sy - 48, sx - 15, sy - 14, RGB(96, 64, 36));
+    TwBox(hdc, sx + 15, sy - 48, sx + 19, sy - 14, RGB(96, 64, 36));
+    POINT roof[] = { {sx - 26, sy - 44}, {sx, sy - 62}, {sx + 26, sy - 44} };
+    HBRUSH rb = CreateSolidBrush(RGB(120, 50, 40)); HGDIOBJ ob = SelectObject(hdc, rb);
+    Polygon(hdc, roof, 3); SelectObject(hdc, ob); DeleteObject(rb);
+    if ((GetTickCount() / 400) % 4 == 0) TwDisc(hdc, sx + 4, sy - 15, 2, 1, RGB(230, 240, 255));
+}
+
+int TryWishingWell(void) {
+    int tx, ty;
+    if (!WellSpot(&tx, &ty)) return 0;
+    float dx = tx + 0.5f - player_x, dy = ty + 0.5f - player_y;
+    if (dx * dx + dy * dy > 2.2f * 2.2f) return 0;
+    int day = GameDayOfYear();
+    if (well_day == day) { strcpy(arpg_action_log, "WISHING WELL: You've made today's wish. Come back tomorrow."); return 1; }
+    if (gold_count < 10) { strcpy(arpg_action_log, "WISHING WELL: A wish costs 10 gold."); return 1; }
+    gold_count -= 10; well_day = day;
+    Bless(0);
+    player_hp += 2.0f; if (player_hp > max_player_hp) player_hp = max_player_hp;
+    strcpy(arpg_action_log, "WISHING WELL: The coin plinks into the dark. You feel lucky: +25% damage for 5 minutes.");
+    return 1;
+}

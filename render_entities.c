@@ -939,6 +939,7 @@ void DrawVillage(HDC hdc) {
     // Every NPC (village and castle) uses the detailed villager figure at the
     // hero's scale. Their lines go to the action log in the upper left; only a
     // "..." bubble is drawn over the head of an NPC close enough to talk to.
+    DrawWishingWell(hdc);
     const float NPC_SCALE = 1.2f;
     for (int i = 0; i < village_npc_count; i++) {
         int sx, sy; GetIsoCoords(village_npcs[i].x, village_npcs[i].y, &sx, &sy);

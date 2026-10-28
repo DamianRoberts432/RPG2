@@ -480,5 +480,8 @@ extern DWORD town_banner_until;
 void DrawTownBanner(HDC hdc);
 void RecordHallEntry(const char *cause, int retired);
 void DrawHallOfRecords(HDC hdc, int x, int y);
+int WellSpot(int *tx, int *ty);
+void DrawWishingWell(HDC hdc);
+int TryWishingWell(void);
 
 #endif // GAME_H
