@@ -655,3 +655,19 @@ void DrawPanel(HDC hdc, int l, int t, int r, int b) {
     RoundRect(hdc, l, t, r, b, 14, 14);
     SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(fill); DeleteObject(edge);
 }
+
+// Entering a town: its name and your Town Heat in a banner across the top, fading out.
+void DrawTownBanner(HDC hdc) {
+    DWORD now = GetTickCount();
+    if (!town_banner[0] || now >= town_banner_until) return;
+    DWORD left = town_banner_until - now;
+    int a = left < 800 ? (int)(left * 200 / 800) : 200, w = 420, h = 58, x = WINDOW_WIDTH / 2 - w / 2, y = 70;
+    FillRectAlpha(hdc, x, y, w, h, RGB(18, 22, 30), a);
+    if (a < 120) return;
+    HBRUSH fr = CreateSolidBrush(RGB(200, 170, 90)); RECT r = { x, y, x + w, y + h }; FrameRect(hdc, &r, fr); DeleteObject(fr);
+    char line[96]; SetBkMode(hdc, TRANSPARENT);
+    RECT t1 = { x, y + 8, x + w, y + 30 }, t2 = { x, y + 32, x + w, y + 52 };
+    SetTextColor(hdc, RGB(255, 225, 130)); DrawText(hdc, town_banner, -1, &t1, DT_CENTER | DT_SINGLELINE);
+    snprintf(line, sizeof(line), "Town Heat: %d%s", karma.town_heat, karma.town_heat >= 50 ? "  - the guards are watching you" : "");
+    SetTextColor(hdc, karma.town_heat >= 50 ? RGB(255, 120, 100) : RGB(200, 210, 220)); DrawText(hdc, line, -1, &t2, DT_CENTER | DT_SINGLELINE);
+}

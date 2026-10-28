@@ -475,4 +475,8 @@ extern int cam_y;
 #include "update.h"
 #include "worldgen.h"
 
+extern char town_banner[48];
+extern DWORD town_banner_until;
+void DrawTownBanner(HDC hdc);
+
 #endif // GAME_H

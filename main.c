@@ -273,6 +273,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 SetTextColor(memHDC, RGB(255, 255, 255)); SetBkMode(memHDC, TRANSPARENT);
                 MsgLogUpdate();
                 if (!AfkViewActive() && !is_menu_open) DrawMsgLog(memHDC, 20, HUD_LOG_Y);
+                if (!AfkViewActive() && !is_menu_open) DrawTownBanner(memHDC);
                 if (vendor_menu_open && IsNearMerchant()) {
                     DrawVendorShopOverlay(memHDC);
                 }
