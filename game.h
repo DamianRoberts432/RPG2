@@ -493,5 +493,6 @@ void DrawCanopyShadows(HDC hdc);
 int QuickWheelUpdate(WORD buttons);
 void DrawQuickWheel(HDC hdc);
 float DoorwayCamera(void);
+void DrawIronSword(HDC hdc, int x0, int y0, int x1, int y1);
 
 #endif // GAME_H

@@ -160,7 +160,7 @@ void PerformMeleeAttack(void) {
     player_stamina -= (float)stamina_cost;
     if (player_stamina < 0.0f) player_stamina = 0.0f;
     stamina_rest_timer = 0;
-    sword_swipe_frame = drained ? 18 : (weapon && weapon->attack_speed_mult < 1.0f) ? 14 : 10;
+    sword_swipe_frame = drained ? 12 : (weapon && weapon->attack_speed_mult < 1.0f) ? 9 : 6;
     sword_swipe_len = sword_swipe_frame;
     MeleeHitDesertPlant();
     SelectTargetEnemy();
@@ -765,25 +765,57 @@ void SetHeroFacing8(float dx, float dy) {
     facing_x = dx / l; facing_y = dy / l;
 }
 // A sword/axe slash: three streaks sweeping across the facing direction on screen.
-// Each combo hit has its own shape: 1st an overhead chop falling from above the
-// head to the ground in front, 2nd a wide sweep right round the front, 3rd a thrust.
+// An iron sword from hilt (x0,y0) to tip (x1,y1): leather grip, dark crossguard,
+// a pale steel blade with a bright edge line, so it reads as metal, not wood.
+void DrawIronSword(HDC hdc, int x0, int y0, int x1, int y1) {
+    float dx = (float)(x1 - x0), dy = (float)(y1 - y0), d = sqrtf(dx * dx + dy * dy);
+    if (d < 1.0f) return;
+    dx /= d; dy /= d;
+    float px = -dy, py = dx;
+    HPEN grip = CreatePen(PS_SOLID, 3, RGB(70, 45, 30)), guard = CreatePen(PS_SOLID, 2, RGB(80, 82, 92)),
+         blade = CreatePen(PS_SOLID, 3, RGB(160, 168, 180)), edge = CreatePen(PS_SOLID, 1, RGB(240, 244, 250));
+    HGDIOBJ op = SelectObject(hdc, grip);
+    MoveToEx(hdc, x0 - (int)(dx * 5), y0 - (int)(dy * 5), NULL); LineTo(hdc, x0, y0);
+    SelectObject(hdc, guard);
+    MoveToEx(hdc, x0 - (int)(px * 5), y0 - (int)(py * 5), NULL); LineTo(hdc, x0 + (int)(px * 5), y0 + (int)(py * 5));
+    SelectObject(hdc, blade);
+    MoveToEx(hdc, x0 + (int)(dx * 2), y0 + (int)(dy * 2), NULL); LineTo(hdc, x1, y1);
+    SelectObject(hdc, edge);
+    MoveToEx(hdc, x0 + (int)(dx * 3), y0 + (int)(dy * 3), NULL); LineTo(hdc, x1 - (int)(dx * 1), y1 - (int)(dy * 1));
+    SelectObject(hdc, op);
+    DeleteObject(grip); DeleteObject(guard); DeleteObject(blade); DeleteObject(edge);
+}
+
+// Each combo hit has its own path: 1st an overhead chop falling from above the
+// head to the ground in front, 2nd a wide sweep across the front, 3rd a thrust.
+// The blade itself is drawn once where it is now, with two thin motion lines
+// trailing near its tip to sell the speed (no ghost copies of the sword).
+static void SlashPoint(float a0, float t, float r, int sx, int cy, int *x, int *y) {
+    float ux = cosf(a0), uy = sinf(a0) * 0.6f;
+    if (melee_combo_step == 2) { float reach = r * (0.45f + t * 0.75f); *x = sx + (int)(ux * reach); *y = cy + (int)(uy * reach); }
+    else if (melee_combo_step == 1) { float a = a0 + t * 2.6f - 1.3f; *x = sx + (int)(cosf(a) * r); *y = cy + (int)(sinf(a) * r * 0.6f); }
+    else { float p = 1.55f - t * 1.9f; *x = sx + (int)(ux * r * cosf(p)); *y = cy + (int)(uy * r * cosf(p) - r * sinf(p)); }
+}
 void DrawSlash(HDC hdc, int sx, int sy) {
     float a0 = atan2f((facing_x + facing_y) * 0.5f, facing_x - facing_y);
-    float t = 1.0f - (float)sword_swipe_frame / (float)sword_swipe_len, ux = cosf(a0), uy = sinf(a0) * 0.6f;
-    int cy = sy + 4;
-    for (int k = 0; k < 3; k++) {
-        if (melee_combo_step == 2) { // thrust: three streaks shooting straight out
-            int s = k - 1, reach = (int)(16 + t * 30) - (s ? 8 : 0), ox = (int)(-uy * s * 5), oy = (int)(ux * s * 3);
-            MoveToEx(hdc, sx + (int)(ux * 6) + ox, cy + (int)(uy * 6) + oy, NULL);
-            LineTo(hdc, sx + (int)(ux * reach) + ox, cy + (int)(uy * reach) + oy);
-        } else if (melee_combo_step == 1) { // side sweep: a wide arc across the front
-            float a = a0 + t * 2.6f - 1.3f - k * 0.22f; int r = 30 - k * 4;
-            MoveToEx(hdc, sx + (int)(cosf(a) * 6), cy + (int)(sinf(a) * 3), NULL);
-            LineTo(hdc, sx + (int)(cosf(a) * r), cy + (int)(sinf(a) * r * 0.6f));
-        } else { // overhead: the blade falls from straight up to the ground ahead
-            float p = 1.55f - t * 1.9f + k * 0.2f, r = 28.0f - k * 4;
-            MoveToEx(hdc, sx + (int)(ux * 5 * cosf(p)), cy + (int)(uy * 5 * cosf(p) - 5 * sinf(p)), NULL);
-            LineTo(hdc, sx + (int)(ux * r * cosf(p)), cy + (int)(uy * r * cosf(p) - r * sinf(p)));
-        }
+    float t = 1.0f - (float)sword_swipe_frame / (float)sword_swipe_len;
+    int cy = sy + 6, hx, hy, tx, ty;
+    HPEN motion = CreatePen(PS_SOLID, 1, RGB(225, 232, 242)); HGDIOBJ op = SelectObject(hdc, motion);
+    for (int k = 1; k <= 2; k++) { // motion lines: short streaks along the path the tip just travelled
+        float t0 = t - 0.12f * k, t1 = t - 0.12f * k - 0.18f, rr = 26.0f + k * 3;
+        if (t0 < 0.0f) continue;
+        if (t1 < 0.0f) t1 = 0.0f;
+        int ax, ay, bx, by;
+        if (melee_combo_step == 2) { // thrust: speed lines parallel to the blade, either side
+            float ux = cosf(a0), uy = sinf(a0) * 0.6f, s = k == 1 ? 6.0f : -6.0f;
+            SlashPoint(a0, t0, 20.0f, sx, cy, &ax, &ay); SlashPoint(a0, t1, 20.0f, sx, cy, &bx, &by);
+            ax += (int)(-uy * s); ay += (int)(ux * s * 0.6f); bx += (int)(-uy * s); by += (int)(ux * s * 0.6f);
+        } else { SlashPoint(a0, t0, rr, sx, cy, &ax, &ay); SlashPoint(a0, t1, rr, sx, cy, &bx, &by); }
+        MoveToEx(hdc, ax, ay, NULL); LineTo(hdc, bx, by);
     }
+    SelectObject(hdc, op); DeleteObject(motion);
+    SlashPoint(a0, t, 7.0f, sx, cy, &hx, &hy);
+    SlashPoint(a0, t, 28.0f, sx, cy, &tx, &ty);
+    if (melee_combo_step == 2) { hx = tx - (int)(cosf(a0) * 21); hy = ty - (int)(sinf(a0) * 0.6f * 21); }
+    DrawIronSword(hdc, hx, hy, tx, ty);
 }
