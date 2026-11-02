@@ -150,15 +150,15 @@ int SaveWorldMapState(void) {
 }
 
 // Version 1 saves held decimals; turn their bits into fixed point once on load.
-static fx Fb(fx v) { return FxFromFloatBits((uint32_t)v); }
+static fx Fb(int32_t v) { return FxFromFloatBits((uint32_t)v); }
 static void ConvertVersion1(int32_t *cal, int has_cal, InventoryItem *items, int n, StashChest *ch, int has_ch, MeltPatch *mp, int has_mp) {
     if (has_cal) { cal[0] = FxTrunc(Fb(cal[0])); cal[1] = FxMulInt(1000, Fb(cal[1])); }
-    for (int i = 0; i < n; i++) items[i].weight = Fb(items[i].weight);
+    for (int i = 0; i < n; i++) items[i].weight = Fb(FxBits(items[i].weight));
     if (has_ch) for (int i = 0; i < MAX_CHESTS; i++) {
-        ch[i].x = Fb(ch[i].x); ch[i].y = Fb(ch[i].y);
-        for (int k = 0; k < CHEST_SLOTS; k++) ch[i].items[k].weight = Fb(ch[i].items[k].weight);
+        ch[i].x = Fb(FxBits(ch[i].x)); ch[i].y = Fb(FxBits(ch[i].y));
+        for (int k = 0; k < CHEST_SLOTS; k++) ch[i].items[k].weight = Fb(FxBits(ch[i].items[k].weight));
     }
-    if (has_mp) for (int i = 0; i < MAX_MELT_PATCHES; i++) { mp[i].x = Fb(mp[i].x); mp[i].y = Fb(mp[i].y); mp[i].fill = Fb(mp[i].fill); }
+    if (has_mp) for (int i = 0; i < MAX_MELT_PATCHES; i++) { mp[i].x = Fb(FxBits(mp[i].x)); mp[i].y = Fb(FxBits(mp[i].y)); mp[i].fill = Fb(FxBits(mp[i].fill)); }
 }
 
 int LoadWorldMapState(void) {

@@ -1,6 +1,9 @@
 #ifndef FIXED_H
 #define FIXED_H
 #include <stdint.h>
+#if defined(__cplusplus) && defined(FX_CHECK)
+#include "fx_check.h"
+#else
 
 // Saturn-style 16.16 fixed point. The Saturn's SH-2 CPUs have no floating
 // point unit, so world, combat and drawing maths run on whole numbers:
@@ -19,6 +22,8 @@ typedef int32_t fx;
 #define FxFloor(a) ((int)((a) >> FX_SHIFT))   // always down, also for negatives
 #define FxRound(a) ((int)(((a) + FX_HALF) >> FX_SHIFT))
 #define FxFrac(a) ((a) & (FX_ONE - 1))
+#define FxCeil(a) ((int)(((a) + FX_ONE - 1) >> FX_SHIFT))
+#define FX_MAX ((fx)INT32_MAX)
 
 static inline fx FxMul(fx a, fx b) { return (fx)(((int64_t)a * b) >> FX_SHIFT); }
 static inline fx FxDiv(fx a, fx b) {
@@ -44,6 +49,8 @@ static inline int FxMulInt(int n, fx a) { return (int)(((int64_t)n * a + FX_HALF
 // Bridges for code not converted yet; to be removed once every file is fixed point.
 #define FxToF(a) ((float)(a) * (1.0f / 65536.0f))
 #define FxFromF(f) ((fx)((f) * 65536.0f))
+#define FxBits(a) ((int32_t)(a)) // the raw 16.16 bits, for hashing and saving
+#endif
 fx FxSin(fx radians);
 fx FxCos(fx radians);
 fx FxSinTurn(uint32_t turn); // binary angle: a full turn is 2^32

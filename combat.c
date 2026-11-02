@@ -160,7 +160,7 @@ void PerformMeleeAttack(void) {
             return;
         }
     } else empty_swings = 0;
-    player_stamina -= FxI(stamina_cost);
+    player_stamina -= stamina_cost;
     if (player_stamina < FxI(0)) player_stamina = FxI(0);
     stamina_rest_timer = 0;
     sword_swipe_frame = drained ? 12 : (weapon && weapon->attack_speed_mult < FxI(1)) ? 9 : 6;
@@ -341,7 +341,7 @@ int EnemyAtPoint(fx x, fx y, fx radius) {
 
 int SelectNearestEnemyTo(fx x, fx y) {
     StoreEnemy();
-    int best = -1; fx best_d = INT32_MAX;
+    int best = -1; fx best_d = FX_MAX;
     for (int i = 0; i < MAX_ENEMIES; i++) {
         if (enemies[i].hearts <= FxI(0)) continue;
         fx dx = enemies[i].x - x, dy = enemies[i].y - y, d = FxMul(dx, dx) + FxMul(dy, dy);
@@ -359,7 +359,7 @@ int SelectTargetEnemy(void) {
     }
     int nearest = SelectNearestEnemyTo(player_x, player_y);
     if (nearest < 0) return -1;
-    int facing = -1; fx best_d = INT32_MAX;
+    int facing = -1; fx best_d = FX_MAX;
     for (int i = 0; i < MAX_ENEMIES; i++) {
         if (enemies[i].hearts <= FxI(0)) continue;
         SelectEnemy(i);
@@ -473,7 +473,7 @@ void FirePlayerArrow(int is_tap) {
 // Trees and rocks stop an arrow, and it vanishes at the edge of the screen.
 static int ArrowBlockedAt(fx x, fx y) {
     if (x < FX(0.5) || y < FX(0.5) || x >= FxI(MAP_SIZE) - FX(0.5) || y >= FxI(MAP_SIZE) - FX(0.5)) return 1;
-    int tx = (int)x, ty = (int)y;
+    int tx = FxTrunc(x), ty = FxTrunc(y);
     if (tx == player_arrow.origin_tx && ty == player_arrow.origin_ty) return 0;
     uint8_t t = VISUAL_MAP[ty][tx];
     if (t == 7) { BreakDesertPlant(tx, ty, 0); return 1; }
@@ -535,7 +535,7 @@ void ThrowSpear(void) {
 
 static int SpearBlockedAt(fx x, fx y) {
     if (x < FX(0.5) || y < FX(0.5) || x >= FxI(MAP_SIZE) - FX(0.5) || y >= FxI(MAP_SIZE) - FX(0.5)) return 1;
-    int tx = (int)x, ty = (int)y;
+    int tx = FxTrunc(x), ty = FxTrunc(y);
     if (tx == thrown_spear.origin_tx && ty == thrown_spear.origin_ty) return 0;
     uint8_t t = VISUAL_MAP[ty][tx];
     return t == 11 || t == 1 || t == 3;
@@ -669,8 +669,8 @@ void FireClassAbility(void) {
 
         fx hop = FX(0.5) + FX(0.5) * stage;
         fx tx = player_x + FxMul(ndx, hop), ty = player_y + FxMul(ndy, hop);
-        if (tx >= 0 && tx < MAP_SIZE && ty >= 0 && ty < MAP_SIZE &&
-            VISUAL_MAP[(int)ty][(int)tx] != 1 && VISUAL_MAP[(int)ty][(int)tx] != 12) {
+        if (tx >= 0 && tx < FxI(MAP_SIZE) && ty >= 0 && ty < FxI(MAP_SIZE) &&
+            VISUAL_MAP[FxTrunc(ty)][FxTrunc(tx)] != 1 && VISUAL_MAP[FxTrunc(ty)][FxTrunc(tx)] != 12) {
             player_x = tx; player_y = ty;
         }
 
@@ -763,7 +763,7 @@ void EnemyAttackHero(int e) {
     DWORD now = GetTickCount();
     if (active_monster == MONSTER_DRACULA && GetMaterialCount("Garlic") == 0) { // vampires drain from a distance and heal
         fx reach = FX(1.4) + FxMul(FX(0.35), enemy_hearts > FxI(4) ? FxI(4) : enemy_hearts); // stronger ones reach further
-        if (d2 < reach * reach && world_frame % 20 == 0) {
+        if (d2 < FxMul(reach, reach) && world_frame % 20 == 0) {
             HurtHero(FX(0.4));
             if (enemy_hearts < FxI(6)) enemy_hearts += FX(0.04);
             if (world_frame % 120 == 0) strcpy(arpg_action_log, "VAMPIRE: It drinks your life from afar! Get away or strike it.");
@@ -844,7 +844,7 @@ void DrawIronSword(HDC hdc, int x0, int y0, int x1, int y1) {
     HGDIOBJ op = SelectObject(hdc, grip);
     MoveToEx(hdc, x0 - FxTrunc(dx * 5), y0 - FxTrunc(dy * 5), NULL); LineTo(hdc, x0, y0);
     SelectObject(hdc, guard);
-    MoveToEx(hdc, x0 - (int)(px * 5), y0 - (int)(py * 5), NULL); LineTo(hdc, x0 + (int)(px * 5), y0 + (int)(py * 5));
+    MoveToEx(hdc, x0 - FxTrunc(px * 5), y0 - FxTrunc(py * 5), NULL); LineTo(hdc, x0 + FxTrunc(px * 5), y0 + FxTrunc(py * 5));
     SelectObject(hdc, blade);
     MoveToEx(hdc, x0 + FxTrunc(dx * 2), y0 + FxTrunc(dy * 2), NULL); LineTo(hdc, x1, y1);
     SelectObject(hdc, edge);

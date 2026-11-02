@@ -60,13 +60,13 @@ void DrawPlayerStatusHUD(HDC hdc) {
     RECT hp_bg = { bar_x, hp_y, bar_x + bar_w, hp_y + bar_h };
     HBRUSH bg_b = CreateSolidBrush(RGB(40, 15, 15)); FillRect(hdc, &hp_bg, bg_b); DeleteObject(bg_b);
     fx hp_pct = max_player_hp > FxI(0) ? FxDiv(player_hp, max_player_hp) : FxI(0);
-    RECT hp_fill = { bar_x, hp_y, bar_x + (int)(bar_w * hp_pct), hp_y + bar_h };
+    RECT hp_fill = { bar_x, hp_y, bar_x + FxTrunc(bar_w * hp_pct), hp_y + bar_h };
     HBRUSH hp_b = CreateSolidBrush(RGB(210, 45, 60)); FillRect(hdc, &hp_fill, hp_b); DeleteObject(hp_b);
 
     RECT mp_bg = { bar_x, mp_y, bar_x + bar_w, mp_y + bar_h };
     HBRUSH mp_bg_b = CreateSolidBrush(RGB(15, 20, 45)); FillRect(hdc, &mp_bg, mp_bg_b); DeleteObject(mp_bg_b);
     fx mp_pct = max_player_mp > FxI(0) ? FxDiv(player_mp, max_player_mp) : FxI(0);
-    RECT mp_fill = { bar_x, mp_y, bar_x + (int)(bar_w * mp_pct), mp_y + bar_h };
+    RECT mp_fill = { bar_x, mp_y, bar_x + FxTrunc(bar_w * mp_pct), mp_y + bar_h };
     HBRUSH mp_b = CreateSolidBrush(RGB(60, 110, 235)); FillRect(hdc, &mp_fill, mp_b); DeleteObject(mp_b);
 
     RECT sta_bg = { bar_x, sta_y, bar_x + bar_w, sta_y + bar_h };
@@ -75,7 +75,7 @@ void DrawPlayerStatusHUD(HDC hdc) {
     COLORREF sta_color = RGB(60, 200, 80);
     if (sta_pct <= FX(0.20)) sta_color = RGB(220, 60, 50);
     else if (sta_pct <= FX(0.50)) sta_color = RGB(230, 210, 60);
-    RECT sta_fill = { bar_x, sta_y, bar_x + (int)(bar_w * sta_pct), sta_y + bar_h };
+    RECT sta_fill = { bar_x, sta_y, bar_x + FxTrunc(bar_w * sta_pct), sta_y + bar_h };
     HBRUSH sta_b = CreateSolidBrush(sta_color); FillRect(hdc, &sta_fill, sta_b); DeleteObject(sta_b);
 
     if (player_stamina <= FxI(0) || HeroExhausted()) {
@@ -629,7 +629,7 @@ void DrawMsgLog(HDC hdc, int x, int y) {
         DWORD age = now - l->t;
         fx a = (idx[k] == 0 || age <= LOG_SHOW_MS) ? FxI(1) : FxI(1) - (fx)((int64_t)(age - LOG_SHOW_MS) * FX_ONE / LOG_FADE_MS);
         if (a < FxI(0)) a = FxI(0);
-        int c = (int)(70 + 185 * a);
+        int c = 70 + FxTrunc(185 * a);
         SetTextColor(hdc, RGB(c, c, c));
         RECT r = { x, y, x + 1100, y + 60 };
         int hgt = DrawText(hdc, l->text, -1, &r, DT_WORDBREAK | DT_LEFT | DT_NOPREFIX);

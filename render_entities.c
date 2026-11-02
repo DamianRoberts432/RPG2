@@ -46,9 +46,9 @@ static void LoadHeroSprites(void) {
 static int DrawHeroSprite(HDC hdc, int sx, int sy, fx scale, int dir) {
     if (!hero_spr_loaded) LoadHeroSprites();
     if (!hero_spr[dir] || hero_spr_h[dir] <= 0) return 0;
-    int h = (int)(36 * scale), w = hero_spr_w[dir] * h / hero_spr_h[dir];
+    int h = FxTrunc(36 * scale), w = hero_spr_w[dir] * h / hero_spr_h[dir];
     HDC m = CreateCompatibleDC(hdc); HGDIOBJ om = SelectObject(m, hero_spr[dir]);
-    TransparentBlt(hdc, sx - w / 2, sy + (int)(21 * scale) - h, w, h, m, 0, 0, hero_spr_w[dir], hero_spr_h[dir], RGB(255, 0, 255));
+    TransparentBlt(hdc, sx - w / 2, sy + FxTrunc(21 * scale) - h, w, h, m, 0, 0, hero_spr_w[dir], hero_spr_h[dir], RGB(255, 0, 255));
     SelectObject(m, om); DeleteDC(m);
     return 1;
 }
@@ -65,12 +65,12 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, fx override_scale) {
         else if (selected_race == RACE_GNOME) scale = FX(0.58);
     }
 
-    int bob = (is_running && override_scale == FxI(1)) ? FxTrunc(FxMul(FxSinTurn(FxTurn64(((int64_t)run_bob * FX(1.2)) >> 16)), FX(1.5))) : 0; sy += bob;
+    int bob = (is_running && override_scale == FxI(1)) ? FxTrunc(FxMul(FxSinTurn(FxTurn64(((int64_t)FxBits(run_bob) * FX(1.2)) >> 16)), FX(1.5))) : 0; sy += bob;
     
     HBRUSH shadow_b = CreateSolidBrush(RGB(15, 20, 26)); HGDIOBJ old = SelectObject(hdc, shadow_b); 
     { fx ox, oy; SunShadowOffset(&ox, &oy); // the shadow stretches away from the sun or moon
-      int lx = (int)(ox * 12 * scale), ly = (int)(oy * 4 * scale);
-      Ellipse(hdc, sx - (int)(10 * scale) + (lx < 0 ? lx : 0), sy + (int)(14 * scale), sx + (int)(10 * scale) + (lx > 0 ? lx : 0), sy + (int)(22 * scale) + ly); } SelectObject(hdc, old); DeleteObject(shadow_b);
+      int lx = FxTrunc(FxMul(ox * 12, scale)), ly = FxTrunc(FxMul(oy * 4, scale));
+      Ellipse(hdc, sx - FxTrunc(10 * scale) + (lx < 0 ? lx : 0), sy + FxTrunc(14 * scale), sx + FxTrunc(10 * scale) + (lx > 0 ? lx : 0), sy + FxTrunc(22 * scale) + ly); } SelectObject(hdc, old); DeleteObject(shadow_b);
 
     // Menus and portraits show the hero facing you; in play the 8-way facing.
     int dir = override_scale == FxI(1) ? HeroDir8() : 0;
@@ -100,26 +100,26 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, fx override_scale) {
     if (!spr) {
     HBRUSH body_b = CreateSolidBrush(body_color); HGDIOBJ prev_body = SelectObject(hdc, body_b);
     POINT body[] = {
-        {sx - (int)(6 * scale), sy + (int)(6 * scale)}, 
-        {sx + (int)(6 * scale), sy + (int)(6 * scale)}, 
-        {sx + (int)(8 * scale), sy + (int)(20 * scale)}, 
-        {sx - (int)(8 * scale), sy + (int)(20 * scale)}
+        {sx - FxTrunc(6 * scale), sy + FxTrunc(6 * scale)}, 
+        {sx + FxTrunc(6 * scale), sy + FxTrunc(6 * scale)}, 
+        {sx + FxTrunc(8 * scale), sy + FxTrunc(20 * scale)}, 
+        {sx - FxTrunc(8 * scale), sy + FxTrunc(20 * scale)}
     }; 
     if (hero_sex) { // bust, waist and hips, a touch more shapely
-        POINT fb[] = { {sx - (int)(5 * scale), sy + (int)(6 * scale)}, {sx + (int)(5 * scale), sy + (int)(6 * scale)}, {sx + (int)(7 * scale), sy + (int)(9 * scale)},
-                       {sx + (int)(4 * scale), sy + (int)(13 * scale)}, {sx + (int)(9 * scale), sy + (int)(20 * scale)}, {sx - (int)(9 * scale), sy + (int)(20 * scale)},
-                       {sx - (int)(4 * scale), sy + (int)(13 * scale)}, {sx - (int)(7 * scale), sy + (int)(9 * scale)} };
+        POINT fb[] = { {sx - FxTrunc(5 * scale), sy + FxTrunc(6 * scale)}, {sx + FxTrunc(5 * scale), sy + FxTrunc(6 * scale)}, {sx + FxTrunc(7 * scale), sy + FxTrunc(9 * scale)},
+                       {sx + FxTrunc(4 * scale), sy + FxTrunc(13 * scale)}, {sx + FxTrunc(9 * scale), sy + FxTrunc(20 * scale)}, {sx - FxTrunc(9 * scale), sy + FxTrunc(20 * scale)},
+                       {sx - FxTrunc(4 * scale), sy + FxTrunc(13 * scale)}, {sx - FxTrunc(7 * scale), sy + FxTrunc(9 * scale)} };
         Polygon(hdc, fb, 8);
     } else Polygon(hdc, body, 4);
     SelectObject(hdc, prev_body); DeleteObject(body_b);
     if (trim != CLOTH_UNKNOWN) { // trim: hem, belt and a V collar in the second colour
         int hw = hero_sex ? 9 : 8;
-        PenLine(hdc, trim_w, trim, sx - (int)((hw - 1) * scale), sy + (int)(19 * scale), sx + (int)((hw - 1) * scale), sy + (int)(19 * scale));
-        PenLine(hdc, trim_w, trim, sx - (int)(5 * scale), sy + (int)(13 * scale), sx + (int)(5 * scale), sy + (int)(13 * scale));
+        PenLine(hdc, trim_w, trim, sx - FxTrunc((hw - 1) * scale), sy + FxTrunc(19 * scale), sx + FxTrunc((hw - 1) * scale), sy + FxTrunc(19 * scale));
+        PenLine(hdc, trim_w, trim, sx - FxTrunc(5 * scale), sy + FxTrunc(13 * scale), sx + FxTrunc(5 * scale), sy + FxTrunc(13 * scale));
         if (!back) { // the V collar is on the front
-            int cx = sx + side * (int)((profile ? 3 : 2) * scale);
-            PenLine(hdc, trim_w, trim, cx - (int)(4 * scale), sy + (int)(6 * scale), cx, sy + (int)(10 * scale));
-            PenLine(hdc, trim_w, trim, cx, sy + (int)(10 * scale), cx + (int)(4 * scale), sy + (int)(6 * scale));
+            int cx = sx + side * FxTrunc((profile ? 3 : 2) * scale);
+            PenLine(hdc, trim_w, trim, cx - FxTrunc(4 * scale), sy + FxTrunc(6 * scale), cx, sy + FxTrunc(10 * scale));
+            PenLine(hdc, trim_w, trim, cx, sy + FxTrunc(10 * scale), cx + FxTrunc(4 * scale), sy + FxTrunc(6 * scale));
         }
     }
     if (cloak) { // two panels hanging from the shoulders, open at the front
@@ -127,8 +127,8 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, fx override_scale) {
         HBRUSH cb = CreateSolidBrush(cc); HPEN cp = CreatePen(PS_SOLID, 1, RGB(GetRValue(cc) * 3 / 4, GetGValue(cc) * 3 / 4, GetBValue(cc) * 3 / 4));
         HGDIOBJ pcb = SelectObject(hdc, cb), pcp = SelectObject(hdc, cp);
         for (int side = -1; side <= 1; side += 2) {
-            POINT panel[] = { {sx + side * (int)(8 * scale), sy + (int)(5 * scale)}, {sx + side * (int)(3 * scale), sy + (int)(6 * scale)},
-                              {sx + side * (int)(5 * scale), sy + (int)(20 * scale)}, {sx + side * (int)(11 * scale), sy + (int)(22 * scale)} };
+            POINT panel[] = { {sx + side * FxTrunc(8 * scale), sy + FxTrunc(5 * scale)}, {sx + side * FxTrunc(3 * scale), sy + FxTrunc(6 * scale)},
+                              {sx + side * FxTrunc(5 * scale), sy + FxTrunc(20 * scale)}, {sx + side * FxTrunc(11 * scale), sy + FxTrunc(22 * scale)} };
             Polygon(hdc, panel, 4);
         }
         SelectObject(hdc, pcp); SelectObject(hdc, pcb); DeleteObject(cb); DeleteObject(cp);
@@ -136,19 +136,19 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, fx override_scale) {
 
     if (hero_beard > 0 && !back) {
         HBRUSH beard_b = CreateSolidBrush(HeroHairColor()); HGDIOBJ prev_beard = SelectObject(hdc, beard_b);
-        int bx = sx + side * (int)((profile ? 4 : 2) * scale), bw = profile ? 4 : 6;
+        int bx = sx + side * FxTrunc((profile ? 4 : 2) * scale), bw = profile ? 4 : 6;
         POINT beard[] = {
-            {bx - (int)(bw * scale), sy + (int)(6 * scale)},
-            {bx + (int)(bw * scale), sy + (int)(6 * scale)},
-            {bx + side * (int)(2 * scale), sy + (int)((hero_beard == 2 ? 18 : 12) * scale)}
+            {bx - FxTrunc(bw * scale), sy + FxTrunc(6 * scale)},
+            {bx + FxTrunc(bw * scale), sy + FxTrunc(6 * scale)},
+            {bx + side * FxTrunc(2 * scale), sy + FxTrunc((hero_beard == 2 ? 18 : 12) * scale)}
         };
         Polygon(hdc, beard, 3); SelectObject(hdc, prev_beard); DeleteObject(beard_b);
     }
 
     if (selected_race == RACE_ELF) {
         HPEN ear_p = CreatePen(PS_SOLID, 1, RGB(245, 210, 170)); HGDIOBJ prev_ear_p = SelectObject(hdc, ear_p);
-        MoveToEx(hdc, sx - (int)(8 * scale), sy, NULL); LineTo(hdc, sx - (int)(13 * scale), sy - (int)(4 * scale));
-        MoveToEx(hdc, sx + (int)(8 * scale), sy, NULL); LineTo(hdc, sx + (int)(13 * scale), sy - (int)(4 * scale));
+        MoveToEx(hdc, sx - FxTrunc(8 * scale), sy, NULL); LineTo(hdc, sx - FxTrunc(13 * scale), sy - FxTrunc(4 * scale));
+        MoveToEx(hdc, sx + FxTrunc(8 * scale), sy, NULL); LineTo(hdc, sx + FxTrunc(13 * scale), sy - FxTrunc(4 * scale));
         SelectObject(hdc, prev_ear_p); DeleteObject(ear_p);
     }
 
@@ -157,8 +157,8 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, fx override_scale) {
     // The secondary bow is shown in hand only while it is being drawn.
     WeaponType shown_weapon = (is_charging_bow && bow_equipped) ? WEAPON_BOW : active_weapon;
     // At rest the blade points the way the hero faces; straight up/down it tilts off to one side.
-    int hand_x = sx + (int)(wvx * 7) + (side ? 0 : back ? -7 : 7), hand_y = sy + 11 + (int)(wvy * 3);
-    int tip_x = hand_x + (int)(wvx * 12) + (side ? 0 : back ? -4 : 4), tip_y = hand_y + (int)(wvy * 8);
+    int hand_x = sx + FxTrunc(wvx * 7) + (side ? 0 : back ? -7 : 7), hand_y = sy + 11 + FxTrunc(wvy * 3);
+    int tip_x = hand_x + FxTrunc(wvx * 12) + (side ? 0 : back ? -4 : 4), tip_y = hand_y + FxTrunc(wvy * 8);
     if (shown_weapon == WEAPON_SWORD) {
         HPEN p = CreatePen(PS_SOLID, 2, RGB(200, 210, 220)); HGDIOBJ prev_p = SelectObject(hdc, p);
         if (sword_swipe_frame > 0) {
@@ -211,10 +211,10 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, fx override_scale) {
     if (!spr) {
     if (selected_race == RACE_GNOME && !head_wear) {
         HBRUSH gnome_hat = CreateSolidBrush(RGB(220, 40, 40)); HGDIOBJ prev_hat = SelectObject(hdc, gnome_hat);
-        POINT cap[] = {{sx, sy - (int)(32 * scale)}, {sx + (int)(7 * scale), sy + (int)(4 * scale)}, {sx - (int)(7 * scale), sy + (int)(4 * scale)}};
+        POINT cap[] = {{sx, sy - FxTrunc(32 * scale)}, {sx + FxTrunc(7 * scale), sy + FxTrunc(4 * scale)}, {sx - FxTrunc(7 * scale), sy + FxTrunc(4 * scale)}};
         Polygon(hdc, cap, 3); SelectObject(hdc, prev_hat); DeleteObject(gnome_hat);
     } else if (hooded) {
-#define HS(v) ((int)((v) * scale))
+#define HS(v) (FxTrunc((v) * scale))
         // Cloth hood: a soft cowl that falls onto the shoulders, the face lost
         // in shadow inside it. Elf ears and dwarf beards still poke out.
         HBRUSH hood = CreateSolidBrush(hat_color); HPEN fold = CreatePen(PS_SOLID, 1, RGB(48, 40, 56));
@@ -263,15 +263,15 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, fx override_scale) {
 #undef HS
     } else {
         HBRUSH hat_b = CreateSolidBrush(hat_color); HGDIOBJ prev_hat = SelectObject(hdc, hat_b);
-        POINT hat[] = {{sx, sy - (int)(14 * scale)}, {sx + (int)(9 * scale), sy + (int)(4 * scale)}, {sx, sy + (int)(8 * scale)}, {sx - (int)(9 * scale), sy + (int)(4 * scale)}};
+        POINT hat[] = {{sx, sy - FxTrunc(14 * scale)}, {sx + FxTrunc(9 * scale), sy + FxTrunc(4 * scale)}, {sx, sy + FxTrunc(8 * scale)}, {sx - FxTrunc(9 * scale), sy + FxTrunc(4 * scale)}};
         Polygon(hdc, hat, 4); SelectObject(hdc, prev_hat); DeleteObject(hat_b);
         if (head_wear && (strcmp(head_wear, "Straw Hat") == 0 || strcmp(head_wear, "Feathered Hat") == 0)) {
             HBRUSH brim_b = CreateSolidBrush(hat_color); HGDIOBJ pbb = SelectObject(hdc, brim_b);
-            POINT brim[] = { {sx - (int)(15 * scale), sy + (int)(3 * scale)}, {sx, sy - (int)(1 * scale)}, {sx + (int)(15 * scale), sy + (int)(3 * scale)}, {sx, sy + (int)(7 * scale)} };
+            POINT brim[] = { {sx - FxTrunc(15 * scale), sy + FxTrunc(3 * scale)}, {sx, sy - FxTrunc(1 * scale)}, {sx + FxTrunc(15 * scale), sy + FxTrunc(3 * scale)}, {sx, sy + FxTrunc(7 * scale)} };
             Polygon(hdc, brim, 4); SelectObject(hdc, pbb); DeleteObject(brim_b);
             if (head_wear[0] == 'F') {
                 HPEN fp = CreatePen(PS_SOLID, 2, RGB(200, 40, 40)); HGDIOBJ pfp = SelectObject(hdc, fp);
-                MoveToEx(hdc, sx + (int)(3 * scale), sy - (int)(6 * scale), NULL); LineTo(hdc, sx + (int)(10 * scale), sy - (int)(18 * scale));
+                MoveToEx(hdc, sx + FxTrunc(3 * scale), sy - FxTrunc(6 * scale), NULL); LineTo(hdc, sx + FxTrunc(10 * scale), sy - FxTrunc(18 * scale));
                 SelectObject(hdc, pfp); DeleteObject(fp);
             }
         }
@@ -281,29 +281,29 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, fx override_scale) {
         HBRUSH hair_b = CreateSolidBrush(HeroHairColor());
         HGDIOBJ prev_hb = SelectObject(hdc, hair_b), prev_hp = SelectObject(hdc, GetStockObject(NULL_PEN));
         int hair_len = hero_sex ? 15 : 9;
-        POINT hl[] = { {sx - (int)(9 * scale), sy + (int)(4 * scale)}, {sx - (int)(5 * scale), sy + (int)(6 * scale)}, {sx - (int)(8 * scale), sy + (int)(hair_len * scale)} };
-        POINT hr[] = { {sx + (int)(9 * scale), sy + (int)(4 * scale)}, {sx + (int)(5 * scale), sy + (int)(6 * scale)}, {sx + (int)(8 * scale), sy + (int)(hair_len * scale)} };
+        POINT hl[] = { {sx - FxTrunc(9 * scale), sy + FxTrunc(4 * scale)}, {sx - FxTrunc(5 * scale), sy + FxTrunc(6 * scale)}, {sx - FxTrunc(8 * scale), sy + FxTrunc(hair_len * scale)} };
+        POINT hr[] = { {sx + FxTrunc(9 * scale), sy + FxTrunc(4 * scale)}, {sx + FxTrunc(5 * scale), sy + FxTrunc(6 * scale)}, {sx + FxTrunc(8 * scale), sy + FxTrunc(hair_len * scale)} };
         if (side >= 0 || !profile) Polygon(hdc, hl, 3); // in profile only the far lock shows
         if (side <= 0 || !profile) Polygon(hdc, hr, 3);
         HBRUSH eye_b = CreateSolidBrush(HeroEyeColor()); SelectObject(hdc, eye_b);
         int ew = scale >= FX(1.5) ? 2 : 1, ey = sy + FxTrunc(3 * scale);
         if (back) { // the back of the head: hair, no face
             SelectObject(hdc, hair_b);
-            Ellipse(hdc, sx - (int)(7 * scale), sy + (int)(1 * scale), sx + (int)(7 * scale), sy + (int)((hair_len - 1) * scale));
+            Ellipse(hdc, sx - FxTrunc(7 * scale), sy + FxTrunc(1 * scale), sx + FxTrunc(7 * scale), sy + FxTrunc((hair_len - 1) * scale));
         } else {
-            int fc = sx + side * (int)((profile ? 3 : 2) * scale); // the face slides toward the way the hero looks
+            int fc = sx + side * FxTrunc((profile ? 3 : 2) * scale); // the face slides toward the way the hero looks
             HBRUSH skin = CreateSolidBrush(selected_race == RACE_DWARF ? RGB(225, 180, 145) : RGB(235, 200, 165)); SelectObject(hdc, skin);
             int fw = profile ? 4 : 5;
-            Ellipse(hdc, fc - (int)(fw * scale), sy, fc + (int)(fw * scale) + 1, sy + (int)(9 * scale));
+            Ellipse(hdc, fc - FxTrunc(fw * scale), sy, fc + FxTrunc(fw * scale) + 1, sy + FxTrunc(9 * scale));
             SelectObject(hdc, eye_b); DeleteObject(skin);
             for (int eside = -1; eside <= 1; eside += 2) {
                 if (profile && eside != side) continue;
-                int ex = fc + eside * (int)((profile ? 2 : 4) * scale);
+                int ex = fc + eside * FxTrunc((profile ? 2 : 4) * scale);
                 RECT er = { ex - ew + 1, ey - ew + 1, ex + ew + 1, ey + ew + 1 }; FillRect(hdc, &er, eye_b);
             }
             if (profile) { // a nose past the eye
                 HBRUSH nose = CreateSolidBrush(selected_race == RACE_DWARF ? RGB(225, 180, 145) : RGB(235, 200, 165)); SelectObject(hdc, nose);
-                POINT n[] = { {sx + side * (int)(7 * scale), sy + (int)(3 * scale)}, {sx + side * (int)(10 * scale), sy + (int)(6 * scale)}, {sx + side * (int)(7 * scale), sy + (int)(7 * scale)} };
+                POINT n[] = { {sx + side * FxTrunc(7 * scale), sy + FxTrunc(3 * scale)}, {sx + side * FxTrunc(10 * scale), sy + FxTrunc(6 * scale)}, {sx + side * FxTrunc(7 * scale), sy + FxTrunc(7 * scale)} };
                 Polygon(hdc, n, 3); SelectObject(hdc, eye_b); DeleteObject(nose);
             }
         }
@@ -330,7 +330,7 @@ void DrawHeroAsset(HDC hdc) {
     int sx, sy; GetIsoCoords(player_x, player_y, &sx, &sy);
     if (hero_hop_frame > 0) sy -= FxTrunc(HeroHopHeight()); // hop arc (double jump climbs higher)
     DrawHeroAssetEx(hdc, sx, sy, FxI(1));
-    if (!in_cave && inside_home < 0 && VISUAL_MAP[(int)player_y][(int)player_x] == 12) {
+    if (!in_cave && inside_home < 0 && VISUAL_MAP[FxTrunc(player_y)][FxTrunc(player_x)] == 12) {
         GetIsoCoords(player_x, player_y, &sx, &sy);
         DrawHeroBoat(hdc, sx, sy);
     }
@@ -342,20 +342,20 @@ void DrawFlyingArrow(HDC hdc) {
     int sx, sy; GetIsoCoords(player_arrow.x, player_arrow.y, &sx, &sy); sy -= FxTrunc(player_arrow.z);
     fx angle = FxAtan2(player_arrow.vy, player_arrow.vx);
     fx cos_a = FxCos(angle), sin_a = FxSin(angle);
-    POINT tip = { sx + (int)(8 * cos_a), sy + (int)(8 * sin_a) };
-    POINT base_l = { sx - (int)(4 * cos_a - 3 * sin_a), sy - (int)(4 * sin_a + 3 * cos_a) };
-    POINT base_r = { sx - (int)(4 * cos_a + 3 * sin_a), sy - (int)(4 * sin_a - 3 * cos_a) };
+    POINT tip = { sx + FxTrunc(8 * cos_a), sy + FxTrunc(8 * sin_a) };
+    POINT base_l = { sx - FxTrunc(4 * cos_a - 3 * sin_a), sy - FxTrunc(4 * sin_a + 3 * cos_a) };
+    POINT base_r = { sx - FxTrunc(4 * cos_a + 3 * sin_a), sy - FxTrunc(4 * sin_a - 3 * cos_a) };
     HBRUSH arrow_b = CreateSolidBrush(RGB(220, 225, 235)); HGDIOBJ old_b = SelectObject(hdc, arrow_b);
     POINT wedge[] = { tip, base_l, base_r }; Polygon(hdc, wedge, 3);
     SelectObject(hdc, old_b); DeleteObject(arrow_b);
     HPEN fletcher_p = CreatePen(PS_SOLID, 1, RGB(190, 65, 35)); HGDIOBJ old_p = SelectObject(hdc, fletcher_p);
-    MoveToEx(hdc, sx, sy, NULL); LineTo(hdc, sx - (int)(12 * cos_a), sy - (int)(12 * sin_a));
+    MoveToEx(hdc, sx, sy, NULL); LineTo(hdc, sx - FxTrunc(12 * cos_a), sy - FxTrunc(12 * sin_a));
     SelectObject(hdc, old_p); DeleteObject(fletcher_p);
 }
 
 void DrawFlyingSpear(HDC hdc) {
     if (!thrown_spear.active) return;
-    int sx, sy; GetIsoCoords(thrown_spear.x, thrown_spear.y, &sx, &sy); sy -= (int)thrown_spear.z;
+    int sx, sy; GetIsoCoords(thrown_spear.x, thrown_spear.y, &sx, &sy); sy -= FxTrunc(thrown_spear.z);
     int ex, ey; GetIsoCoords(thrown_spear.x - thrown_spear.vx * 3, thrown_spear.y - thrown_spear.vy * 3, &ex, &ey); ey -= FxTrunc(thrown_spear.z);
     HPEN shaft = CreatePen(PS_SOLID, 2, RGB(150, 110, 70)); HGDIOBJ old_p = SelectObject(hdc, shaft);
     MoveToEx(hdc, ex, ey, NULL); LineTo(hdc, sx, sy);
@@ -368,7 +368,7 @@ void DrawFlyingSpell(HDC hdc) {
     // Visibly distinct ranged bolts for the two caster classes: Necromancer
     // casts a dark, trailing necrotic orb; Wizard casts a bright arcane shard.
     if (!player_spell.active) return;
-    int sx, sy; GetIsoCoords(player_spell.x, player_spell.y, &sx, &sy); sy -= (int)player_spell.z;
+    int sx, sy; GetIsoCoords(player_spell.x, player_spell.y, &sx, &sy); sy -= FxTrunc(player_spell.z);
 
     if (selected_class == CLASS_NECROMANCER) {
         HBRUSH trail_b = CreateSolidBrush(RGB(60, 20, 90));
@@ -415,8 +415,8 @@ void DrawButterflies(HDC hdc) {
     if (current_biome == BIOME_CAVE) return;
     for (int i = 0; i < MAX_BUTTERFLIES; i++) {
         if (!butterflies[i].active) continue;
-        int sx, sy; GetIsoCoords(butterflies[i].x, butterflies[i].y, &sx, &sy); sy -= (int)butterflies[i].z;
-        int wing_flap = FxTrunc(FxSinTurn(FxTurn64((int64_t)butterflies[i].timer * 8)) * 2);
+        int sx, sy; GetIsoCoords(butterflies[i].x, butterflies[i].y, &sx, &sy); sy -= FxTrunc(butterflies[i].z);
+        int wing_flap = FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(butterflies[i].timer) * 8)) * 2);
         COLORREF c = (butterflies[i].color_profile == 1) ? RGB(255, 110, 20) : ((butterflies[i].color_profile == 2) ? RGB(30, 140, 255) : RGB(245, 220, 50));
         HBRUSH b = CreateSolidBrush(c); RECT r_l = {sx - 3, sy - 2 - wing_flap, sx, sy + 1}, r_r = {sx, sy - 2 - wing_flap, sx + 3, sy + 1};
         FillRect(hdc, &r_l, b); FillRect(hdc, &r_r, b); DeleteObject(b);
@@ -473,7 +473,7 @@ void DrawZombieBody(HDC hdc, int sx, int sy, int seed, int face_dir, int arms_ou
     HPEN arm_pen = CreatePen(PS_SOLID, 3, RGB(200, 200, 190)); prev = SelectObject(hdc, arm_pen);
     int hx1, hy1, hx2, hy2;
     if (arms_out) {
-        int bob = FxTrunc(FxMul(FxSinTurn(FxTurn64((int64_t)world_tick * 3 + (int64_t)seed * FX_ONE)), FX(1.5)));
+        int bob = FxTrunc(FxMul(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 3 + (int64_t)seed * FX_ONE)), FX(1.5)));
         hx1 = sx - 4 + face_dir * 14; hy1 = sy - 7 + bob;
         hx2 = sx + 4 + face_dir * 14; hy2 = sy - 5 + bob;
         MoveToEx(hdc, sx - 4, sy - 8, NULL); LineTo(hdc, hx1, hy1);
@@ -508,7 +508,7 @@ static void BrushPoly(HDC hdc, COLORREF c, POINT *pts, int n) {
 
 // Small, quick green goblin with big ears and a rusty dagger.
 static void DrawGoblin(HDC hdc, int sx, int sy, int face_dir) {
-    int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 9)) * 2);
+    int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 9)) * 2);
     COLORREF skin = RGB(95, 160, 70);
     PenLine(hdc, 2, RGB(70, 110, 50), sx - 2, sy + 12, sx - 2 + step, sy + 19);
     PenLine(hdc, 2, RGB(70, 110, 50), sx + 2, sy + 12, sx + 2 - step, sy + 19);
@@ -526,7 +526,7 @@ static void DrawGoblin(HDC hdc, int sx, int sy, int face_dir) {
 
 // Pan-style satyr cultist: goat legs with hooves, horns, red cult sash and a spear.
 static void DrawSatyr(HDC hdc, int sx, int sy, int face_dir) {
-    int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 7)) * 2);
+    int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 7)) * 2);
     COLORREF fur = RGB(105, 75, 50), skin = RGB(205, 160, 120);
     for (int side = -1; side <= 1; side += 2) {
         int hip = sx + side * 3, foot = hip + side * step;
@@ -557,7 +557,7 @@ static void DrawSatyr(HDC hdc, int sx, int sy, int face_dir) {
 
 // Mythic beasts are drawn roughly twice the size of ordinary monsters.
 static void DrawApeBeast(HDC hdc, int sx, int sy, int face_dir, COLORREF fur, COLORREF face) {
-    int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 4)) * 3);
+    int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 4)) * 3);
     PenLine(hdc, 7, fur, sx - 6, sy + 6, sx - 6 + step, sy + 20);
     PenLine(hdc, 7, fur, sx + 6, sy + 6, sx + 6 - step, sy + 20);
     BrushEllipse(hdc, fur, sx - 14, sy - 24, sx + 14, sy + 10);
@@ -572,7 +572,7 @@ static void DrawApeBeast(HDC hdc, int sx, int sy, int face_dir, COLORREF fur, CO
 
 static void DrawSphinx(HDC hdc, int sx, int sy, int face_dir) {
     COLORREF lion = RGB(200, 165, 100), skin = RGB(205, 165, 110), blue = RGB(40, 70, 160), gold = RGB(235, 195, 60);
-    int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 4)) * 3);
+    int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 4)) * 3);
     PenLine(hdc, 4, lion, sx - 12, sy + 2, sx - 12 + step, sy + 16);
     PenLine(hdc, 4, lion, sx - 6, sy + 2, sx - 6 - step, sy + 16);
     PenLine(hdc, 4, lion, sx + 6, sy + 2, sx + 6 + step, sy + 16);
@@ -592,7 +592,7 @@ static void DrawSphinx(HDC hdc, int sx, int sy, int face_dir) {
 
 static void DrawBunyip(HDC hdc, int sx, int sy, int face_dir) {
     COLORREF hide = RGB(60, 70, 45);
-    int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 3)) * 2);
+    int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 3)) * 2);
     PenLine(hdc, 5, hide, sx - 11, sy + 2, sx - 11 + step, sy + 13);
     PenLine(hdc, 5, hide, sx - 4, sy + 2, sx - 4 - step, sy + 13);
     PenLine(hdc, 5, hide, sx + 4, sy + 2, sx + 4 + step, sy + 13);
@@ -625,7 +625,7 @@ void DrawEnemiesAtTile(HDC hdc, int c, int r) {
     StoreEnemy();
     int keep = current_enemy;
     for (int i = 0; i < MAX_ENEMIES; i++) {
-        if (enemies[i].hearts <= FxI(0) || (int)enemies[i].x != c || (int)enemies[i].y != r) continue;
+        if (enemies[i].hearts <= FxI(0) || FxTrunc(enemies[i].x) != c || FxTrunc(enemies[i].y) != r) continue;
         SelectEnemy(i); DrawDynamicEnemy(hdc);
     }
     SelectEnemy(keep);
@@ -727,7 +727,7 @@ void DrawDynamicEnemy(HDC hdc) {
         EndScaledDraw(hdc, mode);
     } else {
         // Legs stride under the robe, then the robe and skull on top.
-        int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 6)) * 2);
+        int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 6)) * 2);
         HPEN leg_pen = CreatePen(PS_SOLID, 3, active_monster == MONSTER_SKELLY ? RGB(225, 225, 215) : RGB(35, 30, 40));
         HGDIOBJ prev_leg = SelectObject(hdc, leg_pen);
         MoveToEx(hdc, sx - 3, sy + 12, NULL); LineTo(hdc, sx - 3 + step, sy + 19);
@@ -737,7 +737,7 @@ void DrawDynamicEnemy(HDC hdc) {
         POINT robe[] = {{sx - 5, sy}, {sx + 5, sy}, {sx + 6, sy + 14}, {sx - 6, sy + 14}}; Polygon(hdc, robe, 4); SelectObject(hdc, prev_robe); DeleteObject(robe_b);
         HBRUSH skull_b = CreateSolidBrush(RGB(220, 220, 230)); HGDIOBJ prev_skull = SelectObject(hdc, skull_b); Ellipse(hdc, sx - 5, sy - 9, sx + 5, sy + 1); SelectObject(hdc, prev_skull); DeleteObject(skull_b);
     }
-    int total_bars = (int)ceil(enemy_hearts);
+    int total_bars = FxCeil(enemy_hearts);
     int bar_y = IS_MYTHIC_MONSTER(active_monster) ? sy - 46 : sy - 30;
     for (int i = 0; i < total_bars; i++) {
         RECT r = {sx - 15 + (i * 10), bar_y, sx - 7 + (i * 10), bar_y + 7};
@@ -785,11 +785,11 @@ static void DrawNpcProp(HDC hdc, int sx, int sy, int i) {
     fx t = world_tick;
     COLORREF wood = RGB(120, 85, 50);
     if (act == NPC_SWEEP) {
-        int sw = busy ? FxTrunc(FxSinTurn(FxTurn64((int64_t)t * 3 + FxI(i))) * 6) : 0;
+        int sw = busy ? FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(t) * 3 + FxI(i))) * 6) : 0;
         PenLine(hdc, 2, wood, sx + 5, sy - 6, sx + 3 + sw, sy + 12);
         PenLine(hdc, 4, RGB(205, 175, 90), sx + sw, sy + 13, sx + 7 + sw, sy + 13);
     } else if (act == NPC_FARM) {
-        int up = busy ? FxTrunc(FxAbs(FxSinTurn(FxTurn64((int64_t)t * 2 + FxI(i)))) * 8) : 0;
+        int up = busy ? FxTrunc(FxAbs(FxSinTurn(FxTurn64((int64_t)FxBits(t) * 2 + FxI(i)))) * 8) : 0;
         PenLine(hdc, 2, wood, sx + 6, sy - 8 - up, sx + 10, sy + 10 - up);
         PenLine(hdc, 3, RGB(150, 150, 155), sx + 8, sy + 10 - up, sx + 14, sy + 10 - up);
     } else if (act == NPC_WATER) {
@@ -800,7 +800,7 @@ static void DrawNpcProp(HDC hdc, int sx, int sy, int i) {
         HBRUSH iron = CreateSolidBrush(RGB(55, 55, 62)), tub = CreateSolidBrush(RGB(60, 110, 170));
         RECT top = { sx + 10, sy + 4, sx + 24, sy + 9 }, base = { sx + 14, sy + 9, sx + 20, sy + 15 }, water = { sx + 24, sy + 8, sx + 33, sy + 15 };
         FillRect(hdc, &top, iron); FillRect(hdc, &base, iron); FillRect(hdc, &water, tub);
-        fx ph = (fx)(((int64_t)t + FxI(i * 3)) % FxI(14));
+        fx ph = FxMod(t + FxI(i * 3), FxI(14));
         if (ph < FxI(11)) { // hammering the glowing bar
             HBRUSH hot = CreateSolidBrush(RGB(255, 140, 40)); RECT bar = { sx + 14, sy + 2, sx + 21, sy + 4 }; FillRect(hdc, &bar, hot); DeleteObject(hot);
             fx sw = FxSin(ph * 4);
@@ -962,9 +962,9 @@ void DrawVillage(HDC hdc) {
             villager_facing = 0;
             DrawNpcProp(hdc, sx, sy, i);
         }
-        if (village_npcs[i].type == 6) DrawCrown(hdc, sx, sy - (int)(19 * NPC_SCALE) - 2, 6);
+        if (village_npcs[i].type == 6) DrawCrown(hdc, sx, sy - FxTrunc(19 * NPC_SCALE) - 2, 6);
         if (IsNearPoint(village_npcs[i].x, village_npcs[i].y, FxI(2))) {
-            int top = sy - (int)(19 * NPC_SCALE) - 20;
+            int top = sy - FxTrunc(19 * NPC_SCALE) - 20;
             HBRUSH white = CreateSolidBrush(RGB(245, 240, 215)); HGDIOBJ old_b = SelectObject(hdc, white);
             HPEN edge = CreatePen(PS_SOLID, 1, RGB(60, 55, 45)); HGDIOBJ old_p = SelectObject(hdc, edge);
             RoundRect(hdc, sx - 14, top, sx + 14, top + 14, 6, 6);
@@ -978,7 +978,7 @@ void DrawVillage(HDC hdc) {
 
 static void DrawSummonedSkeleton(HDC hdc, int sx, int sy, int face_dir) {
     COLORREF bone = RGB(230, 228, 215);
-    int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 6)) * 2);
+    int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 6)) * 2);
     PenLine(hdc, 2, bone, sx - 3, sy + 8, sx - 3 + step, sy + 19);
     PenLine(hdc, 2, bone, sx + 3, sy + 8, sx + 3 - step, sy + 19);
     PenLine(hdc, 2, bone, sx, sy - 2, sx, sy + 9);
@@ -992,7 +992,7 @@ static void DrawSummonedSkeleton(HDC hdc, int sx, int sy, int face_dir) {
 }
 
 static void DrawGhostShape(HDC hdc, int sx, int sy, int face_dir) {
-    sy += FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 3)) * 3) - 4;
+    sy += FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 3)) * 3) - 4;
     COLORREF mist = RGB(200, 225, 240);
     BrushEllipse(hdc, mist, sx - 8, sy - 12, sx + 8, sy + 6);
     POINT tail[] = { {sx - 8, sy}, {sx + 8, sy}, {sx + 6, sy + 14}, {sx + 2, sy + 9}, {sx - 2, sy + 15}, {sx - 6, sy + 9} };

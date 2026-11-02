@@ -39,7 +39,7 @@ static void RefreshBarrels(void) {
             int x = hx[i] + shift + ox[(k + i) % 4], y = hy[i] + oy[(k + i) % 4], near_npc = 0;
             if (x < 1 || y < 1 || x >= MAP_SIZE - 1 || y >= MAP_SIZE - 1 || VISUAL_MAP[y][x] != 0) continue;
             for (int n = 0; n < village_npc_count && !near_npc; n++) {
-                fx ndx = village_npcs[n].home_x - x, ndy = village_npcs[n].home_y - y;
+                fx ndx = village_npcs[n].home_x - FxI(x), ndy = village_npcs[n].home_y - FxI(y);
                 near_npc = FxMul(ndx, ndx) + FxMul(ndy, ndy) < FxI(9);
             }
             if (near_npc) continue;

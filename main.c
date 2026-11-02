@@ -95,7 +95,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                         else GenerateProceduralScreen(screen_grid_y * META_GRID_SIZE + screen_grid_x);
                         {
                             // Make sure the reentry tile is walkable (not water/rock); else find the nearest one that is.
-                            int rx = (int)reenter_x, ry = (int)reenter_y;
+                            int rx = FxTrunc(reenter_x), ry = FxTrunc(reenter_y);
                             if ((VISUAL_MAP[ry][rx] == 12 && !HasInventoryItem("Boat")) || VISUAL_MAP[ry][rx] == 1) {
                                 int best_d = 1 << 30, bx = rx, by = ry;
                                 for (int y = 2; y <= MAP_SIZE - 3; y++) for (int x = 2; x <= MAP_SIZE - 3; x++) {
@@ -111,7 +111,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 }
             }
             
-            cam_x = (int)((player_x - player_y) * (TILE_WIDTH / 2)); cam_y = (int)((player_x + player_y) * (TILE_HEIGHT / 2));
+            cam_x = FxTrunc((player_x - player_y) * (TILE_WIDTH / 2)); cam_y = FxTrunc((player_x + player_y) * (TILE_HEIGHT / 2));
             fx view_zoom = UpdateAfkCamera(AnyPlayerInput() || MouseBusy() || is_menu_open || vendor_menu_open || town_menu ||
                                               is_character_creation || sleep_fade_frame > 0 || inside_home >= 0);
                 view_zoom += DoorwayCamera();
@@ -204,7 +204,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 COLORREF meadow_color = RGB(r_tone, g_tone, b_tone);
                 if (current_biome != BIOME_CAVE) meadow_color = ApplySeasonToGround(meadow_color);
                 if (current_biome == BIOME_DESERT) // pure yellow sand, dimmed at night
-                    meadow_color = RGB((int)(70 + ambient_intensity * 180), (int)(60 + ambient_intensity * 150), (int)(15 + ambient_intensity * 40));
+                    meadow_color = RGB(70 + FxTrunc(ambient_intensity * 180), 60 + FxTrunc(ambient_intensity * 150), 15 + FxTrunc(ambient_intensity * 40));
                 HBRUSH live_ground = CreateSolidBrush(meadow_color); HGDIOBJ old_bg = SelectObject(memHDC, live_ground); PatBlt(memHDC, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, PATCOPY); SelectObject(memHDC, old_bg); DeleteObject(live_ground);
                 SelectObject(memHDC, clean_null_pen);
 
@@ -249,7 +249,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                                 TextOut(memHDC, sx - 16, sy - 46, "CAVE", 4);
                             }
                         }
-                        if (in_cave && c == (int)cave_treasure_x && r == (int)cave_treasure_y) {
+                        if (in_cave && c == FxTrunc(cave_treasure_x) && r == FxTrunc(cave_treasure_y)) {
                             CaveRecord *rec = FindOrCreateCaveRecord(current_cave_origin_cell);
                             HBRUSH chest_b = CreateSolidBrush(rec->treasure_claimed ? RGB(90, 70, 40) : RGB(230, 190, 40));
                             HGDIOBJ old_chest = SelectObject(memHDC, chest_b);
@@ -261,7 +261,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                             }
                         }
                         DrawIsleTreasure(memHDC, c, r, sx, sy);
-                        if (c == (int)player_x && r == (int)player_y) DrawHeroAsset(memHDC);
+                        if (c == FxTrunc(player_x) && r == FxTrunc(player_y)) DrawHeroAsset(memHDC);
                         DrawEnemiesAtTile(memHDC, c, r);
                     }
                 }

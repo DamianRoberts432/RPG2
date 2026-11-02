@@ -157,7 +157,7 @@ void UpdateMouseInput(fx *dx, fx *dy) {
     }
     if (walk_interact && d < FX(1.1)) { walk_active = 0; walk_interact = 0; HandleContextInteract(); return; }
     if (d < FX(0.25)) { walk_active = 0; return; }
-    *dx = ddx / d; *dy = ddy / d;
+    *dx = FxDiv(ddx, d); *dy = FxDiv(ddy, d);
 }
 
 static void Doodle(HDC hdc, int cx, int cy, const InventoryItem *it) {

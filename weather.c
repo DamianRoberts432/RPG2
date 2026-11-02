@@ -147,11 +147,11 @@ void RestoreCalendar(int season, int32_t ms_into_season) {
 // ---- Optional real-world weather (Open-Meteo via WinINet, loaded at runtime
 // so the build line does not need an extra library) ----
 static char cfg_city[64] = "";
-static double cfg_lat = FxI(0), cfg_lon = FxI(0);
+static double cfg_lat = 0, cfg_lon = 0;
 static int cfg_has_coords = 0;
 static volatile LONG live_state = 0; // 0 pending/none, 1 ready, 2 applied
 static int live_code = -1;
-static double live_wind_kmh = FxI(0), live_snow_m = FxI(0), live_lat = FxI(0);
+static double live_wind_kmh = 0, live_snow_m = 0, live_lat = 0;
 
 typedef HINTERNET (WINAPI *InternetOpenA_fn)(LPCSTR, DWORD, LPCSTR, LPCSTR, DWORD);
 typedef HINTERNET (WINAPI *InternetOpenUrlA_fn)(HINTERNET, LPCSTR, LPCSTR, DWORD, DWORD, DWORD_PTR);
@@ -262,7 +262,7 @@ static WeatherType WeatherFromWmo(int code) {
 
 static void ApplyLiveWeather(void) {
     InterlockedExchange(&live_state, 2);
-    if (live_lat < FxI(0) && !calendar_restored) current_season = (SeasonType)((current_season + 2) % 4); // southern hemisphere
+    if (live_lat < 0 && !calendar_restored) current_season = (SeasonType)((current_season + 2) % 4); // southern hemisphere
     current_weather = target_weather = WeatherFromWmo(live_code);
     weather_intensity = target_intensity = current_weather == WEATHER_CLEAR ? FxI(0) : FX(0.8);
     front_seconds_left = FxI(300);
@@ -495,7 +495,7 @@ static void DrawFallingLeaves(HDC hdc) {
         fx speed = FX(0.7) + FxI(h % 50) / 50;
         int x = WrapMod(h % WINDOW_WIDTH - cam_x + FxMulI(t, FxMul(drift, speed)), WINDOW_WIDTH);
         int y = WrapMod((h / 11) % WINDOW_HEIGHT - cam_y + FxMulI(t, speed * 9) + FxTrunc(FxSin(FxMul(t, FX(1.7)) + FxI(i)) * 10), WINDOW_HEIGHT);
-        int flip = FxTrunc(FxSinTurn(FxTurn64((int64_t)t * 3 + FxI(i))) * 3);
+        int flip = FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(t) * 3 + FxI(i))) * 3);
         HBRUSH b = CreateSolidBrush(leaf_colors[h % 4]);
         HGDIOBJ old = SelectObject(hdc, b);
         POINT leaf[] = { {x - 4, y}, {x, y - 2 - flip}, {x + 4, y}, {x, y + 2 + flip} };

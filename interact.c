@@ -2,7 +2,7 @@
 
 int IsNearPoint(fx x, fx y, fx radius) {
     fx dx = player_x - x, dy = player_y - y;
-    return dx * dx + dy * dy <= radius * radius;
+    return FxMul(dx, dx) + FxMul(dy, dy) <= FxMul(radius, radius);
 }
 
 int IsNearMerchant(void) {
@@ -52,7 +52,7 @@ void HandleContextInteract(void) {
     if (fire >= 0) {
         fx fdx = player_x - campfires[fire].x, fdy = player_y - campfires[fire].y;
         fx bdx = player_x - bedroll_x, bdy = player_y - bedroll_y;
-        if (!IsNearBedroll() || fdx * fdx + fdy * fdy <= bdx * bdx + bdy * bdy) {
+        if (!IsNearBedroll() || FxMul(fdx, fdx) + FxMul(fdy, fdy) <= FxMul(bdx, bdx) + FxMul(bdy, bdy)) {
             AddWoodToFire(fire);
             return;
         }
@@ -79,8 +79,8 @@ void HandleContextInteract(void) {
     }
     if (HasInventoryItem("Fishing Pole") && IsFacingWater()) { CastFishingLine(); return; }
 
-    int px = (int)player_x;
-    int py = (int)player_y;
+    int px = FxTrunc(player_x);
+    int py = FxTrunc(player_y);
     int fpx = px;
     int fy = py;
     if (player_facing == FACE_UP) fy -= 1;
@@ -179,7 +179,7 @@ void HandleContextInteract(void) {
 }
 
 int IsFacingWater(void) {
-    int x = (int)player_x, y = (int)player_y;
+    int x = FxTrunc(player_x), y = FxTrunc(player_y);
     if (VISUAL_MAP[y][x] == 12) return 1;
     if (player_facing == FACE_UP) y--;
     else if (player_facing == FACE_DOWN) y++;
@@ -189,7 +189,7 @@ int IsFacingWater(void) {
 }
 
 int IsFacingFishWater(void) {
-    int x = (int)player_x, y = (int)player_y;
+    int x = FxTrunc(player_x), y = FxTrunc(player_y);
     if (VISUAL_MAP[y][x] != 12) {
         if (player_facing == FACE_UP) y--;
         else if (player_facing == FACE_DOWN) y++;

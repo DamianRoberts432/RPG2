@@ -24,7 +24,7 @@ void UpdateFootpaths(void) {
         last_day = today;
         for (int i = 0; i < MAX_WORN_TILES; i++) if (worn_tiles[i].active && --worn_tiles[i].wear == 0) worn_tiles[i].active = 0;
     }
-    int tx = (int)player_x, ty = (int)player_y;
+    int tx = FxTrunc(player_x), ty = FxTrunc(player_y);
     if (tx == last_x && ty == last_y && current_screen_index == last_screen) return;
     last_x = tx; last_y = ty; last_screen = current_screen_index;
     if (!WearableBiome() || tx < 0 || ty < 0 || tx >= MAP_SIZE || ty >= MAP_SIZE || VISUAL_MAP[ty][tx] != 0) return;
@@ -53,9 +53,9 @@ void DrawFootpaths(HDC hdc) {
         int sx, sy; GetIsoCoords(FxI(w->x), FxI(w->y), &sx, &sy);
         // Lightly worn paths are narrow; well-trodden ones fill the tile.
         fx k = FX(0.55) + FX(0.45) * (w->wear - PATH_SHOWS_AT) / (WEAR_MAX - PATH_SHOWS_AT);
-        int hw = (int)(TILE_WIDTH / 2 * k), hh = (int)(TILE_HEIGHT / 2 * k), cy = sy + TILE_HEIGHT / 2;
+        int hw = FxTrunc(TILE_WIDTH / 2 * k), hh = FxTrunc(TILE_HEIGHT / 2 * k), cy = sy + TILE_HEIGHT / 2;
         POINT dirt[] = { { sx, cy - hh }, { sx + hw, cy }, { sx, cy + hh }, { sx - hw, cy } };
-        HBRUSH br = CreateSolidBrush(RGB((int)(150 * a), (int)(118 * a), (int)(72 * a))); HGDIOBJ old = SelectObject(hdc, br);
+        HBRUSH br = CreateSolidBrush(RGB(FxTrunc(150 * a), FxTrunc(118 * a), FxTrunc(72 * a))); HGDIOBJ old = SelectObject(hdc, br);
         Polygon(hdc, dirt, 4);
         SelectObject(hdc, old); DeleteObject(br);
     }

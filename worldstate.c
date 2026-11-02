@@ -153,7 +153,7 @@ void TickMeltPatches(fx dt) {
         MeltPatch *p = &melt_patches[i];
         if (!p->active) continue;
         if (snow_cover < FX(0.02)) { p->active = 0; continue; }
-        if (current_weather == WEATHER_SNOW) p->fill += FxDiv(FxMul(dt, FxFromF(weather_intensity)), MELT_REFILL_SECONDS);
+        if (current_weather == WEATHER_SNOW) p->fill += FxDiv(FxMul(dt, weather_intensity), MELT_REFILL_SECONDS);
         if (p->fill >= FxI(1)) p->active = 0;
     }
 }

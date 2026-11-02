@@ -41,8 +41,8 @@ COLORREF GetTileColor(uint8_t id, int side) {
 // Each tile is tinted a touch lighter or darker by the swell under it and a
 // faint crest rides the high points. The peyote mirage reuses WaveAt.
 fx WaveAt(fx x, fx y, fx t) {
-    int64_t a = ((int64_t)x * FX(0.9) + (int64_t)y * FX(0.4) + (int64_t)t * FX(1.3)) >> 16;
-    int64_t b = (-(int64_t)x * FX(0.35) + (int64_t)y * FX(1.1) + (int64_t)t * FX(0.8)) >> 16;
+    int64_t a = ((int64_t)FxBits(x) * FX(0.9) + (int64_t)FxBits(y) * FX(0.4) + (int64_t)FxBits(t) * FX(1.3)) >> 16;
+    int64_t b = (-(int64_t)FxBits(x) * FX(0.35) + (int64_t)FxBits(y) * FX(1.1) + (int64_t)FxBits(t) * FX(0.8)) >> 16;
     return FxSinTurn(FxTurn64(a)) / 2 + FxSinTurn(FxTurn64(b)) / 2;
 }
 
@@ -54,7 +54,7 @@ void DrawFlowingRiver(HDC hdc, int sx, int sy, int tile_seed) {
     Polygon(hdc, water, 4);
     SelectObject(hdc, old); DeleteObject(b);
     if (k >= 6) { // soft crest, just a shade lighter than the water
-        int dy = FxTrunc(FxSinTurn(FxTurn64((((int64_t)t * FX(1.1)) >> 16) + c * FX(0.7))) * 3);
+        int dy = FxTrunc(FxSinTurn(FxTurn64((((int64_t)FxBits(t) * FX(1.1)) >> 16) + c * FX(0.7))) * 3);
         HPEN crest = CreatePen(PS_SOLID, 1, RGB(85, 175, 245)); HGDIOBJ prev = SelectObject(hdc, crest);
         POINT arc[3] = { { sx - 10, sy + 17 + dy }, { sx, sy + 14 + dy }, { sx + 10, sy + 17 + dy } };
         Polyline(hdc, arc, 3);
@@ -94,7 +94,7 @@ void DrawInteractiveTorches(HDC hdc, int sx, int sy) {
         int tsx = sx + (side * 28); int tsy = sy + 4;
         RECT iron_bracket = { tsx - 3, tsy + 2, tsx + 3, tsy + 16 };
         HBRUSH iron_b = CreateSolidBrush(RGB(45, 48, 55)); FillRect(hdc, &iron_bracket, iron_b); DeleteObject(iron_b);
-        int flicker = FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 14 + FxI(side))) * 3);
+        int flicker = FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 14 + FxI(side))) * 3);
         HBRUSH fire_b = CreateSolidBrush(RGB(255, 130 + flicker * 20, 20));
         RECT fire_core = { tsx - 4, tsy - 6 + flicker, tsx + 4, tsy + 4 };
         FillRect(hdc, &fire_core, fire_b); DeleteObject(fire_b);
@@ -113,7 +113,7 @@ void DrawCampfires(HDC hdc) {
         FillRect(hdc, &log1, log_b); FillRect(hdc, &log2, log_b);
         SelectObject(hdc, old); DeleteObject(log_b);
 
-        int flick = FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 16 + FxI(i))) * 4);
+        int flick = FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 16 + FxI(i))) * 4);
         HBRUSH fire_b = CreateSolidBrush(RGB(255, 140 + flick * 15, 30)); HGDIOBJ prev_fire = SelectObject(hdc, fire_b);
         POINT flame[] = {{csx, csy - 14 + flick}, {csx + 6, csy + 2}, {csx - 6, csy + 2}};
         Polygon(hdc, flame, 3);
@@ -179,13 +179,13 @@ int IsBigTree(int tile_seed) {
 
 void DrawBigCrown(HDC hdc, int sx, int sy, int tile_seed) {
     int r = tile_seed / MAP_SIZE, c = tile_seed % MAP_SIZE, broad = IsDeciduousTree(tile_seed);
-    int sway = FxTrunc(FxSinTurn(FxTurn64((((int64_t)world_tick * FX(0.9)) >> 16) + (int64_t)tile_seed * FX_ONE)) * (2 + abs(wind_dir)));
+    int sway = FxTrunc(FxSinTurn(FxTurn64((((int64_t)FxBits(world_tick) * FX(0.9)) >> 16) + (int64_t)tile_seed * FX_ONE)) * (2 + abs(wind_dir)));
     COLORREF leaf = snow_cover > FX(0.5) ? RGB(200, 210, 222) : !broad ? RGB(30, 95, 45) : current_season == SEASON_FALL ? RGB(190, 105, 40) : RGB(55, 120, 45);
     COLORREF dark = RGB(GetRValue(leaf) * 3 / 4, GetGValue(leaf) * 3 / 4, GetBValue(leaf) * 3 / 4);
     HBRUSH bark = CreateSolidBrush(RGB(115, 82, 60)); HGDIOBJ ob = SelectObject(hdc, bark), op = SelectObject(hdc, GetStockObject(NULL_PEN));
     POINT trunk[] = { {sx - 2 + sway / 2, sy - 30}, {sx + 2 + sway / 2, sy - 30}, {sx + 3, sy - 8}, {sx - 3, sy - 8} };
     Polygon(hdc, trunk, 4);
-    fx depth = (c + r) - (player_x + player_y), across = (c - r) - (player_x - player_y);
+    fx depth = FxI(c + r) - (player_x + player_y), across = FxI(c - r) - (player_x - player_y);
     int lacy = depth > FX(0.3) && depth < FxI(5) && across > -FX(2.5) && across < FX(2.5);
     HBRUSH lb = lacy ? CreateHatchBrush(HS_DIAGCROSS, leaf) : CreateSolidBrush(leaf), db = lacy ? CreateHatchBrush(HS_DIAGCROSS, dark) : CreateSolidBrush(dark);
     int old_mode = SetBkMode(hdc, TRANSPARENT);
@@ -335,7 +335,7 @@ void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed) {
             return;
         }
         HPEN blade = CreatePen(PS_SOLID, 1, RGB(150, 210, 90)); HGDIOBJ old = SelectObject(hdc, blade);
-        int lean = FxTrunc(FxMul(FxSinTurn(FxTurn64((((int64_t)world_tick * FX(1.5)) >> 16) + sx * FX(0.1))), FX(1.5)));
+        int lean = FxTrunc(FxMul(FxSinTurn(FxTurn64((((int64_t)FxBits(world_tick) * FX(1.5)) >> 16) + sx * FX(0.1))), FX(1.5)));
         int hx, hy; GetIsoCoords(player_x, player_y, &hx, &hy);
         if (abs(sx - hx) < 22 && abs(sy - hy) < 16) lean += sx >= hx ? 4 : -4; // pushed aside as the hero walks through
         static const int base_dx[5] = { -3, -1, 0, 2, 3 }, tip_dx[5] = { -5, -2, 0, 2, 5 }, height[5] = { 6, 9, 10, 8, 6 };
@@ -378,7 +378,7 @@ void DrawEnvironmentalCritters(HDC hdc) {
             continue;
         }
         int sx, sy; GetIsoCoords(critters[i].x, critters[i].y, &sx, &sy);
-        int jump_bob = (critters[i].state == 1) ? FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * (6 + 2 * (i % 3)) + i * FX(1.9))) * 4) : 0; // three hop timings
+        int jump_bob = (critters[i].state == 1) ? FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * (6 + 2 * (i % 3)) + i * FX(1.9))) * 4) : 0; // three hop timings
         if (critters[i].type == 0) { // bluebird: hops on the ground, flaps when flying
             int t = critters[i].timer, flying = critters[i].state == 2;
             int lift = flying ? 22 : (t <= 8 ? FxTrunc(FxSin(t * FX_PI / 8) * 6) : 0);
@@ -405,7 +405,7 @@ void DrawEnvironmentalCritters(HDC hdc) {
             HPEN lp = CreatePen(PS_SOLID, flying ? 2 : 1, flying ? RGB(40, 90, 190) : RGB(90, 70, 50));
             old_p = SelectObject(hdc, lp);
             if (flying) {
-                int flap = FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 12 + FxI(i))) * 6);
+                int flap = FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 12 + FxI(i))) * 6);
                 MoveToEx(hdc, sx - 9, by - 2 - flap, NULL); LineTo(hdc, sx, by - 2); LineTo(hdc, sx + 9, by - 2 - flap);
             } else {
                 MoveToEx(hdc, sx - 1, by + 3, NULL); LineTo(hdc, sx - 1, by + 6);
@@ -437,7 +437,7 @@ void DrawEnvironmentalCritters(HDC hdc) {
             MoveToEx(hdc, sx, sy + 2, NULL); LineTo(hdc, sx + 1, sy + 6); LineTo(hdc, sx + 4, sy + 4); LineTo(hdc, sx + 4, sy + 1);
             SelectObject(hdc, osp); SelectObject(hdc, os); DeleteObject(sp); DeleteObject(sc);
         } else if (critters[i].type == 3) { // bat
-            int flap = FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 18 + FxI(i))) * 4), by = sy - 14 + FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 3 + FxI(i))) * 3);
+            int flap = FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 18 + FxI(i))) * 4), by = sy - 14 + FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 3 + FxI(i))) * 3);
             HBRUSH bat_b = CreateSolidBrush(RGB(45, 35, 50)); HGDIOBJ old = SelectObject(hdc, bat_b);
             HPEN bat_p = CreatePen(PS_SOLID, 1, RGB(30, 22, 34)); HGDIOBJ old_p = SelectObject(hdc, bat_p);
             POINT wing[] = {{sx - 9, by - 2 - flap}, {sx - 5, by + 1}, {sx - 2, by - 1}, {sx, by + 2}, {sx + 2, by - 1}, {sx + 5, by + 1}, {sx + 9, by - 2 - flap}, {sx, by - 3}};
@@ -470,7 +470,7 @@ void DrawNightEyes(HDC hdc) {
     int trees[256], n = 0;
     for (int r = 0; r < MAP_SIZE && n < 256; r++) for (int c = 0; c < MAP_SIZE && n < 256; c++) {
         if (VISUAL_MAP[r][c] != 11) continue;
-        if (FxAbs(c - player_x) + FxAbs(r - player_y) < FxI(5)) continue;
+        if (FxAbs(FxI(c) - player_x) + FxAbs(FxI(r) - player_y) < FxI(5)) continue;
         trees[n++] = r * MAP_SIZE + c;
     }
     if (n == 0) return;
@@ -544,10 +544,10 @@ void DrawSolitaireSunMoonBeam(HDC hdc) {
 
     // The shaft comes from where the sun or moon is: from the right as it rises,
     // straight down at its highest, from the left as it sets.
-    fx s = day_night_cycle_accumulator % FX_PI;
+    fx s = FxMod(day_night_cycle_accumulator, FX_PI);
     if (s < 0) s += FX_PI;
     s = FxDiv(s, FX_PI);
-    fx p = is_night ? (s + FX(0.5)) % FX_ONE : s, dir = (p - FX(0.5)) * 2;
+    fx p = is_night ? FxFrac(s + FX(0.5)) : s, dir = (p - FX(0.5)) * 2;
     if (dir < -FxI(1)) dir = -FxI(1);
     if (dir > FxI(1)) dir = FxI(1);
     fx beam_world_x = FxI(5) + FxI((h >> 3) % (MAP_SIZE - 10)), beam_world_y = FxI(5) + FxI((h >> 9) % (MAP_SIZE - 10));
@@ -581,7 +581,7 @@ void DrawSolitaireSunMoonBeam(HDC hdc) {
     static const fx at[5] = { FX(0.35), FX(0.6), FX(0.9), FX(1.25), FX(1.55) };
     static const int rad[5] = { 10, 22, 7, 30, 14 };
     for (int i = 0; i < 5; i++) {
-        int ox = top_x + (int)((cxs - top_x) * at[i]), oy = (int)(cys * at[i]), r = rad[i];
+        int ox = top_x + FxTrunc((cxs - top_x) * at[i]), oy = FxTrunc(cys * at[i]), r = rad[i];
         OrbAt(hdc, ox - 2, oy, r + 2, RGB(255, 90, 80), FxTrunc(12 * k));
         OrbAt(hdc, ox + 2, oy, r + 2, RGB(90, 255, 140), FxTrunc(12 * k));
         OrbAt(hdc, ox, oy, r, is_night ? RGB(200, 220, 255) : RGB(255, 240, 200), FxTrunc(20 * k));
@@ -836,7 +836,7 @@ void DrawNightDarkness(HDC hdc) {
         ldc = CreateCompatibleDC(hdc); SelectObject(ldc, lbmp);
     }
     fx lx[NL], ly[NL], lr[NL]; int fire[NL], n = 0, sx, sy;
-    fx flick = FxI(1) + FxMul(FX(0.05), FxSinTurn(FxTurn64((int64_t)world_tick * 15)));
+    fx flick = FxI(1) + FxMul(FX(0.05), FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 15)));
     GetIsoCoords(player_x, player_y, &sx, &sy);
     lx[n] = FxI(sx); ly[n] = FxI(sy + TILE_HEIGHT / 2); lr[n] = RaceVisionTiles(); fire[n++] = 0;
     for (int i = 0; i < MAX_CAMPFIRES; i++) {

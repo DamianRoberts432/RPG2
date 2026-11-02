@@ -31,7 +31,7 @@ void HitPeyote(int tx, int ty) {
 int TryGatherPeyote(void) {
     SyncScreen();
     for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
-        int tx = (int)player_x + dx, ty = (int)player_y + dy;
+        int tx = FxTrunc(player_x) + dx, ty = FxTrunc(player_y) + dy;
         if (!PeyoteAt(tx, ty) || peyote_hits[ty][tx] < 2) continue;
         VISUAL_MAP[ty][tx] = 0; peyote_hits[ty][tx] = 0;
         AddStackableItem("Peyote", "Food", 1);
@@ -85,7 +85,7 @@ int BreakDesertPlant(int tx, int ty, int melee) {
         return 1;
     }
     VISUAL_MAP[ty][tx] = 0;
-    SpawnTreeDebris(tx + FX(0.5), ty + FX(0.5));
+    SpawnTreeDebris(FxI(tx) + FX(0.5), FxI(ty) + FX(0.5));
     strcpy(arpg_action_log, "CACTUS: It topples over in a spray of green.");
     return 1;
 }

@@ -108,7 +108,7 @@ void ApplyClassAndRaceStats(void) {
     { // Vitality (the old STA stat) also sets the HP bar: 100 + 10 per point
         fx old_max = max_player_hp;
         max_player_hp = FxI(100) + FxI(10) * stat_stamina;
-        if (old_max > FxI(0)) player_hp = (fx)((int64_t)player_hp * max_player_hp / old_max);
+        if (old_max > FxI(0)) player_hp = (fx)((int64_t)FxBits(player_hp) * FxBits(max_player_hp) / FxBits(old_max));
         if (player_hp > max_player_hp) player_hp = max_player_hp;
     }
     max_player_mp = FxI(100) + FxI(10) * stat_spent[3];

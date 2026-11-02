@@ -107,7 +107,7 @@ static void PumpMixer(void) {
 static int GroundSfx(void) {
     if (inside_home >= 0) return SFX_STEP_WOOD;
     if (in_cave || current_biome == BIOME_CAVE) return SFX_STEP_STONE;
-    int x = (int)player_x, y = (int)player_y;
+    int x = FxTrunc(player_x), y = FxTrunc(player_y);
     int t = (x >= 0 && x < MAP_SIZE && y >= 0 && y < MAP_SIZE) ? VISUAL_MAP[y][x] : 0;
     if (t == 12) return SFX_STEP_WATER;
     if (t == 5 || snow_cover > FX(0.6) || current_biome == BIOME_TUNDRA) return SFX_STEP_SNOW;

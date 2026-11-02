@@ -45,7 +45,7 @@ int HomeBuildInteract(void) {
     }
     if (player_home[0] || !HasInventoryItem("House Supplies") || in_cave || current_biome == BIOME_CASTLE || village_npc_count > 0) return 0;
     hx = player_x + HOME_FEET_OFFSET; hy = player_y + HOME_FEET_OFFSET - HOME_HALF_Y - FX(0.9);
-    if (hx < 3 || hx > MAP_SIZE - 3 || hy < 3 || hy > MAP_SIZE - 3) return 0;
+    if (hx < FxI(3) || hx > FxI(MAP_SIZE - 3) || hy < FxI(3) || hy > FxI(MAP_SIZE - 3)) return 0;
     for (fx y = hy - HOME_HALF_Y; y <= hy + HOME_HALF_Y + FX(0.01); y += FX(0.4))
         for (fx x = hx - HOME_HALF_X; x <= hx + HOME_HALF_X + FX(0.01); x += FX(0.5))
             if (TileBlocksPlayer(x - HOME_FEET_OFFSET, y - HOME_FEET_OFFSET)) {
@@ -53,7 +53,7 @@ int HomeBuildInteract(void) {
                 return 1;
             }
     player_home[0] = 1; player_home[1] = current_screen_index;
-    player_home[2] = (int)(hx * 100); player_home[3] = (int)(hy * 100);
+    player_home[2] = FxTrunc(hx * 100); player_home[3] = FxTrunc(hy * 100);
     player_home[4] = 0; player_home[6] = screen_grid_x; player_home[7] = screen_grid_y;
     DescribeFront();
     return 1;

@@ -19,18 +19,18 @@ const char* class_names[] = { "Necromancer", "Wizard", "Knight", "Warrior", "Rog
 // pack unequipped (owned, but not usable as the active weapon until the player
 // manually equips it from the inventory menu).
 InventoryItem player_inventory[MAX_INVENTORY_ITEMS] = {
-    {1, "Iron Sword", "Weapon", 0, 1, 4, 100, 100, 1},
-    {2, "Wooden Shield", "Shield", 0, 1, 3, 0, 0, 0},
-    {3, "Leather Armor", "Armor", 0, 1, 5, 0, 0, 0},
-    {4, "Matches", "Tool", 0, 5, 1, 0, 0, 0},
-    {5, "Axe", "Weapon", 1, 1, 4, 100, 100, 3},
-    {6, "Wood", "Material", 0, 12, 1, 0, 0, 0}
+    {1, "Iron Sword", "Weapon", 0, 1, FxI(4), 100, 100, 1},
+    {2, "Wooden Shield", "Shield", 0, 1, FxI(3), 0, 0, 0},
+    {3, "Leather Armor", "Armor", 0, 1, FxI(5), 0, 0, 0},
+    {4, "Matches", "Tool", 0, 5, FxI(1), 0, 0, 0},
+    {5, "Axe", "Weapon", 1, 1, FxI(4), 100, 100, 3},
+    {6, "Wood", "Material", 0, 12, FxI(1), 0, 0, 0}
 };
 int player_item_count = 6;
 int selected_inv_index = 0;
 
 // System Supported Inventory Items
-InventoryItem pickaxe_item = {6, "Pickaxe", "Tool", 0, 1, 0, 0, 0, 0};
+InventoryItem pickaxe_item = {6, "Pickaxe", "Tool", 0, 1, FxI(0), 0, 0, 0};
 
 // Hero Progression & Attributes
 int player_level = 1;

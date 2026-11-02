@@ -28,12 +28,12 @@ static void EndFishing(const char *msg) {
 }
 
 void CastFishingLine(void) {
-    int x = (int)player_x, y = (int)player_y;
+    int x = FxTrunc(player_x), y = FxTrunc(player_y);
     if (player_facing == FACE_UP) y--;
     else if (player_facing == FACE_DOWN) y++;
     else if (player_facing == FACE_LEFT) x--;
     else x++;
-    bobber_x = x + FX(0.5); bobber_y = y + FX(0.5);
+    bobber_x = FxI(x) + FX(0.5); bobber_y = FxI(y) + FX(0.5);
     cast_x = player_x; cast_y = player_y;
     fishy = IsFacingFishWater();
     dips_left = fishy ? 2 + rand() % 3 : 0; told_quiet = 0;

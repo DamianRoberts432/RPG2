@@ -85,3 +85,9 @@ maths in 16.16 fixed point (`fixed.h`, `fixed.c`). An `fx` is a value times
   decimals, and a Saturn has no internet to run it.
 - **Windows boundaries:** the GDI calls that need decimals (`XFORM`) convert
   right at the call.
+- **Type check:** `fx_check.h` turns `fx` into a C++ class that rejects the
+  mistakes plain `int32_t` lets through: `fx * fx` without `FxMul`, `fx / fx`
+  without `FxDiv`, `(int)` casts, and adding or comparing a whole number. Run
+  it on any file with
+  `g++ -fsyntax-only -fpermissive -DFX_CHECK -x c++ combat.c`.
+  Every converted file passes.

@@ -271,7 +271,7 @@ void UpdateGamePhysics(void) {
                     fx gdx = gx - enemy_x, gdy = gy - enemy_y, gd = FxLen(gdx, gdy);
                     fx mx = gd > FX(0.15) ? enemy_x + FxMul(FxMul(FxDiv(gdx, gd), speed), FX(0.7)) : enemy_x, my = gd > FX(0.15) ? enemy_y + FxMul(FxMul(FxDiv(gdy, gd), speed), FX(0.7)) : enemy_y;
                     int ok = gd > FX(0.15) && mx >= 0 && my >= 0 && mx < FxI(MAP_SIZE) && my < FxI(MAP_SIZE) &&
-                             VISUAL_MAP[(int)my][(int)mx] != 1 && VISUAL_MAP[(int)my][(int)mx] != 12 &&
+                             VISUAL_MAP[FxTrunc(my)][FxTrunc(mx)] != 1 && VISUAL_MAP[FxTrunc(my)][FxTrunc(mx)] != 12 &&
                              FxMul(mx - fx0, mx - fx0) + FxMul(my - fy0, my - fy0) >= FX(4.2 * 4.2);
                     if (ok) { enemy_x = mx; enemy_y = my; }
                     else { enemy_x += FxMul(FxSin(FxMul(world_tick, FX(0.9)) + e * FX(1.7)), FX(0.004)); enemy_y += FxMul(FxCos(FxMul(world_tick, FX(0.7)) + FxI(e)), FX(0.003)); }
@@ -325,7 +325,7 @@ void UpdateGamePhysics(void) {
                     fx sp = active_monster == MONSTER_ZOMBIE ? FX(0.007) : FX(0.012);
                     fx tx = enemy_x + FxMul(FxDiv(gdx, gd), sp), ty = enemy_y + FxMul(FxDiv(gdy, gd), sp);
                     if (tx > FX(0.5) && ty > FX(0.5) && tx < FxI(MAP_SIZE) - FX(0.5) && ty < FxI(MAP_SIZE) - FX(0.5) &&
-                        VISUAL_MAP[(int)ty][(int)tx] != 1 && VISUAL_MAP[(int)ty][(int)tx] != 12) { enemy_x = tx; enemy_y = ty; }
+                        VISUAL_MAP[FxTrunc(ty)][FxTrunc(tx)] != 1 && VISUAL_MAP[FxTrunc(ty)][FxTrunc(tx)] != 12) { enemy_x = tx; enemy_y = ty; }
                     else goal_until[e] = FxI(0); // blocked: pick somewhere else
                 }
             }
@@ -338,7 +338,7 @@ void UpdateGamePhysics(void) {
             if (od < FX(0.7) && od > FX(0.001)) {
                 fx nx = enemy_x + FxMul(FxDiv(ox, od), FX(0.03)), ny = enemy_y + FxMul(FxDiv(oy, od), FX(0.03));
                 if (nx > FX(0.5) && ny > FX(0.5) && nx < FxI(MAP_SIZE) - FX(0.5) && ny < FxI(MAP_SIZE) - FX(0.5) &&
-                    VISUAL_MAP[(int)ny][(int)nx] != 1 && VISUAL_MAP[(int)ny][(int)nx] != 12) { enemy_x = nx; enemy_y = ny; }
+                    VISUAL_MAP[FxTrunc(ny)][FxTrunc(nx)] != 1 && VISUAL_MAP[FxTrunc(ny)][FxTrunc(nx)] != 12) { enemy_x = nx; enemy_y = ny; }
             }
         }
     }

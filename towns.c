@@ -219,8 +219,8 @@ void DrawVillageGrowth(HDC hdc) {
     fx a0 = FxMul(world_tick, FX(1.2));
     for (int b = 0; b < 4; b++) {
         fx a = a0 + b * FX(1.5708), ca = FxCos(a), sa = FxSin(a);
-        POINT bl[4] = { { sx, hub_y }, { sx + (int)(ca * 26 - sa * 4), hub_y + (int)(sa * 26 + ca * 4) },
-                        { sx + (int)(ca * 26 + sa * 4), hub_y + (int)(sa * 26 - ca * 4) }, { sx, hub_y } };
+        POINT bl[4] = { { sx, hub_y }, { sx + FxTrunc(ca * 26 - sa * 4), hub_y + FxTrunc(sa * 26 + ca * 4) },
+                        { sx + FxTrunc(ca * 26 + sa * 4), hub_y + FxTrunc(sa * 26 - ca * 4) }, { sx, hub_y } };
         Polygon(hdc, bl, 4);
     }
     SelectObject(hdc, old_br); DeleteObject(stone); DeleteObject(roof); DeleteObject(sail);

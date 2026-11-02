@@ -616,15 +616,15 @@ void DrawBlessingFx(HDC hdc) {
     fx k = t < 700 ? FxI(t) / 700 : t > 5000 ? FxI(6000 - t) / 1000 : FxI(1);
     int cx = WINDOW_WIDTH / 2, cy = WINDOW_HEIGHT / 2;
     if (blessing_fx == 0) { // Solara: a warm sunbeam pours down onto the hero, motes drifting in it
-        for (int s = 0; s < 12; s++) { int w = 70 + s * 12, bh = (cy + 40) / 12 + 1; FillRectAlpha(hdc, cx - w / 2, s * bh, w, bh, RGB(255, 228, 140), (int)(70 * k)); }
-        for (int r = 3; r >= 1; r--) FillRectAlpha(hdc, cx - 40 * r, cy + 20 - 8 * r, 80 * r, 16 * r, RGB(255, 240, 170), (int)(30 * k));
-        for (int m = 0; m < 18; m++) { int mx = cx - 60 + (int)((m * 53) % 120), my = (int)((t / 6 + m * 71) % (cy + 40)); FillRectAlpha(hdc, mx, my, 3, 3, RGB(255, 255, 220), (int)(200 * k)); }
+        for (int s = 0; s < 12; s++) { int w = 70 + s * 12, bh = (cy + 40) / 12 + 1; FillRectAlpha(hdc, cx - w / 2, s * bh, w, bh, RGB(255, 228, 140), FxTrunc(70 * k)); }
+        for (int r = 3; r >= 1; r--) FillRectAlpha(hdc, cx - 40 * r, cy + 20 - 8 * r, 80 * r, 16 * r, RGB(255, 240, 170), FxTrunc(30 * k));
+        for (int m = 0; m < 18; m++) { int mx = cx - 60 + (int)((m * 53) % 120), my = (int)((t / 6 + m * 71) % (cy + 40)); FillRectAlpha(hdc, mx, my, 3, 3, RGB(255, 255, 220), FxTrunc(200 * k)); }
     } else if (blessing_fx == 1) { // Nyx: a violet veil and a scatter of slow-twinkling stars
-        FillWindowAlpha(hdc, RGB(55, 20, 85), (int)(60 * k));
+        FillWindowAlpha(hdc, RGB(55, 20, 85), FxTrunc(60 * k));
         for (int s = 0; s < 40; s++) { int sx = (s * 977) % WINDOW_WIDTH, sy = (s * 613) % (WINDOW_HEIGHT * 2 / 3); fx tw = FX(0.5) + FxSin(FxI(t) / 300 + FxI(s)) / 2;
-            FillRectAlpha(hdc, sx, sy, 3, 3, RGB(230, 210, 255), (int)(220 * k * tw)); }
+            FillRectAlpha(hdc, sx, sy, 3, 3, RGB(230, 210, 255), FxTrunc(FxMul(220 * k, tw))); }
     } else if (blessing_fx == 2) { // Baron Samedi rises in the corner, top hat and toothy grin, and smiles
-        int x = WINDOW_WIDTH - 230, y = WINDOW_HEIGHT - 60 - (int)(250 * k);
+        int x = WINDOW_WIDTH - 230, y = WINDOW_HEIGHT - 60 - FxTrunc(250 * k);
         FxRect(hdc, RGB(20, 18, 24), x - 10, y + 150, x + 170, y + 260);               // coat
         FxRect(hdc, RGB(150, 20, 30), x + 70, y + 150, x + 90, y + 200);              // red sash
         FxEllipse(hdc, RGB(235, 232, 220), x + 20, y + 40, x + 140, y + 165);          // skull face
@@ -638,9 +638,9 @@ void DrawBlessingFx(HDC hdc) {
         FxRect(hdc, RGB(15, 14, 18), x + 40, y + 126, x + 120, y + 146);               // the grin
         for (int tooth = 0; tooth < 8; tooth++) FxRect(hdc, RGB(250, 248, 236), x + 42 + tooth * 10, y + 128, x + 49 + tooth * 10, y + 144);
         FxRect(hdc, RGB(140, 90, 50), x + 118, y + 134, x + 160, y + 140); FxEllipse(hdc, RGB(255, 120, 40), x + 156, y + 132, x + 164, y + 142); // cigar
-        for (int p = 0; p < 4; p++) FillRectAlpha(hdc, x + 160 + p * 6, y + 120 - p * 14 - (int)(t / 40 % 14), 10, 10, RGB(200, 200, 205), (int)(90 * k));
+        for (int p = 0; p < 4; p++) FillRectAlpha(hdc, x + 160 + p * 6, y + 120 - p * 14 - (int)(t / 40 % 14), 10, 10, RGB(200, 200, 205), FxTrunc(90 * k));
     } else { // The Drowned One: deep water rises from below, bubbles drifting up
-        for (int b = 0; b < 8; b++) FillRectAlpha(hdc, 0, WINDOW_HEIGHT - (b + 1) * 50, WINDOW_WIDTH, 50, RGB(20, 90, 110), (int)((80 - b * 9) * k));
+        for (int b = 0; b < 8; b++) FillRectAlpha(hdc, 0, WINDOW_HEIGHT - (b + 1) * 50, WINDOW_WIDTH, 50, RGB(20, 90, 110), FxTrunc((80 - b * 9) * k));
         for (int b = 0; b < 30; b++) { int bx = (b * 389) % WINDOW_WIDTH + FxTrunc(FxSin(FxI(t) / 400 + FxI(b)) * 8), by = WINDOW_HEIGHT - (int)((t / 4 + b * 97) % 420);
             FxEllipse(hdc, RGB(170, 225, 235), bx, by, bx + 6 + b % 4 * 2, by + 6 + b % 4 * 2); }
     }
@@ -1402,7 +1402,7 @@ void CheckChestBreakIns(void) {
         c->last_day = ChestDay();
         int trees = 0;
         for (int dy = -2; dy <= 2; dy++) for (int dx = -2; dx <= 2; dx++) {
-            int tx = (int)c->x + dx, ty = (int)c->y + dy;
+            int tx = FxTrunc(c->x) + dx, ty = FxTrunc(c->y) + dy;
             if (tx >= 0 && tx < MAP_SIZE && ty >= 0 && ty < MAP_SIZE && VISUAL_MAP[ty][tx] == 11) trees++;
         }
         int road = ChestNearRoad(c);
@@ -1496,7 +1496,7 @@ int WellSpot(int *tx, int *ty) {
 void DrawWishingWell(HDC hdc) {
     int tx, ty, sx, sy;
     if (!WellSpot(&tx, &ty)) return;
-    GetIsoCoords(tx + FX(0.5), ty + FX(0.5), &sx, &sy);
+    GetIsoCoords(FxI(tx) + FX(0.5), FxI(ty) + FX(0.5), &sx, &sy);
     TwDisc(hdc, sx, sy, 20, 9, RGB(110, 108, 104));
     TwBox(hdc, sx - 20, sy - 14, sx + 20, sy, RGB(130, 126, 120));
     TwDisc(hdc, sx, sy - 14, 20, 9, RGB(150, 146, 140));

@@ -173,7 +173,7 @@ void ClearHighwayTiles(void) {
 void DrawHighway(HDC hdc) {
     fx a = FxAbs(FxSin(day_night_cycle_accumulator));
     if (a < FX(0.35)) a = FX(0.35);
-    HBRUSH br = CreateSolidBrush(RGB((int)(150 * a), (int)(138 * a), (int)(118 * a)));
+    HBRUSH br = CreateSolidBrush(RGB(FxTrunc(150 * a), FxTrunc(138 * a), FxTrunc(118 * a)));
     HGDIOBJ old = SelectObject(hdc, br), old_pen = SelectObject(hdc, GetStockObject(NULL_PEN));
     for (int y = 0; y < MAP_SIZE; y++) for (int x = 0; x < MAP_SIZE; x++) {
         if (!HighwayTile(x, y) || VISUAL_MAP[y][x] != 0) continue;
