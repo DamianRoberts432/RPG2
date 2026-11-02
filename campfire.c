@@ -13,7 +13,7 @@ void PlaceCampfireAt(int slot) {
     campfires[slot].timer = CAMPFIRE_START_WOOD * CAMPFIRE_FRAMES_PER_WOOD;
     campfires[slot].active = 1;
     campfires[slot].screen_id = current_screen_index;
-    bedroll_x = player_x + 1.0f;
+    bedroll_x = player_x + FxI(1);
     bedroll_y = player_y;
     bedroll_screen_id = current_screen_index;
 }
@@ -26,7 +26,7 @@ int CampfireWoodCount(int i) {
     return wood;
 }
 
-int FindNearbyCampfire(float radius) {
+int FindNearbyCampfire(fx radius) {
     for (int i = 0; i < MAX_CAMPFIRES; i++) {
         if (!campfires[i].active || campfires[i].screen_id != current_screen_index) continue;
         if (IsNearPoint(campfires[i].x, campfires[i].y, radius)) return i;
@@ -53,7 +53,7 @@ void AddWoodToFire(int i) {
 }
 
 int AddWoodToNearbyFire(void) {
-    int i = FindNearbyCampfire(2.0f);
+    int i = FindNearbyCampfire(FxI(2));
     if (i < 0) return 0;
     AddWoodToFire(i);
     return 1;

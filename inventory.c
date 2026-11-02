@@ -147,45 +147,45 @@ int WearEquippedBow(void) { return WearEquipped(1); }
 // item already present in the game. This weight only ever counts against the
 // carry limit while an item sits unequipped in the pack - see
 // RecalculateCarriedWeight(), which excludes anything currently worn/wielded.
-float GetNamedItemWeight(const char *name) {
-    if (strcmp(name, "Wood") == 0) return HasInventoryItem("Wood Cart") ? 0.1f : 0.4f;
-    if (strcmp(name, "Stone") == 0) return HasInventoryItem("Wood Cart") ? 0.15f : 0.6f;
-    if (strcmp(name, "Short Sword") == 0) return 2.0f;
-    if (strcmp(name, "Long Bow") == 0) return 2.0f;
-    if (strcmp(name, "Short Bow") == 0) return 1.5f;
-    float edited = UpdatedItemWeight(name);
-    if (edited >= 0.0f) return edited;
-    if (strcmp(name, "Dagger") == 0 || strcmp(name, "Silver Dagger") == 0) return 1.0f;
-    if (strcmp(name, "Garlic") == 0) return 0.2f;
-    if (strcmp(name, "Wood Cart") == 0) return 6.0f;
-    if (strcmp(name, "Hoe") == 0) return 2.0f;
-    if (strcmp(name, "Seeds") == 0) return 0.1f;
-    if (strcmp(name, "Turnip") == 0) return 0.5f;
-    if (strcmp(name, "Peyote") == 0) return 0.2f;
-    if (strcmp(name, "Long Sword") == 0) return 5.0f;
-    if (strcmp(name, "Axe") == 0) return 4.0f;
-    if (strcmp(name, "Spear") == 0) return 3.0f;
-    if (strcmp(name, "Mace") == 0) return 5.0f;
-    if (strcmp(name, "Raft") == 0) return 8.0f;
-    if (strcmp(name, "Canoe") == 0) return 6.0f;
-    if (strcmp(name, "Boat") == 0) return 4.0f;
-    if (strcmp(name, "Night Vision Ring") == 0) return 0.1f;
-    if (strcmp(name, "Strategy Guide") == 0) return 0.5f;
-    if (strcmp(name, "Rusty Sword") == 0) return 2.0f;
-    if (strcmp(name, "Iron Sword") == 0) return 4.0f;
-    if (strcmp(name, "Wooden Shield") == 0) return 3.0f;
-    if (strcmp(name, "Leather Armor") == 0) return 5.0f;
-    if (strcmp(name, "Pickaxe") == 0) return 3.0f;
-    if (strcmp(name, "Fishing Pole") == 0) return 2.0f;
-    if (strcmp(name, "Fish") == 0) return 1.0f;
-    if (strcmp(name, "Apple") == 0) return 0.5f;
-    if (strcmp(name, "Matches") == 0) return 1.0f;
-    if (strcmp(name, "Dragon Scale Armor") == 0) return 6.0f;
-    if (strcmp(name, "Musashi's Blade") == 0) return 1.0f;
-    if (strcmp(name, "Fur Mantle") == 0 || strcmp(name, "Padded Gambeson") == 0) return 2.0f;
-    if (strstr(name, "Cloak") || strcmp(name, "Leather Jerkin") == 0) return 1.5f;
-    if (ClothingColor(name) != CLOTH_UNKNOWN) return 0.5f;
-    return 0.0f;
+fx GetNamedItemWeight(const char *name) {
+    if (strcmp(name, "Wood") == 0) return HasInventoryItem("Wood Cart") ? FX(0.1) : FX(0.4);
+    if (strcmp(name, "Stone") == 0) return HasInventoryItem("Wood Cart") ? FX(0.15) : FX(0.6);
+    if (strcmp(name, "Short Sword") == 0) return FxI(2);
+    if (strcmp(name, "Long Bow") == 0) return FxI(2);
+    if (strcmp(name, "Short Bow") == 0) return FX(1.5);
+    fx edited = UpdatedItemWeight(name);
+    if (edited >= FxI(0)) return edited;
+    if (strcmp(name, "Dagger") == 0 || strcmp(name, "Silver Dagger") == 0) return FxI(1);
+    if (strcmp(name, "Garlic") == 0) return FX(0.2);
+    if (strcmp(name, "Wood Cart") == 0) return FxI(6);
+    if (strcmp(name, "Hoe") == 0) return FxI(2);
+    if (strcmp(name, "Seeds") == 0) return FX(0.1);
+    if (strcmp(name, "Turnip") == 0) return FX(0.5);
+    if (strcmp(name, "Peyote") == 0) return FX(0.2);
+    if (strcmp(name, "Long Sword") == 0) return FxI(5);
+    if (strcmp(name, "Axe") == 0) return FxI(4);
+    if (strcmp(name, "Spear") == 0) return FxI(3);
+    if (strcmp(name, "Mace") == 0) return FxI(5);
+    if (strcmp(name, "Raft") == 0) return FxI(8);
+    if (strcmp(name, "Canoe") == 0) return FxI(6);
+    if (strcmp(name, "Boat") == 0) return FxI(4);
+    if (strcmp(name, "Night Vision Ring") == 0) return FX(0.1);
+    if (strcmp(name, "Strategy Guide") == 0) return FX(0.5);
+    if (strcmp(name, "Rusty Sword") == 0) return FxI(2);
+    if (strcmp(name, "Iron Sword") == 0) return FxI(4);
+    if (strcmp(name, "Wooden Shield") == 0) return FxI(3);
+    if (strcmp(name, "Leather Armor") == 0) return FxI(5);
+    if (strcmp(name, "Pickaxe") == 0) return FxI(3);
+    if (strcmp(name, "Fishing Pole") == 0) return FxI(2);
+    if (strcmp(name, "Fish") == 0) return FxI(1);
+    if (strcmp(name, "Apple") == 0) return FX(0.5);
+    if (strcmp(name, "Matches") == 0) return FxI(1);
+    if (strcmp(name, "Dragon Scale Armor") == 0) return FxI(6);
+    if (strcmp(name, "Musashi's Blade") == 0) return FxI(1);
+    if (strcmp(name, "Fur Mantle") == 0 || strcmp(name, "Padded Gambeson") == 0) return FxI(2);
+    if (strstr(name, "Cloak") || strcmp(name, "Leather Jerkin") == 0) return FX(1.5);
+    if (ClothingColor(name) != CLOTH_UNKNOWN) return FX(0.5);
+    return FxI(0);
 }
 
 const char *WornItem(const char *slot) {
@@ -217,10 +217,10 @@ COLORREF ClothingColor(const char *name) {
 // any time player_inventory, quantities, or equip state changes instead of
 // manually incrementing/decrementing the total.
 void RecalculateCarriedWeight(void) {
-    float total = 0.0f;
+    fx total = FxI(0);
     for (int i = 0; i < player_item_count; i++) {
         if (!player_inventory[i].is_equipped) {
-            total += player_inventory[i].weight * (float)player_inventory[i].quantity;
+            total += player_inventory[i].weight * player_inventory[i].quantity;
         }
     }
     current_payload_weight = total;
@@ -274,8 +274,8 @@ int AddStackableItem(const char *name, const char *slot, int quantity) {
     return 1;
 }
 
-float CarryLimit(void) {
-    return 150.0f + 10.0f * stat_spent[0]; // each STR point spent carries 10 more
+fx CarryLimit(void) {
+    return FxI(150) + FxI(10) * stat_spent[0]; // each STR point spent carries 10 more
 }
 
 // Returns the inventory slot index owning a stack named `name`, or -1 if the
@@ -322,9 +322,9 @@ int ConsumeMaterialFromInventory(const char *name, int quantity) {
     return 1;
 }
 
-float LootWeight(int item_id) {
+fx LootWeight(int item_id) {
     if (item_id >= LOOT_SHORT_SWORD && item_id <= LOOT_LAST_WEAPON) return weapon_catalog[item_id - 1].weight;
-    return (item_id == LOOT_FISH || item_id == LOOT_APPLE) ? GetNamedItemWeight(item_id == LOOT_FISH ? "Fish" : "Apple") : 0.0f;
+    return (item_id == LOOT_FISH || item_id == LOOT_APPLE) ? GetNamedItemWeight(item_id == LOOT_FISH ? "Fish" : "Apple") : FxI(0);
 }
 
 int AddLootToInventory(int item_id, int quantity) {
@@ -338,7 +338,7 @@ int AddLootToInventory(int item_id, int quantity) {
     else if (item_id == LOOT_APPLE) { name = "Apple"; slot = "Food"; }
     else return 0;
 
-    float weight = LootWeight(item_id) * quantity;
+    fx weight = LootWeight(item_id) * quantity;
     if (current_payload_weight + weight > CarryLimit()) return 0;
     if (!weapon) {
         if (!AddStackableItem(name, slot, quantity)) return 0;
@@ -356,11 +356,11 @@ int AddLootToInventory(int item_id, int quantity) {
     return 1;
 }
 
-static int SpotHasLoot(float x, float y) {
+static int SpotHasLoot(fx x, fx y) {
     for (int i = 0; i < MAX_GROUND_LOOT; i++)
-        if (ground_loot[i].active && ground_loot[i].screen_id == current_screen_index && fabs(ground_loot[i].x - x) < 0.45f && fabs(ground_loot[i].y - y) < 0.45f) return 1;
+        if (ground_loot[i].active && ground_loot[i].screen_id == current_screen_index && FxAbs(ground_loot[i].x - x) < FX(0.45) && FxAbs(ground_loot[i].y - y) < FX(0.45)) return 1;
     for (int i = 0; i < MAX_DROPPED_ITEMS; i++)
-        if (dropped_items[i].active && dropped_items[i].screen_id == current_screen_index && fabs(dropped_items[i].x - x) < 0.45f && fabs(dropped_items[i].y - y) < 0.45f) return 1;
+        if (dropped_items[i].active && dropped_items[i].screen_id == current_screen_index && FxAbs(dropped_items[i].x - x) < FX(0.45) && FxAbs(dropped_items[i].y - y) < FX(0.45)) return 1;
     return 0;
 }
 
@@ -368,20 +368,20 @@ static int SpotHasLoot(float x, float y) {
 // trees, rocks or water or on top of another drop. center_first tries (x, y)
 // itself before the ring around it (nearest free tile); otherwise the ring is
 // walked from a random direction so loot scatters around a fallen monster.
-void FindDropSpot(float x, float y, int center_first, float *ox, float *oy) {
-    static const float ring[12][2] = { {0.7f, 0}, {0.5f, 0.5f}, {0, 0.7f}, {-0.5f, 0.5f}, {-0.7f, 0}, {-0.5f, -0.5f},
-                                       {0, -0.7f}, {0.5f, -0.5f}, {1.3f, 0}, {0, 1.3f}, {-1.3f, 0}, {0, -1.3f} };
+void FindDropSpot(fx x, fx y, int center_first, fx *ox, fx *oy) {
+    static const fx ring[12][2] = { {FX(0.7), 0}, {FX(0.5), FX(0.5)}, {0, FX(0.7)}, {-FX(0.5), FX(0.5)}, {-FX(0.7), 0}, {-FX(0.5), -FX(0.5)},
+                                       {0, -FX(0.7)}, {FX(0.5), -FX(0.5)}, {FX(1.3), 0}, {0, FX(1.3)}, {-FX(1.3), 0}, {0, -FX(1.3)} };
     if (center_first && PlayerCanStandAt(x, y) && !SpotHasLoot(x, y)) { *ox = x; *oy = y; return; }
     int start = center_first ? 0 : rand() % 8;
     for (int k = 0; k < 12; k++) {
         int i = k < 8 ? (start + k) % 8 : k;
-        float tx = x + ring[i][0], ty = y + ring[i][1];
+        fx tx = x + ring[i][0], ty = y + ring[i][1];
         if (PlayerCanStandAt(tx, ty) && !SpotHasLoot(tx, ty)) { *ox = tx; *oy = ty; return; }
     }
     *ox = x; *oy = y;
 }
 
-void DropGroundLoot(float x, float y, int item_id, int quantity) {
+void DropGroundLoot(fx x, fx y, int item_id, int quantity) {
     FindDropSpot(x, y, 0, &x, &y);
     for (int i = 0; i < MAX_GROUND_LOOT; i++) {
         if (!ground_loot[i].active) {
@@ -396,7 +396,7 @@ void DropGroundLoot(float x, float y, int item_id, int quantity) {
 int TryPickupGroundLoot(void) {
     for (int i = 0; i < MAX_GROUND_LOOT; i++) {
         GroundLoot *loot = &ground_loot[i];
-        if (!loot->active || loot->screen_id != current_screen_index || !IsNearPoint(loot->x, loot->y, 1.2f)) continue;
+        if (!loot->active || loot->screen_id != current_screen_index || !IsNearPoint(loot->x, loot->y, FX(1.2))) continue;
         if (loot->item_id == LOOT_GOLD) {
             gold_count += loot->quantity; loot->active = 0;
             sprintf(arpg_action_log, "PICKUP: %d gold", loot->quantity);
@@ -407,7 +407,7 @@ int TryPickupGroundLoot(void) {
                 loot->item_id == LOOT_APPLE ? "Apple" : weapon_catalog[loot->item_id - 1].name, loot->quantity);
             loot->active = 0;
         } else {
-            sprintf(arpg_action_log, "Inventory full! (%.1f/%.1f weight)", current_payload_weight, CarryLimit());
+            sprintf(arpg_action_log, "Inventory full! (%s/%s weight)", FxStr(current_payload_weight, 1), FxStr(CarryLimit(), 1));
         }
         return 1;
     }
@@ -447,11 +447,11 @@ void DropSelectedItem(void) {
     for (int i = 0; i < MAX_DROPPED_ITEMS; i++) if (!dropped_items[i].active) { slot = i; break; }
     if (slot == -1) { strcpy(arpg_action_log, "Too much clutter nearby to drop anything else."); return; }
 
-    float dx = 0.0f, dy = 0.0f;
-    if (player_facing == FACE_UP) dy = -1.0f;
-    else if (player_facing == FACE_DOWN) dy = 1.0f;
-    else if (player_facing == FACE_LEFT) dx = -1.0f;
-    else dx = 1.0f;
+    fx dx = FxI(0), dy = FxI(0);
+    if (player_facing == FACE_UP) dy = -FxI(1);
+    else if (player_facing == FACE_DOWN) dy = FxI(1);
+    else if (player_facing == FACE_LEFT) dx = -FxI(1);
+    else dx = FxI(1);
 
     FindDropSpot(player_x + dx, player_y + dy, 1, &dropped_items[slot].x, &dropped_items[slot].y);
     dropped_items[slot].screen_id = current_screen_index;
@@ -477,9 +477,9 @@ void DropSelectedItem(void) {
 int TryPickupDroppedItems(void) {
     for (int i = 0; i < MAX_DROPPED_ITEMS; i++) {
         DroppedInventoryItem *drop = &dropped_items[i];
-        if (!drop->active || drop->screen_id != current_screen_index || !IsNearPoint(drop->x, drop->y, 1.0f)) continue;
+        if (!drop->active || drop->screen_id != current_screen_index || !IsNearPoint(drop->x, drop->y, FxI(1))) continue;
         if (player_item_count >= MAX_INVENTORY_ITEMS || current_payload_weight + drop->item.weight * drop->item.quantity > CarryLimit()) {
-            sprintf(arpg_action_log, "Inventory full! (%.1f/%.1f weight)", current_payload_weight, CarryLimit());
+            sprintf(arpg_action_log, "Inventory full! (%s/%s weight)", FxStr(current_payload_weight, 1), FxStr(CarryLimit(), 1));
             return 1;
         }
         drop->item.is_equipped = 0;
@@ -499,11 +499,11 @@ int TryPickupDroppedItems(void) {
 }
 
 // Full speed up to 70% of carry capacity, then slows steadily to a stop at 100%.
-float WeightSpeedFactor(void) {
-    float load = current_payload_weight / CarryLimit();
-    if (load <= 0.70f) return 1.0f;
-    if (load >= 1.0f) return 0.0f;
-    return (1.0f - load) / 0.30f;
+fx WeightSpeedFactor(void) {
+    fx load = FxDiv(current_payload_weight, CarryLimit());
+    if (load <= FX(0.70)) return FxI(1);
+    if (load >= FxI(1)) return FxI(0);
+    return FxDiv(FxI(1) - load, FX(0.30));
 }
 
 // Silver bites the undead: double melee damage against Dracula.
@@ -531,7 +531,7 @@ void ConsumeSelectedFood(void) {
     int heal = strcmp(item->name, "Fish") == 0 ? 10 : strcmp(item->name, "Apple") == 0 ? 15 : strcmp(item->name, "Turnip") == 0 ? 12 : 0;
     if (heal == 0) heal = UpdatedFoodHeal(item->name);
     if (heal == 0) { strcpy(arpg_action_log, "Use a fish or apple to restore health."); return; }
-    player_hp += (float)heal;
+    player_hp += FxI(heal);
     if (player_hp > max_player_hp) player_hp = max_player_hp;
     if (item->quantity > 1) item->quantity--;
     else {

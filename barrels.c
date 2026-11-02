@@ -5,7 +5,7 @@
 // barrels stay broken for the rest of the day and are back the next morning.
 #define MAX_BARRELS 6
 #define BARREL_MEMORY 8
-typedef struct { float x, y; int intact; } Barrel;
+typedef struct { fx x, y; int intact; } Barrel;
 static Barrel barrels[MAX_BARRELS];
 static int barrel_count, barrel_screen = -2, barrel_day = -1, barrel_cave = -1;
 static struct { int screen, day, cave, mask; } broken[BARREL_MEMORY];
@@ -28,7 +28,7 @@ static void RefreshBarrels(void) {
         for (int k = 0; k < 40 && barrel_count < 3; k++) {
             int h = RainHash(current_screen_index * 131 + k * 977 + 7);
             int x = 3 + h % (MAP_SIZE - 6), y = 3 + (h / MAP_SIZE) % (MAP_SIZE - 6);
-            if (VISUAL_MAP[y][x] == 0) barrels[barrel_count++] = (Barrel){ (float)x, (float)y, 1 };
+            if (VISUAL_MAP[y][x] == 0) barrels[barrel_count++] = (Barrel){ FxI(x), FxI(y), 1 };
         }
     } else if (village_npc_count > 0) {
         static const int hx[4] = { 11, 15, 19, 15 }, hy[4] = { 11, 10, 11, 18 };
@@ -39,11 +39,11 @@ static void RefreshBarrels(void) {
             int x = hx[i] + shift + ox[(k + i) % 4], y = hy[i] + oy[(k + i) % 4], near_npc = 0;
             if (x < 1 || y < 1 || x >= MAP_SIZE - 1 || y >= MAP_SIZE - 1 || VISUAL_MAP[y][x] != 0) continue;
             for (int n = 0; n < village_npc_count && !near_npc; n++) {
-                float ndx = village_npcs[n].home_x - x, ndy = village_npcs[n].home_y - y;
-                near_npc = ndx * ndx + ndy * ndy < 9.0f;
+                fx ndx = village_npcs[n].home_x - x, ndy = village_npcs[n].home_y - y;
+                near_npc = FxMul(ndx, ndx) + FxMul(ndy, ndy) < FxI(9);
             }
             if (near_npc) continue;
-            barrels[barrel_count++] = (Barrel){ (float)x, (float)y, 1 };
+            barrels[barrel_count++] = (Barrel){ FxI(x), FxI(y), 1 };
             break;
         }
     }
@@ -55,8 +55,8 @@ int TryBreakBarrel(void) {
     RefreshBarrels();
     for (int i = 0; i < barrel_count; i++) {
         if (!barrels[i].intact) continue;
-        float dx = barrels[i].x - player_x, dy = barrels[i].y - player_y;
-        if (dx * dx + dy * dy > 1.6f * 1.6f) continue;
+        fx dx = barrels[i].x - player_x, dy = barrels[i].y - player_y;
+        if (FxMul(dx, dx) + FxMul(dy, dy) > FX(1.6 * 1.6)) continue;
         barrels[i].intact = 0;
         *BrokenMask(1) |= 1 << i;
         int roll = rand() % 100;
@@ -72,7 +72,7 @@ int TryBreakBarrel(void) {
     return 0;
 }
 
-int BarrelInfo(int i, float *x, float *y, int *intact) {
+int BarrelInfo(int i, fx *x, fx *y, int *intact) {
     if (i == 0) RefreshBarrels();
     if (i < 0 || i >= barrel_count) return 0;
     *x = barrels[i].x; *y = barrels[i].y; *intact = barrels[i].intact;

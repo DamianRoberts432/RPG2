@@ -9,12 +9,12 @@ static void PlaceVillageLights(int shift) {
     for (int k = 0; k < 5; k++) {
         int x = lx[k] + shift, y = ly[k];
         for (int oy = -1; oy <= 1; oy++) for (int ox = -1; ox <= 1; ox++) if (k == 0 || (ox == 0 && oy == 0)) VISUAL_MAP[y + oy][x + ox] = 0;
-        village_lights[village_light_count++] = (VillageLight){ (float)x, (float)y, k != 0 };
+        village_lights[village_light_count++] = (VillageLight){ FxI(x), FxI(y), k != 0 };
     }
 }
 
-static int DirectionOf(float dx, float dy) {
-    return fabsf(dx) > fabsf(dy) ? (dx < 0 ? FACE_LEFT : FACE_RIGHT) : (dy < 0 ? FACE_UP : FACE_DOWN);
+static int DirectionOf(fx dx, fx dy) {
+    return FxAbs(dx) > FxAbs(dy) ? (dx < 0 ? FACE_LEFT : FACE_RIGHT) : (dy < 0 ? FACE_UP : FACE_DOWN);
 }
 
 void GenerateVillageNPCs(void) {
@@ -34,8 +34,8 @@ void GenerateVillageNPCs(void) {
             if (abs(pc[k] - (int)cave_treasure_x) > 1 || abs(pr[k] - (int)cave_treasure_y) > 1) VISUAL_MAP[pr[k]][pc[k]] = 1;
     }
     int shift = (current_screen_index % 3) - 1;
-    const float village_x[4] = { 11.0f, 15.0f, 19.0f, 15.0f };
-    const float village_y[4] = { 11.0f, 10.0f, 11.0f, 18.0f };
+    const fx village_x[4] = { FxI(11), FxI(15), FxI(19), FxI(15) };
+    const fx village_y[4] = { FxI(11), FxI(10), FxI(11), FxI(18) };
     for (int i = 0; i < 4; i++) {
         int x = (int)village_x[i] + shift, y = (int)village_y[i];
         for (int oy = -1; oy <= 1; oy++) for (int ox = -1; ox <= 1; ox++) VISUAL_MAP[y + oy][x + ox] = 0;
@@ -43,31 +43,31 @@ void GenerateVillageNPCs(void) {
     PlaceVillageLights(shift);
     if (is_market) {
         RestockMerchant();
-        village_npcs[0] = (NPCEntity){ 15.0f, 17.0f, 15.0f, 17.0f, 1, 0, FACE_DOWN, "Welcome, adventurer!", 90 };
+        village_npcs[0] = (NPCEntity){ FxI(15), FxI(17), FxI(15), FxI(17), 1, 0, FACE_DOWN, "Welcome, adventurer!", 90 };
         // Merchant and blacksmith are always here; the pet shop and card shop
         // keepers only sometimes set up in town.
-        village_npcs[1] = (NPCEntity){ 11.0f, 16.0f, 11.0f, 16.0f, 3, 0, FACE_DOWN, "Blacksmith: X to step into the forge.", 130 };
+        village_npcs[1] = (NPCEntity){ FxI(11), FxI(16), FxI(11), FxI(16), 3, 0, FACE_DOWN, "Blacksmith: X to step into the forge.", 130 };
         village_npc_count = 2;
         int shops = TownShopsToday(current_screen_index);
-        if (shops & 1) village_npcs[village_npc_count++] = (NPCEntity){ 19.0f, 16.0f, 19.0f, 16.0f, 4, 0, FACE_DOWN, "Pet shop: X to meet the familiars.", 160 };
-        if (shops & 2) village_npcs[village_npc_count++] = (NPCEntity){ 15.0f, 20.0f, 15.0f, 20.0f, 5, 0, FACE_DOWN, "Card shop: X to see today's ten cards.", 190 };
+        if (shops & 1) village_npcs[village_npc_count++] = (NPCEntity){ FxI(19), FxI(16), FxI(19), FxI(16), 4, 0, FACE_DOWN, "Pet shop: X to meet the familiars.", 160 };
+        if (shops & 2) village_npcs[village_npc_count++] = (NPCEntity){ FxI(15), FxI(20), FxI(15), FxI(20), 5, 0, FACE_DOWN, "Card shop: X to see today's ten cards.", 190 };
         merchant_x = village_npcs[0].x; merchant_y = village_npcs[0].y;
         // Castle hall, vault and shrine, plus a beggar in the square.
-        float hall_x = 15.0f + shift, side_x = 19.0f + shift, shrine_x = 11.0f + shift;
-        village_npcs[village_npc_count++] = (NPCEntity){ hall_x, 10.0f, hall_x, 10.0f, 6, 0, FACE_DOWN, "King: Heroes of renown may seek Legendary quests. X to approach the throne.", 210 };
-        village_npcs[village_npc_count++] = (NPCEntity){ side_x, 11.0f, side_x, 11.0f, 9, 0, FACE_DOWN, "Banker: Gold in the vault stays safe. X to bank.", 150 };
-        village_npcs[village_npc_count++] = (NPCEntity){ shrine_x, 11.0f, shrine_x, 11.0f, 8, 0, FACE_DOWN, "An old altar hums with power. X to kneel.", 999 };
+        fx hall_x = FxI(15) + shift, side_x = FxI(19) + shift, shrine_x = FxI(11) + shift;
+        village_npcs[village_npc_count++] = (NPCEntity){ hall_x, FxI(10), hall_x, FxI(10), 6, 0, FACE_DOWN, "King: Heroes of renown may seek Legendary quests. X to approach the throne.", 210 };
+        village_npcs[village_npc_count++] = (NPCEntity){ side_x, FxI(11), side_x, FxI(11), 9, 0, FACE_DOWN, "Banker: Gold in the vault stays safe. X to bank.", 150 };
+        village_npcs[village_npc_count++] = (NPCEntity){ shrine_x, FxI(11), shrine_x, FxI(11), 8, 0, FACE_DOWN, "An old altar hums with power. X to kneel.", 999 };
         for (int oy = -1; oy <= 1; oy++) for (int ox = -1; ox <= 1; ox++) VISUAL_MAP[19 + oy][12 + ox] = 0;
-        village_npcs[village_npc_count++] = (NPCEntity){ 12.0f, 19.0f, 12.0f, 19.0f, 7, 0, FACE_DOWN, "Beggar: Spare a coin or a crust, kind traveler?", 140 };
+        village_npcs[village_npc_count++] = (NPCEntity){ FxI(12), FxI(19), FxI(12), FxI(19), 7, 0, FACE_DOWN, "Beggar: Spare a coin or a crust, kind traveler?", 140 };
     } else {
         for (int i = 0; i < 4; i++) {
-            float nx = village_x[i] + shift + ((i & 1) ? 1.0f : -1.0f), ny = village_y[i] + 2.0f;
+            fx nx = village_x[i] + shift + ((i & 1) ? FxI(1) : -FxI(1)), ny = village_y[i] + FxI(2);
             village_npcs[i] = (NPCEntity){ nx, ny, nx, ny, 0, i * 17, FACE_DOWN,
                 village_dwarves ? dwarf_greetings[(current_screen_index + i) % 3] : villager_greetings[(current_screen_index + i) % 3], 100 + (i * 17) % 80 };
         }
         village_npc_count = 4;
         if (in_cave) { // every hold has its forge
-            float sx = village_x[3] + shift + 1.0f, sy = village_y[3] + 2.0f;
+            fx sx = village_x[3] + shift + FxI(1), sy = village_y[3] + FxI(2);
             village_npcs[3] = (NPCEntity){ sx, sy, sx, sy, 3, 0, FACE_DOWN, "Dwarf smith: X to step into the forge.", 130 };
         }
         int stage = VillageStageHere();
@@ -77,14 +77,14 @@ void GenerateVillageNPCs(void) {
             VISUAL_MAP[8][23] = 0;
         }
         if (stage >= 3) for (int y = 6; y <= 24; y++) for (int x = 5; x <= 25; x++) if (VillageBlocksAt(x, y)) VISUAL_MAP[y][x] = 0;
-        float shrine_x = 13.5f + shift, beggar_x = 20.5f + shift; // in front of the homes, not inside them
-        village_npcs[village_npc_count++] = (NPCEntity){ shrine_x, 13.0f, shrine_x, 13.0f, 8, 0, FACE_DOWN, "A wayside altar hums with power. X to kneel.", 999 };
+        fx shrine_x = FX(13.5) + shift, beggar_x = FX(20.5) + shift; // in front of the homes, not inside them
+        village_npcs[village_npc_count++] = (NPCEntity){ shrine_x, FxI(13), shrine_x, FxI(13), 8, 0, FACE_DOWN, "A wayside altar hums with power. X to kneel.", 999 };
         if (RainHash(current_screen_index * 31 + SeasonDay()) % 2)
-            village_npcs[village_npc_count++] = (NPCEntity){ beggar_x, 13.5f, beggar_x, 13.5f, 7, 0, FACE_DOWN, "Beggar: Spare a coin or a crust, kind traveler?", 140 };
+            village_npcs[village_npc_count++] = (NPCEntity){ beggar_x, FX(13.5), beggar_x, FX(13.5), 7, 0, FACE_DOWN, "Beggar: Spare a coin or a crust, kind traveler?", 140 };
         if (stage >= 3) for (int g = 0; g < 2 && village_npc_count < MAX_NPCS; g++) { // gate guards
-            float gy = g ? 23.0f : 7.0f;
+            fx gy = g ? FxI(23) : FxI(7);
             VISUAL_MAP[(int)gy][17] = 0;
-            village_npcs[village_npc_count++] = (NPCEntity){ 17.0f, gy, 17.0f, gy, 2, 0, FACE_DOWN, "Guard: The palisade keeps the bandits out.", 150 };
+            village_npcs[village_npc_count++] = (NPCEntity){ FxI(17), gy, FxI(17), gy, 2, 0, FACE_DOWN, "Guard: The palisade keeps the bandits out.", 150 };
         }
     }
 }
@@ -120,7 +120,7 @@ void EnterCave(void) {
     cave_is_hold = WorldSiteAt(screen_grid_x, screen_grid_y) == SITE_DWARF;
     GenerateProceduralScreen(20000 + CaveRoom(current_cave_origin_cell));
     CaveRecord *rec = FindOrCreateCaveRecord(current_cave_origin_cell);
-    player_x = 15.0f; player_y = 15.0f;
+    player_x = FxI(15); player_y = FxI(15);
     if (rec->treasure_claimed) {
         strcpy(arpg_action_log, "CAVE: This cavern's treasure has already been found. Find the way out.");
     } else {
@@ -191,14 +191,14 @@ static BiomeType PickBiomeRaw(int gx, int gy);
 // desert the middle band (mostly far east and west); PickBiomeRaw's neighbour rules decide the rest.
 BiomeType PickBiomeForScreen(int gx, int gy) {
     BiomeType b = PickBiomeRaw(gx, gy);
-    float lat = fabsf((gy + 0.5f) - META_GRID_SIZE / 2.0f) / (META_GRID_SIZE / 2.0f); // 0 equator .. 1 pole
-    if (b == BIOME_DESERT && lat > 0.5f) b = BIOME_PRAIRIE;
-    if (b == BIOME_TUNDRA && lat < 0.55f) b = BIOME_FOREST;
-    if (lat > 0.8f && (b == BIOME_PRAIRIE || b == BIOME_FOREST) && rand() % 100 < 65) b = BIOME_TUNDRA;
+    fx lat = FxDiv(FxAbs(FxI(gy) + FX(0.5) - FxI(META_GRID_SIZE) / 2), FxI(META_GRID_SIZE) / 2); // 0 equator .. 1 pole
+    if (b == BIOME_DESERT && lat > FX(0.5)) b = BIOME_PRAIRIE;
+    if (b == BIOME_TUNDRA && lat < FX(0.55)) b = BIOME_FOREST;
+    if (lat > FX(0.8) && (b == BIOME_PRAIRIE || b == BIOME_FOREST) && rand() % 100 < 65) b = BIOME_TUNDRA;
     // Deserts sit in the middle band, mostly toward the far east and far west.
-    float lon = fabsf((gx + 0.5f) - META_GRID_SIZE / 2.0f) / (META_GRID_SIZE / 2.0f); // 0 centre .. 1 east/west edge
-    if (b == BIOME_DESERT && lon < 0.4f && rand() % 100 < 70) b = BIOME_PRAIRIE;
-    if (lat < 0.3f && b == BIOME_PRAIRIE && rand() % 100 < (lon > 0.6f ? 45 : 8)) b = BIOME_DESERT;
+    fx lon = FxDiv(FxAbs(FxI(gx) + FX(0.5) - FxI(META_GRID_SIZE) / 2), FxI(META_GRID_SIZE) / 2); // 0 centre .. 1 east/west edge
+    if (b == BIOME_DESERT && lon < FX(0.4) && rand() % 100 < 70) b = BIOME_PRAIRIE;
+    if (lat < FX(0.3) && b == BIOME_PRAIRIE && rand() % 100 < (lon > FX(0.6) ? 45 : 8)) b = BIOME_DESERT;
     return b;
 }
 
@@ -297,10 +297,10 @@ static void ShapeMountains(int gc, int gr) {
         if (VISUAL_MAP[r][c] == 1 && RainHash(r * 41 + c * 7) % 3 != 0) VISUAL_MAP[r][c] = 0;
     if (!MountainIsPeak(cell)) return;
     for (int r = 3; r < MAP_SIZE - 3; r++) for (int c = 3; c < MAP_SIZE - 3; c++) {
-        float ddx = c - 15.5f, ddy = r - 15.5f, d = sqrtf(ddx * ddx + ddy * ddy), a = atan2f(ddy, ddx);
-        if (d >= 9.5f && d < 10.6f) VISUAL_MAP[r][c] = (a < -2.6f || a > 2.6f) ? 0 : 1;      // outer crags, path in from the west
-        else if (d >= 6.0f && d < 7.2f) VISUAL_MAP[r][c] = (a > 0.25f && a < 0.85f) ? 0 : 1; // inner crags, path on round to the south-east
-        else if (d < 6.0f) VISUAL_MAP[r][c] = d > 2.5f && RainHash(r * 13 + c) % 9 == 0 ? 1 : 5; // the snowy summit
+        fx ddx = FxI(c) - FX(15.5), ddy = FxI(r) - FX(15.5), d = FxLen(ddx, ddy), a = FxAtan2(ddy, ddx);
+        if (d >= FX(9.5) && d < FX(10.6)) VISUAL_MAP[r][c] = (a < -FX(2.6) || a > FX(2.6)) ? 0 : 1;      // outer crags, path in from the west
+        else if (d >= FxI(6) && d < FX(7.2)) VISUAL_MAP[r][c] = (a > FX(0.25) && a < FX(0.85)) ? 0 : 1; // inner crags, path on round to the south-east
+        else if (d < FxI(6)) VISUAL_MAP[r][c] = d > FX(2.5) && RainHash(r * 13 + c) % 9 == 0 ? 1 : 5; // the snowy summit
     }
 }
 
@@ -338,7 +338,7 @@ static void CarveCave(int index) {
         int walls = a[r - 1][c] + a[r + 1][c] + a[r][c - 1] + a[r][c + 1];
         VISUAL_MAP[r][c] = walls >= 2 && abs(RainHash(r * 59 + c * 17 + index)) % 6 == 0 ? 3 : 0; // rubble along the walls
     }
-    cave_treasure_x = (float)far_x; cave_treasure_y = (float)far_y;
+    cave_treasure_x = FxI(far_x); cave_treasure_y = FxI(far_y);
 }
 
 void GenerateProceduralScreen(int index) {
@@ -353,7 +353,7 @@ void GenerateProceduralScreen(int index) {
     }
     current_screen_index = index;
     player_arrow.active = 0; // arrows never carry over into the next screen
-    ice_vx = ice_vy = 0.0f;
+    ice_vx = ice_vy = FxI(0);
     for (int i = 0; i < MAX_CAMPFIRES; i++) {
         if (campfires[i].active && campfires[i].screen_id != index) campfires[i].active = 0;
     }
@@ -439,7 +439,7 @@ void GenerateProceduralScreen(int index) {
                 else if (r > 10 && r < 22 && c > 10 && c < 22) VISUAL_MAP[r][c] = 12;
                 else if (noise < 10) VISUAL_MAP[r][c] = 11;
             } else if (current_biome == BIOME_RIVER) {
-                int band = (MAP_SIZE / 2) + (int)(sinf((float)r * 0.3f + (float)index) * 3.0f);
+                int band = (MAP_SIZE / 2) + FxTrunc(FxSinTurn(FxTurn64((int64_t)index * FX_ONE + FxI(r) * 3 / 10)) * 3);
                 if (c >= band - 2 && c <= band + 2) VISUAL_MAP[r][c] = 12;
                 else if (c == band - 3 || c == band + 3) VISUAL_MAP[r][c] = 0; // visible shore buffer
                 else if (noise < 8) VISUAL_MAP[r][c] = 2;
@@ -456,7 +456,7 @@ void GenerateProceduralScreen(int index) {
                 if (grid_r == META_GRID_SIZE - 1 && MAP_SIZE - 1 - r < d) d = MAP_SIZE - 1 - r;
                 d = SeaSideDistance(r, c, d);
                 int along = (grid_c == 0 || grid_c == META_GRID_SIZE - 1) ? r : c;
-                int wobble = (int)(sinf((float)along * 0.35f + (float)index) * 1.5f);
+                int wobble = FxTrunc(FxMul(FxSinTurn(FxTurn64((int64_t)index * FX_ONE + FxI(along) * 7 / 20)), FX(1.5)));
                 if (d < 12 + wobble) VISUAL_MAP[r][c] = 12;
                 else if (d < 20 + wobble) VISUAL_MAP[r][c] = 4;
                 else if (noise < 8) VISUAL_MAP[r][c] = 11;
@@ -503,8 +503,8 @@ void GenerateProceduralScreen(int index) {
     int spawn_hour, spawn_minute; GetGameClock(&spawn_hour, &spawn_minute);
     int spawn_night = spawn_hour >= 21 || spawn_hour < 6;
     for (int i = 0; i < MAX_CRITTERS; i++) {
-        critters[i].x = (float)(5 + rand() % 20);
-        critters[i].y = (float)(5 + rand() % 20);
+        critters[i].x = FxI(5 + rand() % 20);
+        critters[i].y = FxI(5 + rand() % 20);
         critters[i].base_x = critters[i].x;
         critters[i].base_y = critters[i].y;
         // 0 bird, 1 squirrel (both diurnal), 2 owl, 3 bat (nocturnal). Day screens
@@ -528,10 +528,10 @@ void GenerateProceduralScreen(int index) {
     }
     ClearHighwayTiles();
     GenerateVillageNPCs();
-    if (current_biome == BIOME_SWAMP) { gator_x = 12.0f; gator_y = 12.0f; gator_active = 1; } else { gator_active = 0; }
+    if (current_biome == BIOME_SWAMP) { gator_x = FxI(12); gator_y = FxI(12); gator_active = 1; } else { gator_active = 0; }
     SpawnScreenEnemies();
-    if (in_cave && cave_is_hold) { for (int i = 0; i < MAX_ENEMIES; i++) enemies[i].hearts = 0.0f; enemy_hearts = 0.0f; } // the dwarves keep their hall clear
-    if (AtSea()) { for (int i = 0; i < MAX_ENEMIES; i++) enemies[i].hearts = 0.0f; enemy_hearts = 0.0f; }
+    if (in_cave && cave_is_hold) { for (int i = 0; i < MAX_ENEMIES; i++) enemies[i].hearts = FxI(0); enemy_hearts = FxI(0); } // the dwarves keep their hall clear
+    if (AtSea()) { for (int i = 0; i < MAX_ENEMIES; i++) enemies[i].hearts = FxI(0); enemy_hearts = FxI(0); }
     ApplyScreenMemory(index);
     TownGrowthOnEnter();
     OceanOnEnter();
@@ -539,7 +539,7 @@ void GenerateProceduralScreen(int index) {
     // and only on summer day 13 (Musashi died on June 13, 1645).
     if (current_biome == BIOME_BEACH && grid_c == META_GRID_SIZE - 1 && current_season == SEASON_SUMMER &&
         SeasonDay() == 13 && !HasInventoryItem("Musashi's Blade")) {
-        float mx, my; FindDropSpot(16.0f, 16.0f, 1, &mx, &my);
+        fx mx, my; FindDropSpot(FxI(16), FxI(16), 1, &mx, &my);
         DropGroundLoot(mx, my, LOOT_MUSASHI_BLADE, 1);
     }
     RecordCurrentScreenOnMap();
@@ -550,34 +550,34 @@ void GenerateProceduralScreen(int index) {
 // tree; the blacksmith hammers and quenches; the merchant checks his barrels
 // and stares (then walks over) when you smash them.
 static int npc_act[MAX_NPCS], npc_screen[MAX_NPCS], npc_leg[MAX_NPCS], npc_busy[MAX_NPCS], merchant_strikes;
-static float npc_gx[MAX_NPCS], npc_gy[MAX_NPCS], npc_until[MAX_NPCS], merchant_stare_until;
+static fx npc_gx[MAX_NPCS], npc_gy[MAX_NPCS], npc_until[MAX_NPCS], merchant_stare_until;
 
 int NpcActivity(int i) { return i >= 0 && i < MAX_NPCS && npc_screen[i] == current_screen_index + 1 ? npc_act[i] : NPC_IDLE; }
 int NpcAtWork(int i) { return NpcActivity(i) != NPC_IDLE && npc_busy[i]; }
 
 static int OpenTile(int x, int y) { return x > 2 && y > 2 && x < MAP_SIZE - 3 && y < MAP_SIZE - 3 && VISUAL_MAP[y][x] != 1 && VISUAL_MAP[y][x] != 11 && VISUAL_MAP[y][x] != 12; }
 
-static int SpotBeside(int want, float hx, float hy, float range, float *gx, float *gy) {
-    float best = range * range; int ok = 0;
+static int SpotBeside(int want, fx hx, fx hy, fx range, fx *gx, fx *gy) {
+    fx best = FxMul(range, range); int ok = 0;
     for (int y = 1; y < MAP_SIZE - 1; y++) for (int x = 1; x < MAP_SIZE - 1; x++) {
         if (VISUAL_MAP[y][x] != want) continue;
         for (int n = 0; n < 4; n++) {
             int nx = x + (n == 0) - (n == 1), ny = y + (n == 2) - (n == 3);
             if (!OpenTile(nx, ny)) continue;
-            float dx = nx - hx, dy = ny - hy, d = dx * dx + dy * dy;
-            if (d < best) { best = d; *gx = (float)nx; *gy = (float)ny; ok = 1; }
+            fx dx = FxI(nx) - hx, dy = FxI(ny) - hy, d = FxMul(dx, dx) + FxMul(dy, dy);
+            if (d < best) { best = d; *gx = FxI(nx); *gy = FxI(ny); ok = 1; }
         }
     }
     return ok;
 }
 
-void NoteBarrelBroken(float bx, float by) {
+void NoteBarrelBroken(fx bx, fx by) {
     for (int i = 0; i < village_npc_count; i++) {
         if (village_npcs[i].type != 1) continue;
-        float dx = village_npcs[i].x - bx, dy = village_npcs[i].y - by;
-        if (dx * dx + dy * dy > 49.0f) return;
+        fx dx = village_npcs[i].x - bx, dy = village_npcs[i].y - by;
+        if (FxMul(dx, dx) + FxMul(dy, dy) > FxI(49)) return;
         merchant_strikes++;
-        merchant_stare_until = world_tick + (merchant_strikes >= 2 ? 12.0f : 7.0f);
+        merchant_stare_until = world_tick + (merchant_strikes >= 2 ? FxI(12) : FxI(7));
         if (merchant_strikes == 1) strcpy(arpg_action_log, "MERCHANT: ...stops what he's doing and stares at you.");
         else {
             strcpy(arpg_action_log, "MERCHANT: *shakes his head* Those barrels are folks' livelihoods. Word gets around town.");
@@ -591,43 +591,43 @@ void NoteBarrelBroken(float bx, float by) {
 static int NpcRoutine(int i) {
     NPCEntity *npc = &village_npcs[i];
     if (npc_screen[i] != current_screen_index + 1) {
-        npc_screen[i] = current_screen_index + 1; npc_leg[i] = 1; npc_until[i] = 0.0f; npc_busy[i] = 0;
+        npc_screen[i] = current_screen_index + 1; npc_leg[i] = 1; npc_until[i] = FxI(0); npc_busy[i] = 0;
         npc_act[i] = npc->type == 1 ? NPC_INSPECT : npc->type == 3 ? NPC_HAMMER : npc->type == 0 ? NPC_SWEEP + (i + current_screen_index) % 4 : NPC_IDLE;
-        if (npc->type == 1) { merchant_strikes = 0; merchant_stare_until = 0.0f; }
+        if (npc->type == 1) { merchant_strikes = 0; merchant_stare_until = FxI(0); }
     }
-    if (npc->type == 1 && world_tick < merchant_stare_until) {
-        float dx = player_x - npc->x, dy = player_y - npc->y, d = (float)sqrt(dx * dx + dy * dy);
+    if (npc->type == 1 && FxBefore(world_tick, merchant_stare_until)) {
+        fx dx = player_x - npc->x, dy = player_y - npc->y, d = FxLen(dx, dy);
         npc->direction = DirectionOf(dx, dy); npc_busy[i] = 0;
-        if (merchant_strikes >= 2 && d > 1.3f) { npc->x += dx / d * 0.035f; npc->y += dy / d * 0.035f; }
+        if (merchant_strikes >= 2 && d > FX(1.3)) { npc->x += FxMul(FxDiv(dx, d), FX(0.035)); npc->y += FxMul(FxDiv(dy, d), FX(0.035)); }
         return 1;
     }
     int act = npc_act[i];
-    if (world_tick > npc_until[i]) { // next leg of the routine
+    if (FxAfter(world_tick, npc_until[i])) { // next leg of the routine
         npc_leg[i] ^= 1;
-        npc_until[i] = world_tick + 15.0f + abs(RainHash(i * 131 + (int)(world_tick * 3.0f))) % 25;
-        float hx = npc->home_x, hy = npc->home_y, gx = hx, gy = hy;
-        if (act == NPC_SWEEP) gx = hx + (npc_leg[i] ? 0.7f : -0.7f);
-        else if (act == NPC_FARM && OpenTile((int)(hx + 1.3f), (int)(hy + 1.3f))) { gx = hx + 1.3f; gy = hy + (npc_leg[i] ? 1.3f : 2.2f); }
-        else if (act == NPC_WATER && npc_leg[i] && !SpotBeside(12, hx, hy, 10.0f, &gx, &gy)) npc_act[i] = NPC_NATURE;
-        else if (act == NPC_NATURE && npc_leg[i]) SpotBeside(11, hx, hy, 8.0f, &gx, &gy);
+        npc_until[i] = world_tick + FxI(15 + abs(RainHash(i * 131 + FxTrunc(world_tick) * 3)) % 25);
+        fx hx = npc->home_x, hy = npc->home_y, gx = hx, gy = hy;
+        if (act == NPC_SWEEP) gx = hx + (npc_leg[i] ? FX(0.7) : -FX(0.7));
+        else if (act == NPC_FARM && OpenTile(FxTrunc(hx + FX(1.3)), FxTrunc(hy + FX(1.3)))) { gx = hx + FX(1.3); gy = hy + (npc_leg[i] ? FX(1.3) : FX(2.2)); }
+        else if (act == NPC_WATER && npc_leg[i] && !SpotBeside(12, hx, hy, FxI(10), &gx, &gy)) npc_act[i] = NPC_NATURE;
+        else if (act == NPC_NATURE && npc_leg[i]) SpotBeside(11, hx, hy, FxI(8), &gx, &gy);
         else if (act == NPC_INSPECT && npc_leg[i]) {
-            float bx, by; int intact, n = 0, pick = abs(RainHash(i + (int)world_tick)) % 6;
+            fx bx, by; int intact, n = 0, pick = abs(RainHash(i + FxTrunc(world_tick))) % 6;
             for (int k = 0; BarrelInfo(k, &bx, &by, &intact); k++) {
-                if (!intact || (bx - hx) * (bx - hx) + (by - hy) * (by - hy) > 36.0f) continue;
-                if (n++ <= pick) { gx = bx + 0.8f; gy = by; }
+                if (!intact || FxMul(bx - hx, bx - hx) + FxMul(by - hy, by - hy) > FxI(36)) continue;
+                if (n++ <= pick) { gx = bx + FX(0.8); gy = by; }
             }
-            if (!n && OpenTile(12, 14)) { gx = 12.0f; gy = 14.6f; } // no barrels: check the stall's goods
+            if (!n && OpenTile(12, 14)) { gx = FxI(12); gy = FX(14.6); } // no barrels: check the stall's goods
         }
         npc_gx[i] = gx; npc_gy[i] = gy;
     }
-    float dx = npc_gx[i] - npc->x, dy = npc_gy[i] - npc->y, d = (float)sqrt(dx * dx + dy * dy);
-    if (d <= (act == NPC_IDLE ? 1.6f : 0.12f)) { npc_busy[i] = 1; return 0; }
+    fx dx = npc_gx[i] - npc->x, dy = npc_gy[i] - npc->y, d = FxLen(dx, dy);
+    if (d <= (act == NPC_IDLE ? FX(1.6) : FX(0.12))) { npc_busy[i] = 1; return 0; }
     npc_busy[i] = 0;
-    float nx = npc->x + dx / d * 0.03f, ny = npc->y + dy / d * 0.03f;
+    fx nx = npc->x + FxMul(FxDiv(dx, d), FX(0.03)), ny = npc->y + FxMul(FxDiv(dy, d), FX(0.03));
     if (VISUAL_MAP[(int)ny][(int)nx] != 1 && VISUAL_MAP[(int)ny][(int)nx] != 12) { npc->x = nx; npc->y = ny; }
-    else if (VISUAL_MAP[(int)npc->y][(int)nx] != 1 && VISUAL_MAP[(int)npc->y][(int)nx] != 12) npc->x = nx;
-    else if (VISUAL_MAP[(int)ny][(int)npc->x] != 1 && VISUAL_MAP[(int)ny][(int)npc->x] != 12) npc->y = ny;
-    else npc_until[i] = 0.0f;
+    else if (VISUAL_MAP[FxTrunc(npc->y)][(int)nx] != 1 && VISUAL_MAP[FxTrunc(npc->y)][(int)nx] != 12) npc->x = nx;
+    else if (VISUAL_MAP[(int)ny][FxTrunc(npc->x)] != 1 && VISUAL_MAP[(int)ny][FxTrunc(npc->x)] != 12) npc->y = ny;
+    else npc_until[i] = FxI(0);
     npc->direction = DirectionOf(dx, dy);
     return 1;
 }
@@ -639,17 +639,17 @@ void UpdateVillageNPCs(void) {
         if (npc->dialogue_cooldown > 0) npc->dialogue_cooldown--;
         // Townsfolk gang up on a monster that slips past the fires, then head home.
         if ((npc->type == 0 || npc->type == 2) && SelectNearestEnemyTo(npc->x, npc->y) >= 0) {
-            float ex = enemy_x - npc->x, ey = enemy_y - npc->y, ed = (float)sqrt(ex * ex + ey * ey);
-            if (ed < 6.0f) {
-                if (ed > 0.8f) { npc->x += ex / ed * 0.04f; npc->y += ey / ed * 0.04f; npc->direction = DirectionOf(ex, ey); }
-                else if ((world_frame + i * 9) % 45 == 0) { village_kill = 1; HandleEnemyDamage(0.3f); village_kill = 0; strcpy(arpg_action_log, "VILLAGERS: The townsfolk gang up on the intruder!"); }
+            fx ex = enemy_x - npc->x, ey = enemy_y - npc->y, ed = FxLen(ex, ey);
+            if (ed < FxI(6)) {
+                if (ed > FX(0.8)) { npc->x += FxMul(FxDiv(ex, ed), FX(0.04)); npc->y += FxMul(FxDiv(ey, ed), FX(0.04)); npc->direction = DirectionOf(ex, ey); }
+                else if ((world_frame + i * 9) % 45 == 0) { village_kill = 1; HandleEnemyDamage(FX(0.3)); village_kill = 0; strcpy(arpg_action_log, "VILLAGERS: The townsfolk gang up on the intruder!"); }
                 continue;
             }
         }
         if (npc->type != 8 && NpcRoutine(i)) continue;
-        if (IsNearPoint(npc->x, npc->y, 3.0f)) {
-            float dx = player_x - npc->x, dy = player_y - npc->y;
-            npc->direction = fabs(dx) > fabs(dy) ? (dx < 0 ? FACE_LEFT : FACE_RIGHT) : (dy < 0 ? FACE_UP : FACE_DOWN);
+        if (IsNearPoint(npc->x, npc->y, FxI(3))) {
+            fx dx = player_x - npc->x, dy = player_y - npc->y;
+            npc->direction = FxAbs(dx) > FxAbs(dy) ? (dx < 0 ? FACE_LEFT : FACE_RIGHT) : (dy < 0 ? FACE_UP : FACE_DOWN);
             if (npc->dialogue_cooldown == 0) {
                 const char *custom = CustomVillagerLine();
                 if (npc->type == 0 && custom && rand() % 2 == 0) npc->dialogue = custom;
@@ -657,15 +657,15 @@ void UpdateVillageNPCs(void) {
                 else if (npc->type == 2) npc->dialogue = fort_barks[rand() % 3];
                 else if (npc->type == 1) npc->dialogue = "Welcome, adventurer!";
                 npc->dialogue_cooldown = 120 + rand() % 61;
-                if (IsNearPoint(npc->x, npc->y, 2.0f)) strcpy(arpg_action_log, npc->dialogue);
+                if (IsNearPoint(npc->x, npc->y, FxI(2))) strcpy(arpg_action_log, npc->dialogue);
             }
         } else if (npc->type == 2 && world_frame % 45 == (i * 7) % 45) { // guards still pace their post
             int direction = rand() % 4;
-            float dx[] = { 0, 0, -1, 1 }, dy[] = { 1, -1, 0, 0 };
-            float nx = npc->x + dx[direction] * 0.12f, ny = npc->y + dy[direction] * 0.12f;
-            float home_dx = nx - npc->home_x, home_dy = ny - npc->home_y;
-            if (nx > 3 && nx < MAP_SIZE - 3 && ny > 3 && ny < MAP_SIZE - 3 &&
-                home_dx * home_dx + home_dy * home_dy <= 2.25f &&
+            int dx[] = { 0, 0, -1, 1 }, dy[] = { 1, -1, 0, 0 };
+            fx nx = npc->x + dx[direction] * FX(0.12), ny = npc->y + dy[direction] * FX(0.12);
+            fx home_dx = nx - npc->home_x, home_dy = ny - npc->home_y;
+            if (nx > FxI(3) && nx < FxI(MAP_SIZE - 3) && ny > FxI(3) && ny < FxI(MAP_SIZE - 3) &&
+                FxMul(home_dx, home_dx) + FxMul(home_dy, home_dy) <= FX(2.25) &&
                 VISUAL_MAP[(int)ny][(int)nx] != 1 && VISUAL_MAP[(int)ny][(int)nx] != 12) {
                 npc->x = nx; npc->y = ny; npc->direction = DirectionOf(dx[direction], dy[direction]);
             }
@@ -680,25 +680,25 @@ int CritterAsleep(const CritterEntity *critter) {
     return night != (critter->type >= 2);
 }
 
-static int NearestTree(float x, float y, float *tx, float *ty) {
-    float best = 1e9f;
+static int NearestTree(fx x, fx y, fx *tx, fx *ty) {
+    fx best = INT32_MAX;
     for (int yy = 1; yy < MAP_SIZE - 1; yy++) for (int xx = 1; xx < MAP_SIZE - 1; xx++) {
         if (VISUAL_MAP[yy][xx] != 11) continue;
-        float dx = xx - x, dy = yy - y, d = dx * dx + dy * dy;
-        if (d < best) { best = d; *tx = (float)xx; *ty = (float)yy; }
+        fx dx = FxI(xx) - x, dy = FxI(yy) - y, d = FxMul(dx, dx) + FxMul(dy, dy);
+        if (d < best) { best = d; *tx = FxI(xx); *ty = FxI(yy); }
     }
-    return best < 1e9f;
+    return best < INT32_MAX;
 }
 
-static float ClampField(float v) { return v < 2.0f ? 2.0f : v > MAP_SIZE - 3 ? (float)(MAP_SIZE - 3) : v; }
+static fx ClampField(fx v) { return v < FxI(2) ? FxI(2) : v > FxI(MAP_SIZE - 3) ? FxI(MAP_SIZE - 3) : v; }
 
-// Sends a bird flying away from (fx, fy) to land a few tiles off.
-static void BirdTakeOff(CritterEntity *b, float fx, float fy) {
-    float dx = b->x - fx, dy = b->y - fy, d = sqrtf(dx * dx + dy * dy);
-    if (d < 0.01f) { float a = (rand() % 628) / 100.0f; dx = cosf(a); dy = sinf(a); d = 1.0f; }
-    float dist = 6.0f + rand() % 5;
-    b->base_x = ClampField(b->x + dx / d * dist + (rand() % 5 - 2));
-    b->base_y = ClampField(b->y + dy / d * dist + (rand() % 5 - 2));
+// Sends a bird flying away from (fxv, fy) to land a few tiles off.
+static void BirdTakeOff(CritterEntity *b, fx fxv, fx fy) {
+    fx dx = b->x - fxv, dy = b->y - fy, d = FxLen(dx, dy);
+    if (d < FX(0.01)) { fx a = FxI(rand() % 628) / 100; dx = FxCos(a); dy = FxSin(a); d = FxI(1); }
+    fx dist = FxI(6 + rand() % 5);
+    b->base_x = ClampField(b->x + FxMul(FxDiv(dx, d), dist) + FxI(rand() % 5 - 2));
+    b->base_y = ClampField(b->y + FxMul(FxDiv(dy, d), dist) + FxI(rand() % 5 - 2));
     b->state = 2; b->hidden = 0;
 }
 
@@ -714,48 +714,48 @@ static void UpdateBirds(void) {
         if (CritterAsleep(b)) { b->hidden = 1; b->state = 0; continue; }
         if (b->state == 3) {
             b->hidden = 1;
-            int tx = (int)(b->x + 0.5f), ty = (int)(b->y + 0.5f);
+            int tx = FxTrunc(b->x + FX(0.5)), ty = FxTrunc(b->y + FX(0.5));
             if (VISUAL_MAP[ty][tx] != 11) BirdTakeOff(b, player_x, player_y);
-            else if (!bad && rand() % 240 == 0) BirdTakeOff(b, b->x + 0.5f, b->y + 0.5f);
+            else if (!bad && rand() % 240 == 0) BirdTakeOff(b, b->x + FX(0.5), b->y + FX(0.5));
             continue;
         }
         if (b->state == 2) {
-            float dx = b->base_x - b->x, dy = b->base_y - b->y, d = sqrtf(dx * dx + dy * dy);
-            if (d > 0.15f) { b->x += dx / d * 0.15f; b->y += dy / d * 0.15f; continue; }
+            fx dx = b->base_x - b->x, dy = b->base_y - b->y, d = FxLen(dx, dy);
+            if (d > FX(0.15)) { b->x += FxMul(FxDiv(dx, d), FX(0.15)); b->y += FxMul(FxDiv(dy, d), FX(0.15)); continue; }
             b->x = b->base_x; b->y = b->base_y;
-            int tx = (int)(b->x + 0.5f), ty = (int)(b->y + 0.5f);
+            int tx = FxTrunc(b->x + FX(0.5)), ty = FxTrunc(b->y + FX(0.5));
             if (bad && VISUAL_MAP[ty][tx] == 11) { b->state = 3; b->hidden = 1; }
             else { b->state = 0; b->timer = 30 + rand() % 60; }
             continue;
         }
         b->hidden = 0;
         if (bad) {
-            float tx, ty;
+            fx tx, ty;
             if (NearestTree(b->x, b->y, &tx, &ty)) { b->base_x = tx; b->base_y = ty; b->state = 2; }
             else b->hidden = 1;
             continue;
         }
-        float near_d = 6.25f, fx = 0.0f, fy = 0.0f;
+        fx near_d = FX(6.25), fxv = FxI(0), fy = FxI(0);
         int scared = 0;
-        float pdx = b->x - player_x, pdy = b->y - player_y;
-        if (!trusted && pdx * pdx + pdy * pdy < near_d) { scared = 1; fx = player_x; fy = player_y; near_d = pdx * pdx + pdy * pdy; }
+        fx pdx = b->x - player_x, pdy = b->y - player_y;
+        if (!trusted && FxMul(pdx, pdx) + FxMul(pdy, pdy) < near_d) { scared = 1; fxv = player_x; fy = player_y; near_d = FxMul(pdx, pdx) + FxMul(pdy, pdy); }
         for (int e = 0; e < MAX_ENEMIES; e++) {
-            if (enemies[e].hearts <= 0.0f) continue;
-            float edx = b->x - enemies[e].x, edy = b->y - enemies[e].y;
-            if (edx * edx + edy * edy < near_d) { scared = 1; fx = enemies[e].x; fy = enemies[e].y; near_d = edx * edx + edy * edy; }
+            if (enemies[e].hearts <= FxI(0)) continue;
+            fx edx = b->x - enemies[e].x, edy = b->y - enemies[e].y;
+            if (FxMul(edx, edx) + FxMul(edy, edy) < near_d) { scared = 1; fxv = enemies[e].x; fy = enemies[e].y; near_d = FxMul(edx, edx) + FxMul(edy, edy); }
         }
         if (scared) {
             for (int j = 0; j < MAX_CRITTERS; j++) {
                 CritterEntity *o = &critters[j];
                 if (o->type != 0 || !o->active || o->state != 0 || o->hidden) continue;
-                float odx = o->x - b->x, ody = o->y - b->y;
-                if (odx * odx + ody * ody < 16.0f) BirdTakeOff(o, fx, fy);
+                fx odx = o->x - b->x, ody = o->y - b->y;
+                if (FxMul(odx, odx) + FxMul(ody, ody) < FxI(16)) BirdTakeOff(o, fxv, fy);
             }
             continue;
         }
         if (--b->timer <= 0) {
-            b->x = ClampField(b->x + (rand() % 3 - 1) * 0.3f);
-            b->y = ClampField(b->y + (rand() % 3 - 1) * 0.3f);
+            b->x = ClampField(b->x + (rand() % 3 - 1) * FX(0.3));
+            b->y = ClampField(b->y + (rand() % 3 - 1) * FX(0.3));
             b->timer = 40 + rand() % 80;
         }
     }
@@ -768,12 +768,12 @@ int BirdsFleeTree(int x, int y) {
     for (int i = 0; i < MAX_CRITTERS; i++) {
         CritterEntity *b = &critters[i];
         if (b->type != 0 || !b->active || b->state != 3) continue;
-        if ((int)(b->x + 0.5f) == x && (int)(b->y + 0.5f) == y) { BirdTakeOff(b, player_x, player_y); flushed++; }
+        if (FxTrunc(b->x + FX(0.5)) == x && FxTrunc(b->y + FX(0.5)) == y) { BirdTakeOff(b, player_x, player_y); flushed++; }
     }
     if (!flushed && rand() % 3 == 0) for (int i = 0; i < MAX_CRITTERS; i++) {
         CritterEntity *b = &critters[i];
         if (b->type != 0 || !b->active || CritterAsleep(b) || b->state == 2) continue;
-        b->x = (float)x; b->y = (float)y;
+        b->x = FxI(x); b->y = FxI(y);
         BirdTakeOff(b, player_x, player_y);
         flushed++;
         break;
@@ -790,9 +790,9 @@ static void NestBabies(void) {
     for (int i = 0; i < MAX_CRITTERS; i++) for (int j = i + 1; j < MAX_CRITTERS; j++) {
         CritterEntity *a = &critters[i], *b = &critters[j];
         if (!a->active || !b->active || a->type != b->type || a->type > 1 || !a->hidden || !b->hidden) continue;
-        if ((int)(a->x + 0.5f) != (int)(b->x + 0.5f) || (int)(a->y + 0.5f) != (int)(b->y + 0.5f)) continue;
+        if (FxTrunc(a->x + FX(0.5)) != FxTrunc(b->x + FX(0.5)) || FxTrunc(a->y + FX(0.5)) != FxTrunc(b->y + FX(0.5))) continue;
         for (int k = 0; k < MAX_CRITTERS; k++) if (!critters[k].active) {
-            critters[k] = *a; critters[k].x += 0.3f; critters[k].state = 0; critters[k].hidden = 0;
+            critters[k] = *a; critters[k].x += FX(0.3); critters[k].state = 0; critters[k].hidden = 0;
             nest_screen = current_screen_index; nest_day = day;
             sprintf(arpg_action_log, "NATURE: A baby %s peeks out of the tree.", a->type == 0 ? "bird" : "squirrel");
             return;
@@ -811,33 +811,33 @@ void UpdateCritters(void) {
         // Day animals sleep from 9 PM to 6 AM; the owl only comes out then.
         if (CritterAsleep(critter)) { critter->hidden = 1; continue; }
         if (critter->type == 2 && current_biome != BIOME_CAVE) { // owls perch in trees and fly to another when disturbed
-            float pdx = critter->x - player_x, pdy = critter->y - player_y;
-            int perched = VISUAL_MAP[(int)critter->base_y][(int)critter->base_x] == 11;
-            if (!perched || pdx * pdx + pdy * pdy < 9.0f)
+            fx pdx = critter->x - player_x, pdy = critter->y - player_y;
+            int perched = VISUAL_MAP[FxTrunc(critter->base_y)][FxTrunc(critter->base_x)] == 11;
+            if (!perched || FxMul(pdx, pdx) + FxMul(pdy, pdy) < FxI(9))
                 for (int tries = 0; tries < 60; tries++) {
                     int x = 1 + rand() % (MAP_SIZE - 2), y = 1 + rand() % (MAP_SIZE - 2);
-                    float ddx = x - player_x, ddy = y - player_y;
-                    if (VISUAL_MAP[y][x] == 11 && ddx * ddx + ddy * ddy > 25.0f) { critter->base_x = (float)x; critter->base_y = (float)y; break; }
+                    fx ddx = x - player_x, ddy = y - player_y;
+                    if (VISUAL_MAP[y][x] == 11 && FxMul(ddx, ddx) + FxMul(ddy, ddy) > FxI(25)) { critter->base_x = FxI(x); critter->base_y = FxI(y); break; }
                 }
-            critter->x += (critter->base_x - critter->x) * 0.25f; critter->y += (critter->base_y - critter->y) * 0.25f;
-            critter->state = fabsf(critter->base_x - critter->x) + fabsf(critter->base_y - critter->y) > 0.3f; // 1 = flying
+            critter->x += (critter->base_x - critter->x) / 4; critter->y += (critter->base_y - critter->y) / 4;
+            critter->state = FxAbs(critter->base_x - critter->x) + FxAbs(critter->base_y - critter->y) > FX(0.3); // 1 = flying
             critter->hidden = 0;
             continue;
         }
         // Rain or snow sends nature to the nearest tree (or into a burrow if
         // there are none); it comes back out once the weather turns fair.
         if (IsAdverseWeather() && current_biome != BIOME_CAVE) {
-            float best = 1000.0f, tx = critter->x, ty = critter->y;
+            fx best = FxI(1000), tx = critter->x, ty = critter->y;
             for (int y = 1; y < MAP_SIZE - 1; y++) for (int x = 1; x < MAP_SIZE - 1; x++) {
                 if (VISUAL_MAP[y][x] != 11) continue;
-                float dx = x - critter->x, dy = y - critter->y, d = dx * dx + dy * dy;
-                if (d < best) { best = d; tx = (float)x; ty = (float)y; }
+                fx dx = FxI(x) - critter->x, dy = FxI(y) - critter->y, d = FxMul(dx, dx) + FxMul(dy, dy);
+                if (d < best) { best = d; tx = FxI(x); ty = FxI(y); }
             }
-            if (best < 1000.0f) {
-                critter->hidden = best <= 4.0f;
-                if (best > 0.8f) {
-                    critter->x += (tx - critter->x) * 0.12f;
-                    critter->y += (ty - critter->y) * 0.12f;
+            if (best < FxI(1000)) {
+                critter->hidden = best <= FxI(4);
+                if (best > FX(0.8)) {
+                    critter->x += FxMul(tx - critter->x, FX(0.12));
+                    critter->y += FxMul(ty - critter->y, FX(0.12));
                 }
                 continue;
             }
@@ -848,25 +848,25 @@ void UpdateCritters(void) {
         // Wildlife scatters from anything nearby, unless the hero is truly
         // virtuous and lucky enough that animals trust them.
         int trusted = karma.soul >= 50 && stat_luck >= 8;
-        float fx = 0.0f, fy = 0.0f, near_d = 9.0f;
-        float tdx = critter->x - player_x, tdy = critter->y - player_y;
-        if (!trusted && tdx * tdx + tdy * tdy < near_d) { near_d = tdx * tdx + tdy * tdy; fx = tdx; fy = tdy; }
+        fx fxv = FxI(0), fy = FxI(0), near_d = FxI(9);
+        fx tdx = critter->x - player_x, tdy = critter->y - player_y;
+        if (!trusted && FxMul(tdx, tdx) + FxMul(tdy, tdy) < near_d) { near_d = FxMul(tdx, tdx) + FxMul(tdy, tdy); fxv = tdx; fy = tdy; }
         for (int e = 0; e < MAX_ENEMIES; e++) {
-            if (enemies[e].hearts <= 0.0f) continue;
-            float edx = critter->x - enemies[e].x, edy = critter->y - enemies[e].y;
-            if (edx * edx + edy * edy < near_d) { near_d = edx * edx + edy * edy; fx = edx; fy = edy; }
+            if (enemies[e].hearts <= FxI(0)) continue;
+            fx edx = critter->x - enemies[e].x, edy = critter->y - enemies[e].y;
+            if (FxMul(edx, edx) + FxMul(edy, edy) < near_d) { near_d = FxMul(edx, edx) + FxMul(edy, edy); fxv = edx; fy = edy; }
         }
-        if (near_d < 9.0f) {
-            float d = (float)sqrt(fx * fx + fy * fy); if (d < 0.01f) { fx = 1.0f; d = 1.0f; }
-            critter->x += fx / d * 0.6f; critter->y += fy / d * 0.6f;
+        if (near_d < FxI(9)) {
+            fx d = FxLen(fxv, fy); if (d < FX(0.01)) { fxv = FxI(1); d = FxI(1); }
+            critter->x += FxMul(FxDiv(fxv, d), FX(0.6)); critter->y += FxMul(FxDiv(fy, d), FX(0.6));
             critter->state = 1;
         } else critter->state = 0;
-        critter->x += (float)(rand() % 3 - 1) * 0.08f;
-        critter->y += (float)(rand() % 3 - 1) * 0.08f;
-        if (critter->x < 2) critter->x = 2;
-        if (critter->x > MAP_SIZE - 3) critter->x = MAP_SIZE - 3;
-        if (critter->y < 2) critter->y = 2;
-        if (critter->y > MAP_SIZE - 3) critter->y = MAP_SIZE - 3;
+        critter->x += (rand() % 3 - 1) * FX(0.08);
+        critter->y += (rand() % 3 - 1) * FX(0.08);
+        if (critter->x < FxI(2)) critter->x = FxI(2);
+        if (critter->x > FxI(MAP_SIZE - 3)) critter->x = FxI(MAP_SIZE - 3);
+        if (critter->y < FxI(2)) critter->y = FxI(2);
+        if (critter->y > FxI(MAP_SIZE - 3)) critter->y = FxI(MAP_SIZE - 3);
     }
 }
 

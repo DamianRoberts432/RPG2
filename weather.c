@@ -8,29 +8,29 @@
 // starting weather comes from Open-Meteo (free, no API key).
 
 SeasonType current_season = SEASON_SPRING;
-float weather_intensity = 0.0f;
-float snow_cover = 0.0f;
-float wind_gust = 0.0f;
+fx weather_intensity = FxI(0);
+fx snow_cover = FxI(0);
+fx wind_gust = FxI(0);
 const char *season_names[] = { "Spring", "Summer", "Fall", "Winter" };
 const char *weather_names[] = { "Fair", "Rain", "Snow", "Cloudy" };
 char weather_source_label[96] = "PC clock/date";
 
-static float season_elapsed = 0.0f;
+static int32_t season_ms = 0; // milliseconds into the current season
 static int calendar_restored = 0; // season/clock came from the save file
 static DWORD last_update_tick = 0;
 static WeatherType target_weather = WEATHER_CLEAR;
-static float target_intensity = 0.0f;
-static float front_seconds_left = 0.0f;
-static float gust_time = 0.0f, gust_duration = 0.0f, gust_power = 0.0f, gust_check_timer = 0.0f;
+static fx target_intensity = FxI(0);
+static fx front_seconds_left = FxI(0);
+static fx gust_time = FxI(0), gust_duration = FxI(0), gust_power = FxI(0), gust_check_timer = FxI(0);
 static int gust_sign = 1;
-static float cloud_hold = 0.0f; // seconds of dry overcast between weather fronts
-#define CLOUD_HOLD_SECONDS 60.0f
+static fx cloud_hold = FxI(0); // seconds of dry overcast between weather fronts
+#define CLOUD_HOLD_SECONDS FxI(60)
 static uint32_t weather_rng = 0x9E3779B9u;
 
 // Separate generator so weather never depends on the per-screen srand() seed.
-static float WeatherRandom(void) {
+static fx WeatherRandom(void) {
     weather_rng ^= weather_rng << 13; weather_rng ^= weather_rng >> 17; weather_rng ^= weather_rng << 5;
-    return (float)(weather_rng & 0xFFFFFF) / (float)0x1000000;
+    return (fx)((weather_rng & 0xFFFFFF) >> 8);
 }
 
 // Weather follows a plan in half-day blocks: a fair spell of 1-7 days (now and
@@ -39,33 +39,33 @@ static float WeatherRandom(void) {
 // again before it clears. Each block is 12 game hours.
 enum { PLAN_FAIR, PLAN_WINDY, PLAN_CLOUD_IN, PLAN_STORM, PLAN_CLOUD_OUT };
 static int plan_phase = PLAN_CLOUD_OUT, plan_blocks_left = 0;
-static float storm_wind = 0.0f;      // extra breeze while a storm blows in
-static float since_rain = 1.0e9f;    // seconds since it last rained (fog follows rain)
+static fx storm_wind = FxI(0);      // extra breeze while a storm blows in
+static fx since_rain = FxI(30000);    // seconds since it last rained (fog follows rain)
 
 static void RollNextFront(void) {
     if (plan_blocks_left <= 0) {
         plan_phase = (plan_phase + 1) % 5;
-        if (plan_phase == PLAN_FAIR) plan_blocks_left = 2 + (int)(WeatherRandom() * 12.0f);
+        if (plan_phase == PLAN_FAIR) plan_blocks_left = 2 + FxTrunc(WeatherRandom() * 12);
         else if (plan_phase == PLAN_WINDY) plan_blocks_left = 1;
-        else if (plan_phase == PLAN_CLOUD_IN) plan_blocks_left = 1 + (WeatherRandom() < 0.5f);
-        else if (plan_phase == PLAN_STORM) plan_blocks_left = 2 * (1 + (int)(WeatherRandom() * 3.0f));
-        else plan_blocks_left = 1 + (WeatherRandom() < 0.4f);
+        else if (plan_phase == PLAN_CLOUD_IN) plan_blocks_left = 1 + (WeatherRandom() < FX(0.5));
+        else if (plan_phase == PLAN_STORM) plan_blocks_left = 2 * (1 + FxTrunc(WeatherRandom() * 3));
+        else plan_blocks_left = 1 + (WeatherRandom() < FX(0.4));
     }
     plan_blocks_left--;
-    storm_wind = plan_phase == PLAN_WINDY ? 1.0f : plan_phase == PLAN_CLOUD_IN ? 0.5f : 0.0f;
+    storm_wind = plan_phase == PLAN_WINDY ? FxI(1) : plan_phase == PLAN_CLOUD_IN ? FX(0.5) : FxI(0);
     if (plan_phase == PLAN_FAIR || plan_phase == PLAN_WINDY) {
-        int partly = plan_phase == PLAN_FAIR && WeatherRandom() < 0.25f;
+        int partly = plan_phase == PLAN_FAIR && WeatherRandom() < FX(0.25);
         target_weather = partly ? WEATHER_CLOUDY : WEATHER_CLEAR;
-        target_intensity = partly ? 0.4f : 0.0f;
+        target_intensity = partly ? FX(0.4) : FxI(0);
     } else if (plan_phase == PLAN_STORM) {
-        float snow = current_season == SEASON_WINTER ? 0.6f : current_season == SEASON_SUMMER ? 0.0f : 0.1f;
+        fx snow = current_season == SEASON_WINTER ? FX(0.6) : current_season == SEASON_SUMMER ? FxI(0) : FX(0.1);
         target_weather = WeatherRandom() < snow ? WEATHER_SNOW : WEATHER_RAIN;
-        target_intensity = 0.5f + 0.5f * WeatherRandom();
+        target_intensity = FX(0.5) + WeatherRandom() / 2;
     } else {
         target_weather = WEATHER_CLOUDY;
-        target_intensity = 0.8f;
+        target_intensity = FX(0.8);
     }
-    front_seconds_left = GAME_HOUR_SECONDS * 12.0f;
+    front_seconds_left = FxI(GAME_HOUR_SECONDS * 12);
 }
 
 static void SetSeasonFromDate(const SYSTEMTIME *t) {
@@ -74,32 +74,32 @@ static void SetSeasonFromDate(const SYSTEMTIME *t) {
     SeasonType s = (m >= 3 && m <= 5) ? SEASON_SPRING : (m >= 6 && m <= 8) ? SEASON_SUMMER :
                    (m >= 9 && m <= 11) ? SEASON_FALL : SEASON_WINTER;
     int months_in = (m - first_month[s] + 12) % 12;
-    float frac = ((float)months_in * 30.4f + (float)(t->wDay - 1)) / 91.0f;
-    if (frac > 0.99f) frac = 0.99f;
+    fx frac = FxDiv(months_in * FX(30.4) + FxI(t->wDay - 1), FxI(91));
+    if (frac > FX(0.99)) frac = FX(0.99);
     current_season = s;
     // Start on the matching day of the season, at the PC's time of day.
-    int day = (int)(frac * DAYS_PER_SEASON);
-    season_elapsed = day * DAY_LENGTH_SECONDS + ((float)t->wHour + t->wMinute / 60.0f) * GAME_HOUR_SECONDS;
+    int day = FxTrunc(frac * DAYS_PER_SEASON);
+    season_ms = day * DAY_MS + (t->wHour * 60 + t->wMinute) * (GAME_HOUR_SECONDS * 1000 / 60);
 }
 
-#define DAWN_PHASE 0.35757f // asin(0.35): where the |sin| < 0.35 night test flips
+#define DAWN_PHASE FX(0.35757) // asin(0.35): where the |sin| < 0.35 night test flips
 
-static float HourOfDay(void) { return fmodf(season_elapsed, DAY_LENGTH_SECONDS) / GAME_HOUR_SECONDS; }
+static fx HourOfDay(void) { return (fx)((int64_t)(season_ms % DAY_MS) * FX_ONE / (GAME_HOUR_SECONDS * 1000)); }
 
 // |sin| of the accumulator drives daylight (0 = midnight, PI/2 = noon). The
 // clock maps 6 AM-6 PM onto the daylight arc and 6 PM-6 AM onto the night arc.
 static void UpdateDaylightFromClock(void) {
-    float h = HourOfDay(), phase;
-    if (h < 6.0f) phase = DAWN_PHASE * h / 6.0f;
-    else if (h < 18.0f) phase = DAWN_PHASE + (3.14159265f - 2.0f * DAWN_PHASE) * (h - 6.0f) / 12.0f;
-    else phase = 3.14159265f - DAWN_PHASE + DAWN_PHASE * (h - 18.0f) / 6.0f;
+    fx h = HourOfDay(), phase;
+    if (h < FxI(6)) phase = FxMul(DAWN_PHASE, h) / 6;
+    else if (h < FxI(18)) phase = DAWN_PHASE + FxMul(FX_PI - 2 * DAWN_PHASE, h - FxI(6)) / 12;
+    else phase = FX_PI - DAWN_PHASE + FxMul(DAWN_PHASE, h - FxI(18)) / 6;
     day_night_cycle_accumulator = phase;
 }
 
-static void AdvanceClock(float seconds) {
-    season_elapsed += seconds;
-    while (season_elapsed >= SEASON_LENGTH_SECONDS) {
-        season_elapsed -= SEASON_LENGTH_SECONDS;
+static void AdvanceClock(int32_t ms) {
+    season_ms += ms;
+    while (season_ms >= SEASON_MS) {
+        season_ms -= SEASON_MS;
         current_season = (SeasonType)((current_season + 1) % 4);
         sprintf(arpg_action_log, "SEASON: %s has arrived.", season_names[current_season]);
         RollNextFront();
@@ -110,14 +110,14 @@ static void AdvanceClock(float seconds) {
 // Bedroll sleep skips to the next phase: by day you wake at 9 PM, by night
 // at 6 AM. Returns 1 when you wake at dawn.
 int SleepToNextPhase(void) {
-    float day_start = floorf(season_elapsed / DAY_LENGTH_SECONDS) * DAY_LENGTH_SECONDS;
-    float t = season_elapsed - day_start, dawn = 6.0f * GAME_HOUR_SECONDS, dusk = 21.0f * GAME_HOUR_SECONDS;
+    int32_t day_start = season_ms / DAY_MS * DAY_MS;
+    int32_t t = season_ms - day_start, dawn = 6 * GAME_HOUR_SECONDS * 1000, dusk = 21 * GAME_HOUR_SECONDS * 1000;
     if (t >= dawn && t < dusk) { AdvanceClock(dusk - t); return 0; }
-    AdvanceClock((t < dawn ? dawn : DAY_LENGTH_SECONDS + dawn) - t);
+    AdvanceClock((t < dawn ? dawn : DAY_MS + dawn) - t);
     return 1;
 }
 
-int SeasonDay(void) { return (int)(season_elapsed / DAY_LENGTH_SECONDS) + 1; }
+int SeasonDay(void) { return season_ms / DAY_MS + 1; }
 
 // A season's three months are spread across its DAYS_PER_SEASON days.
 const char *CalendarMonthName(void) {
@@ -129,17 +129,17 @@ const char *CalendarMonthName(void) {
 }
 
 void GetGameClock(int *hour, int *minute) {
-    float h = HourOfDay();
-    *hour = (int)h;
-    *minute = (int)((h - (float)*hour) * 60.0f);
+    fx h = HourOfDay();
+    *hour = FxTrunc(h);
+    *minute = FxTrunc((h - FxI(*hour)) * 60);
 }
 
-float SeasonClockSeconds(void) { return season_elapsed; }
+int32_t SeasonClockMs(void) { return season_ms; }
 
-void RestoreCalendar(int season, float seconds_into_season) {
-    if (season < 0 || season > 3 || !(seconds_into_season >= 0.0f && seconds_into_season < SEASON_LENGTH_SECONDS)) return;
+void RestoreCalendar(int season, int32_t ms_into_season) {
+    if (season < 0 || season > 3 || !(ms_into_season >= 0 && ms_into_season < SEASON_MS)) return;
     current_season = (SeasonType)season;
-    season_elapsed = seconds_into_season;
+    season_ms = ms_into_season;
     calendar_restored = 1;
     UpdateDaylightFromClock();
 }
@@ -147,11 +147,11 @@ void RestoreCalendar(int season, float seconds_into_season) {
 // ---- Optional real-world weather (Open-Meteo via WinINet, loaded at runtime
 // so the build line does not need an extra library) ----
 static char cfg_city[64] = "";
-static double cfg_lat = 0.0, cfg_lon = 0.0;
+static double cfg_lat = FxI(0), cfg_lon = FxI(0);
 static int cfg_has_coords = 0;
 static volatile LONG live_state = 0; // 0 pending/none, 1 ready, 2 applied
 static int live_code = -1;
-static double live_wind_kmh = 0.0, live_snow_m = 0.0, live_lat = 0.0;
+static double live_wind_kmh = FxI(0), live_snow_m = FxI(0), live_lat = FxI(0);
 
 typedef HINTERNET (WINAPI *InternetOpenA_fn)(LPCSTR, DWORD, LPCSTR, LPCSTR, DWORD);
 typedef HINTERNET (WINAPI *InternetOpenUrlA_fn)(HINTERNET, LPCSTR, LPCSTR, DWORD, DWORD, DWORD_PTR);
@@ -262,12 +262,12 @@ static WeatherType WeatherFromWmo(int code) {
 
 static void ApplyLiveWeather(void) {
     InterlockedExchange(&live_state, 2);
-    if (live_lat < 0.0 && !calendar_restored) current_season = (SeasonType)((current_season + 2) % 4); // southern hemisphere
+    if (live_lat < FxI(0) && !calendar_restored) current_season = (SeasonType)((current_season + 2) % 4); // southern hemisphere
     current_weather = target_weather = WeatherFromWmo(live_code);
-    weather_intensity = target_intensity = current_weather == WEATHER_CLEAR ? 0.0f : 0.8f;
-    front_seconds_left = 300.0f;
-    if (live_snow_m >= 0.01 || current_weather == WEATHER_SNOW) snow_cover = 0.7f;
-    if (live_wind_kmh > 25.0) gust_check_timer = 0.0f;
+    weather_intensity = target_intensity = current_weather == WEATHER_CLEAR ? FxI(0) : FX(0.8);
+    front_seconds_left = FxI(300);
+    if (live_snow_m >= 0.01 || current_weather == WEATHER_SNOW) snow_cover = FX(0.7);
+    if (live_wind_kmh > 25.0) gust_check_timer = FxI(0);
     snprintf(weather_source_label, sizeof(weather_source_label), "Real weather: %s (%s)",
              cfg_has_coords ? "your coordinates" : cfg_city, weather_names[current_weather]);
 }
@@ -294,7 +294,7 @@ void InitSeasonAndWeather(void) {
     RollNextFront();
     current_weather = target_weather;
     weather_intensity = target_intensity;
-    if (current_season == SEASON_WINTER && current_weather == WEATHER_SNOW) snow_cover = 0.4f;
+    if (current_season == SEASON_WINTER && current_weather == WEATHER_SNOW) snow_cover = FX(0.4);
     ReadWeatherConfig();
     if (cfg_has_coords || cfg_city[0]) {
         strcpy(weather_source_label, "Checking real-world weather...");
@@ -304,69 +304,71 @@ void InitSeasonAndWeather(void) {
     last_update_tick = GetTickCount();
 }
 
-static void UpdateGusts(float dt) {
-    if (gust_duration > 0.0f) {
+static void UpdateGusts(fx dt) {
+    if (gust_duration > FxI(0)) {
         gust_time += dt;
-        if (gust_time >= gust_duration) { gust_duration = 0.0f; wind_gust = 0.0f; }
-        else wind_gust = gust_sign * gust_power * (float)sin(3.14159265f * gust_time / gust_duration);
+        if (gust_time >= gust_duration) { gust_duration = FxI(0); wind_gust = FxI(0); }
+        else wind_gust = gust_sign * FxMul(gust_power, FxSin(FxMul(FX_PI, FxDiv(gust_time, gust_duration))));
         return;
     }
     gust_check_timer -= dt;
-    if (gust_check_timer > 0.0f) return;
-    gust_check_timer = 8.0f;
-    float chance = current_season == SEASON_FALL ? 0.35f : 0.10f;
-    if (live_state == 2 && live_wind_kmh > 25.0) chance += 0.25f;
+    if (gust_check_timer > FxI(0)) return;
+    gust_check_timer = FxI(8);
+    fx chance = current_season == SEASON_FALL ? FX(0.35) : FX(0.10);
+    if (live_state == 2 && live_wind_kmh > 25.0) chance += FX(0.25);
     if (WeatherRandom() < chance) {
-        gust_time = 0.0f;
-        gust_duration = 3.0f + 3.0f * WeatherRandom();
-        gust_power = 0.6f + 0.4f * WeatherRandom();
-        gust_sign = WeatherRandom() < 0.5f ? -1 : 1;
+        gust_time = FxI(0);
+        gust_duration = FxI(3) + 3 * WeatherRandom();
+        gust_power = FX(0.6) + FxMul(FX(0.4), WeatherRandom());
+        gust_sign = WeatherRandom() < FX(0.5) ? -1 : 1;
     }
 }
 
 void UpdateSeasonAndWeather(void) {
     DWORD now = GetTickCount();
-    float dt = (float)(DWORD)(now - last_update_tick) / 1000.0f;
+    DWORD ms = now - last_update_tick;
+    if (ms > 1000) ms = 1000;
+    fx dt = FxI((int)ms) / 1000;
     last_update_tick = now;
-    if (dt > 1.0f) dt = 1.0f;
+    if (dt > FxI(1)) dt = FxI(1);
     if (live_state == 1) ApplyLiveWeather();
 
-    AdvanceClock(dt * opt_day_night_speed);
+    AdvanceClock(FxMulInt((int)ms, opt_day_night_speed));
 
     front_seconds_left -= dt;
-    if (front_seconds_left <= 0.0f) RollNextFront();
+    if (front_seconds_left <= FxI(0)) RollNextFront();
 
     // Gradual change: the old weather fades out completely before the new one
     // fades in, so snow eases off into a dry spell or rain instead of flipping.
     if (current_weather != target_weather) {
-        weather_intensity -= dt / 20.0f;
-        if (weather_intensity <= 0.0f) {
-            weather_intensity = 0.0f;
+        weather_intensity -= dt / 20;
+        if (weather_intensity <= FxI(0)) {
+            weather_intensity = FxI(0);
             // Every change passes through a dry overcast spell first.
             if (current_weather != WEATHER_CLOUDY && target_weather != WEATHER_CLOUDY) { current_weather = WEATHER_CLOUDY; cloud_hold = CLOUD_HOLD_SECONDS; }
-            else if (current_weather == WEATHER_CLOUDY && (cloud_hold -= dt) > 0.0f) { /* still overcast */ }
+            else if (current_weather == WEATHER_CLOUDY && (cloud_hold -= dt) > FxI(0)) { /* still overcast */ }
             else current_weather = target_weather;
         }
     } else if (weather_intensity < target_intensity) {
-        weather_intensity += dt / 25.0f;
+        weather_intensity += dt / 25;
         if (weather_intensity > target_intensity) weather_intensity = target_intensity;
     } else if (weather_intensity > target_intensity) {
-        weather_intensity -= dt / 25.0f;
+        weather_intensity -= dt / 25;
         if (weather_intensity < target_intensity) weather_intensity = target_intensity;
     }
 
-    if (current_weather == WEATHER_SNOW) snow_cover += 0.006f * weather_intensity * dt;
-    else snow_cover -= (current_season == SEASON_WINTER ? 0.002f : 0.01f) * dt;
+    if (current_weather == WEATHER_SNOW) snow_cover += FxMul(FxMul(FX(0.006), weather_intensity), dt);
+    else snow_cover -= FxMul(current_season == SEASON_WINTER ? FX(0.002) : FX(0.01), dt);
     TickMeltPatches(dt);
-    if (snow_cover < 0.0f) snow_cover = 0.0f;
-    if (snow_cover > 1.0f) snow_cover = 1.0f;
+    if (snow_cover < FxI(0)) snow_cover = FxI(0);
+    if (snow_cover > FxI(1)) snow_cover = FxI(1);
 
     UpdateGusts(dt);
     // The original gentle breeze is unchanged (just no longer re-phased per
     // screen); gusts are layered on top of it.
-    float breeze = (float)sin(world_tick * 0.01f);
-    wind_dir = (int)(breeze * 3.0f) + (int)(wind_gust * 6.0f) + (int)(storm_wind * (breeze >= 0.0f ? 4.0f : -4.0f));
-    if (current_weather == WEATHER_RAIN && weather_intensity > 0.2f) since_rain = 0.0f; else since_rain += dt;
+    fx breeze = FxSin(FxMul(world_tick, FX(0.01)));
+    wind_dir = FxTrunc(breeze * 3) + FxTrunc(wind_gust * 6) + FxTrunc(storm_wind * (breeze >= 0 ? 4 : -4));
+    if (current_weather == WEATHER_RAIN && weather_intensity > FX(0.2)) since_rain = FxI(0); else if (since_rain < FxI(30000)) since_rain += dt;
 }
 
 
@@ -383,15 +385,15 @@ int TreeHasApples(int tile_seed) {
     return current_season == SEASON_SUMMER || current_season == SEASON_FALL;
 }
 
-static int Mix(int a, int b, float t) { return a + (int)((b - a) * t); }
+static int Mix(int a, int b, fx t) { return a + FxTrunc((b - a) * t); }
 
 COLORREF ApplySeasonToGround(COLORREF base) {
     int r = GetRValue(base), g = GetGValue(base), b = GetBValue(base);
-    if (current_season == SEASON_FALL) { r = Mix(r, r + 30, 0.6f); g = Mix(g, g - 20, 0.6f); }
-    if (snow_cover > 0.0f) {
-        float light = (float)fabs(sin(day_night_cycle_accumulator));
-        int white = 120 + (int)(light * 120.0f);
-        float t = snow_cover * 0.85f;
+    if (current_season == SEASON_FALL) { r = Mix(r, r + 30, FX(0.6)); g = Mix(g, g - 20, FX(0.6)); }
+    if (snow_cover > FxI(0)) {
+        fx light = FxAbs(FxSin(day_night_cycle_accumulator));
+        int white = 120 + FxTrunc(light * 120);
+        fx t = FxMul(snow_cover, FX(0.85));
         r = Mix(r, white, t); g = Mix(g, white, t); b = Mix(b, white + 10, t);
     }
     r = r < 0 ? 0 : (r > 255 ? 255 : r);
@@ -403,15 +405,15 @@ COLORREF ApplySeasonToGround(COLORREF base) {
 static int WrapMod(int v, int m) { v %= m; return v < 0 ? v + m : v; }
 
 static void DrawSnowfall(HDC hdc) {
-    if (current_weather != WEATHER_SNOW || weather_intensity < 0.02f) return;
-    int flakes = (int)(60.0f + 340.0f * weather_intensity);
+    if (current_weather != WEATHER_SNOW || weather_intensity < FX(0.02)) return;
+    int flakes = FxTrunc(FxI(60) + 340 * weather_intensity);
     HBRUSH flake_b = CreateSolidBrush(RGB(245, 248, 255));
-    float t = world_tick;
+    fx t = world_tick;
     for (int i = 0; i < flakes; i++) {
         int h = RainHash(i * 7919 + 13);
-        float fall_speed = 18.0f + (float)(h % 23);
-        int x = WrapMod(h % WINDOW_WIDTH - cam_x + (int)(t * (wind_dir * 4.0f)) + (int)(sin(t * 0.8f + i) * 8.0f), WINDOW_WIDTH);
-        int y = WrapMod((h / 7) % WINDOW_HEIGHT - cam_y + (int)(t * fall_speed), WINDOW_HEIGHT);
+        fx fall_speed = FxI(18) + FxI(h % 23);
+        int x = WrapMod(h % WINDOW_WIDTH - cam_x + FxMulI(t, FxI(wind_dir * 4)) + FxTrunc(FxSin(FxMul(t, FX(0.8)) + FxI(i)) * 8), WINDOW_WIDTH);
+        int y = WrapMod((h / 7) % WINDOW_HEIGHT - cam_y + FxMulI(t, fall_speed), WINDOW_HEIGHT);
         int s = 2 + (h >> 5) % 2;
         RECT r = { x, y, x + s, y + s };
         FillRect(hdc, &r, flake_b);
@@ -423,18 +425,18 @@ static void DrawSnowfall(HDC hdc) {
 // nothing is stored and they simply drift off screen like the birds do.
 // Deserts get blowing sand streaks and a dusty haze instead of leaves.
 static void DrawDesertDust(HDC hdc) {
-    float t = world_tick, gust = (float)fabs(wind_gust);
+    fx t = world_tick, gust = FxAbs(wind_gust);
     int dir = wind_dir < 0 ? -1 : 1;
-    float drift = 20.0f + abs(wind_dir) * 14.0f + gust * 90.0f;
-    FillWindowAlpha(hdc, RGB(205, 175, 110), 18 + (int)(gust * 50.0f));
+    fx drift = FxI(20 + abs(wind_dir) * 14) + gust * 90;
+    FillWindowAlpha(hdc, RGB(205, 175, 110), 18 + FxTrunc(gust * 50));
     HPEN light = CreatePen(PS_SOLID, 1, RGB(228, 204, 145)), dark = CreatePen(PS_SOLID, 1, RGB(186, 156, 100));
     HGDIOBJ op = SelectObject(hdc, light);
-    int motes = 40 + (int)(gust * 120.0f);
+    int motes = 40 + FxTrunc(gust * 120);
     for (int i = 0; i < motes; i++) {
         int h = RainHash(i * 977 + 13);
-        float speed = 0.6f + (float)(h % 60) / 50.0f;
-        int x = WrapMod(h % WINDOW_WIDTH - cam_x + dir * (int)(t * drift * speed), WINDOW_WIDTH);
-        int y = WrapMod((h / 13) % WINDOW_HEIGHT - cam_y + (int)(sin(t * 2.1f + i) * 6.0f), WINDOW_HEIGHT);
+        fx speed = FX(0.6) + FxI(h % 60) / 50;
+        int x = WrapMod(h % WINDOW_WIDTH - cam_x + dir * FxMulI(t, FxMul(drift, speed)), WINDOW_WIDTH);
+        int y = WrapMod((h / 13) % WINDOW_HEIGHT - cam_y + FxTrunc(FxSin(FxMul(t, FX(2.1)) + FxI(i)) * 6), WINDOW_HEIGHT);
         SelectObject(hdc, (h & 1) ? light : dark);
         MoveToEx(hdc, x, y, NULL); LineTo(hdc, x + dir * (2 + h % 5), y);
     }
@@ -447,11 +449,11 @@ static void DrawDesertDust(HDC hdc) {
 static void DrawFogPatches(HDC hdc) {
     static HDC fog_dc = NULL; static HBITMAP fog_bm = NULL;
     const int FW = 160, FH = 80;
-    float hour = HourOfDay();
-    float strength = hour >= 4.0f && hour < 8.5f ? (hour < 6.5f ? 1.0f : (8.5f - hour) / 2.0f) :
-                     hour >= 18.5f && hour < 22.0f ? (hour < 20.0f ? (hour - 18.5f) / 1.5f : 1.0f) : 0.0f;
-    if (strength <= 0.0f || in_cave || current_weather == WEATHER_RAIN || current_weather == WEATHER_SNOW) return;
-    if (since_rain > DAY_LENGTH_SECONDS || (unsigned int)RainHash(SeasonDay() * 131 + current_season * 7) % 3u) return;
+    fx hour = HourOfDay();
+    fx strength = hour >= FxI(4) && hour < FX(8.5) ? (hour < FX(6.5) ? FxI(1) : (FX(8.5) - hour) / 2) :
+                     hour >= FX(18.5) && hour < FxI(22) ? (hour < FxI(20) ? FxDiv(hour - FX(18.5), FX(1.5)) : FxI(1)) : FxI(0);
+    if (strength <= FxI(0) || in_cave || current_weather == WEATHER_RAIN || current_weather == WEATHER_SNOW) return;
+    if (since_rain > FxI(DAY_LENGTH_SECONDS) || (unsigned int)RainHash(SeasonDay() * 131 + current_season * 7) % 3u) return;
     int ok = current_biome == BIOME_PRAIRIE || current_biome == BIOME_FOREST || current_biome == BIOME_SWAMP ||
              current_biome == BIOME_LAKE || current_biome == BIOME_RIVER;
     if (current_biome == BIOME_DESERT) ok = (unsigned int)RainHash(current_screen_index * 3 + SeasonDay()) % 20u == 0;
@@ -464,19 +466,19 @@ static void DrawFogPatches(HDC hdc) {
         fog_bm = CreateDIBSection(hdc, &bi, DIB_RGB_COLORS, (void **)&px, NULL, 0);
         if (!fog_bm || !px) return;
         for (int y = 0; y < FH; y++) for (int x = 0; x < FW; x++) {
-            float dx = (x - FW / 2.0f) / (FW / 2.0f), dy = (y - FH / 2.0f) / (FH / 2.0f), r2 = dx * dx + dy * dy;
-            int a = r2 >= 1.0f ? 0 : (int)(255.0f * (1.0f - r2) * (1.0f - r2));
+            fx dx = FxDiv(FxI(x) - FxI(FW) / 2, FxI(FW) / 2), dy = FxDiv(FxI(y) - FxI(FH) / 2, FxI(FH) / 2), r2 = FxMul(dx, dx) + FxMul(dy, dy);
+            int a = r2 >= FxI(1) ? 0 : FxTrunc(255 * FxMul(FxI(1) - r2, FxI(1) - r2));
             px[y * FW + x] = ((uint32_t)a << 24) | ((uint32_t)(a * 225 / 255) << 16) | ((uint32_t)(a * 228 / 255) << 8) | (uint32_t)(a * 232 / 255);
         }
         fog_dc = CreateCompatibleDC(hdc);
         SelectObject(fog_dc, fog_bm);
     }
-    BLENDFUNCTION bf = { AC_SRC_OVER, 0, (BYTE)(150.0f * strength), AC_SRC_ALPHA };
+    BLENDFUNCTION bf = { AC_SRC_OVER, 0, (BYTE)FxTrunc(150 * strength), AC_SRC_ALPHA };
     for (int k = 0; k < 9; k++) {
         unsigned int h = (unsigned int)RainHash(current_screen_index * 53 + k * 17);
-        int sx, sy; GetIsoCoords(3.0f + (float)(h % 26u), 3.0f + (float)((h >> 6) % 26u), &sx, &sy);
+        int sx, sy; GetIsoCoords(FxI(3) + FxI(h % 26u), FxI(3) + FxI((h >> 6) % 26u), &sx, &sy);
         int w = 280 + (int)(h % 200u), ht = w / 2;
-        int drift = (int)(sin(world_tick * 0.05f + k) * 24.0f);
+        int drift = FxTrunc(FxSin(FxMul(world_tick, FX(0.05)) + FxI(k)) * 24);
         AlphaBlend(hdc, sx - w / 2 + drift, sy - ht / 2, w, ht, fog_dc, 0, 0, FW, FH, bf);
     }
 }
@@ -485,15 +487,15 @@ static void DrawFallingLeaves(HDC hdc) {
     if (current_biome == BIOME_DESERT) { DrawDesertDust(hdc); return; }
     if (current_season != SEASON_FALL) return;
     static const COLORREF leaf_colors[] = { RGB(215, 120, 40), RGB(190, 65, 40), RGB(225, 180, 60), RGB(160, 95, 45) };
-    int leaves = 14 + (int)(fabs(wind_gust) * 60.0f);
-    float t = world_tick;
-    float drift = 6.0f + wind_dir * 6.0f + wind_gust * 70.0f;
+    int leaves = 14 + FxTrunc(FxAbs(wind_gust) * 60);
+    fx t = world_tick;
+    fx drift = FxI(6 + wind_dir * 6) + wind_gust * 70;
     for (int i = 0; i < leaves; i++) {
         int h = RainHash(i * 4241 + 77);
-        float speed = 0.7f + (float)(h % 50) / 50.0f;
-        int x = WrapMod(h % WINDOW_WIDTH - cam_x + (int)(t * drift * speed), WINDOW_WIDTH);
-        int y = WrapMod((h / 11) % WINDOW_HEIGHT - cam_y + (int)(t * 9.0f * speed) + (int)(sin(t * 1.7f + i) * 10.0f), WINDOW_HEIGHT);
-        int flip = (int)(sin(t * 3.0f + i) * 3.0f);
+        fx speed = FX(0.7) + FxI(h % 50) / 50;
+        int x = WrapMod(h % WINDOW_WIDTH - cam_x + FxMulI(t, FxMul(drift, speed)), WINDOW_WIDTH);
+        int y = WrapMod((h / 11) % WINDOW_HEIGHT - cam_y + FxMulI(t, speed * 9) + FxTrunc(FxSin(FxMul(t, FX(1.7)) + FxI(i)) * 10), WINDOW_HEIGHT);
+        int flip = FxTrunc(FxSinTurn(FxTurn64((int64_t)t * 3 + FxI(i))) * 3);
         HBRUSH b = CreateSolidBrush(leaf_colors[h % 4]);
         HGDIOBJ old = SelectObject(hdc, b);
         POINT leaf[] = { {x - 4, y}, {x, y - 2 - flip}, {x + 4, y}, {x, y + 2 + flip} };
@@ -503,24 +505,24 @@ static void DrawFallingLeaves(HDC hdc) {
 }
 
 int IsAdverseWeather(void) {
-    return (current_weather == WEATHER_RAIN || current_weather == WEATHER_SNOW) && weather_intensity > 0.15f;
+    return (current_weather == WEATHER_RAIN || current_weather == WEATHER_SNOW) && weather_intensity > FX(0.15);
 }
 
 // Ground cover is stateless like the falling leaves: which tiles carry a snow
 // drift or a leaf pile is a hash of the tile, and how many do follows
 // snow_cover / how far into Fall it is, so it builds up and melts away.
-static int NearActiveCampfire(float x, float y, float radius) {
+static int NearActiveCampfire(fx x, fx y, fx radius) {
     for (int i = 0; i < MAX_CAMPFIRES; i++) {
         if (!campfires[i].active || campfires[i].screen_id != current_screen_index) continue;
-        float dx = campfires[i].x - x, dy = campfires[i].y - y;
-        if (dx * dx + dy * dy <= radius * radius) return 1;
+        fx dx = campfires[i].x - x, dy = campfires[i].y - y;
+        if (FxMul(dx, dx) + FxMul(dy, dy) <= FxMul(radius, radius)) return 1;
     }
     return 0;
 }
 
 // A lumpy drift: a shaded base with 3-5 stacked, shrinking mounds on top.
-static void DrawSnowClump(HDC hdc, int x, int y, int h, HBRUSH lit, HBRUSH shade, float depth) {
-    int size = 6 + (int)(depth * 8.0f) + h % 5;
+static void DrawSnowClump(HDC hdc, int x, int y, int h, HBRUSH lit, HBRUSH shade, fx depth) {
+    int size = 6 + FxTrunc(depth * 8) + h % 5;
     int lumps = 3 + (h >> 5) % 3;
     SelectObject(hdc, shade);
     Ellipse(hdc, x - size - 2, y - size / 3, x + size + 2, y + size / 2 + 2);
@@ -537,10 +539,10 @@ static void DrawSnowClump(HDC hdc, int x, int y, int h, HBRUSH lit, HBRUSH shade
 
 // Snow melts in a ring around burning campfires: repaint the plain grass there.
 static void DrawCampfireMeltPatches(HDC hdc) {
-    if (snow_cover < 0.05f) return;
-    float amb = (float)fabs(sin(day_night_cycle_accumulator));
-    COLORREF base = RGB((int)(25.0f + amb * 80.0f), (int)(30.0f + amb * 155.0f), (int)(40.0f + amb * 45.0f));
-    float saved = snow_cover; snow_cover = 0.0f;
+    if (snow_cover < FX(0.05)) return;
+    fx amb = FxAbs(FxSin(day_night_cycle_accumulator));
+    COLORREF base = RGB(FxTrunc(FxI(25) + amb * 80), FxTrunc(FxI(30) + amb * 155), FxTrunc(FxI(40) + amb * 45));
+    fx saved = snow_cover; snow_cover = FxI(0);
     HBRUSH grass = CreateSolidBrush(ApplySeasonToGround(base));
     snow_cover = saved;
     HGDIOBJ old_b = SelectObject(hdc, grass), old_p = SelectObject(hdc, GetStockObject(NULL_PEN));
@@ -551,10 +553,10 @@ static void DrawCampfireMeltPatches(HDC hdc) {
         Ellipse(hdc, sx - TILE_WIDTH, cy - TILE_HEIGHT, sx + TILE_WIDTH, cy + TILE_HEIGHT);
     }
     for (int i = 0; i < MAX_MELT_PATCHES; i++) { // patches melted before, shrinking as new snow falls
-        float mx, my, k;
+        fx mx, my, k;
         if (!GetMeltPatch(i, &mx, &my, &k)) continue;
         int sx, sy; GetIsoCoords(mx, my, &sx, &sy);
-        int cy = sy + TILE_HEIGHT / 2, w = (int)(TILE_WIDTH * k), h = (int)(TILE_HEIGHT * k);
+        int cy = sy + TILE_HEIGHT / 2, w = FxTrunc(TILE_WIDTH * k), h = FxTrunc(TILE_HEIGHT * k);
         if (w > 2) Ellipse(hdc, sx - w, cy - h, sx + w, cy + h);
     }
     SelectObject(hdc, old_b); SelectObject(hdc, old_p); DeleteObject(grass);
@@ -562,29 +564,30 @@ static void DrawCampfireMeltPatches(HDC hdc) {
 
 void DrawSeasonalGroundCover(HDC hdc) {
     if (current_biome == BIOME_CAVE) return;
-    float leaf_cover = 0.0f;
-    if (current_season == SEASON_FALL) leaf_cover = 0.25f + 0.6f * (season_elapsed / SEASON_LENGTH_SECONDS);
-    else if (current_season == SEASON_WINTER && season_elapsed < SEASON_LENGTH_SECONDS * 0.2f)
-        leaf_cover = 0.3f * (1.0f - season_elapsed / (SEASON_LENGTH_SECONDS * 0.2f));
-    leaf_cover *= 1.0f - snow_cover;
-    if (snow_cover < 0.02f && leaf_cover < 0.02f) return;
+    fx leaf_cover = FxI(0);
+    fx sf = (fx)((int64_t)season_ms * FX_ONE / SEASON_MS); // how far into the season, 0..1
+    if (current_season == SEASON_FALL) leaf_cover = FX(0.25) + FxMul(FX(0.6), sf);
+    else if (current_season == SEASON_WINTER && sf < FX(0.2))
+        leaf_cover = FxMul(FX(0.3), FxI(1) - sf * 5);
+    leaf_cover = FxMul(leaf_cover, FxI(1) - snow_cover);
+    if (snow_cover < FX(0.02) && leaf_cover < FX(0.02)) return;
     DrawCampfireMeltPatches(hdc);
 
     static const COLORREF leaf_colors[] = { RGB(200, 105, 35), RGB(170, 60, 35), RGB(210, 165, 55), RGB(140, 85, 40) };
-    int white = 140 + (int)((float)fabs(sin(day_night_cycle_accumulator)) * 110.0f);
+    int white = 140 + FxTrunc(FxAbs(FxSin(day_night_cycle_accumulator)) * 110);
     HBRUSH snow_b = CreateSolidBrush(RGB(white, white, white + 5 > 255 ? 255 : white + 5));
     HBRUSH shade_b = CreateSolidBrush(RGB(white - 35, white - 30, white - 15));
     HBRUSH leaf_b[4];
     for (int i = 0; i < 4; i++) leaf_b[i] = CreateSolidBrush(leaf_colors[i]);
     HGDIOBJ old_b = SelectObject(hdc, snow_b), old_p = SelectObject(hdc, GetStockObject(NULL_PEN));
-    int snow_pct = (int)(snow_cover * 22.0f), leaf_pct = (int)(leaf_cover * 25.0f);
+    int snow_pct = FxTrunc(snow_cover * 22), leaf_pct = FxTrunc(leaf_cover * 25);
 
     for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) {
         uint8_t t = VISUAL_MAP[r][c];
         if (t == 1 || t == 10 || t == 12) continue;
-        int sx, sy; GetIsoCoords((float)c, (float)r, &sx, &sy);
+        int sx, sy; GetIsoCoords(FxI(c), FxI(r), &sx, &sy);
         if (sx < -TILE_WIDTH || sx > WINDOW_WIDTH + TILE_WIDTH || sy < -TILE_HEIGHT || sy > WINDOW_HEIGHT + TILE_HEIGHT) continue;
-        if (NearActiveCampfire((float)c, (float)r, 2.2f)) continue;
+        if (NearActiveCampfire(FxI(c), FxI(r), FX(2.2))) continue;
         int cy = sy + TILE_HEIGHT / 2;
         int h = RainHash(current_screen_index * 4099 + r * MAP_SIZE + c) & 0x7fffffff;
         if (h % 100 < snow_pct) {

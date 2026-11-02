@@ -5,7 +5,7 @@
 static volatile int m_x = 0, m_y = 0, m_lclick = 0, m_rclick = 0, m_wheel = 0, m_xbtn = 0;
 static volatile DWORD last_mouse_event = 0;
 static int walk_active = 0, target_enemy = -1, belt_sel = 0;
-static float walk_x, walk_y;
+static fx walk_x, walk_y;
 static int walk_interact = 0;
 void HandleContextInteract(void);
 static DWORD walk_started = 0;
@@ -23,10 +23,10 @@ void MouseEvent(UINT msg, WPARAM wp, LPARAM lp) {
 int MouseBusy(void) { return walk_active || GetTickCount() - last_mouse_event < 1000; }
 
 // Inverse of GetIsoCoords (tile centre is half a tile below its top corner).
-static void ScreenToWorld(int sx, int sy, float *wx, float *wy) {
-    float a = (float)(sx - WINDOW_WIDTH / 2 + cam_x) / (TILE_WIDTH / 2);
-    float b = (float)(sy - TILE_HEIGHT / 2 - WINDOW_HEIGHT / 2 + cam_y) / (TILE_HEIGHT / 2);
-    *wx = (a + b) / 2.0f; *wy = (b - a) / 2.0f;
+static void ScreenToWorld(int sx, int sy, fx *wx, fx *wy) {
+    fx a = FxI(sx - WINDOW_WIDTH / 2 + cam_x) / (TILE_WIDTH / 2);
+    fx b = FxI(sy - TILE_HEIGHT / 2 - WINDOW_HEIGHT / 2 + cam_y) / (TILE_HEIGHT / 2);
+    *wx = (a + b) / 2; *wy = (b - a) / 2;
 }
 
 // The belt holds the first ten weapons, tools and food in the pack.
@@ -62,17 +62,17 @@ static int BeltSlotAt(int x, int y) {
 }
 
 // Clicking loot or a villager walks there and does what X would.
-static int ClickTargetsInteract(float wx, float wy) {
+static int ClickTargetsInteract(fx wx, fx wy) {
     for (int i = 0; i < MAX_GROUND_LOOT; i++) {
         GroundLoot *l = &ground_loot[i];
-        if (l->active && l->screen_id == current_screen_index && fabsf(l->x - wx) < 0.9f && fabsf(l->y - wy) < 0.9f) return 1;
+        if (l->active && l->screen_id == current_screen_index && FxAbs(l->x - wx) < FX(0.9) && FxAbs(l->y - wy) < FX(0.9)) return 1;
     }
     for (int i = 0; i < MAX_DROPPED_ITEMS; i++) {
         DroppedInventoryItem *d = &dropped_items[i];
-        if (d->active && d->screen_id == current_screen_index && fabsf(d->x - wx) < 0.9f && fabsf(d->y - wy) < 0.9f) return 1;
+        if (d->active && d->screen_id == current_screen_index && FxAbs(d->x - wx) < FX(0.9) && FxAbs(d->y - wy) < FX(0.9)) return 1;
     }
     for (int i = 0; i < village_npc_count; i++)
-        if (fabsf(village_npcs[i].x - wx) < 1.2f && fabsf(village_npcs[i].y - wy) < 1.2f) return 1;
+        if (FxAbs(village_npcs[i].x - wx) < FX(1.2) && FxAbs(village_npcs[i].y - wy) < FX(1.2)) return 1;
     return 0;
 }
 
@@ -102,7 +102,7 @@ static void VendorClick(int x, int y) {
     }
 }
 
-void UpdateMouseInput(float *dx, float *dy) {
+void UpdateMouseInput(fx *dx, fx *dy) {
     int busy = town_menu || vendor_menu_open || is_menu_open;
     static int key_was[BELT_SLOTS];
     for (int k = 0; k < BELT_SLOTS; k++) {
@@ -137,26 +137,26 @@ void UpdateMouseInput(float *dx, float *dy) {
             ScreenToWorld(m_x, m_y, &walk_x, &walk_y);
             walk_interact = ClickTargetsInteract(walk_x, walk_y);
             StoreEnemy();
-            target_enemy = EnemyAtPoint(walk_x, walk_y, 1.0f);
+            target_enemy = EnemyAtPoint(walk_x, walk_y, FxI(1));
             walk_active = 1; walk_started = GetTickCount();
         }
     }
-    if (*dx != 0.0f || *dy != 0.0f || busy) { walk_active = 0; return; }
+    if (*dx != FxI(0) || *dy != FxI(0) || busy) { walk_active = 0; return; }
     if (!walk_active) return;
     if (GetTickCount() - walk_started > (target_enemy >= 0 ? 20000u : 6000u)) { walk_active = 0; return; } // blocked or gave up
-    float tx = walk_x, ty = walk_y;
+    fx tx = walk_x, ty = walk_y;
     if (target_enemy >= 0) {
-        if (enemies[target_enemy].hearts <= 0.0f) { walk_active = 0; return; }
+        if (enemies[target_enemy].hearts <= FxI(0)) { walk_active = 0; return; }
         tx = enemies[target_enemy].x; ty = enemies[target_enemy].y;
     }
-    float ddx = tx - player_x, ddy = ty - player_y, d = (float)sqrt(ddx * ddx + ddy * ddy);
-    player_facing = fabs(ddx) > fabs(ddy) ? (ddx < 0 ? FACE_LEFT : FACE_RIGHT) : (ddy < 0 ? FACE_UP : FACE_DOWN);
-    if (target_enemy >= 0 && d < 1.5f) { // walked up to it: keep swinging until it falls
+    fx ddx = tx - player_x, ddy = ty - player_y, d = FxLen(ddx, ddy);
+    player_facing = FxAbs(ddx) > FxAbs(ddy) ? (ddx < 0 ? FACE_LEFT : FACE_RIGHT) : (ddy < 0 ? FACE_UP : FACE_DOWN);
+    if (target_enemy >= 0 && d < FX(1.5)) { // walked up to it: keep swinging until it falls
         if (GetTickCount() - last_mouse_attack > 250) { PerformMeleeAttack(); last_mouse_attack = GetTickCount(); }
         return;
     }
-    if (walk_interact && d < 1.1f) { walk_active = 0; walk_interact = 0; HandleContextInteract(); return; }
-    if (d < 0.25f) { walk_active = 0; return; }
+    if (walk_interact && d < FX(1.1)) { walk_active = 0; walk_interact = 0; HandleContextInteract(); return; }
+    if (d < FX(0.25)) { walk_active = 0; return; }
     *dx = ddx / d; *dy = ddy / d;
 }
 

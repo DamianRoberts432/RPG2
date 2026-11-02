@@ -18,8 +18,8 @@ int ShapeSeaTile(int r, int c, int noise) {
     if (in_cave) return 0;
     if (OpenSeaCell()) { VISUAL_MAP[r][c] = 12; return 1; }
     if (current_biome != BIOME_ISLAND) return 0;
-    float dx = c - 15.5f, dy = r - 15.5f;
-    int land = dx * dx + dy * dy < 36.0f;
+    fx dx = FxI(c) - FX(15.5), dy = FxI(r) - FX(15.5);
+    int land = FxMul(dx, dx) + FxMul(dy, dy) < FxI(36);
     for (int s = 0; s < 4 && !land; s++) {
         int nx = screen_grid_x + ox[s], ny = screen_grid_y + oy[s];
         if (nx < 0 || ny < 0 || nx >= META_GRID_SIZE || ny >= META_GRID_SIZE || WorldBiomeAt(nx, ny) == BIOME_OCEAN) continue;
@@ -64,7 +64,7 @@ void DrawIsleTreasure(HDC hdc, int c, int r, int sx, int sy) {
     HBRUSH b = CreateSolidBrush(claimed ? RGB(90, 70, 40) : RGB(230, 190, 40));
     RECT chest = { sx - 8, sy - 6, sx + 8, sy + 6 };
     FillRect(hdc, &chest, b); DeleteObject(b);
-    if (!claimed && IsNearPoint(15.0f, 15.0f, 3.0f)) {
+    if (!claimed && IsNearPoint(FxI(15), FxI(15), FxI(3))) {
         SetTextColor(hdc, RGB(255, 255, 255)); SetBkMode(hdc, TRANSPARENT);
         TextOut(hdc, sx - 26, sy - 24, "TREASURE", 8);
     }
@@ -72,7 +72,7 @@ void DrawIsleTreasure(HDC hdc, int c, int r, int sx, int sy) {
 
 int TryIsleTreasure(void) {
     int i = TreasureIsleHere();
-    if (i < 0 || !IsNearPoint(15.0f, 15.0f, 1.3f)) return 0;
+    if (i < 0 || !IsNearPoint(FxI(15), FxI(15), FX(1.3))) return 0;
     if ((isle_treasure_bits >> i) & 1) { strcpy(arpg_action_log, "TREASURE ISLE: The chest is empty. Someone got here first... you."); return 1; }
     int gold = 500 + 100 * (i % 4);
     isle_treasure_bits |= 1 << i;

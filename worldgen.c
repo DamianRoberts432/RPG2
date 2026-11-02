@@ -171,13 +171,13 @@ void ClearHighwayTiles(void) {
     for (int y = 1; y < MAP_SIZE - 1; y++) for (int x = 1; x < MAP_SIZE - 1; x++) if (HighwayTile(x, y)) VISUAL_MAP[y][x] = 0;
 }
 void DrawHighway(HDC hdc) {
-    float a = (float)fabs(sin(day_night_cycle_accumulator));
-    if (a < 0.35f) a = 0.35f;
+    fx a = FxAbs(FxSin(day_night_cycle_accumulator));
+    if (a < FX(0.35)) a = FX(0.35);
     HBRUSH br = CreateSolidBrush(RGB((int)(150 * a), (int)(138 * a), (int)(118 * a)));
     HGDIOBJ old = SelectObject(hdc, br), old_pen = SelectObject(hdc, GetStockObject(NULL_PEN));
     for (int y = 0; y < MAP_SIZE; y++) for (int x = 0; x < MAP_SIZE; x++) {
         if (!HighwayTile(x, y) || VISUAL_MAP[y][x] != 0) continue;
-        int sx, sy; GetIsoCoords((float)x, (float)y, &sx, &sy);
+        int sx, sy; GetIsoCoords(FxI(x), FxI(y), &sx, &sy);
         int cy = sy + TILE_HEIGHT / 2;
         POINT p[] = { { sx, cy - TILE_HEIGHT / 2 }, { sx + TILE_WIDTH / 2, cy }, { sx, cy + TILE_HEIGHT / 2 }, { sx - TILE_WIDTH / 2, cy } };
         Polygon(hdc, p, 4);
@@ -188,7 +188,7 @@ void DrawHighway(HDC hdc) {
 // --- Supply and demand: each town's surroundings set what is cheap there,
 // and selling a lot of one thing in a town drives its price down for a while.
 enum { EC_WOOD, EC_STONE, EC_FOOD, EC_FISH, EC_GEAR, EC_N };
-static float sold[MAX_TOWNS][EC_N];
+static fx sold[MAX_TOWNS][EC_N];
 static int sold_day = -1;
 static int Cat(const char *n) {
     if (strcmp(n, "Wood") == 0) return EC_WOOD;
@@ -204,7 +204,7 @@ static int HereTown(void) {
     return -1;
 }
 // Above 1 means plenty nearby (cheap); below 1 means scarce (dear).
-static float Supply(int t, int cat) {
+static fx Supply(int t, int cat) {
     int cnt[EC_N] = { 0 }, desert = 0;
     for (int y = town_y[t] - 3; y <= town_y[t] + 3; y++) for (int x = town_x[t] - 3; x <= town_x[t] + 3; x++) {
         int b = B(x, y);
@@ -214,27 +214,27 @@ static float Supply(int t, int cat) {
         else if (b == BIOME_PRAIRIE || b == BIOME_GRASSLANDS) cnt[EC_FOOD]++;
         else if (b == BIOME_DESERT) desert++;
     }
-    if (cat == EC_GEAR) return 1.0f;
-    float s = 0.8f + cnt[cat] / 12.0f - (cat != EC_STONE ? desert / 30.0f : 0.0f);
-    return s < 0.7f ? 0.7f : s > 1.4f ? 1.4f : s;
+    if (cat == EC_GEAR) return FxI(1);
+    fx s = FX(0.8) + FxI(cnt[cat]) / 12 - (cat != EC_STONE ? FxI(desert) / 30 : FxI(0));
+    return s < FX(0.7) ? FX(0.7) : s > FX(1.4) ? FX(1.4) : s;
 }
 static void DecaySales(void) {
     int d = SeasonDay();
     if (d == sold_day) return;
-    if (sold_day >= 0) for (int t = 0; t < MAX_TOWNS; t++) for (int c = 0; c < EC_N; c++) sold[t][c] *= 0.6f;
+    if (sold_day >= 0) for (int t = 0; t < MAX_TOWNS; t++) for (int c = 0; c < EC_N; c++) sold[t][c] = FxMul(sold[t][c], FX(0.6));
     sold_day = d;
 }
-float EconomyBuyMult(const char *name) { int t = HereTown(); return t < 0 ? 1.0f : 1.0f / Supply(t, Cat(name)); }
-float EconomySellMult(const char *name) {
+fx EconomyBuyMult(const char *name) { int t = HereTown(); return t < 0 ? FxI(1) : FxDiv(FxI(1), Supply(t, Cat(name))); }
+fx EconomySellMult(const char *name) {
     int t = HereTown();
-    if (t < 0) return 1.0f;
+    if (t < 0) return FxI(1);
     DecaySales();
     int c = Cat(name);
-    float m = 1.0f / Supply(t, c) / (1.0f + sold[t][c] / 40.0f);
-    return t == 0 ? m * 1.25f : m; // Elysium is the trading hub and pays best
+    fx m = FxDiv(FxDiv(FxI(1), Supply(t, c)), FxI(1) + sold[t][c] / 40);
+    return t == 0 ? FxMul(m, FX(1.25)) : m; // Elysium is the trading hub and pays best
 }
-void EconomyNoteSold(const char *name, int qty) { int t = HereTown(); if (t >= 0) { DecaySales(); sold[t][Cat(name)] += (float)qty; } }
+void EconomyNoteSold(const char *name, int qty) { int t = HereTown(); if (t >= 0) { DecaySales(); sold[t][Cat(name)] += FxI(qty); } }
 int ItemShopPrice(const MerchantItem *o) {
-    int p = (int)(ShopPrice(o->base_price * (int)o->rarity) * EconomyBuyMult(o->name) + 0.5f);
+    int p = FxMulInt(ShopPrice(o->base_price * (int)o->rarity), EconomyBuyMult(o->name));
     return p < 1 ? 1 : p;
 }

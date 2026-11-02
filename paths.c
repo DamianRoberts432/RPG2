@@ -43,16 +43,16 @@ void UpdateFootpaths(void) {
 
 void DrawFootpaths(HDC hdc) {
     DrawHighway(hdc);
-    float a = (float)fabs(sin(day_night_cycle_accumulator));
-    if (a < 0.35f) a = 0.35f;
+    fx a = FxAbs(FxSin(day_night_cycle_accumulator));
+    if (a < FX(0.35)) a = FX(0.35);
     HGDIOBJ old_pen = SelectObject(hdc, GetStockObject(NULL_PEN));
     for (int i = 0; i < MAX_WORN_TILES; i++) {
         WornTile *w = &worn_tiles[i];
         if (!w->active || w->screen_id != current_screen_index || w->wear < PATH_SHOWS_AT) continue;
         if (VISUAL_MAP[w->y][w->x] != 0) continue;
-        int sx, sy; GetIsoCoords((float)w->x, (float)w->y, &sx, &sy);
+        int sx, sy; GetIsoCoords(FxI(w->x), FxI(w->y), &sx, &sy);
         // Lightly worn paths are narrow; well-trodden ones fill the tile.
-        float k = 0.55f + 0.45f * (float)(w->wear - PATH_SHOWS_AT) / (float)(WEAR_MAX - PATH_SHOWS_AT);
+        fx k = FX(0.55) + FX(0.45) * (w->wear - PATH_SHOWS_AT) / (WEAR_MAX - PATH_SHOWS_AT);
         int hw = (int)(TILE_WIDTH / 2 * k), hh = (int)(TILE_HEIGHT / 2 * k), cy = sy + TILE_HEIGHT / 2;
         POINT dirt[] = { { sx, cy - hh }, { sx + hw, cy }, { sx, cy + hh }, { sx - hw, cy } };
         HBRUSH br = CreateSolidBrush(RGB((int)(150 * a), (int)(118 * a), (int)(72 * a))); HGDIOBJ old = SelectObject(hdc, br);

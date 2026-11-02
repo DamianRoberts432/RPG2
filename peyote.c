@@ -52,25 +52,25 @@ void EatPeyote(void) {
 // Gentle melt: the finished frame is copied and laid back in thin bands that
 // sway only a few pixels, under slowly drifting bands of saturated colour
 // (a soft rainbow sheen rather than a desert haze). Works in the AFK view too.
-static COLORREF HueColor(float h) {
-    float r = 0.5f + 0.5f * sinf(h), g = 0.5f + 0.5f * sinf(h + 2.094f), b = 0.5f + 0.5f * sinf(h + 4.189f);
-    float mx = r > g ? (r > b ? r : b) : (g > b ? g : b), mn = r < g ? (r < b ? r : b) : (g < b ? g : b), k = mx > mn ? 1.0f / (mx - mn) : 1.0f;
-    return RGB((int)((r - mn) * k * 255), (int)((g - mn) * k * 255), (int)((b - mn) * k * 255));
+static COLORREF HueColor(fx h) {
+    fx r = FX(0.5) + FxSin(h) / 2, g = FX(0.5) + FxSin(h + FX(2.094)) / 2, b = FX(0.5) + FxSin(h + FX(4.189)) / 2;
+    fx mx = r > g ? (r > b ? r : b) : (g > b ? g : b), mn = r < g ? (r < b ? r : b) : (g < b ? g : b), k = mx > mn ? FxDiv(FxI(1), mx - mn) : FxI(1);
+    return RGB(FxTrunc(FxMul(r - mn, k) * 255), FxTrunc(FxMul(g - mn, k) * 255), FxTrunc(FxMul(b - mn, k) * 255));
 }
 void DrawPeyoteMelt(HDC hdc) {
     DWORD now = GetTickCount();
     if (!peyote_until || now >= peyote_until) return;
-    float fade = (peyote_until - now) < 8000 ? (peyote_until - now) / 8000.0f : 1.0f, t = now / 1000.0f;
+    fx fade = (peyote_until - now) < 8000 ? FxI(peyote_until - now) / 8000 : FxI(1), t = (fx)((int64_t)now * FX_ONE / 1000);
     static HDC copy; static HBITMAP bmp;
     if (!copy) { copy = CreateCompatibleDC(hdc); bmp = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT); SelectObject(copy, bmp); }
     BitBlt(copy, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, hdc, 0, 0, SRCCOPY);
     for (int y = 0; y < WINDOW_HEIGHT; y += 4) {
-        int dx = (int)(WaveAt(y * 0.008f, 0.0f, t * 0.25f) * 2.0f * fade);
+        int dx = FxTrunc(FxMul(WaveAt(y * FX(0.008), FxI(0), t / 4) * 2, fade));
         BitBlt(hdc, dx, y, WINDOW_WIDTH, 4, copy, 0, y, SRCCOPY);
     }
     const int bands = 14, bh = WINDOW_HEIGHT / bands + 1;
     for (int k = 0; k < bands; k++)
-        FillRectAlpha(hdc, 0, k * bh, WINDOW_WIDTH, bh, HueColor(t * 0.18f + k * 0.45f), (int)(18 * fade));
+        FillRectAlpha(hdc, 0, k * bh, WINDOW_WIDTH, bh, HueColor(FxMul(t, FX(0.18)) + k * FX(0.45)), FxTrunc(18 * fade));
 }
 
 // Any weapon breaks cacti and peyote: one melee swing (or one arrow) fells a
@@ -85,18 +85,18 @@ int BreakDesertPlant(int tx, int ty, int melee) {
         return 1;
     }
     VISUAL_MAP[ty][tx] = 0;
-    SpawnTreeDebris(tx + 0.5f, ty + 0.5f);
+    SpawnTreeDebris(tx + FX(0.5), ty + FX(0.5));
     strcpy(arpg_action_log, "CACTUS: It topples over in a spray of green.");
     return 1;
 }
 
 int MeleeHitDesertPlant(void) {
-    float fx = facing_x, fy = facing_y, d = sqrtf(fx * fx + fy * fy);
-    if (d < 0.01f) return 0;
-    fx /= d; fy /= d;
+    fx hx = facing_x, hy = facing_y, d = FxLen(hx, hy);
+    if (d < FX(0.01)) return 0;
+    hx = FxDiv(hx, d); hy = FxDiv(hy, d);
     for (int k = 1; k <= 3; k++) {
-        float r = 0.5f * k;
-        if (BreakDesertPlant((int)(player_x + fx * r), (int)(player_y + fy * r), 1)) return 1;
+        fx r = FX(0.5) * k;
+        if (BreakDesertPlant(FxTrunc(player_x + FxMul(hx, r)), FxTrunc(player_y + FxMul(hy, r)), 1)) return 1;
     }
     return 0;
 }

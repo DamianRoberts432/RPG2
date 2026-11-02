@@ -8,7 +8,7 @@
 #define SAVE_FILE_NAME "rpg2_save.dat"
 #define SAVE_TEMP_NAME "rpg2_save.tmp"
 #define SAVE_MAGIC   0x32475052u /* "RPG2" */
-#define SAVE_VERSION 1u
+#define SAVE_VERSION 2u // 2: positions, weights and the clock are whole numbers (fixed point)
 
 uint8_t map_poi[META_GRID_SIZE][META_GRID_SIZE] = {0};
 
@@ -110,7 +110,7 @@ int SaveWorldMapState(void) {
              fwrite(map_poi, sizeof(map_poi), 1, f) == 1;
     int32_t pos[2] = { screen_grid_x, screen_grid_y };
     ok = ok && fwrite(pos, sizeof(pos), 1, f) == 1;
-    float cal[2] = { (float)current_season, SeasonClockSeconds() };
+    int32_t cal[2] = { current_season, SeasonClockMs() };
     ok = ok && fwrite(cal, sizeof(cal), 1, f) == 1;
     int32_t hero[4 + STAT_COUNT] = { player_level, player_xp, player_next_level_xp, stat_points };
     for (int i = 0; i < STAT_COUNT; i++) hero[4 + i] = stat_spent[i];
@@ -149,18 +149,30 @@ int SaveWorldMapState(void) {
     return MoveFileExA(SAVE_TEMP_NAME, SAVE_FILE_NAME, MOVEFILE_REPLACE_EXISTING) != 0;
 }
 
+// Version 1 saves held decimals; turn their bits into fixed point once on load.
+static fx Fb(fx v) { return FxFromFloatBits((uint32_t)v); }
+static void ConvertVersion1(int32_t *cal, int has_cal, InventoryItem *items, int n, StashChest *ch, int has_ch, MeltPatch *mp, int has_mp) {
+    if (has_cal) { cal[0] = FxTrunc(Fb(cal[0])); cal[1] = FxMulInt(1000, Fb(cal[1])); }
+    for (int i = 0; i < n; i++) items[i].weight = Fb(items[i].weight);
+    if (has_ch) for (int i = 0; i < MAX_CHESTS; i++) {
+        ch[i].x = Fb(ch[i].x); ch[i].y = Fb(ch[i].y);
+        for (int k = 0; k < CHEST_SLOTS; k++) ch[i].items[k].weight = Fb(ch[i].items[k].weight);
+    }
+    if (has_mp) for (int i = 0; i < MAX_MELT_PATCHES; i++) { mp[i].x = Fb(mp[i].x); mp[i].y = Fb(mp[i].y); mp[i].fill = Fb(mp[i].fill); }
+}
+
 int LoadWorldMapState(void) {
     static uint8_t biomes[META_GRID_SIZE][META_GRID_SIZE], pois[META_GRID_SIZE][META_GRID_SIZE];
     FILE *f = fopen(SAVE_FILE_NAME, "rb");
     if (!f) return 0;
     SaveHeader hdr;
     int ok = fread(&hdr, sizeof(hdr), 1, f) == 1 && hdr.magic == SAVE_MAGIC &&
-             hdr.version == SAVE_VERSION && hdr.grid_size == META_GRID_SIZE &&
+             (hdr.version == SAVE_VERSION || hdr.version == 1u) && hdr.grid_size == META_GRID_SIZE &&
              fread(biomes, sizeof(biomes), 1, f) == 1 && fread(pois, sizeof(pois), 1, f) == 1;
     // The hero's grid cell was appended later; older saves simply lack it.
     int32_t pos[2];
     int has_pos = ok && fread(pos, sizeof(pos), 1, f) == 1;
-    float cal[2]; // season + seconds into it, appended after the position
+    int32_t cal[2]; // season + milliseconds into it (seconds as a float in version 1 saves)
     int has_cal = has_pos && fread(cal, sizeof(cal), 1, f) == 1;
     int32_t hero[4 + STAT_COUNT]; // level, xp, next-level xp, unspent points, points spent per stat
     int has_hero = has_cal && fread(hero, sizeof(hero), 1, f) == 1;
@@ -204,10 +216,11 @@ int LoadWorldMapState(void) {
     if (has_cards2 && ok) TownGrowthLoad(f);
     fclose(f);
     if (!ok) return 0;
+    if (hdr.version == 1u) ConvertVersion1(cal, has_cal, items, has_pack ? pack[1] : 0, saved_chests, has_chests, saved_melt, has_world);
     memcpy(visited_biomes, biomes, sizeof(biomes));
     memcpy(map_poi, pois, sizeof(pois));
     if (has_pos && CellInWorld(pos[0], pos[1])) { screen_grid_x = pos[0]; screen_grid_y = pos[1]; }
-    if (has_cal) RestoreCalendar((int)cal[0], cal[1]);
+    if (has_cal) RestoreCalendar(cal[0], cal[1]);
     if (has_hero && hero[0] >= 1 && hero[2] > 0) {
         player_level = hero[0]; player_xp = hero[1]; player_next_level_xp = hero[2]; stat_points = hero[3];
         for (int i = 0; i < STAT_COUNT; i++) stat_spent[i] = (hero[4 + i] < 0 || hero[4 + i] > STAT_CAP) ? 0 : hero[4 + i];

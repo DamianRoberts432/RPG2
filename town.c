@@ -531,7 +531,7 @@ static void RowInfo(const TownRow *r, char *out, size_t n) {
     case A_CRAFT: snprintf(out, n, "A recipe from the Update folder: the smith works your materials into something new."); break;
     case A_FORGE: snprintf(out, n, "Each forge adds +1 damage, up to +%d, but the metal grows brittle: max durability drops 10%% every time.", MAX_FORGE_BONUS); break;
     case A_SMITH_BUY: { WeaponStats *w = &weapon_catalog[smith_wares[r->arg] - 1];
-        snprintf(out, n, "%s  |  DMG %d  |  Durability %d  |  Weight %.1f  |  Rare smith work you won't find at the merchant.", w->name, w->damage, w->durability_max, w->weight); break; }
+        snprintf(out, n, "%s  |  DMG %d  |  Durability %d  |  Weight %s  |  Rare smith work you won't find at the merchant.", w->name, w->damage, w->durability_max, FxStr(w->weight, 1)); break; }
     case A_RECYCLE: { const char *nm = player_inventory[r->arg].name, *slot = player_inventory[r->arg].slot;
         snprintf(out, n, "Breaks the %s down into %s.", nm, strstr(nm, "Bow") ? "2 Wood and 1 String" :
                  strcmp(slot, "Armor") == 0 ? "2 Leather and 1 Iron" : strcmp(slot, "Shield") == 0 ? "2 Wood and 1 Rope" : "2 Iron and 1 Wood"); break; }
@@ -591,9 +591,9 @@ void OpenTownMenu(int menu) {
 void TownMenuMove(int step) { BuildRows(); if (row_count > 0) town_cursor = (town_cursor + step + row_count) % row_count; }
 void TownMenuBack(void) { if (binder_open) { binder_open = 0; town_cursor = 0; return; } int was_home = town_menu == TM_HOME; town_menu = TM_NONE; if (was_home) LeaveHome(); }
 
-float TownDamageMult(void) {
-    if (blessing_type < 0 || GetTickCount() > blessing_until) return 1.0f;
-    return blessing_type == 1 ? 1.5f : 1.25f;
+fx TownDamageMult(void) {
+    if (blessing_type < 0 || GetTickCount() > blessing_until) return FxI(1);
+    return blessing_type == 1 ? FX(1.5) : FX(1.25);
 }
 
 static void Bless(int type) { blessing_type = type; blessing_until = GetTickCount() + 5 * 60 * 1000; }
@@ -613,7 +613,7 @@ void DrawBlessingFx(HDC hdc) {
     if (blessing_fx < 0) return;
     DWORD t = GetTickCount() - blessing_fx_start;
     if (t > 6000) { blessing_fx = -1; return; }
-    float k = t < 700 ? t / 700.0f : t > 5000 ? (6000 - t) / 1000.0f : 1.0f;
+    fx k = t < 700 ? FxI(t) / 700 : t > 5000 ? FxI(6000 - t) / 1000 : FxI(1);
     int cx = WINDOW_WIDTH / 2, cy = WINDOW_HEIGHT / 2;
     if (blessing_fx == 0) { // Solara: a warm sunbeam pours down onto the hero, motes drifting in it
         for (int s = 0; s < 12; s++) { int w = 70 + s * 12, bh = (cy + 40) / 12 + 1; FillRectAlpha(hdc, cx - w / 2, s * bh, w, bh, RGB(255, 228, 140), (int)(70 * k)); }
@@ -621,7 +621,7 @@ void DrawBlessingFx(HDC hdc) {
         for (int m = 0; m < 18; m++) { int mx = cx - 60 + (int)((m * 53) % 120), my = (int)((t / 6 + m * 71) % (cy + 40)); FillRectAlpha(hdc, mx, my, 3, 3, RGB(255, 255, 220), (int)(200 * k)); }
     } else if (blessing_fx == 1) { // Nyx: a violet veil and a scatter of slow-twinkling stars
         FillWindowAlpha(hdc, RGB(55, 20, 85), (int)(60 * k));
-        for (int s = 0; s < 40; s++) { int sx = (s * 977) % WINDOW_WIDTH, sy = (s * 613) % (WINDOW_HEIGHT * 2 / 3); float tw = 0.5f + 0.5f * sinf(t / 300.0f + s);
+        for (int s = 0; s < 40; s++) { int sx = (s * 977) % WINDOW_WIDTH, sy = (s * 613) % (WINDOW_HEIGHT * 2 / 3); fx tw = FX(0.5) + FxSin(FxI(t) / 300 + FxI(s)) / 2;
             FillRectAlpha(hdc, sx, sy, 3, 3, RGB(230, 210, 255), (int)(220 * k * tw)); }
     } else if (blessing_fx == 2) { // Baron Samedi rises in the corner, top hat and toothy grin, and smiles
         int x = WINDOW_WIDTH - 230, y = WINDOW_HEIGHT - 60 - (int)(250 * k);
@@ -641,7 +641,7 @@ void DrawBlessingFx(HDC hdc) {
         for (int p = 0; p < 4; p++) FillRectAlpha(hdc, x + 160 + p * 6, y + 120 - p * 14 - (int)(t / 40 % 14), 10, 10, RGB(200, 200, 205), (int)(90 * k));
     } else { // The Drowned One: deep water rises from below, bubbles drifting up
         for (int b = 0; b < 8; b++) FillRectAlpha(hdc, 0, WINDOW_HEIGHT - (b + 1) * 50, WINDOW_WIDTH, 50, RGB(20, 90, 110), (int)((80 - b * 9) * k));
-        for (int b = 0; b < 30; b++) { int bx = (b * 389) % WINDOW_WIDTH + (int)(sinf(t / 400.0f + b) * 8), by = WINDOW_HEIGHT - (int)((t / 4 + b * 97) % 420);
+        for (int b = 0; b < 30; b++) { int bx = (b * 389) % WINDOW_WIDTH + FxTrunc(FxSin(FxI(t) / 400 + FxI(b)) * 8), by = WINDOW_HEIGHT - (int)((t / 4 + b * 97) % 420);
             FxEllipse(hdc, RGB(170, 225, 235), bx, by, bx + 6 + b % 4 * 2, by + 6 + b % 4 * 2); }
     }
 }
@@ -752,8 +752,8 @@ void TownMenuConfirm(void) {
         gold_count -= 200; town_menu = TM_NONE;
         screen_grid_x = r.arg % META_GRID_SIZE; screen_grid_y = r.arg / META_GRID_SIZE; screens_until_town = 0;
         GenerateProceduralScreen(30000 + r.arg);
-        player_x = MAP_SIZE / 2.0f; player_y = MAP_SIZE / 2.0f;
-        for (int k = 0; k < MAP_SIZE / 2 && !PlayerCanStandAt(player_x, player_y); k++) player_x = MAP_SIZE / 2.0f + k * ((k & 1) ? 1 : -1);
+        player_x = FxI(MAP_SIZE) / 2; player_y = FxI(MAP_SIZE) / 2;
+        for (int k = 0; k < MAP_SIZE / 2 && !PlayerCanStandAt(player_x, player_y); k++) player_x = FxI(MAP_SIZE) / 2 + FxI(k * ((k & 1) ? 1 : -1));
         TownNameAt(30000 + r.arg, town_banner, sizeof(town_banner)); town_banner_until = GetTickCount() + 4000;
         Say("CARAVAN: After a long, dusty ride you climb down in %s.", town_banner);
         return;
@@ -844,7 +844,7 @@ void TownMenuConfirm(void) {
         if (OwnedFamiliarSlot() >= 0) { Say("PET SHOP: You already have a companion. One familiar at a time."); return; }
         if (gold_count < f->price) { Say("PET SHOP: The %s costs %d gold.", f->name, f->price); return; }
         if (!AddInventoryItem(f->name, "Familiar", 1)) { Say("PET SHOP: Your pack is full."); return; }
-        player_inventory[player_item_count - 1].weight = 0.0f;
+        player_inventory[player_item_count - 1].weight = FxI(0);
         gold_count -= f->price;
         RecalculateCarriedWeight();
         Say("PET SHOP: The %s is yours! %s", f->name, f->trait);
@@ -949,8 +949,8 @@ void DrawCrown(HDC hdc, int cx, int top, int w) {
 static void DrawDeitySymbol(HDC hdc, int cx, int cy, int r, int deity, COLORREF bg) {
     if (deity == 0) {
         for (int k = 0; k < 12; k++) {
-            double a = k * 3.14159265 / 6.0;
-            TwLine(hdc, cx, cy, cx + (int)(cos(a) * r * 1.6), cy + (int)(sin(a) * r * 1.6), r / 6 + 1, RGB(255, 220, 120));
+            fx a = k * FX_PI / 6;
+            TwLine(hdc, cx, cy, cx + FxTrunc(FxMul(FxCos(a) * r, FX(1.6))), cy + FxTrunc(FxMul(FxSin(a) * r, FX(1.6))), r / 6 + 1, RGB(255, 220, 120));
         }
         TwDisc(hdc, cx, cy, r, r, RGB(255, 236, 150));
     } else if (deity == 1) {
@@ -967,7 +967,7 @@ static void DrawDeitySymbol(HDC hdc, int cx, int cy, int r, int deity, COLORREF 
         for (int k = 0; k < 5; k++) {
             int x0 = cx - r + k * r / 2;
             for (int s = 0; s < 6; s++)
-                TwLine(hdc, x0 + (int)(sin(s * 0.9 + k) * r / 4), cy + s * r / 4, x0 + (int)(sin((s + 1) * 0.9 + k) * r / 4),
+                TwLine(hdc, x0 + FxTrunc(FxSin(s * FX(0.9) + FxI(k)) * r / 4), cy + s * r / 4, x0 + FxTrunc(FxSin((s + 1) * FX(0.9) + FxI(k)) * r / 4),
                        cy + (s + 1) * r / 4, r / 6 + 1, RGB(60, 170, 160));
         }
         TwDisc(hdc, cx, cy, r, r * 3 / 4, RGB(40, 120, 120));
@@ -1004,19 +1004,19 @@ static void DrawShelf(HDC hdc, int l, int r, int y, int seed) {
 
 // Pet-shop animals as flat-shaded side-view polygons with eye dots, matching
 // the low-poly look of the AFK view. Points are in figure units, feet at cy.
-static void PetPoly(HDC hdc, int cx, int cy, float s, const int *xy, int n, COLORREF c) {
+static void PetPoly(HDC hdc, int cx, int cy, fx s, const int *xy, int n, COLORREF c) {
     POINT p[12];
-    for (int i = 0; i < n && i < 12; i++) p[i] = (POINT){ cx + (int)(xy[2 * i] * s), cy + (int)(xy[2 * i + 1] * s) };
+    for (int i = 0; i < n && i < 12; i++) p[i] = (POINT){ cx + FxTrunc(xy[2 * i] * s), cy + FxTrunc(xy[2 * i + 1] * s) };
     HBRUSH b = CreateSolidBrush(c); HGDIOBJ ob = SelectObject(hdc, b), op = SelectObject(hdc, GetStockObject(NULL_PEN));
     Polygon(hdc, p, n);
     SelectObject(hdc, op); SelectObject(hdc, ob); DeleteObject(b);
 }
 
-static COLORREF PetDim(COLORREF c, float k) { return RGB((int)(GetRValue(c) * k), (int)(GetGValue(c) * k), (int)(GetBValue(c) * k)); }
+static COLORREF PetDim(COLORREF c, fx k) { return RGB(FxTrunc(GetRValue(c) * k), FxTrunc(GetGValue(c) * k), FxTrunc(GetBValue(c) * k)); }
 
 // kind 0 dog, 1 cat, 2 toad, 3 owl.
-static void DrawPetFigure(HDC hdc, int cx, int cy, float s, int kind, COLORREF c) {
-    COLORREF dark = PetDim(c, 0.7f), black = RGB(12, 10, 10);
+static void DrawPetFigure(HDC hdc, int cx, int cy, fx s, int kind, COLORREF c) {
+    COLORREF dark = PetDim(c, FX(0.7)), black = RGB(12, 10, 10);
     int blink = (GetTickCount() / 140 + kind * 7) % 30 == 0;
     if (kind <= 1) {
         static const int legs[4] = { -12, -7, 6, 11 };
@@ -1081,11 +1081,11 @@ void DrawInteriorBackdrop(HDC hdc, int menu) {
         POINT anvil[8] = { { 800, F - 120 }, { 990, F - 120 }, { 960, F - 95 }, { 930, F - 95 }, { 940, F - 40 },
                            { 980, F }, { 830, F }, { 860, F - 40 } };
         TwPoly(hdc, anvil, 8, RGB(60, 62, 70));
-        DrawZeldaStyleVillager(hdc, 700, F - 10, 6, 6.0f);
+        DrawZeldaStyleVillager(hdc, 700, F - 10, 6, FxI(6));
     } else if (menu == TM_CARDS) {
         DrawShelf(hdc, 400, 780, 230, 11); DrawShelf(hdc, 400, 780, 360, 12);
         const int kx = 60, ky = 120; // in front of the side wall, on the floor
-        DrawZeldaStyleVillager(hdc, 190 + kx, F - 146 + ky, 10, 4.8f); // the kid, seated behind his table
+        DrawZeldaStyleVillager(hdc, 190 + kx, F - 146 + ky, 10, FX(4.8)); // the kid, seated behind his table
         TwBox(hdc, 70 + kx, F - 110 + ky, 330 + kx, F - 92 + ky, RGB(120, 80, 50));
         TwBox(hdc, 90 + kx, F - 92 + ky, 104 + kx, F + ky, RGB(90, 60, 36)); TwBox(hdc, 296 + kx, F - 92 + ky, 310 + kx, F + ky, RGB(90, 60, 36));
         for (int k = 0; k < 4; k++) TwBox(hdc, 110 + kx + k * 46, F - 118 + ky, 140 + kx + k * 46, F - 110 + ky, k % 2 ? RGB(180, 40, 50) : RGB(240, 240, 230));
@@ -1094,18 +1094,18 @@ void DrawInteriorBackdrop(HDC hdc, int menu) {
             int x0 = 110 + k * 92, y0 = F + 20; // cages sit on the floor in front of the side wall
             TwBox(hdc, x0, y0, x0 + 84, y0 + 84, RGB(60, 50, 40));
             TwBox(hdc, x0 + 4, y0 + 4, x0 + 80, y0 + 80, RGB(70, 46, 28));
-            DrawPetFigure(hdc, x0 + 38, y0 + 76, 1.6f, k, k == 0 ? RGB(150, 100, 55) : k == 1 ? RGB(120, 120, 128) : RGB(70, 130, 60));
+            DrawPetFigure(hdc, x0 + 38, y0 + 76, FX(1.6), k, k == 0 ? RGB(150, 100, 55) : k == 1 ? RGB(120, 120, 128) : RGB(70, 130, 60));
             for (int x = x0 + 12; x < x0 + 84; x += 14) TwLine(hdc, x, y0, x, y0 + 84, 2, RGB(180, 170, 150));
         }
         TwLine(hdc, 1000, 380, 1080, 380, 6, RGB(90, 60, 30));
-        DrawPetFigure(hdc, 1040, 378, 1.4f, 3, RGB(150, 110, 70));
+        DrawPetFigure(hdc, 1040, 378, FX(1.4), 3, RGB(150, 110, 70));
     } else if (menu == TM_KING) {
         TwBox(hdc, 470, F, 650, H, RGB(150, 30, 40));
         TwBox(hdc, 150, 60, 230, 380, RGB(150, 30, 40)); TwBox(hdc, 182, 60, 198, 380, RGB(220, 180, 60));
         TwBox(hdc, 890, 330, 970, 600, RGB(150, 30, 40)); TwBox(hdc, 922, 330, 938, 600, RGB(220, 180, 60));
         TwBox(hdc, 480, 300, 640, F - 60, RGB(200, 160, 50));
         TwBox(hdc, 500, 320, 620, F - 70, RGB(140, 30, 40));
-        DrawZeldaStyleVillager(hdc, 560, F - 60, 1, 6.0f);
+        DrawZeldaStyleVillager(hdc, 560, F - 60, 1, FxI(6));
         DrawCrown(hdc, 560, F - 60 - 105, 18);
         TwBox(hdc, 470, F - 80, 650, F - 50, RGB(200, 160, 50));
         TwBox(hdc, 480, F - 50, 496, F, RGB(170, 130, 40)); TwBox(hdc, 624, F - 50, 640, F, RGB(170, 130, 40));
@@ -1113,8 +1113,8 @@ void DrawInteriorBackdrop(HDC hdc, int menu) {
         TwDisc(hdc, 220, 380, 130, 130, RGB(120, 120, 130));
         TwDisc(hdc, 220, 380, 112, 112, RGB(150, 150, 160));
         for (int k = 0; k < 6; k++) {
-            double a = k * 3.14159265 / 3.0;
-            TwLine(hdc, 220, 380, 220 + (int)(cos(a) * 70), 380 + (int)(sin(a) * 70), 8, RGB(90, 90, 100));
+            fx a = k * FX_PI / 3;
+            TwLine(hdc, 220, 380, 220 + FxTrunc(FxCos(a) * 70), 380 + FxTrunc(FxSin(a) * 70), 8, RGB(90, 90, 100));
         }
         TwDisc(hdc, 220, 380, 22, 22, RGB(200, 170, 60));
     } else if (menu == TM_ALTAR) {
@@ -1133,12 +1133,12 @@ void DrawInteriorBackdrop(HDC hdc, int menu) {
     }
     if (menu == TM_NONE || menu == TM_CARDS || menu == TM_PETS || menu == TM_BANK) {
         int look = menu == TM_NONE ? 3 : menu == TM_CARDS ? 8 : menu == TM_PETS ? 7 : 9;
-        DrawZeldaStyleVillager(hdc, 560, F - 125, look, 6.0f);
+        DrawZeldaStyleVillager(hdc, 560, F - 125, look, FxI(6));
         DrawCounter(hdc, 380, 760);
         if (menu == TM_BANK)
             for (int k = 0; k < 3; k++) for (int s = 0; s < 5; s++) TwDisc(hdc, 430 + k * 44, F - 136 - s * 6, 16, 5, RGB(230, 190, 60));
     }
-    DrawHeroAssetEx(hdc, 900, F + 40, 5.0f);
+    DrawHeroAssetEx(hdc, 900, F + 40, FxI(5));
 }
 
 static int KidTableVisible(void) {
@@ -1271,7 +1271,7 @@ void DrawTownMenu(HDC hdc) {
 // The familiar trots (or flies) behind the hero while awake; diurnal ones
 // sleep in the backpack 21:00-06:00 and nocturnal ones by day.
 void DrawFamiliar(HDC hdc) {
-    static float fx = -100.0f, fy = -100.0f;
+    static fx fxv = -FxI(100), fy = -FxI(100);
     static int was_asleep = -1;
     familiar_visible = 0;
     int slot = OwnedFamiliarSlot();
@@ -1283,51 +1283,51 @@ void DrawFamiliar(HDC hdc) {
         snprintf(arpg_action_log, sizeof(arpg_action_log), asleep ? "Your %s curls up in your pack to sleep." :
                  "Your %s wakes and climbs out of your pack.", familiars[k].name);
     // Asleep it curls up by a nearby campfire; with no fire it rides in the pack and adds a little weight.
-    int fire = asleep && !in_cave ? FindNearbyCampfire(4.0f) : -1;
-    float pack_w = asleep && fire < 0 ? 2.0f : 0.0f;
+    int fire = asleep && !in_cave ? FindNearbyCampfire(FxI(4)) : -1;
+    fx pack_w = asleep && fire < 0 ? FxI(2) : FxI(0);
     if (player_inventory[slot].weight != pack_w) { player_inventory[slot].weight = pack_w; RecalculateCarriedWeight(); }
     was_asleep = asleep;
     if (in_cave || (asleep && fire < 0)) return;
-    static int face = 1; static float prev_fx, prev_fy;
-    float tx = player_x - 0.9f, ty = player_y + 0.6f;
-    if (fire >= 0) { tx = campfires[fire].x + 0.9f; ty = campfires[fire].y + 0.4f; }
+    static int face = 1; static fx prev_fx, prev_fy;
+    fx tx = player_x - FX(0.9), ty = player_y + FX(0.6);
+    if (fire >= 0) { tx = campfires[fire].x + FX(0.9); ty = campfires[fire].y + FX(0.4); }
     else if (k <= 1 && AfkViewMs() >= 0 && (AfkViewMs() / 1000) % 15 < 5) {
         // AFK play: the dog chases a squirrel, the cat a butterfly or bird, then
         // trots back. It always stops just short, so it never catches one.
-        float best = 64.0f, px = 0.0f, py = 0.0f;
+        fx best = FxI(64), px = FxI(0), py = FxI(0);
         for (int i = 0; i < MAX_CRITTERS; i++) {
             CritterEntity *c = &critters[i];
             if (!c->active || c->hidden || c->type != (k == 0 ? 1 : 0)) continue;
-            float dx = c->x - fx, dy = c->y - fy;
-            if (dx * dx + dy * dy < best) { best = dx * dx + dy * dy; px = c->x; py = c->y; }
+            fx dx = c->x - fxv, dy = c->y - fy;
+            if (FxMul(dx, dx) + FxMul(dy, dy) < best) { best = FxMul(dx, dx) + FxMul(dy, dy); px = c->x; py = c->y; }
         }
-        if (k == 1 || best >= 64.0f) for (int i = 0; i < MAX_BUTTERFLIES; i++) { // dogs settle for sniffing at a butterfly
+        if (k == 1 || best >= FxI(64)) for (int i = 0; i < MAX_BUTTERFLIES; i++) { // dogs settle for sniffing at a butterfly
             if (!butterflies[i].active) continue;
-            float dx = butterflies[i].x - fx, dy = butterflies[i].y - fy;
-            if (dx * dx + dy * dy < best) { best = dx * dx + dy * dy; px = butterflies[i].x; py = butterflies[i].y; }
+            fx dx = butterflies[i].x - fxv, dy = butterflies[i].y - fy;
+            if (FxMul(dx, dx) + FxMul(dy, dy) < best) { best = FxMul(dx, dx) + FxMul(dy, dy); px = butterflies[i].x; py = butterflies[i].y; }
         }
-        if (best < 64.0f) { float d = sqrtf(best) + 0.001f; tx = px - (px - fx) / d * 1.2f; ty = py - (py - fy) / d * 1.2f; }
+        if (best < FxI(64)) { fx d = FxSqrt(best) + FX(0.001); tx = px - FxMul(FxDiv(px - fxv, d), FX(1.2)); ty = py - FxMul(FxDiv(py - fy, d), FX(1.2)); }
     }
     else if (k <= 1 && AfkViewMs() >= 0) { // between chases it wanders playfully around the hero
-        tx += sinf(GetTickCount() / 2300.0f) * 1.1f; ty += cosf(GetTickCount() / 3100.0f) * 0.8f;
+        tx += FxMul(FxSinTurn(GetTickCount() * (uint32_t)(4294967296.0 / (6.283185307 * 2300))), FX(1.1)); ty += FxMul(FxCosTurn(GetTickCount() * (uint32_t)(4294967296.0 / (6.283185307 * 3100))), FX(0.8));
     }
-    if (fabsf(fx - tx) > 10.0f || fabsf(fy - ty) > 10.0f) { fx = tx; fy = ty; }
-    fx += (tx - fx) * 0.05f; fy += (ty - fy) * 0.05f;
-    float mv = (fx - prev_fx) - (fy - prev_fy); // screen-x direction of travel
-    if (fabsf(mv) > 0.003f) face = mv > 0.0f ? 1 : -1;
+    if (FxAbs(fxv - tx) > FxI(10) || FxAbs(fy - ty) > FxI(10)) { fxv = tx; fy = ty; }
+    fxv += FxMul(tx - fxv, FX(0.05)); fy += FxMul(ty - fy, FX(0.05));
+    fx mv = (fxv - prev_fx) - (fy - prev_fy); // screen-x direction of travel
+    if (FxAbs(mv) > FX(0.003)) face = mv > FxI(0) ? 1 : -1;
     else face = (player_facing == FACE_LEFT || player_facing == FACE_UP) ? -1 : 1;
-    prev_fx = fx; prev_fy = fy;
-    familiar_world_x = fx; familiar_world_y = fy; familiar_visible = k + 1;
-    int sx, sy; GetIsoCoords(fx, fy, &sx, &sy);
+    prev_fx = fxv; prev_fy = fy;
+    familiar_world_x = fxv; familiar_world_y = fy; familiar_visible = k + 1;
+    int sx, sy; GetIsoCoords(fxv, fy, &sx, &sy);
     DWORD t = GetTickCount();
-    int bob = (int)(sin(t / 180.0) * 3.0);
+    int bob = FxTrunc(FxSinTurn(t * (uint32_t)(4294967296.0 / (6.283185307 * 180))) * 3);
     if (k <= 1) { // dog or cat, faced the way it is going, in the size and coat picked at the pet shop
         static const COLORREF coats[2][4] = { { RGB(150, 100, 55), RGB(40, 35, 30), RGB(235, 230, 220), RGB(205, 160, 80) },
                                               { RGB(120, 120, 128), RGB(220, 130, 50), RGB(35, 35, 40), RGB(240, 240, 240) } };
         COLORREF body = coats[k][familiar_color & 3];
-        float S = familiar_size == 0 ? 0.75f : familiar_size == 2 ? 1.3f : 1.0f;
+        fx S = familiar_size == 0 ? FX(0.75) : familiar_size == 2 ? FX(1.3) : FxI(1);
         int m = face;
-#define FS(v) ((int)((v) * S))
+#define FS(v) FxTrunc((v) * S)
         if (fire >= 0) { // curled up asleep by the fire
             TwDisc(hdc, sx, sy - FS(5), FS(11), FS(5), body); TwDisc(hdc, sx + m * FS(9), sy - FS(6), FS(5), FS(4), body);
             return;
@@ -1357,7 +1357,7 @@ void DrawFamiliar(HDC hdc) {
 }
 
 // --- Storage chests ----------------------------------------------------------
-float familiar_world_x, familiar_world_y;
+fx familiar_world_x, familiar_world_y;
 int familiar_visible; // familiar index + 1 while it is out walking, else 0
 
 StashChest chests[MAX_CHESTS];
@@ -1371,9 +1371,9 @@ void BuildChest(void) {
     for (int i = 0; i < MAX_CHESTS && slot < 0; i++) if (!chests[i].active) slot = i;
     if (slot < 0) { strcpy(arpg_action_log, "CHEST: You already have 8 chests out in the world."); return; }
     ConsumeMaterialFromInventory("Wood", 4); RecalculateCarriedWeight();
-    float x = player_x, y = player_y;
-    if (player_facing == FACE_UP) y -= 1.0f; else if (player_facing == FACE_DOWN) y += 1.0f;
-    else if (player_facing == FACE_LEFT) x -= 1.0f; else x += 1.0f;
+    fx x = player_x, y = player_y;
+    if (player_facing == FACE_UP) y -= FxI(1); else if (player_facing == FACE_DOWN) y += FxI(1);
+    else if (player_facing == FACE_LEFT) x -= FxI(1); else x += FxI(1);
     memset(&chests[slot], 0, sizeof(chests[slot]));
     chests[slot].active = 1; chests[slot].screen_id = current_screen_index; chests[slot].x = x; chests[slot].y = y;
     chests[slot].last_day = ChestDay();
@@ -1385,7 +1385,7 @@ void BuildChest(void) {
 int OpenNearbyChest(void) {
     CheckChestBreakIns();
     for (int i = 0; i < MAX_CHESTS; i++) {
-        if (!chests[i].active || chests[i].screen_id != current_screen_index || !IsNearPoint(chests[i].x, chests[i].y, 1.3f)) continue;
+        if (!chests[i].active || chests[i].screen_id != current_screen_index || !IsNearPoint(chests[i].x, chests[i].y, FX(1.3))) continue;
         open_chest = i; OpenTownMenu(TM_CHEST);
         return 1;
     }
@@ -1482,8 +1482,8 @@ int WellSpot(int *tx, int *ty) {
         for (int k = 0; k < 24 && well_tx < 0; k++) {
             int x = 13 + (k % 6), y = 20 + k / 6, clear = VISUAL_MAP[y][x] == 0 && VISUAL_MAP[y][x + 1] == 0;
             for (int n = 0; n < village_npc_count && clear; n++) {
-                float dx = village_npcs[n].home_x - x, dy = village_npcs[n].home_y - y;
-                clear = dx * dx + dy * dy >= 9.0f;
+                fx dx = village_npcs[n].home_x - FxI(x), dy = village_npcs[n].home_y - FxI(y);
+                clear = FxMul(dx, dx) + FxMul(dy, dy) >= FxI(9);
             }
             if (clear) { well_tx = x; well_ty = y; }
         }
@@ -1496,7 +1496,7 @@ int WellSpot(int *tx, int *ty) {
 void DrawWishingWell(HDC hdc) {
     int tx, ty, sx, sy;
     if (!WellSpot(&tx, &ty)) return;
-    GetIsoCoords(tx + 0.5f, ty + 0.5f, &sx, &sy);
+    GetIsoCoords(tx + FX(0.5), ty + FX(0.5), &sx, &sy);
     TwDisc(hdc, sx, sy, 20, 9, RGB(110, 108, 104));
     TwBox(hdc, sx - 20, sy - 14, sx + 20, sy, RGB(130, 126, 120));
     TwDisc(hdc, sx, sy - 14, 20, 9, RGB(150, 146, 140));
@@ -1512,14 +1512,14 @@ void DrawWishingWell(HDC hdc) {
 int TryWishingWell(void) {
     int tx, ty;
     if (!WellSpot(&tx, &ty)) return 0;
-    float dx = tx + 0.5f - player_x, dy = ty + 0.5f - player_y;
-    if (dx * dx + dy * dy > 2.2f * 2.2f) return 0;
+    fx dx = FxI(tx) + FX(0.5) - player_x, dy = FxI(ty) + FX(0.5) - player_y;
+    if (FxMul(dx, dx) + FxMul(dy, dy) > FX(2.2 * 2.2)) return 0;
     int day = GameDayOfYear();
     if (well_day == day) { strcpy(arpg_action_log, "WISHING WELL: You've made today's wish. Come back tomorrow."); return 1; }
     if (gold_count < 10) { strcpy(arpg_action_log, "WISHING WELL: A wish costs 10 gold."); return 1; }
     gold_count -= 10; well_day = day;
     Bless(0);
-    player_hp += 2.0f; if (player_hp > max_player_hp) player_hp = max_player_hp;
+    player_hp += FxI(2); if (player_hp > max_player_hp) player_hp = max_player_hp;
     strcpy(arpg_action_log, "WISHING WELL: The coin plinks into the dark. You feel lucky: +25% damage for 5 minutes.");
     return 1;
 }

@@ -5,14 +5,14 @@ static void PenLine(HDC hdc, int w, COLORREF c, int x1, int y1, int x2, int y2);
 // The hero's facing as one of 8 screen directions: 0 S (toward you), 1 SW, 2 W,
 // 3 NW, 4 N (away), 5 NE, 6 E, 7 SE. Same screen vector the slash uses.
 int HeroDir8(void) {
-    float vx = facing_x - facing_y, vy = (facing_x + facing_y) * 0.5f;
-    int i = (int)floorf((float)atan2(vx, vy) / 0.785398f + 0.5f);
+    fx vx = facing_x - facing_y, vy = (facing_x + facing_y) / 2;
+    int i = FxFloor(FxDiv(FxAtan2(vx, vy), FX(0.785398)) + FX(0.5));
     static const int from_octant[9] = { 4, 3, 2, 1, 0, 7, 6, 5, 4 };
     if (i < -4) i = -4;
     if (i > 4) i = 4;
     return from_octant[i + 4];
 }
-static void Dir8Vec(int d, float *vx, float *vy) { float a = -d * 0.785398f; *vx = sinf(a); *vy = cosf(a); }
+static void Dir8Vec(int d, fx *vx, fx *vy) { fx a = -d * FX(0.785398); *vx = FxSin(a); *vy = FxCos(a); }
 
 // Hand-drawn hero sprites: sprites/hero_<dir>.bmp, magenta = see-through.
 // A missing east-side picture is mirrored from its west-side twin.
@@ -43,7 +43,7 @@ static void LoadHeroSprites(void) {
     }
 }
 // Draws the sprite for this direction with the feet on the shadow; 0 if there is none.
-static int DrawHeroSprite(HDC hdc, int sx, int sy, float scale, int dir) {
+static int DrawHeroSprite(HDC hdc, int sx, int sy, fx scale, int dir) {
     if (!hero_spr_loaded) LoadHeroSprites();
     if (!hero_spr[dir] || hero_spr_h[dir] <= 0) return 0;
     int h = (int)(36 * scale), w = hero_spr_w[dir] * h / hero_spr_h[dir];
@@ -53,30 +53,30 @@ static int DrawHeroSprite(HDC hdc, int sx, int sy, float scale, int dir) {
     return 1;
 }
 
-void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) {
+void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, fx override_scale) {
     int sx = render_x; int sy = render_y;
-    float scale = override_scale;
+    fx scale = override_scale;
     
-    if (override_scale == 1.0f) {
-        if (selected_race == RACE_ELF) scale = 1.15f;
-        else if (selected_race == RACE_HUMAN) scale = 1.0f;
-        else if (selected_race == RACE_DWARF) scale = 0.80f;
-        else if (selected_race == RACE_HALFLING) scale = 0.70f;
-        else if (selected_race == RACE_GNOME) scale = 0.58f;
+    if (override_scale == FxI(1)) {
+        if (selected_race == RACE_ELF) scale = FX(1.15);
+        else if (selected_race == RACE_HUMAN) scale = FxI(1);
+        else if (selected_race == RACE_DWARF) scale = FX(0.80);
+        else if (selected_race == RACE_HALFLING) scale = FX(0.70);
+        else if (selected_race == RACE_GNOME) scale = FX(0.58);
     }
 
-    int bob = (is_running && override_scale == 1.0f) ? (int)(sin(run_bob * 1.2f) * 1.5f) : 0; sy += bob;
+    int bob = (is_running && override_scale == FxI(1)) ? FxTrunc(FxMul(FxSinTurn(FxTurn64(((int64_t)run_bob * FX(1.2)) >> 16)), FX(1.5))) : 0; sy += bob;
     
     HBRUSH shadow_b = CreateSolidBrush(RGB(15, 20, 26)); HGDIOBJ old = SelectObject(hdc, shadow_b); 
-    { float ox, oy; SunShadowOffset(&ox, &oy); // the shadow stretches away from the sun or moon
+    { fx ox, oy; SunShadowOffset(&ox, &oy); // the shadow stretches away from the sun or moon
       int lx = (int)(ox * 12 * scale), ly = (int)(oy * 4 * scale);
       Ellipse(hdc, sx - (int)(10 * scale) + (lx < 0 ? lx : 0), sy + (int)(14 * scale), sx + (int)(10 * scale) + (lx > 0 ? lx : 0), sy + (int)(22 * scale) + ly); } SelectObject(hdc, old); DeleteObject(shadow_b);
 
     // Menus and portraits show the hero facing you; in play the 8-way facing.
-    int dir = override_scale == 1.0f ? HeroDir8() : 0;
+    int dir = override_scale == FxI(1) ? HeroDir8() : 0;
     int back = dir >= 3 && dir <= 5, side = (dir >= 1 && dir <= 3) ? -1 : dir >= 5 ? 1 : 0, profile = dir == 2 || dir == 6;
     int bl = side < 0 || (side == 0 && back); // weapon/bow held on the left of the picture
-    float wvx, wvy; Dir8Vec(dir, &wvx, &wvy);
+    fx wvx, wvy; Dir8Vec(dir, &wvx, &wvy);
     int spr = DrawHeroSprite(hdc, sx, sy, scale, dir);
 
     COLORREF body_color = RGB(245, 225, 195);
@@ -90,7 +90,7 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         hat_color = RGB(GetRValue(body_color) * 3 / 4, GetGValue(body_color) * 3 / 4, GetBValue(body_color) * 3 / 4);
     }
     COLORREF trim = HeroTrimColor();
-    int trim_w = scale >= 1.5f ? 2 : 1;
+    int trim_w = scale >= FX(1.5) ? 2 : 1;
     // Worn clothes replace the class colours; a Cloth Hood hides the face like the necromancer's.
     const char *head_wear = WornItem("Head"), *clothes = WornItem("Clothes"), *cloak = WornItem("Cloak");
     int hooded = head_wear ? strcmp(head_wear, "Cloth Hood") == 0 : selected_class == CLASS_NECROMANCER;
@@ -175,14 +175,14 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         SelectObject(hdc, prev_p); DeleteObject(p);
     } else if (shown_weapon == WEAPON_SPEAR) {
         // Iso screen direction of the facing; the thrust pushes the spear out.
-        float fx = wvx * 1.3f, fy = wvy * 1.3f;
+        fx spx = FxMul(wvx, FX(1.3)), spy = FxMul(wvy, FX(1.3));
         int len = sword_swipe_frame > 0 ? (melee_combo_step == 2 ? 44 : 32) : 20;
-        int bx = sx - (int)(fx * 6), by = sy + 8 - (int)(fy * 3);
-        int tx = bx + (int)(fx * len), ty = by + (int)(fy * len / 2);
+        int bx = sx - FxTrunc(spx * 6), by = sy + 8 - FxTrunc(spy * 3);
+        int tx = bx + FxTrunc(spx * len), ty = by + FxTrunc(spy * len / 2);
         HPEN shaft = CreatePen(PS_SOLID, 2, RGB(150, 110, 70)); HGDIOBJ prev_p = SelectObject(hdc, shaft);
         MoveToEx(hdc, bx, by, NULL); LineTo(hdc, tx, ty);
         HPEN tip = CreatePen(PS_SOLID, 3, RGB(210, 215, 225)); SelectObject(hdc, tip);
-        MoveToEx(hdc, tx, ty, NULL); LineTo(hdc, tx + (int)(fx * 5), ty + (int)(fy * 3));
+        MoveToEx(hdc, tx, ty, NULL); LineTo(hdc, tx + FxTrunc(spx * 5), ty + FxTrunc(spy * 3));
         SelectObject(hdc, prev_p); DeleteObject(shaft); DeleteObject(tip);
     } else {
         HPEN wood_pen = CreatePen(PS_SOLID, 2, RGB(235, 175, 45)); HGDIOBJ prev_wood_p = SelectObject(hdc, wood_pen);
@@ -232,7 +232,7 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         SelectObject(hdc, chin); Ellipse(hdc, sx - HS(3), sy + HS(1), sx + HS(3) + 1, sy + HS(6));
         COLORREF ec = HeroEyeColor(), glow = RGB((GetRValue(ec) + 255) / 2, (GetGValue(ec) + 255) / 2, (GetBValue(ec) + 255) / 2);
         HBRUSH halo = CreateSolidBrush(RGB(GetRValue(ec) / 2, GetGValue(ec) / 2, GetBValue(ec) / 2)), eyes = CreateSolidBrush(glow);
-        int ew = scale >= 1.5f ? 2 : 1, ey = sy - HS(1);
+        int ew = scale >= FX(1.5) ? 2 : 1, ey = sy - HS(1);
         for (int eside = -1; eside <= 1; eside += 2) { // two glowing points in the shadow, one in profile
             if (profile && eside != side) continue;
             int ex = sx + eside * HS(2);
@@ -286,7 +286,7 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
         if (side >= 0 || !profile) Polygon(hdc, hl, 3); // in profile only the far lock shows
         if (side <= 0 || !profile) Polygon(hdc, hr, 3);
         HBRUSH eye_b = CreateSolidBrush(HeroEyeColor()); SelectObject(hdc, eye_b);
-        int ew = scale >= 1.5f ? 2 : 1, ey = sy + (int)(3 * scale);
+        int ew = scale >= FX(1.5) ? 2 : 1, ey = sy + FxTrunc(3 * scale);
         if (back) { // the back of the head: hair, no face
             SelectObject(hdc, hair_b);
             Ellipse(hdc, sx - (int)(7 * scale), sy + (int)(1 * scale), sx + (int)(7 * scale), sy + (int)((hair_len - 1) * scale));
@@ -313,8 +313,8 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
     }
 
     // Distinct charging ring on hero indicates bow is held and charging; projectile is only released post-release
-    if (is_charging_bow && override_scale == 1.0f) {
-        int ring_r = 4 + (int)(bow_charge_time * 12.0f);
+    if (is_charging_bow && override_scale == FxI(1)) {
+        int ring_r = 4 + FxTrunc(bow_charge_time * 12);
         HPEN chg_p = CreatePen(PS_SOLID, 2, RGB(255, 215, 0)); HGDIOBJ prev_chg_p = SelectObject(hdc, chg_p);
         HGDIOBJ null_b = GetStockObject(NULL_BRUSH); HGDIOBJ prev_null_b = SelectObject(hdc, null_b);
         Ellipse(hdc, sx - ring_r, sy - ring_r, sx + ring_r, sy + ring_r);
@@ -328,8 +328,8 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale) 
 
 void DrawHeroAsset(HDC hdc) {
     int sx, sy; GetIsoCoords(player_x, player_y, &sx, &sy);
-    if (hero_hop_frame > 0) sy -= (int)HeroHopHeight(); // hop arc (double jump climbs higher)
-    DrawHeroAssetEx(hdc, sx, sy, 1.0f);
+    if (hero_hop_frame > 0) sy -= FxTrunc(HeroHopHeight()); // hop arc (double jump climbs higher)
+    DrawHeroAssetEx(hdc, sx, sy, FxI(1));
     if (!in_cave && inside_home < 0 && VISUAL_MAP[(int)player_y][(int)player_x] == 12) {
         GetIsoCoords(player_x, player_y, &sx, &sy);
         DrawHeroBoat(hdc, sx, sy);
@@ -339,9 +339,9 @@ void DrawHeroAsset(HDC hdc) {
 void DrawFlyingArrow(HDC hdc) {
     // Projectile arrow is only drawn in flight post-release while player_arrow.active is 1
     if (!player_arrow.active) return;
-    int sx, sy; GetIsoCoords(player_arrow.x, player_arrow.y, &sx, &sy); sy -= (int)player_arrow.z;
-    float angle = (float)atan2(player_arrow.vy, player_arrow.vx);
-    float cos_a = (float)cos(angle), sin_a = (float)sin(angle);
+    int sx, sy; GetIsoCoords(player_arrow.x, player_arrow.y, &sx, &sy); sy -= FxTrunc(player_arrow.z);
+    fx angle = FxAtan2(player_arrow.vy, player_arrow.vx);
+    fx cos_a = FxCos(angle), sin_a = FxSin(angle);
     POINT tip = { sx + (int)(8 * cos_a), sy + (int)(8 * sin_a) };
     POINT base_l = { sx - (int)(4 * cos_a - 3 * sin_a), sy - (int)(4 * sin_a + 3 * cos_a) };
     POINT base_r = { sx - (int)(4 * cos_a + 3 * sin_a), sy - (int)(4 * sin_a - 3 * cos_a) };
@@ -356,7 +356,7 @@ void DrawFlyingArrow(HDC hdc) {
 void DrawFlyingSpear(HDC hdc) {
     if (!thrown_spear.active) return;
     int sx, sy; GetIsoCoords(thrown_spear.x, thrown_spear.y, &sx, &sy); sy -= (int)thrown_spear.z;
-    int ex, ey; GetIsoCoords(thrown_spear.x - thrown_spear.vx * 3.0f, thrown_spear.y - thrown_spear.vy * 3.0f, &ex, &ey); ey -= (int)thrown_spear.z;
+    int ex, ey; GetIsoCoords(thrown_spear.x - thrown_spear.vx * 3, thrown_spear.y - thrown_spear.vy * 3, &ex, &ey); ey -= FxTrunc(thrown_spear.z);
     HPEN shaft = CreatePen(PS_SOLID, 2, RGB(150, 110, 70)); HGDIOBJ old_p = SelectObject(hdc, shaft);
     MoveToEx(hdc, ex, ey, NULL); LineTo(hdc, sx, sy);
     HPEN tip = CreatePen(PS_SOLID, 3, RGB(210, 215, 225)); SelectObject(hdc, tip);
@@ -416,7 +416,7 @@ void DrawButterflies(HDC hdc) {
     for (int i = 0; i < MAX_BUTTERFLIES; i++) {
         if (!butterflies[i].active) continue;
         int sx, sy; GetIsoCoords(butterflies[i].x, butterflies[i].y, &sx, &sy); sy -= (int)butterflies[i].z;
-        int wing_flap = (int)(sin(butterflies[i].timer * 8.0f) * 2.0f);
+        int wing_flap = FxTrunc(FxSinTurn(FxTurn64((int64_t)butterflies[i].timer * 8)) * 2);
         COLORREF c = (butterflies[i].color_profile == 1) ? RGB(255, 110, 20) : ((butterflies[i].color_profile == 2) ? RGB(30, 140, 255) : RGB(245, 220, 50));
         HBRUSH b = CreateSolidBrush(c); RECT r_l = {sx - 3, sy - 2 - wing_flap, sx, sy + 1}, r_r = {sx, sy - 2 - wing_flap, sx + 3, sy + 1};
         FillRect(hdc, &r_l, b); FillRect(hdc, &r_r, b); DeleteObject(b);
@@ -439,9 +439,9 @@ void DrawBloodMistFX(HDC hdc) {
 // reads as two halves. face_dir (-1/1) is the way the arms reach when
 // arms_out is set; otherwise they hang. Every so often one foot drags behind.
 void DrawZombieBody(HDC hdc, int sx, int sy, int seed, int face_dir, int arms_out, COLORREF head_color) {
-    int phase = ((int)(world_tick * 1.5f) + seed) & 63;
-    int step = (int)(sin(phase * 6.2831853f / 64.0f) * 3.0f);
-    int dragging = (((int)(world_tick * 0.5f) + seed) % 50) < 14;
+    int phase = (FxMulI(world_tick, FX(1.5)) + seed) & 63;
+    int step = FxTrunc(FxSinTurn((uint32_t)phase << 26) * 3);
+    int dragging = ((FxMulI(world_tick, FX(0.5)) + seed) % 50) < 14;
 
     int lfx = sx - 3 + (dragging ? 0 : step), lfy = sy + 18;
     int rfx = dragging ? sx + 3 - face_dir * 7 : sx + 3 - step, rfy = dragging ? sy + 19 : sy + 18;
@@ -473,7 +473,7 @@ void DrawZombieBody(HDC hdc, int sx, int sy, int seed, int face_dir, int arms_ou
     HPEN arm_pen = CreatePen(PS_SOLID, 3, RGB(200, 200, 190)); prev = SelectObject(hdc, arm_pen);
     int hx1, hy1, hx2, hy2;
     if (arms_out) {
-        int bob = (int)(sin(world_tick * 3.0f + seed) * 1.5f);
+        int bob = FxTrunc(FxMul(FxSinTurn(FxTurn64((int64_t)world_tick * 3 + (int64_t)seed * FX_ONE)), FX(1.5)));
         hx1 = sx - 4 + face_dir * 14; hy1 = sy - 7 + bob;
         hx2 = sx + 4 + face_dir * 14; hy2 = sy - 5 + bob;
         MoveToEx(hdc, sx - 4, sy - 8, NULL); LineTo(hdc, hx1, hy1);
@@ -508,7 +508,7 @@ static void BrushPoly(HDC hdc, COLORREF c, POINT *pts, int n) {
 
 // Small, quick green goblin with big ears and a rusty dagger.
 static void DrawGoblin(HDC hdc, int sx, int sy, int face_dir) {
-    int step = (int)(sin(world_tick * 9.0f) * 2.0f);
+    int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 9)) * 2);
     COLORREF skin = RGB(95, 160, 70);
     PenLine(hdc, 2, RGB(70, 110, 50), sx - 2, sy + 12, sx - 2 + step, sy + 19);
     PenLine(hdc, 2, RGB(70, 110, 50), sx + 2, sy + 12, sx + 2 - step, sy + 19);
@@ -526,7 +526,7 @@ static void DrawGoblin(HDC hdc, int sx, int sy, int face_dir) {
 
 // Pan-style satyr cultist: goat legs with hooves, horns, red cult sash and a spear.
 static void DrawSatyr(HDC hdc, int sx, int sy, int face_dir) {
-    int step = (int)(sin(world_tick * 7.0f) * 2.0f);
+    int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 7)) * 2);
     COLORREF fur = RGB(105, 75, 50), skin = RGB(205, 160, 120);
     for (int side = -1; side <= 1; side += 2) {
         int hip = sx + side * 3, foot = hip + side * step;
@@ -557,7 +557,7 @@ static void DrawSatyr(HDC hdc, int sx, int sy, int face_dir) {
 
 // Mythic beasts are drawn roughly twice the size of ordinary monsters.
 static void DrawApeBeast(HDC hdc, int sx, int sy, int face_dir, COLORREF fur, COLORREF face) {
-    int step = (int)(sin(world_tick * 4.0f) * 3.0f);
+    int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 4)) * 3);
     PenLine(hdc, 7, fur, sx - 6, sy + 6, sx - 6 + step, sy + 20);
     PenLine(hdc, 7, fur, sx + 6, sy + 6, sx + 6 - step, sy + 20);
     BrushEllipse(hdc, fur, sx - 14, sy - 24, sx + 14, sy + 10);
@@ -572,7 +572,7 @@ static void DrawApeBeast(HDC hdc, int sx, int sy, int face_dir, COLORREF fur, CO
 
 static void DrawSphinx(HDC hdc, int sx, int sy, int face_dir) {
     COLORREF lion = RGB(200, 165, 100), skin = RGB(205, 165, 110), blue = RGB(40, 70, 160), gold = RGB(235, 195, 60);
-    int step = (int)(sin(world_tick * 4.0f) * 3.0f);
+    int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 4)) * 3);
     PenLine(hdc, 4, lion, sx - 12, sy + 2, sx - 12 + step, sy + 16);
     PenLine(hdc, 4, lion, sx - 6, sy + 2, sx - 6 - step, sy + 16);
     PenLine(hdc, 4, lion, sx + 6, sy + 2, sx + 6 + step, sy + 16);
@@ -592,7 +592,7 @@ static void DrawSphinx(HDC hdc, int sx, int sy, int face_dir) {
 
 static void DrawBunyip(HDC hdc, int sx, int sy, int face_dir) {
     COLORREF hide = RGB(60, 70, 45);
-    int step = (int)(sin(world_tick * 3.0f) * 2.0f);
+    int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 3)) * 2);
     PenLine(hdc, 5, hide, sx - 11, sy + 2, sx - 11 + step, sy + 13);
     PenLine(hdc, 5, hide, sx - 4, sy + 2, sx - 4 - step, sy + 13);
     PenLine(hdc, 5, hide, sx + 4, sy + 2, sx + 4 + step, sy + 13);
@@ -625,7 +625,7 @@ void DrawEnemiesAtTile(HDC hdc, int c, int r) {
     StoreEnemy();
     int keep = current_enemy;
     for (int i = 0; i < MAX_ENEMIES; i++) {
-        if (enemies[i].hearts <= 0.0f || (int)enemies[i].x != c || (int)enemies[i].y != r) continue;
+        if (enemies[i].hearts <= FxI(0) || (int)enemies[i].x != c || (int)enemies[i].y != r) continue;
         SelectEnemy(i); DrawDynamicEnemy(hdc);
     }
     SelectEnemy(keep);
@@ -634,9 +634,9 @@ void DrawEnemiesAtTile(HDC hdc, int c, int r) {
 static void DrawSummonedSkeleton(HDC hdc, int sx, int sy, int face_dir);
 
 // Scales everything drawn until EndScaledDraw by k about (sx, sy).
-int BeginScaledDraw(HDC hdc, int sx, int sy, float k) {
+int BeginScaledDraw(HDC hdc, int sx, int sy, fx k) {
     int old_mode = SetGraphicsMode(hdc, GM_ADVANCED);
-    XFORM sc = { k, 0.0f, 0.0f, k, sx * (1.0f - k), sy * (1.0f - k) };
+    XFORM sc = { FxToF(k), 0.0f, 0.0f, FxToF(k), FxToF(sx * (FxI(1) - k)), FxToF(sy * (FxI(1) - k)) }; // GDI takes FLOATs
     ModifyWorldTransform(hdc, &sc, MWT_LEFTMULTIPLY);
     return old_mode;
 }
@@ -648,69 +648,69 @@ void EndScaledDraw(HDC hdc, int old_mode) {
 
 // Risen dead were once people of every race, so each one stands as tall as
 // the race it was (elf, human, dwarf, halfling or gnome).
-static float UndeadRaceScale(int seed) {
-    static const float heights[5] = { 1.95f, 1.82f, 1.42f, 1.15f, 0.98f };
-    float k = heights[(unsigned int)RainHash(seed) % 5u] / 1.82f;
-    return k < 0.55f ? 0.55f : k;
+static fx UndeadRaceScale(int seed) {
+    static const fx heights[5] = { FX(1.95), FX(1.82), FX(1.42), FX(1.15), FX(0.98) };
+    fx k = FxDiv(heights[(unsigned int)RainHash(seed) % 5u], FX(1.82));
+    return k < FX(0.55) ? FX(0.55) : k;
 }
 
 // The attacking arm: raised behind the shoulder, then brought down and
 // forward, with the monster's weapon (club, sword, spear or claws) and a
 // faint swoosh on the follow-through.
-static void DrawEnemySwing(HDC hdc, int sx, int sy, int dir, float p) {
-    float big = IS_MYTHIC_MONSTER(active_monster) ? 2.0f : 1.0f, a = -2.0f + p * 2.7f;
+static void DrawEnemySwing(HDC hdc, int sx, int sy, int dir, fx p) {
+    int big = IS_MYTHIC_MONSTER(active_monster) ? 2 : 1; fx a = -FxI(2) + FxMul(p, FX(2.7));
     if (active_monster == MONSTER_BIGFOOT || active_monster == MONSTER_YETI) { // a heavy overarm swipe from the shoulder, ending in a fist
         COLORREF fur = active_monster == MONSTER_YETI ? RGB(235, 240, 248) : RGB(105, 70, 40);
         int ax = sx + dir * 12, ay = sy - 16;
-        int ex = ax + (int)(dir * cosf(a) * 14), ey = ay + (int)(sinf(a) * 14);
-        int fx = ex + (int)(dir * cosf(a + 0.5f) * 12), fy = ey + (int)(sinf(a + 0.5f) * 12);
-        PenLine(hdc, 7, fur, ax, ay, ex, ey); PenLine(hdc, 6, fur, ex, ey, fx, fy);
-        BrushEllipse(hdc, fur, fx - 5, fy - 5, fx + 5, fy + 5);
-        if (p > 0.45f && p < 0.95f) PenLine(hdc, 1, RGB(230, 235, 245), ax + (int)(dir * cosf(a - 0.9f) * 30), ay + (int)(sinf(a - 0.9f) * 30), fx, fy);
+        int ex = ax + FxTrunc(dir * FxCos(a) * 14), ey = ay + FxTrunc(FxSin(a) * 14);
+        int fpx = ex + FxTrunc(dir * FxCos(a + FX(0.5)) * 12), fy = ey + FxTrunc(FxSin(a + FX(0.5)) * 12);
+        PenLine(hdc, 7, fur, ax, ay, ex, ey); PenLine(hdc, 6, fur, ex, ey, fpx, fy);
+        BrushEllipse(hdc, fur, fpx - 5, fy - 5, fpx + 5, fy + 5);
+        if (p > FX(0.45) && p < FX(0.95)) PenLine(hdc, 1, RGB(230, 235, 245), ax + FxTrunc(dir * FxCos(a - FX(0.9)) * 30), ay + FxTrunc(FxSin(a - FX(0.9)) * 30), fpx, fy);
         return;
     }
-    int shx = sx + dir * (int)(3 * big), shy = sy + (int)(2 * big) - (big > 1.0f ? 18 : 0);
-    int hx = shx + (int)(dir * cosf(a) * 9 * big), hy = shy + (int)(sinf(a) * 9 * big);
+    int shx = sx + dir * 3 * big, shy = sy + 2 * big - (big > 1 ? 18 : 0);
+    int hx = shx + FxTrunc(dir * FxCos(a) * 9 * big), hy = shy + FxTrunc(FxSin(a) * 9 * big);
     COLORREF arm = active_monster == MONSTER_ZOMBIE ? RGB(150, 175, 135) : active_monster == MONSTER_GOBLIN ? RGB(90, 140, 60) :
                    active_monster == MONSTER_SKELLY ? RGB(225, 225, 215) : active_monster == MONSTER_SATYR ? RGB(185, 140, 100) : RGB(120, 110, 125);
     PenLine(hdc, (int)(3 * big), arm, shx, shy, hx, hy);
-    int wx = hx + (int)(dir * cosf(a) * 14 * big), wy = hy + (int)(sinf(a) * 14 * big);
+    int wx = hx + FxTrunc(dir * FxCos(a) * 14 * big), wy = hy + FxTrunc(FxSin(a) * 14 * big);
     if (active_monster == MONSTER_GOBLIN) PenLine(hdc, (int)(4 * big), RGB(110, 75, 40), hx, hy, hx + (wx - hx) * 4 / 5, hy + (wy - hy) * 4 / 5);
     else if (active_monster == MONSTER_SKELLY) PenLine(hdc, 2, RGB(200, 205, 215), hx, hy, wx, wy);
     else if (active_monster == MONSTER_SATYR) PenLine(hdc, 2, RGB(130, 95, 55), hx - (wx - hx) / 3, hy - (wy - hy) / 3, wx + (wx - hx) / 3, wy + (wy - hy) / 3);
     else for (int c = -1; c <= 1; c++) // claws
-        PenLine(hdc, 1, RGB(235, 230, 210), hx, hy, hx + (int)(dir * cosf(a + c * 0.35f) * 6 * big), hy + (int)(sinf(a + c * 0.35f) * 6 * big));
-    if (p > 0.45f && p < 0.95f) { // swoosh
-        float a0 = a - 0.9f;
-        int ox = shx + (int)(dir * cosf(a0) * 20 * big), oy = shy + (int)(sinf(a0) * 20 * big);
+        PenLine(hdc, 1, RGB(235, 230, 210), hx, hy, hx + FxTrunc(dir * FxCos(a + c * FX(0.35)) * 6 * big), hy + FxTrunc(FxSin(a + c * FX(0.35)) * 6 * big));
+    if (p > FX(0.45) && p < FX(0.95)) { // swoosh
+        fx a0 = a - FX(0.9);
+        int ox = shx + FxTrunc(dir * FxCos(a0) * 20 * big), oy = shy + FxTrunc(FxSin(a0) * 20 * big);
         PenLine(hdc, 1, RGB(230, 235, 245), ox, oy, wx, wy);
     }
 }
 
 void DrawDynamicEnemy(HDC hdc) {
-    if (enemy_hearts <= 0.0f) return;
+    if (enemy_hearts <= FxI(0)) return;
     int sx, sy; GetIsoCoords(enemy_x, enemy_y, &sx, &sy);
     int px, py; GetIsoCoords(player_x, player_y, &px, &py);
     // Monsters face the way they walk, and turn to the hero only up close.
-    static float last_x[MAX_ENEMIES], last_y[MAX_ENEMIES]; static int last_dir[MAX_ENEMIES];
+    static fx last_x[MAX_ENEMIES], last_y[MAX_ENEMIES]; static int last_dir[MAX_ENEMIES];
     int slot = current_enemy >= 0 && current_enemy < MAX_ENEMIES ? current_enemy : 0;
-    float mv = (enemy_x - last_x[slot]) - (enemy_y - last_y[slot]);
-    if (fabsf(mv) > 0.002f && fabsf(mv) < 2.0f) last_dir[slot] = mv > 0 ? 1 : -1;
+    fx mv = (enemy_x - last_x[slot]) - (enemy_y - last_y[slot]);
+    if (FxAbs(mv) > FX(0.002) && FxAbs(mv) < FxI(2)) last_dir[slot] = mv > 0 ? 1 : -1;
     last_x[slot] = enemy_x; last_y[slot] = enemy_y;
     int face_dir = last_dir[slot] ? last_dir[slot] : (px >= sx ? 1 : -1);
     // Attack: up close the monster swings its arm and weapon in a short rhythm.
-    float attack_swing = -1.0f;
-    float adx = player_x - enemy_x, ady = player_y - enemy_y;
-    if (adx * adx + ady * ady < 2.6f) {
+    fx attack_swing = -FxI(1);
+    fx adx = player_x - enemy_x, ady = player_y - enemy_y;
+    if (FxMul(adx, adx) + FxMul(ady, ady) < FX(2.6)) {
         face_dir = (px >= sx) ? 1 : -1;
-        float ph = fmodf((float)world_tick * 2.2f, 1.0f);
-        if (ph < 0.45f) attack_swing = ph / 0.45f;
+        fx ph = FxFrac(FxMul(world_tick, FX(2.2)));
+        if (ph < FX(0.45)) attack_swing = FxDiv(ph, FX(0.45));
     }
     int sw = IS_MYTHIC_MONSTER(active_monster) ? 20 : 9;
     HBRUSH b1 = CreateSolidBrush(RGB(15, 20, 26)); HGDIOBJ old = SelectObject(hdc, b1); Ellipse(hdc, sx - sw, sy + 16, sx + sw, sy + 22); SelectObject(hdc, old); DeleteObject(b1);
     if (active_monster == MONSTER_ZOMBIE) {
-        int seed = (int)(enemy_x * 13.0f + enemy_y * 7.0f);
-        int arms_out = (((int)(world_tick * 0.3f) + seed) % 40) < 22; // reaches out some of the time
+        int seed = FxTrunc(enemy_x * 13 + enemy_y * 7);
+        int arms_out = ((FxMulI(world_tick, FX(0.3)) + seed) % 40) < 22; // reaches out some of the time
         int mode = BeginScaledDraw(hdc, sx, sy + 16, UndeadRaceScale(current_screen_index * 7 + current_enemy));
         DrawZombieBody(hdc, sx, sy, seed, face_dir, arms_out, RGB(165, 185, 150));
         EndScaledDraw(hdc, mode);
@@ -727,7 +727,7 @@ void DrawDynamicEnemy(HDC hdc) {
         EndScaledDraw(hdc, mode);
     } else {
         // Legs stride under the robe, then the robe and skull on top.
-        int step = (int)(sin(world_tick * 6.0f) * 2.0f);
+        int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 6)) * 2);
         HPEN leg_pen = CreatePen(PS_SOLID, 3, active_monster == MONSTER_SKELLY ? RGB(225, 225, 215) : RGB(35, 30, 40));
         HGDIOBJ prev_leg = SelectObject(hdc, leg_pen);
         MoveToEx(hdc, sx - 3, sy + 12, NULL); LineTo(hdc, sx - 3 + step, sy + 19);
@@ -744,7 +744,7 @@ void DrawDynamicEnemy(HDC hdc) {
         HBRUSH red_b = CreateSolidBrush(RGB(255, 40, 40)); FillRect(hdc, &r, red_b); DeleteObject(red_b);
     }
     SelectObject(hdc, old);
-    if (attack_swing >= 0.0f) { // the swing shrinks or grows with the monster (dwarf skeletons swing small)
+    if (attack_swing >= FxI(0)) { // the swing shrinks or grows with the monster (dwarf skeletons swing small)
         int undead = active_monster == MONSTER_ZOMBIE || active_monster == MONSTER_SKELLY;
         int mode = undead ? BeginScaledDraw(hdc, sx, sy + 16, UndeadRaceScale(current_screen_index * 7 + current_enemy)) : 0;
         DrawEnemySwing(hdc, sx, sy, face_dir, attack_swing);
@@ -782,14 +782,14 @@ static int villager_facing; // 0 faces the camera, -1/1 looks left/right, 2 walk
 // blacksmith's anvil, hammer and quench tub.
 static void DrawNpcProp(HDC hdc, int sx, int sy, int i) {
     int act = NpcActivity(i), busy = NpcAtWork(i);
-    float t = world_tick;
+    fx t = world_tick;
     COLORREF wood = RGB(120, 85, 50);
     if (act == NPC_SWEEP) {
-        int sw = busy ? (int)(sinf(t * 3.0f + i) * 6.0f) : 0;
+        int sw = busy ? FxTrunc(FxSinTurn(FxTurn64((int64_t)t * 3 + FxI(i))) * 6) : 0;
         PenLine(hdc, 2, wood, sx + 5, sy - 6, sx + 3 + sw, sy + 12);
         PenLine(hdc, 4, RGB(205, 175, 90), sx + sw, sy + 13, sx + 7 + sw, sy + 13);
     } else if (act == NPC_FARM) {
-        int up = busy ? (int)(fabsf(sinf(t * 2.0f + i)) * 8.0f) : 0;
+        int up = busy ? FxTrunc(FxAbs(FxSinTurn(FxTurn64((int64_t)t * 2 + FxI(i)))) * 8) : 0;
         PenLine(hdc, 2, wood, sx + 6, sy - 8 - up, sx + 10, sy + 10 - up);
         PenLine(hdc, 3, RGB(150, 150, 155), sx + 8, sy + 10 - up, sx + 14, sy + 10 - up);
     } else if (act == NPC_WATER) {
@@ -800,16 +800,16 @@ static void DrawNpcProp(HDC hdc, int sx, int sy, int i) {
         HBRUSH iron = CreateSolidBrush(RGB(55, 55, 62)), tub = CreateSolidBrush(RGB(60, 110, 170));
         RECT top = { sx + 10, sy + 4, sx + 24, sy + 9 }, base = { sx + 14, sy + 9, sx + 20, sy + 15 }, water = { sx + 24, sy + 8, sx + 33, sy + 15 };
         FillRect(hdc, &top, iron); FillRect(hdc, &base, iron); FillRect(hdc, &water, tub);
-        float ph = fmodf(t + i * 3.0f, 14.0f);
-        if (ph < 11.0f) { // hammering the glowing bar
+        fx ph = (fx)(((int64_t)t + FxI(i * 3)) % FxI(14));
+        if (ph < FxI(11)) { // hammering the glowing bar
             HBRUSH hot = CreateSolidBrush(RGB(255, 140, 40)); RECT bar = { sx + 14, sy + 2, sx + 21, sy + 4 }; FillRect(hdc, &bar, hot); DeleteObject(hot);
-            float sw = sinf(ph * 4.0f);
-            int hx = sx + 15, hy = sy - (sw > 0.0f ? (int)(sw * 10.0f) : 0);
+            fx sw = FxSin(ph * 4);
+            int hx = sx + 15, hy = sy - (sw > FxI(0) ? FxTrunc(sw * 10) : 0);
             PenLine(hdc, 2, wood, sx + 6, sy - 4, hx, hy);
             RECT head = { hx - 3, hy - 3, hx + 3, hy + 1 }; FillRect(hdc, &head, iron);
-            if (sw < -0.7f) for (int k = 0; k < 5; k++) SetPixel(hdc, sx + 17 + (k * 7 % 9) - 4, sy - 1 - (k * 5 % 6), RGB(255, 210, 80));
+            if (sw < -FX(0.7)) for (int k = 0; k < 5; k++) SetPixel(hdc, sx + 17 + (k * 7 % 9) - 4, sy - 1 - (k * 5 % 6), RGB(255, 210, 80));
         } else for (int k = 0; k < 3; k++) { // quenching: steam off the tub
-            int rise = (int)((ph - 11.0f) * 9.0f) + k * 6;
+            int rise = FxTrunc((ph - FxI(11)) * 9) + k * 6;
             HBRUSH steam = CreateSolidBrush(RGB(225, 225, 230)); HGDIOBJ o = SelectObject(hdc, steam), op = SelectObject(hdc, GetStockObject(NULL_PEN));
             Ellipse(hdc, sx + 26 + k * 2, sy + 2 - rise, sx + 32 + k * 2, sy + 7 - rise);
             SelectObject(hdc, o); SelectObject(hdc, op); DeleteObject(steam);
@@ -818,9 +818,9 @@ static void DrawNpcProp(HDC hdc, int sx, int sy, int i) {
     }
 }
 
-void DrawZeldaStyleVillager(HDC hdc, int sx, int sy, int npc_index, float scale) {
-    if (village_dwarves) scale *= 0.85f; // dwarf holds: short, stocky and bearded
-#define VS(v) ((int)((v) * scale))
+void DrawZeldaStyleVillager(HDC hdc, int sx, int sy, int npc_index, fx scale) {
+    if (village_dwarves) scale = FxMul(scale, FX(0.85)); // dwarf holds: short, stocky and bearded
+#define VS(v) FxTrunc((v) * scale)
     static const COLORREF tunic_palette[] = { RGB(60, 150, 70), RGB(190, 90, 60), RGB(90, 110, 170), RGB(200, 170, 70) };
     static const COLORREF hair_palette[] = { RGB(80, 55, 35), RGB(230, 210, 120), RGB(40, 40, 45), RGB(150, 70, 40) };
     COLORREF tunic = tunic_palette[npc_index % 4];
@@ -876,14 +876,14 @@ void DrawZeldaStyleVillager(HDC hdc, int sx, int sy, int npc_index, float scale)
     }
     if (villager_facing != 2) {
         HBRUSH eye = CreateSolidBrush(RGB(30, 25, 25));
-        int ex = sx + villager_facing * VS(1.5f);
-        RECT el = { ex - VS(2.5f), sy - VS(10), ex - VS(1), sy - VS(8.5f) }, er = { ex + VS(1), sy - VS(10), ex + VS(2.5f), sy - VS(8.5f) };
+        int ex = sx + villager_facing * FxTrunc(FxMul(FX(1.5), scale));
+        RECT el = { ex - FxTrunc(FxMul(FX(2.5), scale)), sy - VS(10), ex - VS(1), sy - FxTrunc(FxMul(FX(8.5), scale)) }, er = { ex + VS(1), sy - VS(10), ex + FxTrunc(FxMul(FX(2.5), scale)), sy - FxTrunc(FxMul(FX(8.5), scale)) };
         FillRect(hdc, &el, eye); FillRect(hdc, &er, eye); DeleteObject(eye);
     }
 #undef VS
 }
 
-static POINT IsoAt(float x, float y, int z) {
+static POINT IsoAt(fx x, fx y, int z) {
     int sx, sy; GetIsoCoords(x, y, &sx, &sy);
     POINT p = { sx, sy - z };
     return p;
@@ -892,16 +892,16 @@ static POINT IsoAt(float x, float y, int z) {
 // A village home as a solid isometric cottage: two lit walls (the gable end
 // and the long front with the door), a thatched roof over a ridge, a chimney,
 // and windows that glow at night. Its footprint is exactly the solid area.
-static void DrawIsoHome(HDC hdc, float cx, float cy, int i) {
-    float x0 = cx - HOME_HALF_X, x1 = cx + HOME_HALF_X, y0 = cy - HOME_HALF_Y, y1 = cy + HOME_HALF_Y, e = 0.15f;
+static void DrawIsoHome(HDC hdc, fx cx, fx cy, int i) {
+    fx x0 = cx - HOME_HALF_X, x1 = cx + HOME_HALF_X, y0 = cy - HOME_HALF_Y, y1 = cy + HOME_HALF_Y, e = FX(0.15);
     const int H = 58, R = 104;
-    int night = fabs(sin(day_night_cycle_accumulator)) < 0.35;
+    int night = FxAbs(FxSin(day_night_cycle_accumulator)) < FX(0.35);
     static const COLORREF roofs[4] = { RGB(196, 152, 74), RGB(170, 70, 50), RGB(120, 110, 100), RGB(186, 140, 70) };
     COLORREF roof = i < 4 ? roofs[i & 3] : HomeRoofColor(player_home[4]), roof_back = RGB(GetRValue(roof) * 4 / 5, GetGValue(roof) * 4 / 5, GetBValue(roof) * 4 / 5);
     COLORREF timber = RGB(95, 62, 36), glass = night ? RGB(255, 205, 110) : RGB(150, 185, 210);
     POINT back[] = { IsoAt(x0 - e, y0 - e, H - 6), IsoAt(x1 + e, y0 - e, H - 6), IsoAt(x1 + e, cy, R), IsoAt(x0 - e, cy, R) };
     BrushPoly(hdc, roof_back, back, 4);
-    POINT chim[] = { IsoAt(x0 + 0.45f, y0 + 0.3f, 76), IsoAt(x0 + 0.75f, y0 + 0.3f, 76), IsoAt(x0 + 0.75f, y0 + 0.3f, 122), IsoAt(x0 + 0.45f, y0 + 0.3f, 122) };
+    POINT chim[] = { IsoAt(x0 + FX(0.45), y0 + FX(0.3), 76), IsoAt(x0 + FX(0.75), y0 + FX(0.3), 76), IsoAt(x0 + FX(0.75), y0 + FX(0.3), 122), IsoAt(x0 + FX(0.45), y0 + FX(0.3), 122) };
     BrushPoly(hdc, RGB(125, 125, 130), chim, 4);
     POINT gable[] = { IsoAt(x1, y0, 0), IsoAt(x1, y1, 0), IsoAt(x1, y1, H), IsoAt(x1, cy, R), IsoAt(x1, y0, H) };
     BrushPoly(hdc, RGB(170, 130, 88), gable, 5);
@@ -910,10 +910,10 @@ static void DrawIsoHome(HDC hdc, float cx, float cy, int i) {
     POINT a = IsoAt(x0, y1, H / 2), b = IsoAt(x1, y1, H / 2), c0 = IsoAt(x1, y1, 0), c1 = IsoAt(x1, y1, H);
     PenLine(hdc, 2, timber, a.x, a.y, b.x, b.y);
     PenLine(hdc, 3, timber, c0.x, c0.y, c1.x, c1.y);
-    POINT door[] = { IsoAt(cx - 0.2f, y1, 0), IsoAt(cx + 0.2f, y1, 0), IsoAt(cx + 0.2f, y1, 38), IsoAt(cx - 0.2f, y1, 38) };
+    POINT door[] = { IsoAt(cx - FX(0.2), y1, 0), IsoAt(cx + FX(0.2), y1, 0), IsoAt(cx + FX(0.2), y1, 38), IsoAt(cx - FX(0.2), y1, 38) };
     BrushPoly(hdc, RGB(80, 52, 32), door, 4);
-    POINT w1[] = { IsoAt(x0 + 0.25f, y1, 34), IsoAt(x0 + 0.6f, y1, 34), IsoAt(x0 + 0.6f, y1, 50), IsoAt(x0 + 0.25f, y1, 50) };
-    POINT w2[] = { IsoAt(x1, cy - 0.22f, 26), IsoAt(x1, cy + 0.22f, 26), IsoAt(x1, cy + 0.22f, 44), IsoAt(x1, cy - 0.22f, 44) };
+    POINT w1[] = { IsoAt(x0 + FX(0.25), y1, 34), IsoAt(x0 + FX(0.6), y1, 34), IsoAt(x0 + FX(0.6), y1, 50), IsoAt(x0 + FX(0.25), y1, 50) };
+    POINT w2[] = { IsoAt(x1, cy - FX(0.22), 26), IsoAt(x1, cy + FX(0.22), 26), IsoAt(x1, cy + FX(0.22), 44), IsoAt(x1, cy - FX(0.22), 44) };
     BrushPoly(hdc, glass, w1, 4); BrushPoly(hdc, glass, w2, 4);
     POINT fr[] = { IsoAt(x0 - e, y1 + e, H - 6), IsoAt(x1 + e, y1 + e, H - 6), IsoAt(x1 + e, cy, R), IsoAt(x0 - e, cy, R) };
     BrushPoly(hdc, roof, fr, 4);
@@ -921,22 +921,22 @@ static void DrawIsoHome(HDC hdc, float cx, float cy, int i) {
 }
 
 void DrawVillage(HDC hdc) {
-    float hcx, hcy;
+    fx hcx, hcy;
     UpdatePlayerHome();
     DrawVillageGrowth(hdc);
     if (VillageHomeCentre(4, &hcx, &hcy)) {
         DrawIsoHome(hdc, hcx, hcy, 4);
-        float fx = player_x + HOME_FEET_OFFSET, fy = player_y + HOME_FEET_OFFSET;
-        if (fx + fy > hcx + hcy + 0.3f && fabsf((fx - fy) - (hcx - hcy)) < HOME_HALF_X + HOME_HALF_Y + 0.7f) DrawHeroAsset(hdc);
+        fx hfx = player_x + HOME_FEET_OFFSET, fy = player_y + HOME_FEET_OFFSET;
+        if (hfx + fy > hcx + hcy + FX(0.3) && FxAbs((hfx - fy) - (hcx - hcy)) < HOME_HALF_X + HOME_HALF_Y + FX(0.7)) DrawHeroAsset(hdc);
     }
     if (VillageHomeCentre(0, &hcx, &hcy)) {
         for (int i = 0; i < 4; i++) if (VillageHomeCentre(i, &hcx, &hcy)) DrawIsoHome(hdc, hcx, hcy, i);
         // The hero is drawn again when standing in front of a home.
-        float fx = player_x + HOME_FEET_OFFSET, fy = player_y + HOME_FEET_OFFSET;
+        fx hfx = player_x + HOME_FEET_OFFSET, fy = player_y + HOME_FEET_OFFSET;
         for (int i = 0; i < 4; i++)
-            if (VillageHomeCentre(i, &hcx, &hcy) && fx + fy > hcx + hcy + 0.3f && fabsf((fx - fy) - (hcx - hcy)) < HOME_HALF_X + HOME_HALF_Y + 0.7f) { DrawHeroAsset(hdc); break; }
+            if (VillageHomeCentre(i, &hcx, &hcy) && hfx + fy > hcx + hcy + FX(0.3) && FxAbs((hfx - fy) - (hcx - hcy)) < HOME_HALF_X + HOME_HALF_Y + FX(0.7)) { DrawHeroAsset(hdc); break; }
     } else if (current_biome == BIOME_CASTLE || VillageStageHere() == 0) {
-        int sx, sy; GetIsoCoords(11.0f, 14.0f, &sx, &sy);
+        int sx, sy; GetIsoCoords(FxI(11), FxI(14), &sx, &sy);
         HBRUSH stall = CreateSolidBrush(RGB(170, 115, 65));
         RECT stall_body = { sx - 18, sy - 8, sx + 18, sy + 5 }; FillRect(hdc, &stall_body, stall); DeleteObject(stall);
         HBRUSH canopy = CreateSolidBrush(RGB(70, 115, 155)); HGDIOBJ old = SelectObject(hdc, canopy);
@@ -947,7 +947,7 @@ void DrawVillage(HDC hdc) {
     // hero's scale. Their lines go to the action log in the upper left; only a
     // "..." bubble is drawn over the head of an NPC close enough to talk to.
     DrawWishingWell(hdc);
-    const float NPC_SCALE = 1.2f;
+    const fx NPC_SCALE = FX(1.2);
     for (int i = 0; i < village_npc_count; i++) {
         int sx, sy; GetIsoCoords(village_npcs[i].x, village_npcs[i].y, &sx, &sy);
         int look = i;
@@ -963,7 +963,7 @@ void DrawVillage(HDC hdc) {
             DrawNpcProp(hdc, sx, sy, i);
         }
         if (village_npcs[i].type == 6) DrawCrown(hdc, sx, sy - (int)(19 * NPC_SCALE) - 2, 6);
-        if (IsNearPoint(village_npcs[i].x, village_npcs[i].y, 2.0f)) {
+        if (IsNearPoint(village_npcs[i].x, village_npcs[i].y, FxI(2))) {
             int top = sy - (int)(19 * NPC_SCALE) - 20;
             HBRUSH white = CreateSolidBrush(RGB(245, 240, 215)); HGDIOBJ old_b = SelectObject(hdc, white);
             HPEN edge = CreatePen(PS_SOLID, 1, RGB(60, 55, 45)); HGDIOBJ old_p = SelectObject(hdc, edge);
@@ -978,7 +978,7 @@ void DrawVillage(HDC hdc) {
 
 static void DrawSummonedSkeleton(HDC hdc, int sx, int sy, int face_dir) {
     COLORREF bone = RGB(230, 228, 215);
-    int step = (int)(sin(world_tick * 6.0f) * 2.0f);
+    int step = FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 6)) * 2);
     PenLine(hdc, 2, bone, sx - 3, sy + 8, sx - 3 + step, sy + 19);
     PenLine(hdc, 2, bone, sx + 3, sy + 8, sx + 3 - step, sy + 19);
     PenLine(hdc, 2, bone, sx, sy - 2, sx, sy + 9);
@@ -992,7 +992,7 @@ static void DrawSummonedSkeleton(HDC hdc, int sx, int sy, int face_dir) {
 }
 
 static void DrawGhostShape(HDC hdc, int sx, int sy, int face_dir) {
-    sy += (int)(sin(world_tick * 3.0f) * 3.0f) - 4;
+    sy += FxTrunc(FxSinTurn(FxTurn64((int64_t)world_tick * 3)) * 3) - 4;
     COLORREF mist = RGB(200, 225, 240);
     BrushEllipse(hdc, mist, sx - 8, sy - 12, sx + 8, sy + 6);
     POINT tail[] = { {sx - 8, sy}, {sx + 8, sy}, {sx + 6, sy + 14}, {sx + 2, sy + 9}, {sx - 2, sy + 15}, {sx - 6, sy + 9} };
@@ -1024,15 +1024,15 @@ void DrawSummonedZombie(HDC hdc) {
     // The summoned minion always walks with its arms held straight out,
     // reaching toward the enemy it is hunting (or ahead, if there is none).
     int face_dir = 1;
-    if (enemy_hearts > 0.0f) { int ex, ey; GetIsoCoords(enemy_x, enemy_y, &ex, &ey); face_dir = (ex >= sx) ? 1 : -1; }
+    if (enemy_hearts > FxI(0)) { int ex, ey; GetIsoCoords(enemy_x, enemy_y, &ex, &ey); face_dir = (ex >= sx) ? 1 : -1; }
     // Attack lunge for the first few frames after each blow it lands.
     int full = summoned_zombie.type == SUMMON_GHOST ? 24 : 30, since = full - summoned_zombie.attack_cooldown;
     if (summoned_zombie.attack_cooldown > 0 && since < 8) sx += face_dir * (since < 4 ? since : 8 - since) * 3;
     // Summons stand as tall as the hero's race (gnome dead are small, elves tall).
-    float k = player_height_m / 1.82f; if (k < 0.55f) k = 0.55f;
+    fx k = FxDiv(player_height_m, FX(1.82)); if (k < FX(0.55)) k = FX(0.55);
     int old_mode = BeginScaledDraw(hdc, sx, sy + 16, k);
     if (summoned_zombie.type == SUMMON_SKELETON) DrawSummonedSkeleton(hdc, sx, sy, face_dir);
     else if (summoned_zombie.type == SUMMON_GHOST) DrawSummonedGhost(hdc, sx, sy, face_dir);
-    else DrawZombieBody(hdc, sx, sy, (int)(summoned_zombie.x * 11.0f + summoned_zombie.y * 5.0f), face_dir, 1, RGB(150, 170, 130));
+    else DrawZombieBody(hdc, sx, sy, FxTrunc(summoned_zombie.x * 11 + summoned_zombie.y * 5), face_dir, 1, RGB(150, 170, 130));
     EndScaledDraw(hdc, old_mode);
 }

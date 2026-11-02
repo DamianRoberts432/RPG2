@@ -3,7 +3,7 @@
 
 // Hero, projectiles, enemies, effects, merchant and village drawing
 
-void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, float override_scale);
+void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, fx override_scale);
 void DrawHeroAsset(HDC hdc);
 int HeroDir8(void);
 void DrawFlyingArrow(HDC hdc);
@@ -18,8 +18,8 @@ void DrawEnemiesAtTile(HDC hdc, int c, int r);
 void DrawDebrisTwigs(HDC hdc);
 void DrawSummonedZombie(HDC hdc);
 void DrawMerchantStoreFront(HDC hdc);
-void DrawZeldaStyleVillager(HDC hdc, int sx, int sy, int npc_index, float scale);
-int BeginScaledDraw(HDC hdc, int sx, int sy, float k);
+void DrawZeldaStyleVillager(HDC hdc, int sx, int sy, int npc_index, fx scale);
+int BeginScaledDraw(HDC hdc, int sx, int sy, fx k);
 void EndScaledDraw(HDC hdc, int old_mode);
 void DrawVillage(HDC hdc);
 

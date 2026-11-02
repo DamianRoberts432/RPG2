@@ -12,9 +12,9 @@ static const char *roof_names[HOME_ROOFS] = { "thatch", "red tile", "slate", "gr
 static const char *wall_names[HOME_WALLS] = { "whitewash", "timber", "stone" };
 const char *furniture_names[FURNITURE_KINDS] = { "Bookshelf", "Armchair", "Potted Plant", "Painting", "Wardrobe", "Lantern" };
 
-int PlayerHomeCentre(float *x, float *y) {
+int PlayerHomeCentre(fx *x, fx *y) {
     if (!player_home[0] || in_cave || current_screen_index != player_home[1]) return 0;
-    *x = player_home[2] / 100.0f; *y = player_home[3] / 100.0f;
+    *x = FxI(player_home[2]) / 100; *y = FxI(player_home[3]) / 100;
     return 1;
 }
 
@@ -34,20 +34,20 @@ static void DescribeFront(void) {
 }
 
 int HomeBuildInteract(void) {
-    float hx, hy;
+    fx hx, hy;
     if (player_home[0] == 1) {
         if (!PlayerHomeCentre(&hx, &hy)) return 0;
-        float dx = player_x + HOME_FEET_OFFSET - hx, dy = player_y + HOME_FEET_OFFSET - hy;
-        if (dx * dx + dy * dy > 9.0f) return 0;
+        fx dx = player_x + HOME_FEET_OFFSET - hx, dy = player_y + HOME_FEET_OFFSET - hy;
+        if (FxMul(dx, dx) + FxMul(dy, dy) > FxI(9)) return 0;
         player_home[4] = (player_home[4] + 1) % HOME_FRONTS;
         DescribeFront();
         return 1;
     }
     if (player_home[0] || !HasInventoryItem("House Supplies") || in_cave || current_biome == BIOME_CASTLE || village_npc_count > 0) return 0;
-    hx = player_x + HOME_FEET_OFFSET; hy = player_y + HOME_FEET_OFFSET - HOME_HALF_Y - 0.9f;
+    hx = player_x + HOME_FEET_OFFSET; hy = player_y + HOME_FEET_OFFSET - HOME_HALF_Y - FX(0.9);
     if (hx < 3 || hx > MAP_SIZE - 3 || hy < 3 || hy > MAP_SIZE - 3) return 0;
-    for (float y = hy - HOME_HALF_Y; y <= hy + HOME_HALF_Y + 0.01f; y += 0.4f)
-        for (float x = hx - HOME_HALF_X; x <= hx + HOME_HALF_X + 0.01f; x += 0.5f)
+    for (fx y = hy - HOME_HALF_Y; y <= hy + HOME_HALF_Y + FX(0.01); y += FX(0.4))
+        for (fx x = hx - HOME_HALF_X; x <= hx + HOME_HALF_X + FX(0.01); x += FX(0.5))
             if (TileBlocksPlayer(x - HOME_FEET_OFFSET, y - HOME_FEET_OFFSET)) {
                 strcpy(arpg_action_log, "HOME: Clear the trees, rocks or water in front of you first.");
                 return 1;
@@ -68,8 +68,8 @@ void UpdatePlayerHome(void) {
         strcpy(arpg_action_log, "HOME: You left the plot, so the plan is off. X on open ground to start again.");
         return;
     }
-    float dx = player_x + HOME_FEET_OFFSET - player_home[2] / 100.0f, dy = player_y + HOME_FEET_OFFSET - player_home[3] / 100.0f;
-    if (dx * dx + dy * dy < 25.0f) return;
+    fx dx = player_x + HOME_FEET_OFFSET - FxI(player_home[2]) / 100, dy = player_y + HOME_FEET_OFFSET - FxI(player_home[3]) / 100;
+    if (FxMul(dx, dx) + FxMul(dy, dy) < FxI(25)) return;
     if (!ConsumeMaterialFromInventory("House Supplies", 1)) { player_home[0] = 0; return; }
     player_home[0] = 2;
     strcpy(arpg_action_log, "HOME: The merchant's builders finish your house! It's on your map. The merchant sells furniture.");
