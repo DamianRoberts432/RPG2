@@ -92,16 +92,16 @@ static int ForgeCost(int bonus) { return 1000 * (bonus + 1); }
 // bestiary) and the wild animals. Every other set comes from card_set_table
 // in cards_data.c. Every card is a 1/1, 2/2 or 3/3, and only 2/2s and 3/3s
 // have abilities, so the 1/1s are plain pawns.
-enum { AB_NONE, AB_FIRST_STRIKE, AB_PUMP3, AB_CURSE, AB_BLESS_BOTH, AB_BLESS_STR, AB_BLESS_LIFE };
+enum { AB_NONE, AB_FIRST_STRIKE, AB_PUMP3, AB_CURSE, AB_BLESS_BOTH, AB_BLESS_STR, AB_BLESS_LIFE, AB_FLYING, AB_TIME_BOMB };
 typedef struct { const char *name; int set, pt, ability; } CardDef;
 #define STARTER_CARDS 13
 #define MAX_CARD_SETS 16
 int card_pool_size = STARTER_CARDS;
 static CardDef card_defs[CARD_COUNT] = {
     { "Skeleton", 0, 1, AB_NONE }, { "Zombie", 0, 2, AB_NONE }, { "Vampire", 0, 3, AB_FIRST_STRIKE },
-    { "Goblin", 0, 1, AB_NONE }, { "Satyr", 0, 2, AB_FIRST_STRIKE }, { "Yeti", 0, 3, AB_PUMP3 },
+    { "Goblin", 0, 1, AB_TIME_BOMB }, { "Satyr", 0, 2, AB_FIRST_STRIKE }, { "Yeti", 0, 3, AB_PUMP3 },
     { "Sphinx", 0, 3, AB_NONE }, { "Bigfoot", 0, 3, AB_PUMP3 }, { "Bunyip", 0, 2, AB_NONE },
-    { "Bluebird", 0, 1, AB_NONE }, { "Squirrel", 0, 1, AB_NONE }, { "Owl", 0, 2, AB_FIRST_STRIKE }, { "Bat", 0, 1, AB_NONE },
+    { "Bluebird", 0, 1, AB_FLYING }, { "Squirrel", 0, 1, AB_NONE }, { "Owl", 0, 2, AB_FIRST_STRIKE }, { "Bat", 0, 1, AB_FLYING },
 };
 static int set_first[MAX_CARD_SETS], set_size[MAX_CARD_SETS] = { STARTER_CARDS }, card_set_n = 1;
 static char card_name_store[CARD_COUNT][32];
@@ -111,7 +111,7 @@ const char *CardSetName(int s) { return s >= 0 && s < card_set_n ? card_set_tabl
 static int FlavorAbility(int flavor, int pt, int k) {
     static const int holy2[2] = { AB_BLESS_STR, AB_BLESS_LIFE }, holy3[2] = { AB_BLESS_BOTH, AB_FIRST_STRIKE };
     static const int mix2[3] = { AB_FIRST_STRIKE, AB_BLESS_STR, AB_CURSE }, mix3[3] = { AB_FIRST_STRIKE, AB_BLESS_BOTH, AB_CURSE };
-    if (pt < 2) return AB_NONE;
+    if (pt < 2) return k % 4 == 1 ? AB_FLYING : k % 4 == 3 && flavor != FL_HOLY ? AB_TIME_BOMB : AB_NONE;
     switch (flavor) {
     case FL_HOLY: return pt == 2 ? holy2[k % 2] : holy3[k % 2];
     case FL_INFERNAL: return pt == 2 || k % 2 ? AB_CURSE : AB_FIRST_STRIKE;
@@ -198,6 +198,8 @@ static const char *AbilityText(int ab) {
     case AB_BLESS_BOTH: return "Death blessing: when it dies, your next card gets +1/+1.";
     case AB_BLESS_STR: return "Death blessing: when it dies, your next card gets +2/+0.";
     case AB_BLESS_LIFE: return "Death blessing: when it dies, your next card gets +0/+2.";
+    case AB_FLYING: return "Flying: takes 1 less damage from every hit.";
+    case AB_TIME_BOMB: return "Time bomb: 2 exchanges after it steps in, its bomb deals 3 damage to the enemy card in play, even if it has fallen.";
     }
     return "No ability.";
 }
@@ -239,15 +241,19 @@ static const char *kid_lines[] = {
 
 static void Say(const char *fmt, ...);
 
-// Practice hands with the card kid: no ante, ten rounds per visit. Duels
-// resolve like a stack: damage lands at the same time unless one card has
-// First Strike, and a card's death mark lands on the next card to enter.
+// Practice hands with the card kid: no ante, ten rounds per visit. Matches are
+// 3v3, King of Fighters style: the third card laid is the team Leader and
+// fights as at least 3/3, the winner of each exchange stays on with the damage
+// it took, and death curses and blessings land on the next card to step in.
+// Damage lands at the same time unless one card has First Strike. A match is
+// capped at KID_MAX_EXCHANGES, so it always ends in bounded time.
 #define KID_MAX_ROUNDS 10
-#define KID_LOG_LINES 14
+#define KID_LOG_LINES 20
+#define KID_MAX_EXCHANGES 8
 static int kid_rounds = 0, kid_round_screen = -1, kid_dealt = 0, kid_played = 0;
-static int my_hand[3], kid_hand[3], my_order[3] = { 0, 1, 2 }, duel_result[3];
+static int my_hand[3], kid_hand[3], my_order[3] = { 0, 1, 2 }, duel_result[3], his_result[3];
 static const int hand_orders[6][3] = { {0,1,2}, {0,2,1}, {1,0,2}, {1,2,0}, {2,0,1}, {2,1,0} };
-static char kid_log[KID_LOG_LINES][110];
+static char kid_log[KID_LOG_LINES][130];
 static int kid_log_n = 0, pend_p[2], pend_t[2];
 
 static void KidLog(const char *fmt, ...) {
@@ -270,30 +276,58 @@ static void DeathMark(int side, int id) {
     }
 }
 
-static void Duel(int k, int a, int b, int *mine, int *his) {
-    char an[48], bn[48]; CardName(a, an, sizeof(an)); CardName(b, bn, sizeof(bn));
-    int ap = CardBasePower(a) + pend_p[0], at = CardBasePower(a) + pend_t[0];
-    int bp = CardBasePower(b) + pend_p[1], bt = CardBasePower(b) + pend_t[1];
-    pend_p[0] = pend_t[0] = pend_p[1] = pend_t[1] = 0;
-    if (ap < 0) ap = 0;
-    if (bp < 0) bp = 0;
-    KidLog("%d. Your %s %d/%d  vs  his %s %d/%d", k + 1, an, ap, at, bn, bp, bt);
-    int adead = at <= 0, bdead = bt <= 0;
-    if (adead || bdead) {
-        if (adead) KidLog("   Your %s withers under the curse before it can fight.", an);
-        if (bdead) KidLog("   His %s withers under the curse before it can fight.", bn);
-    } else {
-        int afs = CardAbility(a) == AB_FIRST_STRIKE, bfs = CardAbility(b) == AB_FIRST_STRIKE;
-        if (afs && !bfs) { bt -= ap; if (bt > 0) at -= bp; KidLog("   Your %s strikes first.", an); }
-        else if (bfs && !afs) { at -= bp; if (at > 0) bt -= ap; KidLog("   His %s strikes first.", bn); }
-        else { at -= bp; bt -= ap; }
-        adead = at <= 0; bdead = bt <= 0;
-        KidLog("   %s", adead && bdead ? "Both cards fall." : adead ? "Your card falls." : bdead ? "His card falls." : "Both cards survive.");
+static int TeamPower(int id, int slot) { int p = CardBasePower(id); return slot == 2 && p < 3 ? 3 : p; }
+static int HitFor(int id, int dmg) { return CardAbility(id) == AB_FLYING && dmg > 0 ? dmg - 1 : dmg; }
+
+// Plays one 3v3 match; side 0 is you, side 1 the kid. Counts are cards knocked out.
+static void TeamMatch(const int *ids0, const int *ids1, int *mine, int *his) {
+    const int *ids[2] = { ids0, ids1 };
+    int at[2] = { 0, 0 }, pw[2] = { 0, 0 }, hp[2] = { 0, 0 }, in[2] = { 0, 0 }, bomb[2] = { 0, 0 };
+    for (int k = 0; k < 3; k++) duel_result[k] = his_result[k] = 0;
+    for (int ex = 0; ex < KID_MAX_EXCHANGES && at[0] < 3 && at[1] < 3; ex++) {
+        char nm[2][48], head[2][64];
+        int dead[2];
+        for (int sd = 0; sd < 2; sd++) {
+            int id = ids[sd][at[sd]];
+            CardName(id, nm[sd], sizeof(nm[sd]));
+            if (!in[sd]) {
+                pw[sd] = TeamPower(id, at[sd]) + pend_p[sd]; hp[sd] = TeamPower(id, at[sd]) + pend_t[sd];
+                pend_p[sd] = pend_t[sd] = 0;
+                if (pw[sd] < 0) pw[sd] = 0;
+                if (CardAbility(id) == AB_TIME_BOMB) bomb[sd] = 2;
+                in[sd] = 1;
+            }
+            snprintf(head[sd], sizeof(head[sd]), "%s%s %d/%d", at[sd] == 2 ? "Leader " : "", nm[sd], pw[sd], hp[sd]);
+        }
+        int a = ids[0][at[0]], b = ids[1][at[1]];
+        const char *what;
+        if (hp[0] <= 0 || hp[1] <= 0) what = "withered by a curse";
+        else {
+            int afs = CardAbility(a) == AB_FIRST_STRIKE, bfs = CardAbility(b) == AB_FIRST_STRIKE;
+            if (afs && !bfs) { hp[1] -= HitFor(b, pw[0]); if (hp[1] > 0) hp[0] -= HitFor(a, pw[1]); }
+            else if (bfs && !afs) { hp[0] -= HitFor(a, pw[1]); if (hp[0] > 0) hp[1] -= HitFor(b, pw[0]); }
+            else { hp[0] -= HitFor(a, pw[1]); hp[1] -= HitFor(b, pw[0]); }
+            what = afs != bfs ? "first strike" : "they trade blows";
+        }
+        dead[0] = hp[0] <= 0; dead[1] = hp[1] <= 0;
+        KidLog("%d. Your %s vs his %s: %s, %s.", ex + 1, head[0], head[1], what,
+               dead[0] && dead[1] ? "both fall" : dead[0] ? "yours falls" : dead[1] ? "his falls" : "both stay on");
+        for (int sd = 0; sd < 2; sd++)
+            if (bomb[sd] && --bomb[sd] == 0 && !dead[!sd]) {
+                hp[!sd] -= 3; dead[!sd] = hp[!sd] <= 0;
+                KidLog("   %s time bomb goes off: 3 damage%s.", sd ? "His" : "Your", dead[!sd] ? " and the card falls" : "");
+            }
+        for (int sd = 0; sd < 2; sd++) {
+            if (!dead[sd]) continue;
+            DeathMark(sd, ids[sd][at[sd]]);
+            (sd ? his_result : duel_result)[at[sd]] = -1;
+            at[sd]++; in[sd] = 0;
+        }
     }
-    if (adead) DeathMark(0, a);
-    if (bdead) DeathMark(1, b);
-    *mine += bdead; *his += adead;
-    duel_result[k] = bdead - adead;
+    for (int k = at[0]; k < 3; k++) duel_result[k] = 1;
+    for (int k = at[1]; k < 3; k++) his_result[k] = 1;
+    *mine = at[1]; *his = at[0];
+    if (at[0] < 3 && at[1] < 3) KidLog("   Time! %d of yours and %d of his still standing.", 3 - at[0], 3 - at[1]);
 }
 
 static void PracticeHand(int order) {
@@ -312,7 +346,9 @@ static void PracticeHand(int order) {
     const int *o = hand_orders[order - 1];
     int mine = 0, his = 0;
     kid_log_n = 0; pend_p[0] = pend_p[1] = pend_t[0] = pend_t[1] = 0;
-    for (int k = 0; k < 3; k++) { my_order[k] = o[k]; Duel(k, my_hand[o[k]], kid_hand[k], &mine, &his); }
+    int laid[3];
+    for (int k = 0; k < 3; k++) { my_order[k] = o[k]; laid[k] = my_hand[o[k]]; }
+    TeamMatch(laid, kid_hand, &mine, &his);
     kid_dealt = 0; kid_played = 1; kid_rounds++;
     const char *end = kid_rounds >= KID_MAX_ROUNDS ? " That's ten rounds - I have to go home soon!" : "";
     if (mine > his) Say("KID: You knocked out %d to my %d - you win this one! Order matters, huh?%s", mine, his, end);
@@ -411,9 +447,9 @@ static void BuildRows(void) {
         if (kid_dealt && kid_round_screen == current_screen_index) {
             for (int p = 0; p < 6; p++) {
                 const int *o = hand_orders[p];
-                char n0[28], n1[28], n2[28];
+                char n0[24], n1[24], n2[24];
                 CardName(my_hand[o[0]], n0, sizeof(n0)); CardName(my_hand[o[1]], n1, sizeof(n1)); CardName(my_hand[o[2]], n2, sizeof(n2));
-                snprintf(t, sizeof(t), "Lay: %s > %s > %s", n0, n1, n2);
+                snprintf(t, sizeof(t), "Lay: %s > %s > Leader %s", n0, n1, n2);
                 AddRow(A_PRACTICE, 1 + p, t);
             }
         } else if (left > 0) {
@@ -506,7 +542,7 @@ static void RowInfo(const TownRow *r, char *out, size_t n) {
         break;
     case A_GUIDE: snprintf(out, n, "Secret card combos: read it from your pack for a 2-second peek. Stealing it means jail."); break;
     case A_KID: snprintf(out, n, "A kid sits at the corner table shuffling a test deck. He won't play for ante."); break;
-    case A_PRACTICE: snprintf(out, n, "Three duels, one card each. Both cards hit at once unless one has First Strike; death curses and blessings land on the next card. His cards and yours are on the right."); break;
+    case A_PRACTICE: snprintf(out, n, "3v3 team match: the third card is your Leader (at least 3/3). The winner stays on with its damage; curses and blessings land on the next card in. His cards and yours are on the right."); break;
     case A_SLEEP: snprintf(out, n, "Sleep until the next morning or evening. You wake rested."); break;
     case A_FURNISH: snprintf(out, n, "Furniture and decorations bought from the merchant are set out in your home. Comfort: %d.", HomeComfort()); break;
     case A_BINDER: snprintf(out, n, "Deck: %d / %d cards. Every other card you own waits here in the binder.", DeckCount(), DECK_MAX); break;
@@ -1114,7 +1150,7 @@ static void DrawCard(HDC hdc, int x, int y, int id, int num, int result) {
     const CardDef *c = &card_defs[PoolId(id)];
     static const char *rar[3] = { "Common", "Uncommon", "Rare" };
     char buf[96];
-    int w = 330, h = 160, p = CardBasePower(id);
+    int w = 330, h = 160, p = num == 3 ? TeamPower(id, 2) : CardBasePower(id);
     TwBox(hdc, x, y, x + w, y + h, RGB(24, 24, 30));
     TwBox(hdc, x, y, x + w, y + 30, set_col[c->set == 0 ? 0 : c->ability == AB_CURSE ? 2 : 1]);
     HPEN pen = CreatePen(PS_SOLID, 3, result > 0 ? RGB(90, 230, 110) : result < 0 ? RGB(230, 80, 70) : RGB(120, 120, 130));
@@ -1122,7 +1158,8 @@ static void DrawCard(HDC hdc, int x, int y, int id, int num, int result) {
     Rectangle(hdc, x, y, x + w, y + h);
     SelectObject(hdc, op); SelectObject(hdc, ob); DeleteObject(pen);
     SetTextColor(hdc, RGB(255, 235, 100));
-    if (num > 0) snprintf(buf, sizeof(buf), "%d. %s", num, c->name);
+    if (num == 3) snprintf(buf, sizeof(buf), "Leader: %s", c->name);
+    else if (num > 0) snprintf(buf, sizeof(buf), "%d. %s", num, c->name);
     else snprintf(buf, sizeof(buf), "%s", c->name);
     TextOut(hdc, x + 10, y + 6, buf, (int)strlen(buf));
     snprintf(buf, sizeof(buf), "%d/%d", p, p);
@@ -1151,14 +1188,14 @@ static void DrawCardTable(HDC hdc) {
     const char *his = "THE KID'S CARDS - he leads left to right";
     SetTextColor(hdc, RGB(230, 230, 230));
     TextOut(hdc, x0, 270, his, (int)strlen(his));
-    for (int k = 0; k < 3; k++) DrawCard(hdc, x0 + k * 340, 294, kid_hand[k], k + 1, kid_played ? -duel_result[k] : 0);
+    for (int k = 0; k < 3; k++) DrawCard(hdc, x0 + k * 340, 294, kid_hand[k], k + 1, kid_played ? his_result[k] : 0);
     SetTextColor(hdc, RGB(160, 240, 170));
     if (!kid_played) {
-        const char *t = "Damage lands at the same time unless a card has First Strike. A Demon 1/1 that dies curses the next enemy card -2/-2; an Angel 1/1 blesses your next card.";
+        const char *t = "3v3: your third card is the Leader and fights as at least 3/3. The winner of each exchange stays on with its damage. First Strike hits first, Flying takes 1 less damage, a Time Bomb deals 3 two exchanges after it steps in, and death curses or blessings land on the next card in.";
         RECT r = { x0, 474, WINDOW_WIDTH - 30, 560 };
         DrawText(hdc, t, -1, &r, DT_WORDBREAK | DT_LEFT);
     }
-    for (int i = 0; i < kid_log_n; i++) TextOut(hdc, x0, 474 + i * 26, kid_log[i], (int)strlen(kid_log[i]));
+    for (int i = 0; i < kid_log_n; i++) TextOut(hdc, x0, 474 + i * 22, kid_log[i], (int)strlen(kid_log[i]));
 }
 
 static int tm_top, tm_start, tm_end, tm_left, tm_right;
