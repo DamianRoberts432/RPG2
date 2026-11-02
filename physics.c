@@ -23,6 +23,7 @@ int TileBlocksPlayer(float x, float y) {
         float hx, hy;
         if (VillageHomeCentre(i, &hx, &hy) && fabsf(x + HOME_FEET_OFFSET - hx) < HOME_HALF_X - 0.15f && fabsf(y + HOME_FEET_OFFSET - hy) < HOME_HALF_Y - 0.15f) return 1;
     }
+    if (t == 12 && AtSea()) return !HasInventoryItem("Boat"); // open sea: rafts and canoes stay by the shore
     return t == 1 || (t == 12 && !HasInventoryItem("Raft") && !HasInventoryItem("Canoe") && !HasInventoryItem("Boat"));
 }
 

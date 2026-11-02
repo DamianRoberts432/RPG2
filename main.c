@@ -77,9 +77,11 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
 
                     int new_gx = screen_grid_x + dgx;
                     int new_gy = screen_grid_y + dgy;
-                    if (new_gx < 0 || new_gx >= META_GRID_SIZE || new_gy < 0 || new_gy >= META_GRID_SIZE) {
-                        // Edge of the known world: a hard dead end, bounce back in bounds.
-                        strcpy(arpg_action_log, "WORLD EDGE: Nothing lies beyond here... yet. Turn back.");
+                    int off_world = new_gx < 0 || new_gx >= META_GRID_SIZE || new_gy < 0 || new_gy >= META_GRID_SIZE;
+                    int no_boat = !off_world && SeaNeedsBoat(new_gx, new_gy);
+                    if (off_world || no_boat) {
+                        // Edge of the known world (or open sea without a Boat): bounce back in bounds.
+                        strcpy(arpg_action_log, no_boat ? "OPEN SEA: You need a Boat to sail out there. Merchants sell them." : "WORLD EDGE: Nothing lies beyond here... yet. Turn back.");
                         if (player_x <= 0.5f) player_x = 2.0f;
                         else if (player_x >= (MAP_SIZE - 1.5f)) player_x = (float)(MAP_SIZE - 3);
                         if (player_y <= 0.5f) player_y = 2.0f;
@@ -94,7 +96,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                         {
                             // Make sure the reentry tile is walkable (not water/rock); else find the nearest one that is.
                             int rx = (int)reenter_x, ry = (int)reenter_y;
-                            if (VISUAL_MAP[ry][rx] == 12 || VISUAL_MAP[ry][rx] == 1) {
+                            if ((VISUAL_MAP[ry][rx] == 12 && !HasInventoryItem("Boat")) || VISUAL_MAP[ry][rx] == 1) {
                                 int best_d = 1 << 30, bx = rx, by = ry;
                                 for (int y = 2; y <= MAP_SIZE - 3; y++) for (int x = 2; x <= MAP_SIZE - 3; x++) {
                                     if (VISUAL_MAP[y][x] == 12 || VISUAL_MAP[y][x] == 1) continue;
@@ -258,6 +260,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                                 TextOut(memHDC, sx - 26, sy - 24, "TREASURE", 8);
                             }
                         }
+                        DrawIsleTreasure(memHDC, c, r, sx, sy);
                         if (c == (int)player_x && r == (int)player_y) DrawHeroAsset(memHDC);
                         DrawEnemiesAtTile(memHDC, c, r);
                     }
