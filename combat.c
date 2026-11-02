@@ -148,6 +148,7 @@ void PerformMeleeAttack(void) {
     if (active_monster == MONSTER_DRACULA && SilverWeaponEquipped()) damage *= 2.0f;
     float stamina_cost = MELEE_SWING_STAMINA + (weapon ? weapon->stamina_cost * 2.0f : 0.0f);
     if (HeroExhausted()) { strcpy(arpg_action_log, "EXHAUSTED! Too spent to swing. Catch your breath."); return; }
+    PlaySfx(SFX_SWING);
     int drained = player_stamina < stamina_cost;
     if (drained) {
         damage *= 0.5f;
