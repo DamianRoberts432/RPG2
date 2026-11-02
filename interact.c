@@ -37,6 +37,7 @@ void HandleContextInteract(void) {
     if (TryBreakBarrel()) return;
     if (TryGatherPeyote()) return;
     if (TryWishingWell()) return;
+    if (TryIsleTreasure()) return;
     if (in_cave && IsNearPoint(cave_treasure_x, cave_treasure_y, 1.2f)) {
         ClaimCaveTreasureAndExit();
         return;

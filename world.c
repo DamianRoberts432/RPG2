@@ -443,6 +443,7 @@ void GenerateProceduralScreen(int index) {
                 if (c >= band - 2 && c <= band + 2) VISUAL_MAP[r][c] = 12;
                 else if (c == band - 3 || c == band + 3) VISUAL_MAP[r][c] = 0; // visible shore buffer
                 else if (noise < 8) VISUAL_MAP[r][c] = 2;
+            } else if (ShapeSeaTile(r, c, noise)) {
             } else if (current_biome == BIOME_BEACH || current_biome == BIOME_OCEAN) {
                 // World-border coast: ocean on the half facing out of the world,
                 // a sand beach next to it, and ordinary land on the inner side,
@@ -453,6 +454,7 @@ void GenerateProceduralScreen(int index) {
                 if (grid_c == META_GRID_SIZE - 1 && MAP_SIZE - 1 - c < d) d = MAP_SIZE - 1 - c;
                 if (grid_r == 0 && r < d) d = r;
                 if (grid_r == META_GRID_SIZE - 1 && MAP_SIZE - 1 - r < d) d = MAP_SIZE - 1 - r;
+                d = SeaSideDistance(r, c, d);
                 int along = (grid_c == 0 || grid_c == META_GRID_SIZE - 1) ? r : c;
                 int wobble = (int)(sinf((float)along * 0.35f + (float)index) * 1.5f);
                 if (d < 12 + wobble) VISUAL_MAP[r][c] = 12;
@@ -529,8 +531,10 @@ void GenerateProceduralScreen(int index) {
     if (current_biome == BIOME_SWAMP) { gator_x = 12.0f; gator_y = 12.0f; gator_active = 1; } else { gator_active = 0; }
     SpawnScreenEnemies();
     if (in_cave && cave_is_hold) { for (int i = 0; i < MAX_ENEMIES; i++) enemies[i].hearts = 0.0f; enemy_hearts = 0.0f; } // the dwarves keep their hall clear
+    if (AtSea()) { for (int i = 0; i < MAX_ENEMIES; i++) enemies[i].hearts = 0.0f; enemy_hearts = 0.0f; }
     ApplyScreenMemory(index);
     TownGrowthOnEnter();
+    OceanOnEnter();
     // Musashi's Blade only washes up on a beach at the world's eastern edge,
     // and only on summer day 13 (Musashi died on June 13, 1645).
     if (current_biome == BIOME_BEACH && grid_c == META_GRID_SIZE - 1 && current_season == SEASON_SUMMER &&

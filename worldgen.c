@@ -56,6 +56,54 @@ static void Highway(int a, int b) {
     while (y != town_y[b]) { int ny = y + (town_y[b] > y ? 1 : -1); RoadStep(x, y, x, ny, ny > y ? 4 : 1, ny > y ? 1 : 4); y = ny; }
 }
 
+// Inland seas, carved after the towns and villages are placed so those never
+// move: up to 3 round seas with a sandy coast and 2-3 islands each, the first
+// joined to the shore by a chain of islands (a land bridge). Cells the hero has
+// already seen and cells near sites are left alone. Lone islands hold treasure.
+#define MAX_TREASURE_ISLES 8
+static uint8_t isle_x[MAX_TREASURE_ISLES], isle_y[MAX_TREASURE_ISLES];
+static int isle_n = 0;
+static void CarveSeas(uint8_t keep[WG][WG]) {
+    isle_n = 0;
+    for (int a = 0, seas = 0; a < 400 && seas < 3; a++) {
+        int cx = 10 + rand() % (WG - 20), cy = 10 + rand() % (WG - 20), r = 3 + rand() % 3, ok = 1;
+        if (abs(cx - elysium_gx) + abs(cy - elysium_gy) < 12) continue;
+        for (int y = cy - r - 2; y <= cy + r + 2 && ok; y++) for (int x = cx - r - 2; x <= cx + r + 2; x++) {
+            int inner = abs(x - cx) <= r + 1 && abs(y - cy) <= r + 1;
+            if (B(x, y) == BIOME_OCEAN || (inner && In(x, y) && (world_site[y][x] || keep[y][x]))) { ok = 0; break; }
+        }
+        if (!ok) continue;
+        for (int dy = -r; dy <= r; dy++) for (int dx = -r; dx <= r; dx++) {
+            int d2 = dx * dx + dy * dy;
+            if (d2 > r * r || (d2 > (r - 1) * (r - 1) && rand() % 3 == 0)) continue;
+            world_biome[cy + dy][cx + dx] = BIOME_OCEAN;
+        }
+        for (int y = cy - r - 1; y <= cy + r + 1; y++) for (int x = cx - r - 1; x <= cx + r + 1; x++)
+            if (x > 0 && y > 0 && x < WG - 1 && y < WG - 1 && B(x, y) != BIOME_OCEAN && !keep[y][x] && !world_site[y][x] && NearBiome(x, y, BIOME_OCEAN))
+                world_biome[y][x] = BIOME_BEACH;
+        for (int k = 0, isles = 2 + rand() % 2; k < isles; k++) {
+            int span = r > 2 ? 2 * r - 3 : 1;
+            int ix = cx - (r - 2) + rand() % span, iy = cy - (r - 2) + rand() % span;
+            if (B(ix, iy) != BIOME_OCEAN) continue;
+            world_biome[iy][ix] = BIOME_ISLAND;
+            if (k == 0) { int dir = ix >= cx ? 1 : -1; for (int x = ix + dir; B(x, iy) == BIOME_OCEAN; x += dir) world_biome[iy][x] = BIOME_ISLAND; }
+        }
+        seas++;
+    }
+    for (int y = 1; y < WG - 1; y++) for (int x = 1; x < WG - 1; x++)
+        if (B(x, y) == BIOME_ISLAND && isle_n < MAX_TREASURE_ISLES && B(x - 1, y) == BIOME_OCEAN && B(x + 1, y) == BIOME_OCEAN &&
+            B(x, y - 1) == BIOME_OCEAN && B(x, y + 1) == BIOME_OCEAN) { isle_x[isle_n] = (uint8_t)x; isle_y[isle_n++] = (uint8_t)y; }
+}
+int TreasureIsleIndex(int gx, int gy) {
+    for (int i = 0; i < isle_n; i++) if (isle_x[i] == gx && isle_y[i] == gy) return i;
+    return -1;
+}
+// Open sea and lone islands can only be reached by Boat (the world-edge coast is excluded).
+int SeaNeedsBoat(int gx, int gy) {
+    if (!In(gx, gy) || gx == 0 || gy == 0 || gx == WG - 1 || gy == WG - 1 || HasInventoryItem("Boat")) return 0;
+    return B(gx, gy) == BIOME_OCEAN || TreasureIsleIndex(gx, gy) >= 0;
+}
+
 void GenerateWholeWorld(uint32_t seed) {
     static uint8_t keep[WG][WG];
     memcpy(keep, visited_biomes, sizeof(keep));
@@ -89,6 +137,7 @@ void GenerateWholeWorld(uint32_t seed) {
         if (B(x, y) != BIOME_MOUNTAIN || !FarFromSites(x, y, 4)) continue;
         world_site[y][x] = SITE_DWARF; n++;
     }
+    CarveSeas(keep);
     // Highways: the shortest network joining every town (Prim's tree).
     int linked[MAX_TOWNS] = { 1 };
     for (int k = 1; k < town_n; k++) {

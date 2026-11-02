@@ -277,6 +277,9 @@ Each module has a matching .h with its function prototypes.
 - **Bandit raids:** each day an unwalled village has about a 1 in 12 chance of being raided. Walk in and goblin bandits attack; drive them all off for growth, Soul and fame, and a line in the Legends log. A raid nobody answers by the next day knocks the village back a stage. Walled villages are never raided.
 - **Travelling settlers:** 4 parties of settlers walk the world one screen per game hour, from a town to a village. Meet them on the road and they tell you where they are bound. When they arrive the village grows by a third of a stage.
 - **Saturn budget:** village growth is a fixed 48 x 8-byte table and settlers a fixed 4 x 4-byte table, saved at the end of the save file (older saves still load).
+- **Inland seas:** each world has up to 3 round seas inside the land, ringed by sandy coast screens that have their water on the sea side. Out on the open sea every screen is water: you need a **Boat** (merchants sell them) to sail there; a Raft or Canoe only works by the shore, on rivers and lakes. The hero sits in a little hull while on water. No monsters spawn at sea or on islands.
+- **Islands and land bridges:** each sea has 2-3 islands of sand and palms. Islands send a sand spit toward any land or island beside them, and one island per sea is joined to the shore by a chain of islands you can walk across.
+- **Treasure isles:** lone islands (water on all 4 sides, up to 8 per world) each hold one chest at their centre: press X for 500-800 gold and a Legends entry. Claimed chests are saved (one bit each).
 - **Supply and demand:** what grows around a town is cheaper there (wood near forests, stone near mountains, fish near water, food near farmland), and deserts make food and fish dearer. Selling a lot of one thing in a town lowers what it pays, and that recovers by about 40% each day.
 
 ### Hero facing and sprites

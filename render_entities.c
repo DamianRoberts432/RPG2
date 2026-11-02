@@ -330,6 +330,10 @@ void DrawHeroAsset(HDC hdc) {
     int sx, sy; GetIsoCoords(player_x, player_y, &sx, &sy);
     if (hero_hop_frame > 0) sy -= (int)HeroHopHeight(); // hop arc (double jump climbs higher)
     DrawHeroAssetEx(hdc, sx, sy, 1.0f);
+    if (!in_cave && inside_home < 0 && VISUAL_MAP[(int)player_y][(int)player_x] == 12) {
+        GetIsoCoords(player_x, player_y, &sx, &sy);
+        DrawHeroBoat(hdc, sx, sy);
+    }
 }
 
 void DrawFlyingArrow(HDC hdc) {
