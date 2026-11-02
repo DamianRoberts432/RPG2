@@ -21,9 +21,53 @@ static int CellInWorld(int gx, int gy) {
     return gx >= 0 && gx < META_GRID_SIZE && gy >= 0 && gy < META_GRID_SIZE;
 }
 
+// Map thumbnails: each screen seen this session keeps a 4x4 summary of its real
+// tiles (ground, rock, water, trees, sand), so the World Map shows the same layout
+// and colours as the land you walked. Fixed 256-entry ring (~2.5 KB), not saved.
+#define MAP_THUMBS 256
+enum { MT_GROUND, MT_ROCK, MT_WATER, MT_TREE, MT_SAND, MT_KINDS };
+static struct { int16_t cell; uint8_t cls[8]; } map_thumbs[MAP_THUMBS];
+static int map_thumb_next, map_thumbs_ready;
+
+static int FindMapThumb(int cell) {
+    if (!map_thumbs_ready) {
+        for (int i = 0; i < MAP_THUMBS; i++) map_thumbs[i].cell = -1;
+        map_thumbs_ready = 1;
+    }
+    for (int i = 0; i < MAP_THUMBS; i++) if (map_thumbs[i].cell == cell) return i;
+    return -1;
+}
+
+static int MapThumbClass(int slot, int i) { return (map_thumbs[slot].cls[i / 2] >> ((i & 1) * 4)) & 15; }
+
+static void RecordMapThumb(int gx, int gy) {
+    int cell = gy * META_GRID_SIZE + gx, slot = FindMapThumb(cell);
+    if (slot < 0) { slot = map_thumb_next; map_thumb_next = (map_thumb_next + 1) % MAP_THUMBS; map_thumbs[slot].cell = (int16_t)cell; }
+    const int B = MAP_SIZE / 4;
+    memset(map_thumbs[slot].cls, 0, sizeof(map_thumbs[slot].cls));
+    for (int by = 0; by < 4; by++) for (int bx = 0; bx < 4; bx++) {
+        int n[MT_KINDS] = { 0 }, best = MT_GROUND;
+        for (int r = by * B; r < (by + 1) * B; r++) for (int c = bx * B; c < (bx + 1) * B; c++) {
+            uint8_t t = VISUAL_MAP[r][c];
+            n[t == 1 ? MT_ROCK : t == 12 ? MT_WATER : t == 11 ? MT_TREE : t == 10 ? MT_SAND : MT_GROUND]++;
+        }
+        for (int k = 1; k < MT_KINDS; k++) if (n[k] * 2 > n[best] * (best == MT_GROUND ? 1 : 2)) best = k; // features show from a third of a block
+        int i = by * 4 + bx;
+        map_thumbs[slot].cls[i / 2] |= (uint8_t)(best << ((i & 1) * 4));
+    }
+}
+
+// The ground colour the game paints that biome in full daylight.
+static COLORREF MapGroundColor(int biome) {
+    if (biome == BIOME_DESERT) return RGB(250, 210, 55);
+    if (biome == BIOME_TUNDRA) return RGB(220, 228, 235);
+    return RGB(105, 185, 85);
+}
+
 void RecordCurrentScreenOnMap(void) {
     int gx = screen_grid_x, gy = screen_grid_y;
     if (in_cave || current_biome == BIOME_CAVE || !CellInWorld(gx, gy)) return;
+    if (current_biome != BIOME_CASTLE) RecordMapThumb(gx, gy);
     if (current_biome == BIOME_CASTLE || village_npc_count > 0) {
         if (current_screen_index >= 30000) map_poi[gy][gx] |= POI_TOWN_ALT;
         else map_poi[gy][gx] &= (uint8_t)~POI_TOWN_ALT;
@@ -349,7 +393,18 @@ void DrawWorldMapPanel(HDC hdc, int left, int top, int max_w, int max_h) {
             FillRect(hdc, &cell, base); DeleteObject(base);
         }
 
-        if (biome == BIOME_LAKE) FillSub(hdc, cx, cy, q, 1, 1, 2, 2, water);
+        int thumb = biome >= 0 ? FindMapThumb(gy * META_GRID_SIZE + gx) : -1;
+        if (thumb >= 0) {
+            for (int i = 0; i < 16; i++) {
+                int k = MapThumbClass(thumb, i);
+                COLORREF col = k == MT_ROCK ? GetTileColor(1, 0) : k == MT_WATER ? GetTileColor(12, 0) : k == MT_TREE ? RGB(45, 110, 55) :
+                               k == MT_SAND ? GetTileColor(10, 0) : MapGroundColor(biome);
+                HBRUSH b = CreateSolidBrush(col);
+                FillSub(hdc, cx, cy, q, i % 4, i / 4, 1, 1, b);
+                DeleteObject(b);
+            }
+        }
+        else if (biome == BIOME_LAKE) FillSub(hdc, cx, cy, q, 1, 1, 2, 2, water);
         else if (biome == BIOME_RIVER) { for (int r = 0; r < 4; r++) FillSub(hdc, cx, cy, q, (r == 1 || r == 2) ? 2 : 1, r, 1, 1, water); }
         else if (biome == BIOME_OASIS) FillSub(hdc, cx, cy, q, 1, 1, 1, 1, water);
         else if (biome == BIOME_SWAMP) { FillSub(hdc, cx, cy, q, 0, 2, 1, 1, water); FillSub(hdc, cx, cy, q, 2, 1, 1, 1, water); }

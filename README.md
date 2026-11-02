@@ -168,6 +168,8 @@ The **Hero** tab also shows your **Karma** (Soul, Miasma from dark magic, Town H
 
 The **World Map** tab (M / Start, then tab 2) shows every screen you have explored: biome colours, brown squares for village homes, grey squares for castles, blue for rivers, lakes and sea, and a gold square for cave treasure you have not claimed yet. Each town you have found gets a number, and the **TOWNS** list beside the map gives its name, its patron god (Light, Dark, Voodoo or Eldritch) and whether its card shop and pet shop are open today. The game auto-saves the map to `rpg2_save.dat` (next to `game.exe`) every time you change screens, and loads it on start. Delete that file to start with a blank map.
 
+**Map matches the land:** each screen you walk through this session is drawn on the map as a 4x4 picture of its real tiles, in the same colours the game paints them: green or sand-yellow or snow ground, grey rock, blue water, dark green trees and gold sand. Screens from earlier play sessions show plain biome colours until you walk through them again. The thumbnails use a fixed 256-screen ring of about 2.5 KB and are not saved, keeping the save file small for the Saturn.
+
 **Map cursor:** on the World Map tab, the arrow keys, D-pad or a mouse click move a white cursor. The line under the map names the town there (castle town or village, its god, and whether its card shop and pet shop are open today) or the kind of land. Zoom in (+ / RT) far enough and town names are written on their tiles.
 
 ## Seasons and weather
