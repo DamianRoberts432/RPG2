@@ -919,6 +919,7 @@ static void DrawIsoHome(HDC hdc, float cx, float cy, int i) {
 void DrawVillage(HDC hdc) {
     float hcx, hcy;
     UpdatePlayerHome();
+    DrawVillageGrowth(hdc);
     if (VillageHomeCentre(4, &hcx, &hcy)) {
         DrawIsoHome(hdc, hcx, hcy, 4);
         float fx = player_x + HOME_FEET_OFFSET, fy = player_y + HOME_FEET_OFFSET;
@@ -930,7 +931,7 @@ void DrawVillage(HDC hdc) {
         float fx = player_x + HOME_FEET_OFFSET, fy = player_y + HOME_FEET_OFFSET;
         for (int i = 0; i < 4; i++)
             if (VillageHomeCentre(i, &hcx, &hcy) && fx + fy > hcx + hcy + 0.3f && fabsf((fx - fy) - (hcx - hcy)) < HOME_HALF_X + HOME_HALF_Y + 0.7f) { DrawHeroAsset(hdc); break; }
-    } else if (current_biome == BIOME_CASTLE) {
+    } else if (current_biome == BIOME_CASTLE || VillageStageHere() == 0) {
         int sx, sy; GetIsoCoords(11.0f, 14.0f, &sx, &sy);
         HBRUSH stall = CreateSolidBrush(RGB(170, 115, 65));
         RECT stall_body = { sx - 18, sy - 8, sx + 18, sy + 5 }; FillRect(hdc, &stall_body, stall); DeleteObject(stall);

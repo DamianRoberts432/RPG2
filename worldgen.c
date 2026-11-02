@@ -108,6 +108,7 @@ int WorldBiomeAt(int gx, int gy) { return world_ready && In(gx, gy) ? world_biom
 int WorldSiteAt(int gx, int gy) { return world_ready && In(gx, gy) ? world_site[gy][gx] : SITE_NONE; }
 int WorldIsTown(int gx, int gy) { int s = WorldSiteAt(gx, gy); return s == SITE_TOWN || s == SITE_ELYSIUM; }
 int WorldRoadBits(int gx, int gy) { return world_ready && In(gx, gy) ? world_road[gy][gx] : 0; }
+int WorldTownCell(int i, int *gx, int *gy) { if (i < 0 || i >= town_n) return 0; *gx = town_x[i]; *gy = town_y[i]; return 1; }
 
 // A highway is a 2-tile band from the screen's centre to each edge it leaves by.
 static int HighwayTile(int x, int y) {

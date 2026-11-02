@@ -705,6 +705,11 @@ void DrawTownBanner(HDC hdc) {
     char line[96]; SetBkMode(hdc, TRANSPARENT);
     RECT t1 = { x, y + 8, x + w, y + 30 }, t2 = { x, y + 32, x + w, y + 52 };
     SetTextColor(hdc, RGB(255, 225, 130)); DrawText(hdc, town_banner, -1, &t1, DT_CENTER | DT_SINGLELINE);
+    if (town_banner_sub[0]) {
+        SetTextColor(hdc, strstr(town_banner_sub, "RAID") ? RGB(255, 120, 100) : RGB(200, 210, 220));
+        DrawText(hdc, town_banner_sub, -1, &t2, DT_CENTER | DT_SINGLELINE);
+        return;
+    }
     snprintf(line, sizeof(line), "Town Heat: %d%s", karma.town_heat, karma.town_heat >= 50 ? "  - the guards are watching you" : "");
     SetTextColor(hdc, karma.town_heat >= 50 ? RGB(255, 120, 100) : RGB(200, 210, 220)); DrawText(hdc, line, -1, &t2, DT_CENTER | DT_SINGLELINE);
 }

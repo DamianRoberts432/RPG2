@@ -9,7 +9,7 @@
 int VillageHomeCentre(int i, float *x, float *y) {
     if (i == 4) return PlayerHomeCentre(x, y);
     static const int hx[4] = { 11, 15, 19, 15 }, hy[4] = { 11, 10, 11, 18 };
-    if (i < 0 || i >= 4 || in_cave || current_biome != BIOME_PRAIRIE || village_npc_count == 0) return 0;
+    if (i < 0 || i >= 4 || in_cave || current_biome != BIOME_PRAIRIE || village_npc_count == 0 || VillageStageHere() < 1) return 0;
     *x = hx[i] + (current_screen_index % 3) - 1 + 0.5f; *y = hy[i] + 0.5f;
     return 1;
 }
@@ -18,6 +18,7 @@ int TileBlocksPlayer(float x, float y) {
     if (x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE) return 1;
     if (inside_home >= 0) return InteriorBlocks(x, y);
     uint8_t t = VISUAL_MAP[(int)y][(int)x];
+    if (VillageBlocksAt((int)x, (int)y)) return 1;
     for (int i = 0; i < 5; i++) { // village homes are solid exactly where they are drawn
         float hx, hy;
         if (VillageHomeCentre(i, &hx, &hy) && fabsf(x + HOME_FEET_OFFSET - hx) < HOME_HALF_X - 0.15f && fabsf(y + HOME_FEET_OFFSET - hy) < HOME_HALF_Y - 0.15f) return 1;
@@ -87,6 +88,7 @@ void UpdateGamePhysics(void) {
     UpdateVillageNPCs();
     UpdateCritters();
     UpdateFootpaths();
+    UpdateTownGrowth();
     ExpireDroppedItems();
     UpdateIceSlide();
     UpdateDebrisTwigs();

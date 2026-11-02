@@ -10,6 +10,7 @@ int WorldBiomeAt(int gx, int gy);
 int WorldSiteAt(int gx, int gy);
 int WorldIsTown(int gx, int gy);
 int WorldRoadBits(int gx, int gy); // 1 north, 2 east, 4 south, 8 west
+int WorldTownCell(int i, int *gx, int *gy);
 const char *ElysiumThemeName(void);
 void ClearHighwayTiles(void);
 void DrawHighway(HDC hdc);

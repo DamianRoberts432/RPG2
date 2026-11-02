@@ -143,6 +143,7 @@ int SaveWorldMapState(void) {
     ok = ok && AdvSave(f);
     ok = ok && fwrite(card_collection_bits + CARD_BYTES_V1, CARD_BYTES - CARD_BYTES_V1, 1, f) == 1 &&
          fwrite(deck_of_cards_bits + CARD_BYTES_V1, CARD_BYTES - CARD_BYTES_V1, 1, f) == 1;
+    ok = ok && TownGrowthSave(f);
     ok = (fclose(f) == 0) && ok;
     if (!ok) { remove(SAVE_TEMP_NAME); return 0; }
     return MoveFileExA(SAVE_TEMP_NAME, SAVE_FILE_NAME, MOVEFILE_REPLACE_EXISTING) != 0;
@@ -200,6 +201,7 @@ int LoadWorldMapState(void) {
     int32_t extra[8];
     int has_extra = has_outfit && fread(extra, sizeof(extra), 1, f) == 1;
     int has_cards2 = has_extra && AdvLoad(f) && fread(cards2, sizeof(cards2), 1, f) == 1 && fread(deck2, sizeof(deck2), 1, f) == 1;
+    if (has_cards2 && ok) TownGrowthLoad(f);
     fclose(f);
     if (!ok) return 0;
     memcpy(visited_biomes, biomes, sizeof(biomes));

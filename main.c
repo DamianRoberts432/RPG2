@@ -44,6 +44,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
     int loaded = LoadWorldMapState();
     if (!world_seed) world_seed = 1u + (uint32_t)(GetTickCount() % 2000000000u);
     GenerateWholeWorld(world_seed);
+    TownGrowthInit();
     if (!loaded) { screen_grid_x = elysium_gx; screen_grid_y = elysium_gy; }
     screens_until_town = WorldIsTown(screen_grid_x, screen_grid_y) ? 0 : 1;
     InitCardSets();
