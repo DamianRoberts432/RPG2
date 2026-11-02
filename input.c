@@ -152,6 +152,10 @@ void ProcessGamepadInput(void) {
             int rs_down_gp = (buttons & XINPUT_GAMEPAD_RIGHT_THUMB) != 0;
             if (rs_down_gp && !rs_was_down) CycleCameraZoom();
             rs_was_down = rs_down_gp;
+            static int ls_was_down = 0;
+            int ls_down_gp = (buttons & XINPUT_GAMEPAD_LEFT_THUMB) != 0;
+            if (ls_down_gp && !ls_was_down && !town_menu && !vendor_menu_open) ToggleLockOn();
+            ls_was_down = ls_down_gp;
 
             int shopping = vendor_menu_open && IsNearMerchant();
             if (!shopping && !town_menu && !QuickWheelUpdate(buttons)) {

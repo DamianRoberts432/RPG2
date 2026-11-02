@@ -272,7 +272,7 @@ Each module has a matching .h with its function prototypes.
 - **Whole world at the start:** the whole 64x64 world (biomes, 12 towns, about 45 villages and 6 dwarf holds) is laid out from a world seed when the game starts. The seed is kept in your save, so towns don't move. The map still only shows places you've been.
 - **Elysium:** the hub and trading town, where every new hero starts. Depending on the world it sits in the heartland, by an ocean port, on a lakeshore, in a forest or in the desert. Elysium always has every shop open and pays 25% more for what you sell.
 - **Highways:** stone roads join all the towns along the shortest network. A highway screen has a cleared road from the centre to each edge it leads to.
-- **Dwarf holds:** villages up in the mountains are always dwarf holds: short, bearded folk with their own greetings.
+- **Dwarf holds:** the 6 dwarf holds lie inside caves, not on the slopes. Each dwarf-hold mountain has a cave mouth, and its cave opens into a torch-lit hall with four pillars, dwarf homes, short bearded folk with their own greetings, an altar and a dwarf smith. No monsters spawn there. The chest deeper in is still the way back up.
 - **Supply and demand:** what grows around a town is cheaper there (wood near forests, stone near mountains, fish near water, food near farmland), and deserts make food and fish dearer. Selling a lot of one thing in a town lowers what it pays, and that recovers by about 40% each day.
 
 ### Hero facing and sprites
@@ -296,6 +296,8 @@ Each module has a matching .h with its function prototypes.
 - **World Map:** highways are drawn through places you've visited.
 - **Town menus** scroll (up to 64 rows), so the card shop has room for more sets.
 - **Hall of Records:** the Options tab lists your heroes' falls and retirements (`hall.dat`, last 16).
+- **Legends:** the Options tab also lists great deeds across all your heroes (`legends.dat`, the last 24, 64 bytes each): the first kill of each boss, every 10th level, cavern hoards, falls and retirements.
+- **Lock-on (L3 / L key):** locks onto the nearest enemy within 8 tiles (red arrow and ring). The hero keeps facing it while you move, so you can strafe and circle it, and swings, spears and arrows aim at it. Press again to let go; it also lets go when the enemy dies, gets 10 tiles away, or you leave the screen.
 - **Wishing wells** on town and village squares: 10 gold once a day for +25% damage for 5 minutes.
 - **Double jump:** press hop (B / J) again on the way down.
 - **3-hit combo:** sword/axe swings within 0.8 s chain overhead, wide side sweep, long thrust (1.5x).

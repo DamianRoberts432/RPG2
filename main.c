@@ -113,6 +113,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                                               is_character_creation || sleep_fade_frame > 0 || inside_home >= 0);
                 view_zoom += DoorwayCamera();
         SoundUpdate();
+        LockOnUpdate();
             HDC hdc = GetDC(hwnd); HDC memHDC = CreateCompatibleDC(hdc); HBITMAP memBitmap = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT); SelectObject(memHDC, memBitmap);
             
             if (is_character_creation) {
@@ -263,7 +264,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 DrawCampfires(memHDC); DrawVillageLights(memHDC); DrawChests(memHDC); DrawBarrels(memHDC); DrawBedroll(memHDC); DrawGroundLoot(memHDC); DrawDroppedItems(memHDC); DrawDebrisTwigs(memHDC); DrawSummonedZombie(memHDC);
                 DrawFlyingArrow(memHDC); DrawFlyingSpear(memHDC); DrawFlyingSpell(memHDC); DrawClassAbilityFX(memHDC); DrawButterflies(memHDC); DrawBloodMistFX(memHDC);
                 DrawEnvironmentalCritters(memHDC); DrawFamiliar(memHDC); DrawFishing(memHDC); DrawMerchantStoreFront(memHDC); DrawVillage(memHDC); DrawNightDarkness(memHDC); DrawNightEyes(memHDC);
-                DrawWeatherEffects(memHDC); DrawSolitaireSunMoonBeam(memHDC);
+                DrawLockOnMarker(memHDC); DrawWeatherEffects(memHDC); DrawSolitaireSunMoonBeam(memHDC);
                 ApplyCameraZoom(memHDC, view_zoom);
                 DrawAfkView(memHDC);
                 DrawHomeInterior(memHDC);

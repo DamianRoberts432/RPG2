@@ -264,7 +264,10 @@ void HandleEnemyDamage(float dmg) {
             gained_xp *= 4;
         }
         player_xp += gained_xp;
-        if (IS_BOSS_MONSTER(active_monster)) { karma.life_marks |= (uint16_t)(1u << active_monster); KarmaAdjust(5, 0, 0, 10); }
+        if (IS_BOSS_MONSTER(active_monster)) {
+            if (!(karma.life_marks & (1u << active_monster))) AddLegend("slew the %s", MonsterName(active_monster));
+            karma.life_marks |= (uint16_t)(1u << active_monster); KarmaAdjust(5, 0, 0, 10);
+        }
         else if (rand() % 5 == 0) KarmaAdjust(1, 0, 0, 0);
         if (player_xp >= player_next_level_xp) {
             // Each level needs 100 more XP than the last, so attribute points come slower.
@@ -273,6 +276,7 @@ void HandleEnemyDamage(float dmg) {
                 player_xp -= player_next_level_xp;
                 player_next_level_xp += 100;
                 stat_points += STAT_POINTS_PER_LEVEL;
+                if (player_level % 10 == 0) AddLegend("reached level %d", player_level);
             }
             sprintf(arpg_action_log, "LEVEL UP! Reached Level %d! %d attribute points to spend (Hero tab: Y / P).", player_level, stat_points);
         } else {
@@ -349,6 +353,10 @@ int SelectNearestEnemyTo(float x, float y) {
 
 // The player's target: the closest enemy they are facing, else the closest one.
 int SelectTargetEnemy(void) {
+    if (lock_on_enemy >= 0) {
+        StoreEnemy();
+        if (enemies[lock_on_enemy].hearts > 0.0f) { SelectEnemy(lock_on_enemy); return current_enemy; }
+    }
     int nearest = SelectNearestEnemyTo(player_x, player_y);
     if (nearest < 0) return -1;
     int facing = -1; float best_d = 1e9f;
@@ -374,6 +382,7 @@ static void SpawnEnemyInFreeSlot(void) {
 }
 
 void SpawnScreenEnemies(void) {
+    lock_on_enemy = -1;
     for (int i = 0; i < MAX_ENEMIES; i++) enemies[i].hearts = 0.0f;
     SelectEnemy(0);
     int cap = EnemyCap();
@@ -712,7 +721,7 @@ static int NearestTownCell(void) {
 // Knocked out: a townsfolk carries the hero to the nearest town. Nothing is lost.
 static void RescueHero(void) {
     int cell = NearestTownCell();
-    if (in_cave) { in_cave = 0; pending_forced_biome = -1; }
+    if (in_cave) { in_cave = 0; cave_is_hold = 0; pending_forced_biome = -1; }
     if (fishing_active) fishing_active = 0;
     if (cell >= 0) {
         screen_grid_x = cell % META_GRID_SIZE; screen_grid_y = cell / META_GRID_SIZE;
@@ -733,6 +742,7 @@ void HurtHero(float dmg) {
         player_hp = 0.0f;
         char cause[24]; snprintf(cause, sizeof(cause), "Fell to %s", MonsterName(active_monster));
         RecordHallEntry(cause, 0);
+        AddLegend("fell to %s", MonsterName(active_monster));
         RescueHero();
     }
 }
@@ -766,6 +776,52 @@ void SetHeroFacing8(float dx, float dy) {
     if (dx == 0.0f && dy == 0.0f) return;
     float l = (float)sqrt(dx * dx + dy * dy);
     facing_x = dx / l; facing_y = dy / l;
+}
+
+// L3 / L lock-on: the hero keeps facing the locked enemy while moving, so you can
+// strafe and circle it; swings, spears and arrows aim at it. It lets go when the
+// enemy dies, gets more than 10 tiles away, or you leave the screen.
+int lock_on_enemy = -1;
+
+void ToggleLockOn(void) {
+    if (lock_on_enemy >= 0) { lock_on_enemy = -1; strcpy(arpg_action_log, "Lock-on released."); return; }
+    StoreEnemy();
+    int best = -1; float best_d = 64.0f;
+    for (int i = 0; i < MAX_ENEMIES; i++) {
+        if (enemies[i].hearts <= 0.0f) continue;
+        float dx = enemies[i].x - player_x, dy = enemies[i].y - player_y, d = dx * dx + dy * dy;
+        if (d < best_d) { best_d = d; best = i; }
+    }
+    if (best < 0) { strcpy(arpg_action_log, "LOCK-ON: no enemy within 8 tiles."); return; }
+    lock_on_enemy = best;
+    snprintf(arpg_action_log, sizeof(arpg_action_log), "LOCK-ON: %s. Move to circle it; L3 or L again lets go.", MonsterName(enemies[best].type));
+}
+
+void LockOnUpdate(void) {
+    static int key_was = 0;
+    int key = (GetAsyncKeyState('L') & 0x8000) != 0;
+    if (key && !key_was && !is_menu_open && !town_menu && !vendor_menu_open) ToggleLockOn();
+    key_was = key;
+    if (lock_on_enemy < 0) return;
+    StoreEnemy();
+    EnemySlot *e = &enemies[lock_on_enemy];
+    float dx = e->x - player_x, dy = e->y - player_y;
+    if (e->hearts <= 0.0f || dx * dx + dy * dy > 100.0f) { lock_on_enemy = -1; return; }
+    SetHeroFacing8(dx, dy);
+    player_facing = fabsf(dx) > fabsf(dy) ? (dx < 0 ? FACE_LEFT : FACE_RIGHT) : (dy < 0 ? FACE_UP : FACE_DOWN);
+}
+
+// A red arrow bobbing over the locked enemy and a ring at its feet.
+void DrawLockOnMarker(HDC hdc) {
+    if (lock_on_enemy < 0 || enemies[lock_on_enemy].hearts <= 0.0f) return;
+    int sx, sy; GetIsoCoords(enemies[lock_on_enemy].x, enemies[lock_on_enemy].y, &sx, &sy);
+    int top = sy - 58 + (int)(sinf(GetTickCount() / 160.0f) * 3.0f), feet = sy + TILE_HEIGHT / 2;
+    HPEN pen = CreatePen(PS_SOLID, 2, RGB(255, 70, 50));
+    HGDIOBJ op = SelectObject(hdc, pen), ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+    POINT tri[3] = { { sx - 7, top }, { sx + 7, top }, { sx, top + 9 } };
+    Polygon(hdc, tri, 3);
+    Ellipse(hdc, sx - 20, feet - 8, sx + 20, feet + 8);
+    SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(pen);
 }
 // A sword/axe slash: three streaks sweeping across the facing direction on screen.
 // An iron sword from hilt (x0,y0) to tip (x1,y1): leather grip, dark crossguard,

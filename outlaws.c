@@ -65,6 +65,7 @@ void WriteLegacy(void) {
     int done = 0;
     for (int q = 0; q < ADV_MAX; q++) if (adv_state[q] == 255) done++;
     RecordHallEntry("Retired", 1);
+    AddLegend("retired at level %d", player_level);
     FILE *f = fopen(LEGACY_FILE, "wb");
     if (!f) return;
     int32_t d[4] = { LEGACY_MAGIC, player_level, done, gold_count };

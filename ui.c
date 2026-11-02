@@ -513,6 +513,8 @@ void DrawTabbedMenuOverlay(HDC hdc) {
         TextOut(hdc, 100, 280, "[9] / Back: Delete save file (press twice to confirm)", 53);
         DrawPanel(hdc, 80, 330, 900, 570);
         DrawHallOfRecords(hdc, 100, 340);
+        DrawPanel(hdc, 920, 92, WINDOW_WIDTH - 136, WINDOW_HEIGHT - 112);
+        DrawLegends(hdc, 940, 100, 24);
         SetTextColor(hdc, RGB(255, 255, 255));
     }
 
