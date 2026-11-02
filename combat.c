@@ -54,9 +54,11 @@ void TriggerMonsterRespawn(void) {
     else if (spawn_side == 2) { enemy_x = (float)(rand() % 24 + 4); enemy_y = 2.0f; }
     else { enemy_x = (float)(rand() % 24 + 4); enemy_y = 29.0f; }
     int mythic = MythicForCurrentLand();
+    int custom;
     int peak = current_biome == BIOME_MOUNTAIN && MountainIsPeak(current_screen_index); // Yeti haunt the summits
     if (mythic >= 0 && rand() % 100 < MYTHIC_SPAWN_CHANCE * (is_night ? 2 : 1) * (peak ? 3 : 1)) active_monster = (MonsterType)mythic;
     else if (is_night && rand() % 100 < 4 && GetMaterialCount("Garlic") == 0) active_monster = MONSTER_DRACULA;
+    else if ((custom = CustomSpawnPick((int)current_biome, is_night)) >= 0) active_monster = (MonsterType)custom;
     else {
         // Satyr cultists keep to the wild Greek-style country: woods, meadows and hills.
         int satyr_land = current_biome == BIOME_FOREST || current_biome == BIOME_GRASSLANDS ||
