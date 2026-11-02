@@ -23,7 +23,9 @@ typedef int32_t fx;
 #define FxRound(a) ((int)(((a) + FX_HALF) >> FX_SHIFT))
 #define FxFrac(a) ((a) & (FX_ONE - 1))
 #define FxCeil(a) ((int)(((a) + FX_ONE - 1) >> FX_SHIFT))
+#define FxRaw(v) ((fx)(v))
 #define FX_MAX ((fx)INT32_MAX)
+#define FX_EPS ((fx)1) // smallest step, keeps divisors off zero
 
 static inline fx FxMul(fx a, fx b) { return (fx)(((int64_t)a * b) >> FX_SHIFT); }
 static inline fx FxDiv(fx a, fx b) {
@@ -60,6 +62,8 @@ fx FxAtan2(fx y, fx x);
 fx FxSqrt(fx a);
 fx FxLen(fx x, fx y);        // sqrt(x*x + y*y) without overflow
 fx FxLen3(fx x, fx y, fx z);
+fx FxTan(fx radians);
+fx FxExpNeg(fx x);       // e^-x for x >= 0
 fx FxMod(fx a, fx m);        // like fmodf: keeps the sign of a
 // Text for messages: a value with 0-3 decimals, from 4 rotating 16-byte buffers.
 const char *FxStr(fx a, int decimals);
