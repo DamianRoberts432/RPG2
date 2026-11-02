@@ -23,9 +23,12 @@ estimate until there is a real Saturn build.
 |---|---:|---:|---:|---:|
 | Before (main after PR #47) | 459,136 | 32,944 | 742,240 | 1,234,320 (1.18 MB) |
 | After the AFK face list shrink | 459,808 | 32,944 | 562,016 | 1,054,768 (1.01 MB) |
+| After PR #49 (fixed point, AFK still decimal) | 596,276 | 35,888 | 562,560 | 1,194,724 (1.14 MB) |
+| After the AFK view went fixed point | 580,232 | 35,888 | 562,560 | 1,178,680 (1.12 MB) |
 
-That leaves about 1,042,000 bytes (0.99 MB) of the 2 MB for the stack, the
-Saturn SDK and anything new.
+That leaves about 918,000 bytes (0.88 MB) of the 2 MB for the stack, the
+Saturn SDK and anything new. These are PC (x86-64, unoptimised MinGW) sizes,
+so SH-2 code size will differ.
 
 ## Biggest fixed arrays (bss + data, per file)
 
@@ -79,15 +82,22 @@ maths in 16.16 fixed point (`fixed.h`, `fixed.c`). An `fx` is a value times
   growth starts over after a wrap, which only changes how big saplings look.
 - **Saves:** they are version 2 now. Version 1 saves still load: their
   decimals are converted once, using whole-number maths only.
-- **Not yet converted:** the AFK first-person view (`afkview.c`) is the next
-  PR. Until then it reads the game's fixed-point state through
-  `FxToF`/`FxFromF`. The PC's optional real-world weather download also reads
-  decimals, and a Saturn has no internet to run it.
+- **AFK first-person view:** converted too. Two places need 64-bit
+  intermediates, which the SH-2 does with its 32x32->64 multiply:
+  - Projecting a point next to the eye can land tens of thousands of pixels
+    off screen, past what 16.16 holds. Screen points are worked out and
+    clipped to the guard band in 64 bits, then stored as 16-bit.
+  - Face normals are a cross product of small edges. It is taken in 64 bits
+    and scaled to a fixed length, so tiny faces keep their direction.
+- **Still decimal (PC only):** the optional real-world weather download
+  (`weather.c`), which a Saturn has no internet to run, and the GDI `XFORM`
+  scale in `render_entities.c`, converted right at the call.
 - **Windows boundaries:** the GDI calls that need decimals (`XFORM`) convert
   right at the call.
 - **Type check:** `fx_check.h` turns `fx` into a C++ class that rejects the
   mistakes plain `int32_t` lets through: `fx * fx` without `FxMul`, `fx / fx`
-  without `FxDiv`, `(int)` casts, and adding or comparing a whole number. Run
+  without `FxDiv`, `(int)` casts, and adding, subtracting or comparing a whole
+  number on either side. Run
   it on any file with
   `g++ -fsyntax-only -fpermissive -DFX_CHECK -x c++ combat.c`.
-  Every converted file passes.
+  Every file passes, including `afkview.c`.

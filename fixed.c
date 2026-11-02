@@ -133,3 +133,14 @@ fx FxFromFloatBits(uint32_t b) {
     int64_t v = sh >= 0 ? m << sh : m >> -sh;
     return (fx)(neg ? -v : v);
 }
+
+fx FxTan(fx a) { return FxDiv(FxSin(a), FxCos(a)); }
+
+fx FxExpNeg(fx x) {
+    static const fx whole[12] = { 65536, 24109, 8869, 3263, 1200, 442, 162, 60, 22, 8, 3, 1 };
+    if (x <= 0) return FX_ONE;
+    int n = FxFloor(x);
+    if (n >= 12) return 0;
+    fx f = FxFrac(x), t = FX_ONE - FxMul(f, FX_ONE - FxMul(f, FX(0.5) - FxMul(f, FX(1.0 / 6) - FxMul(f, FX(1.0 / 24) - FxMul(f, FX(1.0 / 120))))));
+    return FxMul(whole[n], t);
+}
