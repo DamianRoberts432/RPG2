@@ -70,10 +70,22 @@ void GenerateVillageNPCs(void) {
             float sx = village_x[3] + shift + 1.0f, sy = village_y[3] + 2.0f;
             village_npcs[3] = (NPCEntity){ sx, sy, sx, sy, 3, 0, FACE_DOWN, "Dwarf smith: X to step into the forge.", 130 };
         }
+        int stage = VillageStageHere();
+        if (stage == 0) { village_npc_count = 2; VISUAL_MAP[14][11] = 0; } // a camp: two settlers and their stall
+        if (stage >= 2) { // crop fields and the windmill
+            for (int y = 16; y <= 17; y++) for (int x = 6; x <= 8; x++) VISUAL_MAP[y][x] = VISUAL_MAP[y][x + 16] = 0;
+            VISUAL_MAP[8][23] = 0;
+        }
+        if (stage >= 3) for (int y = 6; y <= 24; y++) for (int x = 5; x <= 25; x++) if (VillageBlocksAt(x, y)) VISUAL_MAP[y][x] = 0;
         float shrine_x = 13.5f + shift, beggar_x = 20.5f + shift; // in front of the homes, not inside them
         village_npcs[village_npc_count++] = (NPCEntity){ shrine_x, 13.0f, shrine_x, 13.0f, 8, 0, FACE_DOWN, "A wayside altar hums with power. X to kneel.", 999 };
         if (RainHash(current_screen_index * 31 + SeasonDay()) % 2)
             village_npcs[village_npc_count++] = (NPCEntity){ beggar_x, 13.5f, beggar_x, 13.5f, 7, 0, FACE_DOWN, "Beggar: Spare a coin or a crust, kind traveler?", 140 };
+        if (stage >= 3) for (int g = 0; g < 2 && village_npc_count < MAX_NPCS; g++) { // gate guards
+            float gy = g ? 23.0f : 7.0f;
+            VISUAL_MAP[(int)gy][17] = 0;
+            village_npcs[village_npc_count++] = (NPCEntity){ 17.0f, gy, 17.0f, gy, 2, 0, FACE_DOWN, "Guard: The palisade keeps the bandits out.", 150 };
+        }
     }
 }
 
@@ -518,6 +530,7 @@ void GenerateProceduralScreen(int index) {
     SpawnScreenEnemies();
     if (in_cave && cave_is_hold) { for (int i = 0; i < MAX_ENEMIES; i++) enemies[i].hearts = 0.0f; enemy_hearts = 0.0f; } // the dwarves keep their hall clear
     ApplyScreenMemory(index);
+    TownGrowthOnEnter();
     // Musashi's Blade only washes up on a beach at the world's eastern edge,
     // and only on summer day 13 (Musashi died on June 13, 1645).
     if (current_biome == BIOME_BEACH && grid_c == META_GRID_SIZE - 1 && current_season == SEASON_SUMMER &&
@@ -636,7 +649,7 @@ void UpdateVillageNPCs(void) {
             if (npc->dialogue_cooldown == 0) {
                 const char *custom = CustomVillagerLine();
                 if (npc->type == 0 && custom && rand() % 2 == 0) npc->dialogue = custom;
-                else if (npc->type == 0) npc->dialogue = rand() % 3 == 0 ? world_hints[rand() % WORLD_HINT_COUNT] : villager_greetings[rand() % 3];
+                else if (npc->type == 0 && (VillageStageHere() >= 0 || current_biome == BIOME_CASTLE)) npc->dialogue = rand() % 3 == 0 ? world_hints[rand() % WORLD_HINT_COUNT] : villager_greetings[rand() % 3];
                 else if (npc->type == 2) npc->dialogue = fort_barks[rand() % 3];
                 else if (npc->type == 1) npc->dialogue = "Welcome, adventurer!";
                 npc->dialogue_cooldown = 120 + rand() % 61;

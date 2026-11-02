@@ -391,6 +391,14 @@ void SpawnScreenEnemies(void) {
     for (int k = 0; k < n; k++) SpawnEnemyInFreeSlot();
 }
 
+// Village raids: goblin bandits, already angry.
+void SpawnRaidBandits(int n) {
+    for (int k = 0; k < n; k++) SpawnEnemyInFreeSlot();
+    for (int i = 0; i < MAX_ENEMIES; i++)
+        if (enemies[i].hearts > 0.0f && !IS_BOSS_MONSTER(enemies[i].type)) { enemies[i].type = MONSTER_GOBLIN; enemies[i].angry = 1; }
+    SelectEnemy(current_enemy);
+}
+
 // Every ENEMY_SPAWN_INTERVAL_MS another monster wanders in while the screen is
 // under its cap (4 by day, 6 at night); extras left at dawn wander off.
 void UpdateEnemySpawns(void) {
