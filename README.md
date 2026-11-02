@@ -316,3 +316,7 @@ Each module has a matching .h with its function prototypes.
 - **Left stick** moves in any direction; tilt sets speed.
 - **Shadows:** trees cast soft canopy shadows on the ground, and your shadow stretches away from the sun or moon.
 - **Update files:** `NewNPC,NPCID,Name,Job,Line` and `NewEconomy,EconomyID,ItemName,PricePercent`.
+
+## Sega Saturn memory
+
+The code and fixed data take about 1.01 MB of the Saturn's 2 MB work RAM, and the game never allocates memory at run time. See `SATURN.md` for the full audit.

@@ -321,7 +321,27 @@ static void DrawThing(HDC hdc, const FpThing *t, float lit) {
 // faded into the haze with distance and painted far to near.
 #define FP_MAX_FACES 4096
 #define FP_NEAR 0.08f
-typedef struct { float depth; int n, sprite; POINT p[12]; COLORREF c; } FpFace;
+// Saturn budget: screen points are 16-bit (as VDP1 takes them), so a face is
+// 68 bytes instead of 112 and the 4096-face list is 272 KB instead of 448 KB.
+// Points are clipped to a guard band round the screen so they always fit.
+#define FP_MAX_PTS 14 // 8 corners + 1 from the near clip + 4 from the guard band, 1 spare
+#define FP_GUARD 512
+typedef struct { float depth; COLORREF c; int16_t sprite; uint8_t n; int16_t x[FP_MAX_PTS], y[FP_MAX_PTS]; } FpFace;
+_Static_assert(sizeof(FpFace) <= 68, "FpFace grew past its Saturn budget");
+
+static int ClipEdge(float (*in)[2], int n, float (*out)[2], int axis, float lim, int keep_below) {
+    int m = 0;
+    for (int i = 0; i < n && m < FP_MAX_PTS - 1; i++) {
+        float *a = in[i], *b = in[(i + 1) % n];
+        int ia = keep_below ? a[axis] <= lim : a[axis] >= lim, ib = keep_below ? b[axis] <= lim : b[axis] >= lim;
+        if (ia) { out[m][0] = a[0]; out[m][1] = a[1]; m++; }
+        if (ia != ib) {
+            float t = (lim - a[axis]) / (b[axis] - a[axis]);
+            out[m][0] = a[0] + t * (b[0] - a[0]); out[m][1] = a[1] + t * (b[1] - a[1]); m++;
+        }
+    }
+    return m;
+}
 static FpFace faces[FP_MAX_FACES];
 static int face_count, face_glow;
 static float face_bias, scene_lit;
@@ -356,11 +376,18 @@ static void AddFace(float v[][3], int n, COLORREF col, const float *center, int 
         if (ia != ib) { float t = (FP_NEAR - a[0]) / (b[0] - a[0]); for (int k = 0; k < 3; k++) cl[m][k] = a[k] + t * (b[k] - a[k]); m++; }
     }
     if (m < 3) return;
-    FpFace *F = &faces[face_count++];
+    float s0[FP_MAX_PTS][2], s1[FP_MAX_PTS][2];
     for (int i = 0; i < m; i++) {
-        F->p[i].x = WINDOW_WIDTH / 2 + (int)(cl[i][1] / cl[i][0] * focal);
-        F->p[i].y = horizon + (int)((eye_z - cl[i][2]) / cl[i][0] * focal);
+        s0[i][0] = WINDOW_WIDTH / 2 + cl[i][1] / cl[i][0] * focal;
+        s0[i][1] = horizon + (eye_z - cl[i][2]) / cl[i][0] * focal;
     }
+    m = ClipEdge(s0, m, s1, 0, -FP_GUARD, 0);
+    m = ClipEdge(s1, m, s0, 0, WINDOW_WIDTH + FP_GUARD, 1);
+    m = ClipEdge(s0, m, s1, 1, -FP_GUARD, 0);
+    m = ClipEdge(s1, m, s0, 1, WINDOW_HEIGHT + FP_GUARD, 1);
+    if (m < 3) return;
+    FpFace *F = &faces[face_count++];
+    for (int i = 0; i < m; i++) { F->x[i] = (int16_t)(int)s0[i][0]; F->y[i] = (int16_t)(int)s0[i][1]; }
     float d = sqrtf(ex * ex + ey * ey + ez * ez), fog = (d - fog_near) / (fog_far - fog_near);
     fog = fog < 0 ? 0 : fog > 1 ? 1 : fog;
     F->n = m; F->sprite = -1; F->depth = d - face_bias + (ground ? 1000.0f : 0.0f); // ground always first
@@ -372,7 +399,7 @@ static void AddSprite(int idx) {
     if (face_count >= FP_MAX_FACES) return;
     float dx = things[idx].x - eye_x, dy = things[idx].y - eye_y;
     FpFace *F = &faces[face_count++];
-    F->sprite = idx; F->n = 0; F->depth = sqrtf(dx * dx + dy * dy);
+    F->sprite = (int16_t)idx; F->n = 0; F->depth = sqrtf(dx * dx + dy * dy);
 }
 
 static int FaceFarFirst(const void *a, const void *b) {
@@ -390,8 +417,10 @@ static void DrawFaces(HDC hdc, float lit) {
             SelectObject(hdc, GetStockObject(DC_BRUSH)); SelectObject(hdc, GetStockObject(DC_PEN));
             continue;
         }
+        POINT pt[FP_MAX_PTS];
+        for (int k = 0; k < F->n; k++) { pt[k].x = F->x[k]; pt[k].y = F->y[k]; }
         SetDCBrushColor(hdc, F->c); SetDCPenColor(hdc, F->c); // same-colour edge hides seams
-        Polygon(hdc, F->p, F->n);
+        Polygon(hdc, pt, F->n);
     }
     SelectObject(hdc, ob); SelectObject(hdc, op);
 }
