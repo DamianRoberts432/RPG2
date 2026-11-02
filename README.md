@@ -91,7 +91,7 @@ game.exe
 | **'F' / 'R' Key / RT (Right Trigger)** | — | Bow Charge (Tap for Quick Shot / Hold to Charge; holding the draw drains stamina every frame). With a **Spear** equipped and no Bow, it **throws the spear**: it lands on the ground, stand on it and press X to pick it up. The Bow is a **secondary** weapon: equip it alongside your sword/axe. Arrows fly the way you face (they only hit a monster you are facing), stop at trees and rocks, and vanish at the screen edge. |
 | **'Y' Button / Key** | — | Class Special Ability (gameplay-only, debounced to fire once per press, then on cooldown): Necromancer summons (Zombie from level 1 - poison bite, Skeleton from level 3 - tough, Ghost from level 5 - fast and can't be hit; each press raises the next one), Wizard ranged spell bolt, Knight/Warrior defensive backstep + counter-strike, Rogue sneak (breaks monster detection). |
 | **Shift / LT (Left Trigger), held while moving** | — | Run: 1.6x speed, drains stamina. Plain walking barely tires you, and carry weight only slows you past 70% of your limit. |
-| **'J' Key / LB (Left Bumper)** | — | Quick hop: a short, fast hop (costs 5 stamina). Monsters can't hit you mid-hop. |
+| **'J' Key / (B) Button** | — | Quick hop: a short, fast hop (costs 5 stamina). Monsters can't hit you mid-hop. |
 | **'M' Key / Start Button** | — | Open Inventory & Route Display |
 | **'1' Key / (A) in Inventory Tab** | — | Equip/Unequip the selected inventory item. One melee weapon and one Bow can be equipped at the same time. |
 | **'3' Key / (X) in Inventory Tab** | — | Light a Campfire — the ONLY way to place one. Uses 2 Wood + 1 Match and needs a free campfire slot; nothing is consumed unless all are available. |
@@ -287,7 +287,7 @@ Each module has a matching .h with its function prototypes.
 - **Town menus** scroll (up to 64 rows), so the card shop has room for more sets.
 - **Hall of Records:** the Options tab lists your heroes' falls and retirements (`hall.dat`, last 16).
 - **Wishing wells** on town and village squares: 10 gold once a day for +25% damage for 5 minutes.
-- **Double jump:** press hop (LB / J) again on the way down.
+- **Double jump:** press hop (B / J) again on the way down.
 - **3-hit combo:** sword/axe swings within 0.8 s chain overhead, wide side sweep, long thrust (1.5x).
 - **Quick-use wheel:** hold BACK and tap a D-pad direction to eat or drink one of your first 4 foods/potions.
 - **Barrels** stand against house sides, away from shopkeepers.
