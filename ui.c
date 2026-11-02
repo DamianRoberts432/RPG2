@@ -59,35 +59,35 @@ void DrawPlayerStatusHUD(HDC hdc) {
 
     RECT hp_bg = { bar_x, hp_y, bar_x + bar_w, hp_y + bar_h };
     HBRUSH bg_b = CreateSolidBrush(RGB(40, 15, 15)); FillRect(hdc, &hp_bg, bg_b); DeleteObject(bg_b);
-    float hp_pct = max_player_hp > 0.0f ? player_hp / max_player_hp : 0.0f;
-    RECT hp_fill = { bar_x, hp_y, bar_x + (int)(bar_w * hp_pct), hp_y + bar_h };
+    fx hp_pct = max_player_hp > FxI(0) ? FxDiv(player_hp, max_player_hp) : FxI(0);
+    RECT hp_fill = { bar_x, hp_y, bar_x + FxTrunc(bar_w * hp_pct), hp_y + bar_h };
     HBRUSH hp_b = CreateSolidBrush(RGB(210, 45, 60)); FillRect(hdc, &hp_fill, hp_b); DeleteObject(hp_b);
 
     RECT mp_bg = { bar_x, mp_y, bar_x + bar_w, mp_y + bar_h };
     HBRUSH mp_bg_b = CreateSolidBrush(RGB(15, 20, 45)); FillRect(hdc, &mp_bg, mp_bg_b); DeleteObject(mp_bg_b);
-    float mp_pct = max_player_mp > 0.0f ? player_mp / max_player_mp : 0.0f;
-    RECT mp_fill = { bar_x, mp_y, bar_x + (int)(bar_w * mp_pct), mp_y + bar_h };
+    fx mp_pct = max_player_mp > FxI(0) ? FxDiv(player_mp, max_player_mp) : FxI(0);
+    RECT mp_fill = { bar_x, mp_y, bar_x + FxTrunc(bar_w * mp_pct), mp_y + bar_h };
     HBRUSH mp_b = CreateSolidBrush(RGB(60, 110, 235)); FillRect(hdc, &mp_fill, mp_b); DeleteObject(mp_b);
 
     RECT sta_bg = { bar_x, sta_y, bar_x + bar_w, sta_y + bar_h };
     HBRUSH sta_bg_b = CreateSolidBrush(RGB(15, 40, 20)); FillRect(hdc, &sta_bg, sta_bg_b); DeleteObject(sta_bg_b);
-    float sta_pct = max_stamina > 0.0f ? player_stamina / max_stamina : 0.0f;
+    fx sta_pct = max_stamina > FxI(0) ? FxDiv(player_stamina, max_stamina) : FxI(0);
     COLORREF sta_color = RGB(60, 200, 80);
-    if (sta_pct <= 0.20f) sta_color = RGB(220, 60, 50);
-    else if (sta_pct <= 0.50f) sta_color = RGB(230, 210, 60);
-    RECT sta_fill = { bar_x, sta_y, bar_x + (int)(bar_w * sta_pct), sta_y + bar_h };
+    if (sta_pct <= FX(0.20)) sta_color = RGB(220, 60, 50);
+    else if (sta_pct <= FX(0.50)) sta_color = RGB(230, 210, 60);
+    RECT sta_fill = { bar_x, sta_y, bar_x + FxTrunc(bar_w * sta_pct), sta_y + bar_h };
     HBRUSH sta_b = CreateSolidBrush(sta_color); FillRect(hdc, &sta_fill, sta_b); DeleteObject(sta_b);
 
-    if (player_stamina <= 0.0f || HeroExhausted()) {
+    if (player_stamina <= FxI(0) || HeroExhausted()) {
         SetTextColor(hdc, RGB(230, 70, 60));
         TextOut(hdc, bar_x, sta_y + bar_h + 2, "Exhausted!", 10);
     }
 
     for (int i = 0; i < MAX_CAMPFIRES; i++) {
         if (!campfires[i].active || campfires[i].screen_id != current_screen_index) continue;
-        SetTextColor(hdc, campfires[i].timer > 400.0f ? RGB(255, 150, 60) : RGB(255, 230, 120));
+        SetTextColor(hdc, campfires[i].timer > 400 ? RGB(255, 150, 60) : RGB(255, 230, 120));
         char status[48];
-        sprintf(status, "Fire: %s (%d/%d wood)", campfires[i].timer > 400.0f ? "BURNING" : "LOW", CampfireWoodCount(i), CAMPFIRE_MAX_WOOD);
+        sprintf(status, "Fire: %s (%d/%d wood)", campfires[i].timer > 400 ? "BURNING" : "LOW", CampfireWoodCount(i), CAMPFIRE_MAX_WOOD);
         TextOut(hdc, bar_x, sta_y + bar_h + 16, status, (int)strlen(status));
         break;
     }
@@ -101,7 +101,7 @@ void DrawPlayerStatusHUD(HDC hdc) {
             CalendarMonthName(), (hour + 11) % 12 + 1, minute, hour < 12 ? "AM" : "PM");
     TextOut(hdc, 20, HUD_DATE_Y, line, (int)strlen(line));
     sprintf(line, "Weather: %s%s", underground ? "Underground" : weather_names[current_weather],
-            (!underground && fabs(wind_gust) > 0.3f) ? "  |  Windy" : "");
+            (!underground && FxAbs(wind_gust) > FX(0.3)) ? "  |  Windy" : "");
     TextOut(hdc, 20, HUD_DATE_Y + 20, line, (int)strlen(line));
     sprintf(line, "Region: %s%s%s", biome_names[current_biome], stat_points > 0 ? "  |  Attribute points to spend!" : "", IsOutlaw() ? "  |  WANTED" : "");
     TextOut(hdc, 20, HUD_DATE_Y + 40, line, (int)strlen(line));
@@ -172,12 +172,12 @@ static void DrawShopItemCard(HDC hdc) {
     SetTextColor(hdc, RGB(255, 215, 0)); TextOut(hdc, 680, y, name, (int)strlen(name)); y += 26;
     SetTextColor(hdc, RGB(225, 225, 225));
     sprintf(line, "Type: %s%s%s", slot, rarity[0] ? "   Rarity: " : "", rarity); TextOut(hdc, 680, y, line, (int)strlen(line)); y += 20;
-    sprintf(line, "Weight: %.1f", w ? w->weight : GetNamedItemWeight(name)); TextOut(hdc, 680, y, line, (int)strlen(line)); y += 20;
+    sprintf(line, "Weight: %s", FxStr(w ? w->weight : GetNamedItemWeight(name), 1)); TextOut(hdc, 680, y, line, (int)strlen(line)); y += 20;
     if (w) {
         sprintf(line, "Damage: %d   Durability: %d / %d", w->damage, dur_max ? dur : w->durability_max, dur_max ? dur_max : w->durability_max);
         TextOut(hdc, 680, y, line, (int)strlen(line)); y += 20;
         if (strstr(name, "Bow")) strcpy(line, "Ranged: hold RT / F to draw (drains stamina)");
-        else sprintf(line, "Stamina per swing: %.0f   Speed: %s", MELEE_SWING_STAMINA + 2.0f * w->stamina_cost, w->attack_speed_mult < 1.0f ? "Slow" : "Normal");
+        else sprintf(line, "Stamina per swing: %s   Speed: %s", FxStr(MELEE_SWING_STAMINA + 2 * w->stamina_cost, 0), w->attack_speed_mult < FxI(1) ? "Slow" : "Normal");
         TextOut(hdc, 680, y, line, (int)strlen(line)); y += 20;
     }
     if (price >= 0) { sprintf(line, "Price: %d gold", price); TextOut(hdc, 680, y, line, (int)strlen(line)); y += 20; }
@@ -356,12 +356,12 @@ void DrawTabbedMenuOverlay(HDC hdc) {
 
     if (current_menu_tab == 0) { 
         DrawPanel(hdc, 70, 84, 800, 292); DrawPanel(hdc, 810, 84, 1310, 322); DrawPanel(hdc, 70, 296, 800, 550);
-        DrawHeroAssetEx(hdc, 150, 200, 2.0f);
+        DrawHeroAssetEx(hdc, 150, 200, FxI(2));
 
         const int info_x = 260;
         sprintf(buf, "NAME: %.18s", player_name); TextOut(hdc, info_x, 92, buf, (int)strlen(buf));
         sprintf(buf, "RACE: %-9s CLASS: %s", race_names[selected_race], class_names[selected_class]); TextOut(hdc, info_x, 108, buf, (int)strlen(buf));
-        sprintf(buf, "LEVEL: %d (XP: %d/%d)   HEIGHT: %.2fm", player_level, player_xp, player_next_level_xp, player_height_m); TextOut(hdc, info_x, 124, buf, (int)strlen(buf));
+        sprintf(buf, "LEVEL: %d (XP: %d/%d)   HEIGHT: %sm", player_level, player_xp, player_next_level_xp, FxStr(player_height_m, 2)); TextOut(hdc, info_x, 124, buf, (int)strlen(buf));
 
         HGDIOBJ prev_font = SelectObject(hdc, underline_font);
         SetTextColor(hdc, RGB(0, 230, 200));
@@ -389,7 +389,7 @@ void DrawTabbedMenuOverlay(HDC hdc) {
         SetTextColor(hdc, RGB(255, 215, 0));
         sprintf(buf, "LUMBER: %d  STONE: %d  GOLD: %d", GetMaterialCount("Wood"), GetMaterialCount("Stone"), gold_count);
         TextOut(hdc, info_x, 264, buf, (int)strlen(buf));
-        sprintf(buf, "WEIGHT: %.1f / %.1f", current_payload_weight, CarryLimit()); TextOut(hdc, info_x, 280, buf, (int)strlen(buf));
+        sprintf(buf, "WEIGHT: %s / %s", FxStr(current_payload_weight, 1), FxStr(CarryLimit(), 1)); TextOut(hdc, info_x, 280, buf, (int)strlen(buf));
 
         const int lore_x = 820;
         prev_font = SelectObject(hdc, underline_font);
@@ -469,7 +469,7 @@ void DrawTabbedMenuOverlay(HDC hdc) {
             TextOut(hdc, 122, row_y, name_field, (int)strlen(name_field));
             sprintf(buf, "[%s]", item->slot); TextOut(hdc, 380, row_y, buf, (int)strlen(buf));
             sprintf(buf, "x%d", item->quantity); TextOut(hdc, 500, row_y, buf, (int)strlen(buf));
-            sprintf(buf, "%.1f", item->weight); TextOut(hdc, 560, row_y, buf, (int)strlen(buf));
+            sprintf(buf, "%s", FxStr(item->weight, 1)); TextOut(hdc, 560, row_y, buf, (int)strlen(buf));
             const char *state = item->is_equipped ? "[EQUIPPED]" : "";
             TextOut(hdc, 620, row_y, state, (int)strlen(state));
         }
@@ -490,7 +490,7 @@ void DrawTabbedMenuOverlay(HDC hdc) {
         SetTextColor(hdc, RGB(200, 210, 220));
         sprintf(buf, "Season: %s (day %d of %d)   Weather: %s%s   Start: %s", season_names[current_season],
                 SeasonDay(), DAYS_PER_SEASON, weather_names[current_weather],
-                fabs(wind_gust) > 0.3f ? ", windy" : "", weather_source_label);
+                FxAbs(wind_gust) > FX(0.3) ? ", windy" : "", weather_source_label);
         TextOut(hdc, 90, WINDOW_HEIGHT - 95, buf, (int)strlen(buf));
     } else if (current_menu_tab == MENU_TAB_QUESTS) {
         int mid = 90 + (WINDOW_WIDTH - 240) / 2;
@@ -506,9 +506,9 @@ void DrawTabbedMenuOverlay(HDC hdc) {
     } else { 
         DrawPanel(hdc, 80, 92, 900, 312);
         TextOut(hdc, 90, 100, "GAME VARIABLE OPTIONS:", 22);
-        sprintf(buf, "[1] XP Multiplier: %.1fx   (Modify with Left/Right Arrow)", opt_xp_mult); TextOut(hdc, 100, 140, buf, (int)strlen(buf));
-        sprintf(buf, "[2] Loot Multiplier: %.1fx", opt_loot_mult); TextOut(hdc, 100, 180, buf, (int)strlen(buf));
-        sprintf(buf, "[3] Day/Night Cycle Speed: %.1fx", opt_day_night_speed); TextOut(hdc, 100, 220, buf, (int)strlen(buf));
+        sprintf(buf, "[1] XP Multiplier: %sx   (Modify with Left/Right Arrow)", FxStr(opt_xp_mult, 1)); TextOut(hdc, 100, 140, buf, (int)strlen(buf));
+        sprintf(buf, "[2] Loot Multiplier: %sx", FxStr(opt_loot_mult, 1)); TextOut(hdc, 100, 180, buf, (int)strlen(buf));
+        sprintf(buf, "[3] Day/Night Cycle Speed: %sx", FxStr(opt_day_night_speed, 1)); TextOut(hdc, 100, 220, buf, (int)strlen(buf));
         SetTextColor(hdc, RGB(255, 120, 100));
         TextOut(hdc, 100, 280, "[9] / Back: Delete save file (press twice to confirm)", 53);
         DrawPanel(hdc, 80, 330, 900, 570);
@@ -540,7 +540,7 @@ void DrawLootPreview(HDC hdc) {
     char lines[8][64]; COLORREF cols[8]; int n = 0;
     for (int i = 0; i < MAX_GROUND_LOOT && n < 8; i++) {
         GroundLoot *g = &ground_loot[i];
-        if (!g->active || g->screen_id != current_screen_index || !IsNearPoint(g->x, g->y, 1.2f)) continue;
+        if (!g->active || g->screen_id != current_screen_index || !IsNearPoint(g->x, g->y, FX(1.2))) continue;
         const char *nm = g->item_id >= LOOT_SHORT_SWORD && g->item_id <= LOOT_LAST_WEAPON ? weapon_catalog[g->item_id - 1].name :
                          g->item_id == LOOT_FISH ? "Fish" : g->item_id == LOOT_APPLE ? "Apple" : g->item_id == LOOT_GOLD ? "Gold" : "Treasure";
         snprintf(lines[n], sizeof(lines[n]), "%s x%d", nm, g->quantity);
@@ -548,7 +548,7 @@ void DrawLootPreview(HDC hdc) {
     }
     for (int i = 0; i < MAX_DROPPED_ITEMS && n < 8; i++) {
         DroppedInventoryItem *d = &dropped_items[i];
-        if (!d->active || d->screen_id != current_screen_index || !IsNearPoint(d->x, d->y, 1.2f)) continue;
+        if (!d->active || d->screen_id != current_screen_index || !IsNearPoint(d->x, d->y, FX(1.2))) continue;
         int forged = 0;
         for (int j = 0; j < WEAPON_CATALOG_COUNT; j++)
             if (strcmp(d->item.name, weapon_catalog[j].name) == 0 && d->item.damage > weapon_catalog[j].damage) forged = 1;
@@ -627,9 +627,9 @@ void DrawMsgLog(HDC hdc, int x, int y) {
     for (int k = shown - 1; k >= 0; k--) {
         const LogLine *l = LogAt(idx[k]);
         DWORD age = now - l->t;
-        float a = (idx[k] == 0 || age <= LOG_SHOW_MS) ? 1.0f : 1.0f - (float)(age - LOG_SHOW_MS) / LOG_FADE_MS;
-        if (a < 0.0f) a = 0.0f;
-        int c = (int)(70 + 185 * a);
+        fx a = (idx[k] == 0 || age <= LOG_SHOW_MS) ? FxI(1) : FxI(1) - (fx)((int64_t)(age - LOG_SHOW_MS) * FX_ONE / LOG_FADE_MS);
+        if (a < FxI(0)) a = FxI(0);
+        int c = 70 + FxTrunc(185 * a);
         SetTextColor(hdc, RGB(c, c, c));
         RECT r = { x, y, x + 1100, y + 60 };
         int hgt = DrawText(hdc, l->text, -1, &r, DT_WORDBREAK | DT_LEFT | DT_NOPREFIX);

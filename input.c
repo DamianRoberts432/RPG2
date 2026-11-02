@@ -45,7 +45,7 @@ void RequestDeleteSave(void) {
 void ProcessGamepadInput(void) {
     if (sleep_fade_frame > 0) return;
     XINPUT_STATE state; SecureZeroMemory(&state, sizeof(XINPUT_STATE));
-    float dx = 0.0f, dy = 0.0f;
+    fx dx = FxI(0), dy = FxI(0);
     
     if (XInputGetState(0, &state) == ERROR_SUCCESS) {
         WORD buttons = state.Gamepad.wButtons;
@@ -159,10 +159,10 @@ void ProcessGamepadInput(void) {
 
             int shopping = vendor_menu_open && IsNearMerchant();
             if (!shopping && !town_menu && !QuickWheelUpdate(buttons)) {
-                if (buttons & XINPUT_GAMEPAD_DPAD_LEFT)  { dx = -1.0f; player_facing = FACE_LEFT; }
-                if (buttons & XINPUT_GAMEPAD_DPAD_RIGHT) { dx = 1.0f; player_facing = FACE_RIGHT; }
-                if (buttons & XINPUT_GAMEPAD_DPAD_UP)    { dy = -1.0f; player_facing = FACE_UP; }
-                if (buttons & XINPUT_GAMEPAD_DPAD_DOWN)  { dy = 1.0f; player_facing = FACE_DOWN; }
+                if (buttons & XINPUT_GAMEPAD_DPAD_LEFT)  { dx = -FxI(1); player_facing = FACE_LEFT; }
+                if (buttons & XINPUT_GAMEPAD_DPAD_RIGHT) { dx = FxI(1); player_facing = FACE_RIGHT; }
+                if (buttons & XINPUT_GAMEPAD_DPAD_UP)    { dy = -FxI(1); player_facing = FACE_UP; }
+                if (buttons & XINPUT_GAMEPAD_DPAD_DOWN)  { dy = FxI(1); player_facing = FACE_DOWN; }
                 SetHeroFacing8(dx, dy);
             }
 
@@ -210,8 +210,8 @@ void ProcessGamepadInput(void) {
 
             static DWORD last_attack_gp = 0;
             WeaponStats *held_weapon = GetEquippedWeaponStats();
-            DWORD attack_delay_gp = held_weapon && held_weapon->attack_speed_mult < 1.0f ?
-                (DWORD)(180.0f / held_weapon->attack_speed_mult) : 180;
+            DWORD attack_delay_gp = held_weapon && held_weapon->attack_speed_mult < FxI(1) ?
+                (DWORD)FxTrunc(FxDiv(FxI(180), held_weapon->attack_speed_mult)) : 180;
             if (player_stamina < MELEE_SWING_STAMINA) attack_delay_gp = attack_delay_gp * 8 / 5; // tired arms swing slower
             if ((buttons & XINPUT_GAMEPAD_A) && (GetTickCount() - last_attack_gp > attack_delay_gp)) {
                 if (shopping) {
@@ -232,14 +232,14 @@ void ProcessGamepadInput(void) {
                 is_charging_bow = 1;
                 bow_charge_start_gp = GetTickCount();
                 bow_charge_started_at = bow_charge_start_gp;
-                bow_charge_time = 0.0f;
+                bow_charge_time = FxI(0);
             }
             ChargeBow();
         } else if (is_charging_bow && bow_charge_start_gp != 0) {
             DWORD hold_duration = GetTickCount() - bow_charge_start_gp;
-            int is_tap = (hold_duration < 150 || bow_charge_time < 0.1f);
+            int is_tap = (hold_duration < 150 || bow_charge_time < FX(0.1));
             if (!player_arrow.active) FirePlayerArrow(is_tap);
-            is_charging_bow = 0; bow_charge_time = 0.0f; bow_charge_start_gp = 0;
+            is_charging_bow = 0; bow_charge_time = FxI(0); bow_charge_start_gp = 0;
         }
         static int spear_rt_was_down = 0;
         int spear_rt = rt > XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
@@ -347,9 +347,9 @@ void ProcessGamepadInput(void) {
             if (GetAsyncKeyState('5') & 0x8000) { SortInventory(); last_tab_kb = GetTickCount(); }
             if (GetAsyncKeyState('6') & 0x8000) { BuildChest(); last_tab_kb = GetTickCount(); }
         } else if (current_menu_tab == 2) {
-            if (GetAsyncKeyState('1') & 0x8000) { opt_xp_mult += 0.5f; if (opt_xp_mult > 3.0f) opt_xp_mult = 0.5f; last_tab_kb = GetTickCount(); }
-            if (GetAsyncKeyState('2') & 0x8000) { opt_loot_mult += 0.5f; if (opt_loot_mult > 3.0f) opt_loot_mult = 0.5f; last_tab_kb = GetTickCount(); }
-            if (GetAsyncKeyState('3') & 0x8000) { opt_day_night_speed += 0.5f; if (opt_day_night_speed > 3.0f) opt_day_night_speed = 0.5f; last_tab_kb = GetTickCount(); }
+            if (GetAsyncKeyState('1') & 0x8000) { opt_xp_mult += FX(0.5); if (opt_xp_mult > FxI(3)) opt_xp_mult = FX(0.5); last_tab_kb = GetTickCount(); }
+            if (GetAsyncKeyState('2') & 0x8000) { opt_loot_mult += FX(0.5); if (opt_loot_mult > FxI(3)) opt_loot_mult = FX(0.5); last_tab_kb = GetTickCount(); }
+            if (GetAsyncKeyState('3') & 0x8000) { opt_day_night_speed += FX(0.5); if (opt_day_night_speed > FxI(3)) opt_day_night_speed = FX(0.5); last_tab_kb = GetTickCount(); }
             if (GetAsyncKeyState('9') & 0x8000) { RequestDeleteSave(); last_tab_kb = GetTickCount(); }
         }
     }
@@ -404,10 +404,10 @@ void ProcessGamepadInput(void) {
         }
 
         if (!shopping_kb && !town_menu) {
-            if (GetAsyncKeyState(VK_LEFT) & 0x8000)  { dx = -1.0f; player_facing = FACE_LEFT; }
-            if (GetAsyncKeyState(VK_RIGHT) & 0x8000) { dx = 1.0f; player_facing = FACE_RIGHT; }
-            if (GetAsyncKeyState(VK_UP) & 0x8000)    { dy = -1.0f; player_facing = FACE_UP; }
-            if (GetAsyncKeyState(VK_DOWN) & 0x8000)  { dy = 1.0f; player_facing = FACE_DOWN; }
+            if (GetAsyncKeyState(VK_LEFT) & 0x8000)  { dx = -FxI(1); player_facing = FACE_LEFT; }
+            if (GetAsyncKeyState(VK_RIGHT) & 0x8000) { dx = FxI(1); player_facing = FACE_RIGHT; }
+            if (GetAsyncKeyState(VK_UP) & 0x8000)    { dy = -FxI(1); player_facing = FACE_UP; }
+            if (GetAsyncKeyState(VK_DOWN) & 0x8000)  { dy = FxI(1); player_facing = FACE_DOWN; }
             SetHeroFacing8(dx, dy);
         }
 
@@ -431,8 +431,8 @@ void ProcessGamepadInput(void) {
 
         static DWORD last_attack_kb = 0;
         WeaponStats *held_weapon = GetEquippedWeaponStats();
-        DWORD attack_delay_kb = held_weapon && held_weapon->attack_speed_mult < 1.0f ?
-            (DWORD)(180.0f / held_weapon->attack_speed_mult) : 180;
+        DWORD attack_delay_kb = held_weapon && held_weapon->attack_speed_mult < FxI(1) ?
+            (DWORD)FxTrunc(FxDiv(FxI(180), held_weapon->attack_speed_mult)) : 180;
         if (((GetAsyncKeyState(VK_SPACE) | GetAsyncKeyState('Z')) & 0x8000) && (GetTickCount() - last_attack_kb > attack_delay_kb)) {
             if (shopping_kb) {
                 if (vendor_tab == 0) ShopConfirm(); else HandleVendorSell();
@@ -449,14 +449,14 @@ void ProcessGamepadInput(void) {
                 is_charging_bow = 1;
                 bow_charge_start_kb = GetTickCount();
                 bow_charge_started_at = bow_charge_start_kb;
-                bow_charge_time = 0.0f;
+                bow_charge_time = FxI(0);
             }
             ChargeBow();
         } else if (is_charging_bow && bow_charge_start_kb != 0) {
             DWORD hold_duration = GetTickCount() - bow_charge_start_kb;
-            int is_tap = (hold_duration < 150 || bow_charge_time < 0.1f);
+            int is_tap = (hold_duration < 150 || bow_charge_time < FX(0.1));
             if (!player_arrow.active) FirePlayerArrow(is_tap);
-            is_charging_bow = 0; bow_charge_time = 0.0f; bow_charge_start_kb = 0;
+            is_charging_bow = 0; bow_charge_time = FxI(0); bow_charge_start_kb = 0;
         }
         static int spear_key_was_down = 0;
         if (!bow_equipped && active_weapon == WEAPON_SPEAR && !fishing_active && bow_key_down && !spear_key_was_down) ThrowSpear();
@@ -466,36 +466,36 @@ void ProcessGamepadInput(void) {
         UpdateMouseInput(&dx, &dy);
         static int hop_was_down = 0;
         int hop_down = gp_hop_down || (GetAsyncKeyState('J') & 0x8000) != 0;
-        if (hop_down && !hop_was_down && player_stamina > 5.0f) { // press again on the way down for a double jump
-            if (hero_hop_frame == 0) { StartHeroHop(0); player_stamina -= 5.0f; }
-            else if (!hero_hop_double && hero_hop_frame <= hero_hop_len / 2 + 2) { StartHeroHop(1); player_stamina -= 8.0f; }
+        if (hop_down && !hop_was_down && player_stamina > FxI(5)) { // press again on the way down for a double jump
+            if (hero_hop_frame == 0) { StartHeroHop(0); player_stamina -= FxI(5); }
+            else if (!hero_hop_double && hero_hop_frame <= hero_hop_len / 2 + 2) { StartHeroHop(1); player_stamina -= FxI(8); }
         }
         hop_was_down = hop_down;
-        if (GetTickCount() < hero_held_until) { dx = 0.0f; dy = 0.0f; } // held by a zombie
-        int running = (gp_run_held || (GetAsyncKeyState(VK_SHIFT) & 0x8000)) && player_stamina > 0.0f;
-        if (dx != 0.0f || dy != 0.0f) {
-            is_running = 1; run_bob += 0.4f;
-            float race_mult = GetRaceSpeedMultiplier();
-            float speed = 0.15f * race_mult * WeightSpeedFactor() * (1.0f + 0.02f * stat_spent[1]); if (speed < 0.01f) speed = 0.0f;
-            if (speed <= 0.0f) strcpy(arpg_action_log, "OVERLOADED: Too heavy to move! Drop something.");
-            if (running && !HeroExhausted()) { speed *= 1.6f; player_stamina -= 0.15f; }
-            if (HeroExhausted()) speed *= 0.6f;
-            if (hero_hop_frame > 0) speed *= 1.3f;
-            if (player_stamina <= 0.0f) {
-                speed *= 0.6f; // exhausted: can still walk, just slower
+        if (GetTickCount() < hero_held_until) { dx = FxI(0); dy = FxI(0); } // held by a zombie
+        int running = (gp_run_held || (GetAsyncKeyState(VK_SHIFT) & 0x8000)) && player_stamina > FxI(0);
+        if (dx != FxI(0) || dy != FxI(0)) {
+            is_running = 1; run_bob = FxWrapAdd(run_bob, FX(0.4));
+            fx race_mult = GetRaceSpeedMultiplier();
+            fx speed = FxMul(FxMul(FxMul(FX(0.15), race_mult), WeightSpeedFactor()), FxI(1) + FX(0.02) * stat_spent[1]); if (speed < FX(0.01)) speed = FxI(0);
+            if (speed <= FxI(0)) strcpy(arpg_action_log, "OVERLOADED: Too heavy to move! Drop something.");
+            if (running && !HeroExhausted()) { speed = FxMul(speed, FX(1.6)); player_stamina -= FX(0.15); }
+            if (HeroExhausted()) speed = FxMul(speed, FX(0.6));
+            if (hero_hop_frame > 0) speed = FxMul(speed, FX(1.3));
+            if (player_stamina <= FxI(0)) {
+                speed = FxMul(speed, FX(0.6)); // exhausted: can still walk, just slower
                 strcpy(arpg_action_log, "Exhausted! Rest to recover stamina.");
             } else {
-                player_stamina -= 0.035f; // walking barely tires you; a full bar lasts about a minute
-                if (player_stamina < 0.0f) player_stamina = 0.0f;
+                player_stamina -= FX(0.035); // walking barely tires you; a full bar lasts about a minute
+                if (player_stamina < FxI(0)) player_stamina = FxI(0);
             }
             if (IsOnSlipperyGround()) {
                 // On ice the hero speeds up and turns gradually; UpdateIceSlide
                 // carries the momentum every frame, so they glide to a stop.
-                ice_vx += (dx * speed - ice_vx) * 0.08f;
-                ice_vy += (dy * speed - ice_vy) * 0.08f;
+                ice_vx += FxMul(FxMul(dx, speed) - ice_vx, FX(0.08));
+                ice_vy += FxMul(FxMul(dy, speed) - ice_vy, FX(0.08));
             } else {
-                float tx = player_x + dx * speed, ty = player_y + dy * speed;
-                float nx, ny;
+                fx tx = player_x + FxMul(dx, speed), ty = player_y + FxMul(dy, speed);
+                fx nx, ny;
                 if (PlayerTryMove(tx, ty, &nx, &ny)) { player_x = nx; player_y = ny; }
             }
         } else is_running = 0;

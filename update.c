@@ -14,7 +14,7 @@
 #define MAX_WEIGHT_EDITS 32
 #define MAX_VILLAGER_LINES 16
 
-static struct { char name[32]; float weight; } weight_edits[MAX_WEIGHT_EDITS];
+static struct { char name[32]; fx weight; } weight_edits[MAX_WEIGHT_EDITS];
 static int weight_edit_count;
 static char villager_lines[MAX_VILLAGER_LINES][160];
 static int villager_line_count;
@@ -47,9 +47,9 @@ static WeaponStats *FindWeapon(const char *id) {
     return NULL;
 }
 
-float UpdatedItemWeight(const char *name) {
+fx UpdatedItemWeight(const char *name) {
     for (int i = 0; i < weight_edit_count; i++) if (strcmp(weight_edits[i].name, name) == 0) return weight_edits[i].weight;
-    return -1.0f;
+    return -FxI(1);
 }
 
 const char *CustomVillagerLine(void) {
@@ -73,8 +73,8 @@ static int EditItemField(const char *id, const char *field, const char *val) {
     if (_stricmp(field, "Damage") == 0 && w && v >= 1) { w->damage = v; return 1; }
     if (_stricmp(field, "Durability") == 0 && w && v >= 1) { w->durability_max = v; return 1; }
     if (_stricmp(field, "Weight") == 0) {
-        float f = (float)atof(val);
-        if (f < 0.0f) return 0;
+        fx f = FxParse(val);
+        if (f < FxI(0)) return 0;
         if (w) w->weight = f;
         int k = 0;
         while (k < weight_edit_count && strcmp(weight_edits[k].name, name) != 0) k++;

@@ -19,7 +19,7 @@ void RestockMerchant(void) {
 
 // Each CHR point spent takes 3% off merchant prices.
 int ShopPrice(int base) {
-    int price = (int)(base * (100 - 3 * stat_spent[6]) / 100 * AdvTownPriceMult());
+    int price = FxTrunc(base * (100 - 3 * stat_spent[6]) / 100 * AdvTownPriceMult());
     if (HolidayToday() == HOLIDAY_WINTER_FEAST) price = price * 85 / 100;
     return price < 1 ? 1 : price;
 }
@@ -40,7 +40,7 @@ void HandleVendorBuy(void) {
     if (offer->loot_id > 0) {
         added = AddLootToInventory(offer->loot_id, 1);
     } else {
-        float w = GetNamedItemWeight(offer->name);
+        fx w = GetNamedItemWeight(offer->name);
         if (current_payload_weight + w <= CarryLimit() && (IsStackableItem(offer->name, offer->slot) ? AddStackableItem(offer->name, offer->slot, 1) : AddInventoryItem(offer->name, offer->slot, 1))) {
             RecalculateCarriedWeight(); added = 1;
         }
@@ -93,7 +93,7 @@ void HandleVendorSell(void) {
     else {
         for (int i = 0; i < WEAPON_CATALOG_COUNT; i++) if (strcmp(item->name, weapon_catalog[i].name) == 0) price = weapon_catalog[i].price / 2;
     }
-    int total = (int)(price * item->quantity * EconomySellMult(item->name) + 0.5f);
+    int total = FxMulInt(price * item->quantity, EconomySellMult(item->name));
     if (total < 1) total = 1;
     gold_count += total;
     EconomyNoteSold(item->name, item->quantity);

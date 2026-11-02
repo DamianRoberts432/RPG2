@@ -59,8 +59,8 @@ int TryTillGround(int x, int y) {
     if (x < 1 || y < 1 || x >= MAP_SIZE - 1 || y >= MAP_SIZE - 1 || VISUAL_MAP[y][x] != 0) return 0;
     int near_home = 0; // only your homestead or villagers' farmland can be tilled
     for (int i = 0; i < 5 && !near_home; i++) {
-        float hx, hy;
-        if (VillageHomeCentre(i, &hx, &hy) && (hx - x) * (hx - x) + (hy - y) * (hy - y) < 7.0f * 7.0f) near_home = 1;
+        fx hx, hy;
+        if (VillageHomeCentre(i, &hx, &hy) && FxMul(hx - FxI(x), hx - FxI(x)) + FxMul(hy - FxI(y), hy - FxI(y)) < FxI(49)) near_home = 1;
     }
     if (!near_home) return 0;
     for (int i = 0; i < MAX_FARM_PLOTS; i++) if (!farm_plots[i].active) {
@@ -72,7 +72,7 @@ int TryTillGround(int x, int y) {
     return 1;
 }
 
-static COLORREF Dim(int r, int g, int b, float a) { return RGB((int)(r * a), (int)(g * a), (int)(b * a)); }
+static COLORREF Dim(int r, int g, int b, fx a) { return RGB(FxTrunc(r * a), FxTrunc(g * a), FxTrunc(b * a)); }
 
 static void Fill(HDC hdc, COLORREF c, POINT *pts, int n) {
     HBRUSH br = CreateSolidBrush(c); HGDIOBJ old = SelectObject(hdc, br);
@@ -81,13 +81,13 @@ static void Fill(HDC hdc, COLORREF c, POINT *pts, int n) {
 }
 
 void DrawFarmPlots(HDC hdc) {
-    float a = (float)fabs(sin(day_night_cycle_accumulator));
-    if (a < 0.35f) a = 0.35f;
+    fx a = FxAbs(FxSin(day_night_cycle_accumulator));
+    if (a < FX(0.35)) a = FX(0.35);
     HGDIOBJ old_pen = SelectObject(hdc, GetStockObject(NULL_PEN));
     for (int i = 0; i < MAX_FARM_PLOTS; i++) {
         FarmPlot *p = &farm_plots[i];
         if (!p->active || p->screen_id != current_screen_index) continue;
-        int sx, sy; GetIsoCoords((float)p->x, (float)p->y, &sx, &sy);
+        int sx, sy; GetIsoCoords(FxI(p->x), FxI(p->y), &sx, &sy);
         int hw = TILE_WIDTH / 2 - 4, hh = TILE_HEIGHT / 2 - 2, cy = sy + TILE_HEIGHT / 2;
         POINT soil[] = { { sx, cy - hh }, { sx + hw, cy }, { sx, cy + hh }, { sx - hw, cy } };
         Fill(hdc, Dim(110, 72, 40, a), soil, 4);

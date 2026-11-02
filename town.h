@@ -1,5 +1,6 @@
 #ifndef TOWN_H
 #define TOWN_H
+#include "fixed.h"
 
 // Town buildings: blacksmith, card shop, pet shop, castle (king and bank),
 // beggars and altars. Talking to a keeper opens a Zelda 2-style interior
@@ -10,7 +11,7 @@ enum { TM_NONE, TM_SMITH, TM_CARDS, TM_PETS, TM_KING, TM_BANK, TM_BEGGAR, TM_ALT
 // Craftable storage chests (4 Wood) left in the world; saved with the hero.
 #define MAX_CHESTS 8
 #define CHEST_SLOTS 16
-typedef struct { int32_t active, screen_id, last_day, count; float x, y; InventoryItem items[CHEST_SLOTS]; } StashChest;
+typedef struct { int32_t active, screen_id, last_day, count; fx x, y; InventoryItem items[CHEST_SLOTS]; } StashChest;
 extern StashChest chests[MAX_CHESTS];
 extern int open_chest;
 void BuildChest(void);
@@ -33,11 +34,11 @@ int TownMenuClick(int x, int y);
 void DrawInteriorBackdrop(HDC hdc, int menu);
 void DrawTownMenu(HDC hdc);
 void DrawFamiliar(HDC hdc);
-extern float familiar_world_x, familiar_world_y;
+extern fx familiar_world_x, familiar_world_y;
 extern int familiar_visible;
 void DrawAltar(HDC hdc, int sx, int sy, int deity);
 void DrawCrown(HDC hdc, int cx, int top, int w);
-float TownDamageMult(void);
+fx TownDamageMult(void);
 int EquippedForgeBonus(void);
 void NoteLegendaryKill(int monster);
 int TownDeity(void);

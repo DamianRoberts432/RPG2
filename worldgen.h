@@ -1,5 +1,6 @@
 #ifndef WORLDGEN_H
 #define WORLDGEN_H
+#include "fixed.h"
 // Whole-world generation: every biome, town, village and highway is laid out
 // from world_seed when the game starts, so the map is fixed for that world.
 enum { SITE_NONE, SITE_VILLAGE, SITE_TOWN, SITE_ELYSIUM, SITE_DWARF };
@@ -16,8 +17,8 @@ int SeaNeedsBoat(int gx, int gy);
 const char *ElysiumThemeName(void);
 void ClearHighwayTiles(void);
 void DrawHighway(HDC hdc);
-float EconomyBuyMult(const char *name);
-float EconomySellMult(const char *name);
+fx EconomyBuyMult(const char *name);
+fx EconomySellMult(const char *name);
 void EconomyNoteSold(const char *name, int qty);
 int ItemShopPrice(const MerchantItem *o);
 #endif

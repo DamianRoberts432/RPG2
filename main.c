@@ -32,10 +32,10 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
     RECT work; SystemParametersInfo(SPI_GETWORKAREA, 0, &work, 0);
     RECT frame = { 0, 0, 100, 100 }; AdjustWindowRect(&frame, WS_OVERLAPPEDWINDOW, FALSE);
     int extra_w = (frame.right - frame.left) - 100, extra_h = (frame.bottom - frame.top) - 100;
-    float fit = 1.0f, fw = (float)(work.right - work.left - extra_w) / WINDOW_WIDTH, fh = (float)(work.bottom - work.top - extra_h) / WINDOW_HEIGHT;
+    fx fit = FxI(1), fw = FxI(work.right - work.left - extra_w) / WINDOW_WIDTH, fh = FxI(work.bottom - work.top - extra_h) / WINDOW_HEIGHT;
     if (fw < fit) fit = fw;
     if (fh < fit) fit = fh;
-    int win_w = (int)(WINDOW_WIDTH * fit) + extra_w, win_h = (int)(WINDOW_HEIGHT * fit) + extra_h;
+    int win_w = FxTrunc(WINDOW_WIDTH * fit) + extra_w, win_h = FxTrunc(WINDOW_HEIGHT * fit) + extra_h;
     HWND hwnd = CreateWindow("SaturnParallelEngine", "Low-Poly ARPG Engine", WS_OVERLAPPEDWINDOW | WS_VISIBLE, work.left, work.top, win_w, win_h, NULL, NULL, hInst, NULL);
     SecureZeroMemory(&msg, sizeof(MSG));
     
@@ -60,7 +60,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
             
             UpdatePlayerArrow(); UpdateThrownSpear(); AdvTick();
             
-            if (!in_cave && (player_x <= 0.5f || player_x >= (MAP_SIZE - 1.5f) || player_y <= 0.5f || player_y >= (MAP_SIZE - 1.5f))) {
+            if (!in_cave && (player_x <= FX(0.5) || player_x >= (FxI(MAP_SIZE) - FX(1.5)) || player_y <= FX(0.5) || player_y >= (FxI(MAP_SIZE) - FX(1.5)))) {
                 // Leaving the Castle steps to its real neighbouring cell like any
                 // other screen instead of snapping back to the world centre.
                 {
@@ -69,11 +69,11 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                     // which remembered/rolled biome) comes next, so left/right/
                     // up/down can each lead somewhere different.
                     int dgx = 0, dgy = 0;
-                    float reenter_x = 15.0f, reenter_y = 15.0f;
-                    if (player_x <= 0.5f) { dgx = -1; reenter_x = (float)(MAP_SIZE - 3); }
-                    else if (player_x >= (MAP_SIZE - 1.5f)) { dgx = 1; reenter_x = 2.0f; }
-                    if (player_y <= 0.5f) { dgy = -1; reenter_y = (float)(MAP_SIZE - 3); }
-                    else if (player_y >= (MAP_SIZE - 1.5f)) { dgy = 1; reenter_y = 2.0f; }
+                    fx reenter_x = FxI(15), reenter_y = FxI(15);
+                    if (player_x <= FX(0.5)) { dgx = -1; reenter_x = FxI(MAP_SIZE - 3); }
+                    else if (player_x >= (FxI(MAP_SIZE) - FX(1.5))) { dgx = 1; reenter_x = FxI(2); }
+                    if (player_y <= FX(0.5)) { dgy = -1; reenter_y = FxI(MAP_SIZE - 3); }
+                    else if (player_y >= (FxI(MAP_SIZE) - FX(1.5))) { dgy = 1; reenter_y = FxI(2); }
 
                     int new_gx = screen_grid_x + dgx;
                     int new_gy = screen_grid_y + dgy;
@@ -82,10 +82,10 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                     if (off_world || no_boat) {
                         // Edge of the known world (or open sea without a Boat): bounce back in bounds.
                         strcpy(arpg_action_log, no_boat ? "OPEN SEA: You need a Boat to sail out there. Merchants sell them." : "WORLD EDGE: Nothing lies beyond here... yet. Turn back.");
-                        if (player_x <= 0.5f) player_x = 2.0f;
-                        else if (player_x >= (MAP_SIZE - 1.5f)) player_x = (float)(MAP_SIZE - 3);
-                        if (player_y <= 0.5f) player_y = 2.0f;
-                        else if (player_y >= (MAP_SIZE - 1.5f)) player_y = (float)(MAP_SIZE - 3);
+                        if (player_x <= FX(0.5)) player_x = FxI(2);
+                        else if (player_x >= (FxI(MAP_SIZE) - FX(1.5))) player_x = FxI(MAP_SIZE - 3);
+                        if (player_y <= FX(0.5)) player_y = FxI(2);
+                        else if (player_y >= (FxI(MAP_SIZE) - FX(1.5))) player_y = FxI(MAP_SIZE - 3);
                     } else {
                         screens_until_town = WorldIsTown(new_gx, new_gy) ? 0 : 1;
                         screen_grid_x = new_gx; screen_grid_y = new_gy;
@@ -95,7 +95,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                         else GenerateProceduralScreen(screen_grid_y * META_GRID_SIZE + screen_grid_x);
                         {
                             // Make sure the reentry tile is walkable (not water/rock); else find the nearest one that is.
-                            int rx = (int)reenter_x, ry = (int)reenter_y;
+                            int rx = FxTrunc(reenter_x), ry = FxTrunc(reenter_y);
                             if ((VISUAL_MAP[ry][rx] == 12 && !HasInventoryItem("Boat")) || VISUAL_MAP[ry][rx] == 1) {
                                 int best_d = 1 << 30, bx = rx, by = ry;
                                 for (int y = 2; y <= MAP_SIZE - 3; y++) for (int x = 2; x <= MAP_SIZE - 3; x++) {
@@ -103,7 +103,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                                     int d = (x - rx) * (x - rx) + (y - ry) * (y - ry);
                                     if (d < best_d) { best_d = d; bx = x; by = y; }
                                 }
-                                reenter_x = (float)bx; reenter_y = (float)by;
+                                reenter_x = FxI(bx); reenter_y = FxI(by);
                             }
                         }
                         player_x = reenter_x; player_y = reenter_y;
@@ -111,8 +111,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 }
             }
             
-            cam_x = (int)((player_x - player_y) * (TILE_WIDTH / 2)); cam_y = (int)((player_x + player_y) * (TILE_HEIGHT / 2));
-            float view_zoom = UpdateAfkCamera(AnyPlayerInput() || MouseBusy() || is_menu_open || vendor_menu_open || town_menu ||
+            cam_x = FxTrunc((player_x - player_y) * (TILE_WIDTH / 2)); cam_y = FxTrunc((player_x + player_y) * (TILE_HEIGHT / 2));
+            fx view_zoom = UpdateAfkCamera(AnyPlayerInput() || MouseBusy() || is_menu_open || vendor_menu_open || town_menu ||
                                               is_character_creation || sleep_fade_frame > 0 || inside_home >= 0);
                 view_zoom += DoorwayCamera();
         SoundUpdate();
@@ -174,7 +174,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                     strcpy(label, "Your race sets your height. Looks can only be changed here.");
                     TextOut(memHDC, 700, 330, label, (int)strlen(label));
                 }
-                DrawHeroAssetEx(memHDC, 520, 200, 2.0f);
+                DrawHeroAssetEx(memHDC, 520, 200, FxI(2));
 
                 prev_cc_font = SelectObject(memHDC, underline_font);
                 SetTextColor(memHDC, RGB(0, 230, 200));
@@ -193,29 +193,29 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 TextOut(memHDC, 80, 410, "Use DPAD/ARROW KEYS to select fields; TYPE A-Z to edit the Name.", 65);
                 TextOut(memHDC, 80, 430, "PRESS [ENTER] or [A BUTTON] TO ENTER THE WORLD.", 48);
             } else {
-                float ambient_intensity = (float)fabs(sin(day_night_cycle_accumulator));
-                if (NightVisionActive() && ambient_intensity < 0.6f) ambient_intensity = 0.6f;
+                fx ambient_intensity = FxAbs(FxSin(day_night_cycle_accumulator));
+                if (NightVisionActive() && ambient_intensity < FX(0.6)) ambient_intensity = FX(0.6);
                 // Dark vision: Dwarves and Gnomes, born underground, see further at night and in caves.
-                if ((selected_race == RACE_DWARF || selected_race == RACE_GNOME) && ambient_intensity < 0.4f) ambient_intensity = 0.4f;
-                int r_tone = (int)(25.0f + ambient_intensity * 80.0f);
-                int g_tone = (int)(30.0f + ambient_intensity * 155.0f);
-                int b_tone = (int)(40.0f + ambient_intensity * 45.0f);
+                if ((selected_race == RACE_DWARF || selected_race == RACE_GNOME) && ambient_intensity < FX(0.4)) ambient_intensity = FX(0.4);
+                int r_tone = FxTrunc(FxI(25) + ambient_intensity * 80);
+                int g_tone = FxTrunc(FxI(30) + ambient_intensity * 155);
+                int b_tone = FxTrunc(FxI(40) + ambient_intensity * 45);
                 
                 COLORREF meadow_color = RGB(r_tone, g_tone, b_tone);
                 if (current_biome != BIOME_CAVE) meadow_color = ApplySeasonToGround(meadow_color);
                 if (current_biome == BIOME_DESERT) // pure yellow sand, dimmed at night
-                    meadow_color = RGB((int)(70 + ambient_intensity * 180), (int)(60 + ambient_intensity * 150), (int)(15 + ambient_intensity * 40));
+                    meadow_color = RGB(70 + FxTrunc(ambient_intensity * 180), 60 + FxTrunc(ambient_intensity * 150), 15 + FxTrunc(ambient_intensity * 40));
                 HBRUSH live_ground = CreateSolidBrush(meadow_color); HGDIOBJ old_bg = SelectObject(memHDC, live_ground); PatBlt(memHDC, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, PATCOPY); SelectObject(memHDC, old_bg); DeleteObject(live_ground);
                 SelectObject(memHDC, clean_null_pen);
 
                 for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) {
                     if (VISUAL_MAP[r][c] == 10 && current_biome != BIOME_CAVE) { // sand patches lie flat, drawn with the ground
-                        int sx, sy; GetIsoCoords((float)c, (float)r, &sx, &sy);
+                        int sx, sy; GetIsoCoords(FxI(c), FxI(r), &sx, &sy);
                         POINT top[] = {{sx, sy}, {sx + TILE_WIDTH / 2, sy + TILE_HEIGHT / 2}, {sx, sy + TILE_HEIGHT}, {sx - TILE_WIDTH / 2, sy + TILE_HEIGHT / 2}};
                         HBRUSH b = CreateSolidBrush(GetTileColor(10, 0)); HGDIOBJ ob = SelectObject(memHDC, b); Polygon(memHDC, top, 4); SelectObject(memHDC, ob); DeleteObject(b);
                     }
                     if (VISUAL_MAP[r][c] == 12) {
-                        int sx, sy; GetIsoCoords((float)c, (float)r, &sx, &sy);
+                        int sx, sy; GetIsoCoords(FxI(c), FxI(r), &sx, &sy);
                         if (sx >= -TILE_WIDTH && sx <= WINDOW_WIDTH + TILE_WIDTH) { DrawFlowingRiver(memHDC, sx, sy, r * MAP_SIZE + c); DrawShoreFoam(memHDC, c, r, sx, sy); }
                     }
                 }
@@ -225,7 +225,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 DrawCanopyShadows(memHDC);
                 for (int r = 0; r < MAP_SIZE; r++) {
                     for (int c = 0; c < MAP_SIZE; c++) {
-                        int sx, sy; GetIsoCoords((float)c, (float)r, &sx, &sy); if (sx < -TILE_WIDTH * 2 || sx > WINDOW_WIDTH + TILE_WIDTH * 2) continue;
+                        int sx, sy; GetIsoCoords(FxI(c), FxI(r), &sx, &sy); if (sx < -TILE_WIDTH * 2 || sx > WINDOW_WIDTH + TILE_WIDTH * 2) continue;
                         uint8_t t_id = VISUAL_MAP[r][c];
                         if (t_id == 1 || (t_id == 10 && current_biome == BIOME_CAVE)) {
                             if (current_biome == BIOME_CAVE) { DrawSubterraneanGeology(memHDC, sx, sy, (r * MAP_SIZE + c)); }
@@ -244,12 +244,12 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                         if (t_id >= 2 && t_id <= 9 && t_id != 1) DrawGroundSceneryDecals(memHDC, sx, sy, t_id, (r * MAP_SIZE + c));
                         if (current_biome == BIOME_MOUNTAIN && c == torch_gate_x && r == torch_gate_y) {
                             DrawInteractiveTorches(memHDC, sx, sy);
-                            if (!in_cave && IsNearPoint((float)torch_gate_x, (float)torch_gate_y, 2.5f)) {
+                            if (!in_cave && IsNearPoint(FxI(torch_gate_x), FxI(torch_gate_y), FX(2.5))) {
                                 SetTextColor(memHDC, RGB(255, 230, 120)); SetBkMode(memHDC, TRANSPARENT);
                                 TextOut(memHDC, sx - 16, sy - 46, "CAVE", 4);
                             }
                         }
-                        if (in_cave && c == (int)cave_treasure_x && r == (int)cave_treasure_y) {
+                        if (in_cave && c == FxTrunc(cave_treasure_x) && r == FxTrunc(cave_treasure_y)) {
                             CaveRecord *rec = FindOrCreateCaveRecord(current_cave_origin_cell);
                             HBRUSH chest_b = CreateSolidBrush(rec->treasure_claimed ? RGB(90, 70, 40) : RGB(230, 190, 40));
                             HGDIOBJ old_chest = SelectObject(memHDC, chest_b);
@@ -261,7 +261,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                             }
                         }
                         DrawIsleTreasure(memHDC, c, r, sx, sy);
-                        if (c == (int)player_x && r == (int)player_y) DrawHeroAsset(memHDC);
+                        if (c == FxTrunc(player_x) && r == FxTrunc(player_y)) DrawHeroAsset(memHDC);
                         DrawEnemiesAtTile(memHDC, c, r);
                     }
                 }

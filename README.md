@@ -320,3 +320,5 @@ Each module has a matching .h with its function prototypes.
 ## Sega Saturn memory
 
 The code and fixed data take about 1.01 MB of the Saturn's 2 MB work RAM, and the game never allocates memory at run time. See `SATURN.md` for the full audit.
+
+The gameplay, weather, calendar and 2D drawing use Saturn-style whole-number (16.16 fixed point) maths, since the Saturn has no floating-point unit. The AFK first-person view still uses decimals and is converted next. Saves are version 2, and version 1 saves still load.

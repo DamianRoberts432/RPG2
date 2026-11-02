@@ -59,3 +59,35 @@ another 57 KB of work RAM.
   and each face is clipped to a 512-pixel guard band round the screen so its
   points always fit. A face went from 112 to 68 bytes, so the list went from
   448 KB to 272 KB. A compile-time check stops it growing back.
+
+## Whole-number maths (fixed point)
+
+The Saturn's SH-2 CPUs have no floating point unit, so the game now does its
+maths in 16.16 fixed point (`fixed.h`, `fixed.c`). An `fx` is a value times
+65536, so `FX_ONE` is 1.0.
+
+- **Sine, cosine and atan2:** these use 1 KB quarter-wave and atan tables,
+  read in between steps. The largest error is 0.00004 for sine and cosine, and
+  0.0004 radians for atan2.
+- **Square roots and lengths:** worked out bit by bit on whole numbers.
+- **Converted:** movement, collisions, combat, monsters, villagers, critters,
+  inventory weights, prices, weather, the calendar and all the 2D drawing.
+- **Calendar:** it counts milliseconds, because a season (43,200 seconds) is
+  too long for 16.16 fixed point.
+- **`world_tick`:** it wraps after 655,360 frames. The villager and monster
+  timers that wait on it use wrap-safe compares (`FxAfter`/`FxBefore`). Tree
+  growth starts over after a wrap, which only changes how big saplings look.
+- **Saves:** they are version 2 now. Version 1 saves still load: their
+  decimals are converted once, using whole-number maths only.
+- **Not yet converted:** the AFK first-person view (`afkview.c`) is the next
+  PR. Until then it reads the game's fixed-point state through
+  `FxToF`/`FxFromF`. The PC's optional real-world weather download also reads
+  decimals, and a Saturn has no internet to run it.
+- **Windows boundaries:** the GDI calls that need decimals (`XFORM`) convert
+  right at the call.
+- **Type check:** `fx_check.h` turns `fx` into a C++ class that rejects the
+  mistakes plain `int32_t` lets through: `fx * fx` without `FxMul`, `fx / fx`
+  without `FxDiv`, `(int)` casts, and adding or comparing a whole number. Run
+  it on any file with
+  `g++ -fsyntax-only -fpermissive -DFX_CHECK -x c++ combat.c`.
+  Every converted file passes.

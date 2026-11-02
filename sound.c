@@ -107,10 +107,10 @@ static void PumpMixer(void) {
 static int GroundSfx(void) {
     if (inside_home >= 0) return SFX_STEP_WOOD;
     if (in_cave || current_biome == BIOME_CAVE) return SFX_STEP_STONE;
-    int x = (int)player_x, y = (int)player_y;
+    int x = FxTrunc(player_x), y = FxTrunc(player_y);
     int t = (x >= 0 && x < MAP_SIZE && y >= 0 && y < MAP_SIZE) ? VISUAL_MAP[y][x] : 0;
     if (t == 12) return SFX_STEP_WATER;
-    if (t == 5 || snow_cover > 0.6f || current_biome == BIOME_TUNDRA) return SFX_STEP_SNOW;
+    if (t == 5 || snow_cover > FX(0.6) || current_biome == BIOME_TUNDRA) return SFX_STEP_SNOW;
     if (t == 4 || current_biome == BIOME_DESERT || current_biome == BIOME_BEACH) return SFX_STEP_SAND;
     if (t == 1 || t == 3 || current_biome == BIOME_MOUNTAIN || current_biome == BIOME_CASTLE) return SFX_STEP_STONE;
     return SFX_STEP_GRASS;
@@ -118,12 +118,12 @@ static int GroundSfx(void) {
 
 // One step sound per ~half tile walked, picked by the ground underfoot.
 void SoundUpdate(void) {
-    static float last_x = -1.0f, last_y = -1.0f, walked = 0.0f;
+    static fx last_x = -FxI(1), last_y = -FxI(1), walked = FxI(0);
     int busy = is_menu_open || vendor_menu_open || town_menu || is_character_creation || AfkViewActive() || hero_hop_frame > 0;
-    if (last_x >= 0.0f && !busy) {
-        float dx = player_x - last_x, dy = player_y - last_y, d = sqrtf(dx * dx + dy * dy);
-        if (d < 1.5f) walked += d; // a screen change jumps the hero: no step
-        if (walked >= 0.55f) { walked = 0.0f; PlaySfx(GroundSfx()); }
+    if (last_x >= FxI(0) && !busy) {
+        fx dx = player_x - last_x, dy = player_y - last_y, d = FxLen(dx, dy);
+        if (d < FX(1.5)) walked += d; // a screen change jumps the hero: no step
+        if (walked >= FX(0.55)) { walked = FxI(0); PlaySfx(GroundSfx()); }
     }
     last_x = player_x;
     last_y = player_y;

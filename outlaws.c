@@ -10,7 +10,7 @@ extern uint8_t adv_state[ADV_MAX];
 int ChestNearRoad(const StashChest *c) {
     for (int i = 0; i < MAX_WORN_TILES; i++) {
         const WornTile *w = &worn_tiles[i];
-        if (w->active && w->screen_id == c->screen_id && abs((int)w->x - (int)c->x) <= 3 && abs((int)w->y - (int)c->y) <= 3) return 1;
+        if (w->active && w->screen_id == c->screen_id && abs((int)w->x - FxTrunc(c->x)) <= 3 && abs((int)w->y - FxTrunc(c->y)) <= 3) return 1;
     }
     return 0;
 }

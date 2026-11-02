@@ -63,8 +63,8 @@ void SpendStatPoint(void) {
     if (stat_points <= 0) { strcpy(arpg_action_log, "No attribute points left. Level up to earn more."); return; }
     if (*stat >= STAT_CAP) { sprintf(arpg_action_log, "%s is already maxed at %d.", names[stat_cursor], STAT_CAP); return; }
     (*stat)++; stat_spent[stat_cursor]++; stat_points--;
-    if (stat_cursor == 2) { max_stamina += 10.0f; player_stamina += 10.0f; }
-    if (stat_cursor == 3) { max_player_mp += 10.0f; player_mp += 10.0f; }
+    if (stat_cursor == 2) { max_stamina += FxI(10); player_stamina += FxI(10); }
+    if (stat_cursor == 3) { max_player_mp += FxI(10); player_mp += FxI(10); }
     sprintf(arpg_action_log, "%s raised to %d. Points left: %d", names[stat_cursor], *stat, stat_points);
 }
 
@@ -104,20 +104,20 @@ void ApplyClassAndRaceStats(void) {
         *stat += stat_spent[i];
         if (*stat > STAT_CAP) *stat = STAT_CAP;
     }
-    max_stamina = 100.0f + 10.0f * stat_spent[2];
+    max_stamina = FxI(100) + FxI(10) * stat_spent[2];
     { // Vitality (the old STA stat) also sets the HP bar: 100 + 10 per point
-        float old_max = max_player_hp;
-        max_player_hp = 100.0f + 10.0f * stat_stamina;
-        if (old_max > 0.0f) player_hp = player_hp * max_player_hp / old_max;
+        fx old_max = max_player_hp;
+        max_player_hp = FxI(100) + FxI(10) * stat_stamina;
+        if (old_max > FxI(0)) player_hp = (fx)((int64_t)FxBits(player_hp) * FxBits(max_player_hp) / FxBits(old_max));
         if (player_hp > max_player_hp) player_hp = max_player_hp;
     }
-    max_player_mp = 100.0f + 10.0f * stat_spent[3];
+    max_player_mp = FxI(100) + FxI(10) * stat_spent[3];
 
-    if (selected_race == RACE_ELF) player_height_m = 1.95f;
-    else if (selected_race == RACE_DWARF) player_height_m = 1.42f;
-    else if (selected_race == RACE_HALFLING) player_height_m = 1.15f;
-    else if (selected_race == RACE_GNOME) player_height_m = 0.98f;
-    else player_height_m = 1.82f;
+    if (selected_race == RACE_ELF) player_height_m = FX(1.95);
+    else if (selected_race == RACE_DWARF) player_height_m = FX(1.42);
+    else if (selected_race == RACE_HALFLING) player_height_m = FX(1.15);
+    else if (selected_race == RACE_GNOME) player_height_m = FX(0.98);
+    else player_height_m = FX(1.82);
 }
 
 static int ClampKarma(int v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : v; }
@@ -163,14 +163,14 @@ void TryCardDrop(int monster) {
     else { char nm[48]; CardName(id, nm, sizeof(nm)); snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, "  |  CARD: %s%s", nm, is_new ? " (new!)" : ""); }
 }
 
-float GetRaceSpeedMultiplier(void) {
+fx GetRaceSpeedMultiplier(void) {
     switch (selected_race) {
-        case RACE_GNOME:    return 1.40f; 
-        case RACE_ELF:      return 1.20f; 
-        case RACE_HUMAN:    return 1.05f; 
-        case RACE_DWARF:    return 0.95f; 
-        case RACE_HALFLING: return 0.85f; 
-        default:            return 1.00f;
+        case RACE_GNOME:    return FX(1.40); 
+        case RACE_ELF:      return FX(1.20); 
+        case RACE_HUMAN:    return FX(1.05); 
+        case RACE_DWARF:    return FX(0.95); 
+        case RACE_HALFLING: return FX(0.85); 
+        default:            return FxI(1);
     }
 }
 

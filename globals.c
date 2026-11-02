@@ -9,7 +9,7 @@ const char *biome_names[] = {
 char player_name[32] = "Damian";
 RaceType selected_race = RACE_ELF;
 ClassType selected_class = CLASS_NECROMANCER;
-float player_height_m = 1.82f;
+fx player_height_m = FX(1.82);
 
 const char* race_names[] = { "Elf", "Human", "Dwarf", "Halfling", "Gnome" };
 const char* class_names[] = { "Necromancer", "Wizard", "Knight", "Warrior", "Rogue" };
@@ -19,18 +19,18 @@ const char* class_names[] = { "Necromancer", "Wizard", "Knight", "Warrior", "Rog
 // pack unequipped (owned, but not usable as the active weapon until the player
 // manually equips it from the inventory menu).
 InventoryItem player_inventory[MAX_INVENTORY_ITEMS] = {
-    {1, "Iron Sword", "Weapon", 0, 1, 4, 100, 100, 1},
-    {2, "Wooden Shield", "Shield", 0, 1, 3, 0, 0, 0},
-    {3, "Leather Armor", "Armor", 0, 1, 5, 0, 0, 0},
-    {4, "Matches", "Tool", 0, 5, 1, 0, 0, 0},
-    {5, "Axe", "Weapon", 1, 1, 4, 100, 100, 3},
-    {6, "Wood", "Material", 0, 12, 1, 0, 0, 0}
+    {1, "Iron Sword", "Weapon", 0, 1, FxI(4), 100, 100, 1},
+    {2, "Wooden Shield", "Shield", 0, 1, FxI(3), 0, 0, 0},
+    {3, "Leather Armor", "Armor", 0, 1, FxI(5), 0, 0, 0},
+    {4, "Matches", "Tool", 0, 5, FxI(1), 0, 0, 0},
+    {5, "Axe", "Weapon", 1, 1, FxI(4), 100, 100, 3},
+    {6, "Wood", "Material", 0, 12, FxI(1), 0, 0, 0}
 };
 int player_item_count = 6;
 int selected_inv_index = 0;
 
 // System Supported Inventory Items
-InventoryItem pickaxe_item = {6, "Pickaxe", "Tool", 0, 1, 0, 0, 0, 0};
+InventoryItem pickaxe_item = {6, "Pickaxe", "Tool", 0, 1, FxI(0), 0, 0, 0};
 
 // Hero Progression & Attributes
 int player_level = 1;
@@ -40,25 +40,25 @@ int is_poisoned = 0;
 char quest_log_text[128] = "Main Quest: Find a castle town.";
 
 // Game Dynamic Options
-float opt_xp_mult = 1.0f;
-float opt_loot_mult = 1.0f;
-float opt_day_night_speed = 1.0f;
+fx opt_xp_mult = FX(1.0);
+fx opt_loot_mult = FX(1.0);
+fx opt_day_night_speed = FX(1.0);
 
 // World Navigation Log
 uint8_t visited_biomes[META_GRID_SIZE][META_GRID_SIZE] = {0};
 
 // Live Sandbox Tracking State Vectors
-float player_x = 15.0f; float player_y = 15.0f;
+fx player_x = FX(15.0); fx player_y = FX(15.0);
 FacingDirection player_facing = FACE_DOWN;
 WeaponType active_weapon = WEAPON_AXE;
 int bow_equipped = 0;
 
-int is_running = 0; float run_bob = 0.0f; float world_tick = 0.0f;
+int is_running = 0; fx run_bob = FX(0.0); fx world_tick = FX(0.0);
 int world_frame = 0;
 int sword_swipe_frame = 0; 
 uint8_t VISUAL_MAP[MAP_SIZE][MAP_SIZE];
 ArrowProjectile player_arrow = {0};
-float bow_charge_time = 0.0f;
+fx bow_charge_time = FX(0.0);
 int is_charging_bow = 0;
 DWORD bow_charge_started_at = 0;
 
@@ -89,14 +89,14 @@ AppleTreeState apple_tree_states[MAX_APPLE_TREES] = {0};
 int vendor_menu_open = 0;
 int fishing_active = 0, fishing_power = 0;
 int bedroll_screen_id = -1;
-float bedroll_x = 0.0f, bedroll_y = 0.0f;
+fx bedroll_x = FX(0.0), bedroll_y = FX(0.0);
 int night_bonus_active = 0;
 int wind_dir = 0;
 int sleep_fade_frame = 0;
 int jailed_tonight = 0;
 DWORD guide_flash_until = 0;
 int enemy_direction = FACE_DOWN;
-float weather_next_change = 200.0f;
+fx weather_next_change = FX(200.0);
 
 // Menu / Pause System
 int is_menu_open = 0; 
@@ -106,18 +106,18 @@ int selected_creation_field = 0;
 int creation_name_letter_cursor = 0; // 0-55 = A-Z, a-z, space, period, hyphen, apostrophe
 
 int gold_count = 150;
-float player_stamina = 100.0f; float max_stamina = 100.0f;
+fx player_stamina = FX(100.0); fx max_stamina = FX(100.0);
 // Frames (at ~60fps) the hero must stand still before stamina is allowed to
 // regenerate back past the 30% "winded" threshold - see UpdateGamePhysics.
 int stamina_rest_timer = 0;
-float player_hp = 100.0f, max_player_hp = 100.0f;
-float player_mp = 100.0f, max_player_mp = 100.0f;
+fx player_hp = FX(100.0), max_player_hp = FX(100.0);
+fx player_mp = FX(100.0), max_player_mp = FX(100.0);
 // Recomputed at startup (and after every inventory change) from the actual
 // unequipped items carried in player_inventory - see RecalculateCarriedWeight().
-float current_payload_weight = 0.0f;
+fx current_payload_weight = FX(0.0);
 
 // Environment & Climate Engines
-float day_night_cycle_accumulator = 1.5f; 
+fx day_night_cycle_accumulator = FX(1.5); 
 WeatherType current_weather = WEATHER_CLEAR;
 
 // The world is an 8x8 grid of 8x8 meta-maps. The local coordinates remain
@@ -134,9 +134,9 @@ int pending_forced_biome = -1;
 CaveRecord cave_records[MAX_CAVE_RECORDS] = {0};
 int in_cave = 0;
 int cave_return_grid_x = 4, cave_return_grid_y = 4;
-float cave_return_player_x = 15.0f, cave_return_player_y = 15.0f;
+fx cave_return_player_x = FX(15.0), cave_return_player_y = FX(15.0);
 int current_cave_origin_cell = -1;
-float cave_treasure_x = 20.0f, cave_treasure_y = 20.0f;
+fx cave_treasure_x = FX(20.0), cave_treasure_y = FX(20.0);
 int cave_treasure_hunts_found = 0; // how many cave treasures the player has ever found (unlocks rare merchant stock)
 
 // Save Storage Fallbacks
@@ -147,41 +147,41 @@ int saturn_save_lumber = 12; int saturn_save_gold = 150; int saturn_save_stone =
 int torch_gate_x = 12; int torch_gate_y = 12;
 
 // Living Entity Management
-float enemy_x = 27.0f; float enemy_y = 27.0f; float enemy_hearts = 3.0f;
+fx enemy_x = FX(27.0); fx enemy_y = FX(27.0); fx enemy_hearts = FX(3.0);
 MonsterType active_monster = MONSTER_SKELLY;
 // Up to MAX_ENEMIES monsters share a screen. enemy_x/enemy_y/enemy_hearts/
 // active_monster/enemy_direction are the working copy of enemies[current_enemy].
 EnemySlot enemies[MAX_ENEMIES];
 int current_enemy = 0;
-float gator_x = 0.0f; float gator_y = 0.0f; int gator_active = 0; float gator_swim_timer = 0.0f;
+fx gator_x = FX(0.0); fx gator_y = FX(0.0); int gator_active = 0; fx gator_swim_timer = FX(0.0);
 
 // Storefront Objects
-float merchant_x = 10.0f; float merchant_y = 18.0f;
+fx merchant_x = FX(10.0); fx merchant_y = FX(18.0);
 int merchant_selection = 0;
 int vendor_tab = 0; // 0 = Buy (merchant's items), 1 = Sell (player's inventory)
 // Weight values follow the player's assigned reference scale: Wood 1, Stone 1,
 // Matches 1, Dagger 1, Short Bow 1.5, Fishing Pole 2, Short Sword 2, Long Bow 2,
 // Axe 4, Iron Sword 4, Armor 5, Shield 3 (see GetNamedItemWeight).
 WeaponStats weapon_catalog[] = {
-    { LOOT_SHORT_SWORD, "Short Sword", 1, 100, 2.0f, 0.0f, 20, 1.0f },
-    { LOOT_LONG_SWORD, "Long Sword", 2, 100, 5.0f, 1.5f, 35, 0.75f },
-    { LOOT_AXE, "Axe", 3, 100, 4.0f, 2.0f, 30, 0.75f },
-    { LOOT_SHORT_BOW, "Short Bow", 1, 100, 1.5f, 0.0f, 25, 1.0f },
-    { LOOT_RUSTY_SWORD, "Rusty Sword", 1, 25, 2.0f, 0.0f, 8, 1.0f },
+    { LOOT_SHORT_SWORD, "Short Sword", 1, 100, FX(2.0), FX(0.0), 20, FX(1.0) },
+    { LOOT_LONG_SWORD, "Long Sword", 2, 100, FX(5.0), FX(1.5), 35, FX(0.75) },
+    { LOOT_AXE, "Axe", 3, 100, FX(4.0), FX(2.0), 30, FX(0.75) },
+    { LOOT_SHORT_BOW, "Short Bow", 1, 100, FX(1.5), FX(0.0), 25, FX(1.0) },
+    { LOOT_RUSTY_SWORD, "Rusty Sword", 1, 25, FX(2.0), FX(0.0), 8, FX(1.0) },
     // Legendary: only ever dropped by bosses and mythic beasts (see
     // HandleEnemyDamage). Durability is set absurdly high
     // to stand in for "infinite", and it is specifically excluded from
     // selling/dropping (see HandleVendorSell/DropSelectedItem).
-    { LOOT_MUSASHI_BLADE, "Musashi's Blade", 10, 99999, 1.0f, 1.0f, 5000, 1.0f },
+    { LOOT_MUSASHI_BLADE, "Musashi's Blade", 10, 99999, FX(1.0), FX(1.0), 5000, FX(1.0) },
     // Thrust reaches further than a sword; RT / F throws it (see ThrowSpear).
-    { LOOT_SPEAR, "Spear", 2, 100, 3.0f, 1.0f, 30, 0.85f },
-    { LOOT_LONG_BOW, "Long Bow", 2, 120, 2.0f, 0.0f, 40, 1.0f }, // arrows fly harder (see FirePlayerArrow)
-    { LOOT_MACE, "Mace", 3, 150, 5.0f, 1.5f, 35, 0.8f },
-    { LOOT_DAGGER, "Dagger", 1, 60, 1.0f, 0.0f, 10, 1.0f },
+    { LOOT_SPEAR, "Spear", 2, 100, FX(3.0), FX(1.0), 30, FX(0.85) },
+    { LOOT_LONG_BOW, "Long Bow", 2, 120, FX(2.0), FX(0.0), 40, FX(1.0) }, // arrows fly harder (see FirePlayerArrow)
+    { LOOT_MACE, "Mace", 3, 150, FX(5.0), FX(1.5), 35, FX(0.8) },
+    { LOOT_DAGGER, "Dagger", 1, 60, FX(1.0), FX(0.0), 10, FX(1.0) },
     // Rare smith work, sold only by the blacksmith (see town.c).
-    { LOOT_KATANA, "Katana", 5, 200, 2.5f, 0.5f, 12000, 1.0f },
-    { LOOT_WAR_HAMMER, "War Hammer", 6, 250, 7.0f, 2.5f, 15000, 0.7f },
-    { LOOT_GREAT_AXE, "Great Axe", 7, 220, 8.0f, 3.0f, 18000, 0.65f }
+    { LOOT_KATANA, "Katana", 5, 200, FX(2.5), FX(0.5), 12000, FX(1.0) },
+    { LOOT_WAR_HAMMER, "War Hammer", 6, 250, FX(7.0), FX(2.5), 15000, FX(0.7) },
+    { LOOT_GREAT_AXE, "Great Axe", 7, 220, FX(8.0), FX(3.0), 18000, FX(0.65) }
 };
 
 // Catalog spans every common weapon/armor/tool/food the

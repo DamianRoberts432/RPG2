@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "fixed.h"
 #include <time.h>
 #include <stdio.h>
 
@@ -44,8 +45,8 @@ extern int merch_item_count;
 // that run earlier in the file. Suppress windows are intentionally shorter
 // than their matching cooldowns so pursuit suppression always lapses before
 // the ability can be used again.
-#define FACING_CONE_DOT_THRESHOLD 0.25f
-#define MELEE_SWING_STAMINA 5.0f // every swing tires the hero; heavy weapons cost more
+#define FACING_CONE_DOT_THRESHOLD FX(0.25)
+#define MELEE_SWING_STAMINA FxI(5) // every swing tires the hero; heavy weapons cost more
 #define SPELL_COOLDOWN_MS     1500
 #define BACKSTEP_COOLDOWN_MS  2000
 #define SNEAK_COOLDOWN_MS     5000
@@ -78,12 +79,12 @@ typedef enum { WEATHER_CLEAR, WEATHER_RAIN, WEATHER_SNOW, WEATHER_CLOUDY } Weath
 typedef enum { RACE_ELF, RACE_HUMAN, RACE_DWARF, RACE_HALFLING, RACE_GNOME } RaceType;
 typedef enum { CLASS_NECROMANCER, CLASS_WIZARD, CLASS_KNIGHT, CLASS_WARRIOR, CLASS_ROGUE } ClassType;
 
-typedef struct { float x, y, z; float vx, vy, vz; int active; float damage; int origin_tx, origin_ty; } ArrowProjectile;
-typedef struct { float x, y, z; float timer; int active; int color_profile; } ButterflyParticle;
-typedef struct { float x, y; float vx, vy; int life; int screen_id; int active; } DebrisParticle;
-typedef struct { float x, y; float vx, vy; int life; int max_life; int active; uint32_t color; } BloodParticle;
-typedef struct { float x, y; float timer; int active; int screen_id; } CampfireEntity;
-typedef struct { float x, y; int type; int state; float base_x, base_y; int active; int hidden; int timer; } CritterEntity;
+typedef struct { fx x, y, z; fx vx, vy, vz; int active; fx damage; int origin_tx, origin_ty; } ArrowProjectile;
+typedef struct { fx x, y, z; fx timer; int active; int color_profile; } ButterflyParticle;
+typedef struct { fx x, y; fx vx, vy; int life; int screen_id; int active; } DebrisParticle;
+typedef struct { fx x, y; fx vx, vy; int life; int max_life; int active; uint32_t color; } BloodParticle;
+typedef struct { fx x, y; int32_t timer; int active; int screen_id; } CampfireEntity;
+typedef struct { fx x, y; int type; int state; fx base_x, base_y; int active; int hidden; int timer; } CritterEntity;
 // Rarity tiers drive the merchant's price multiplier directly: the enum
 // value itself *is* the multiplier applied to base_price (Common=1x,
 // Uncommon=2x, Rare=5x, Legendary=10x+), per the catalog rarity scheme.
@@ -98,11 +99,11 @@ typedef struct {
     ItemRarity rarity;
     int requires_treasure_hunt; // 1 = only sellable after a cave treasure has ever been found
 } MerchantItem;
-typedef struct { int id; const char *name; int damage, durability_max; float weight; float stamina_cost; int price; float attack_speed_mult; } WeaponStats;
-typedef struct { float x, y; int item_id, quantity, screen_id, active; } GroundLoot;
-typedef struct { float x, y, home_x, home_y; int type, idle_timer, direction; const char *dialogue; int dialogue_cooldown; } NPCEntity;
+typedef struct { int id; const char *name; int damage, durability_max; fx weight; fx stamina_cost; int price; fx attack_speed_mult; } WeaponStats;
+typedef struct { fx x, y; int item_id, quantity, screen_id, active; } GroundLoot;
+typedef struct { fx x, y, home_x, home_y; int type, idle_timer, direction; const char *dialogue; int dialogue_cooldown; } NPCEntity;
 typedef enum { SUMMON_ZOMBIE, SUMMON_SKELETON, SUMMON_GHOST } SummonType;
-typedef struct { float x, y, hp; int active, timer, raise_frame, attack_cooldown, type; } ZombieEntity;
+typedef struct { fx x, y, hp; int active, timer, raise_frame, attack_cooldown, type; } ZombieEntity;
 typedef struct { int x, y, screen_id, left_frame, active, has_left; } AppleTreeState;
 
 typedef struct {
@@ -111,7 +112,7 @@ typedef struct {
     char slot[32];
     int is_equipped;
     int quantity;
-    float weight;
+    fx weight;
     int durability_current;
     int durability_max;
     int damage;
@@ -124,7 +125,7 @@ typedef struct {
 // Ordinary drops vanish DROPPED_ITEM_LIFETIME_MS after landing; Legendary
 // drops never time out but are cleared when the game is saved on exit.
 #define DROPPED_ITEM_LIFETIME_MS (5 * 60 * 1000)
-typedef struct { float x, y; InventoryItem item; int screen_id, active; DWORD dropped_at; int legendary; } DroppedInventoryItem;
+typedef struct { fx x, y; InventoryItem item; int screen_id, active; DWORD dropped_at; int legendary; } DroppedInventoryItem;
 extern char player_name[32];
 extern RaceType selected_race;
 // Looks picked on the start screen only: race sets the height.
@@ -137,11 +138,11 @@ extern int hero_sex, hero_beard, hero_eyes, hero_hair, hero_cloth, hero_trim;
 extern const char *cloth_names[], *trim_names[];
 COLORREF HeroClothColor(COLORREF class_colour);
 COLORREF HeroTrimColor(void); // CLOTH_UNKNOWN when no trim
-int BarrelInfo(int i, float *x, float *y, int *intact);
+int BarrelInfo(int i, fx *x, fx *y, int *intact);
 enum { NPC_IDLE, NPC_SWEEP, NPC_FARM, NPC_WATER, NPC_NATURE, NPC_HAMMER, NPC_INSPECT };
 int NpcActivity(int i);
 int NpcAtWork(int i);
-void NoteBarrelBroken(float x, float y);
+void NoteBarrelBroken(fx x, fx y);
 int IsBigTree(int tile_seed);
 void DrawBigCrown(HDC hdc, int sx, int sy, int tile_seed);
 extern const char *sex_names[], *beard_names[], *eye_names[], *hair_names[];
@@ -154,8 +155,8 @@ int CardGuideUnlocked(void);
 void CardInspectorMove(int d);
 void DrawCardInspector(HDC hdc, int x, int y, int w, int h);
 int MenuTabStep(int cur, int dir);
-extern float facing_x, facing_y;
-void SetHeroFacing8(float dx, float dy);
+extern fx facing_x, facing_y;
+void SetHeroFacing8(fx dx, fx dy);
 void DrawSlash(HDC hdc, int sx, int sy);
 void AdvMapDot(HDC hdc, int town_key, int cx, int cy, int cs);
 void AskForWork(int npc_type);
@@ -180,7 +181,7 @@ void ApplyLegacy(void);
 int CaveRoom(int cell);
 int CaveRoomClaimed(int cell);
 void ClaimCaveRoom(int cell);
-float AdvTownPriceMult(void);
+fx AdvTownPriceMult(void);
 int AdvTalk(int npc_type);
 void AdvNote(char kind, int monster);
 void AdvTick(void);
@@ -200,7 +201,7 @@ COLORREF ClothingColor(const char *name);
 #define MAX_MELT_PATCHES 32
 typedef struct { int32_t screen_id, minute; uint8_t x, y, tile, active; } ScreenEdit;
 typedef struct { int32_t screen_id, left_minute, alive, active; } ScreenMemory;
-typedef struct { int32_t screen_id, active; float x, y, fill; } MeltPatch;
+typedef struct { int32_t screen_id, active; fx x, y, fill; } MeltPatch;
 extern ScreenEdit screen_edits[MAX_SCREEN_EDITS];
 extern ScreenMemory screen_memory[MAX_SCREEN_MEMORY];
 extern MeltPatch melt_patches[MAX_MELT_PATCHES];
@@ -208,13 +209,13 @@ void RememberTileCleared(int x, int y, int tile);
 void RememberLeavingScreen(int new_index);
 void ApplyScreenMemory(int index);
 int ScreenStillQuiet(void);
-void TickMeltPatches(float dt);
-int GetMeltPatch(int i, float *x, float *y, float *size);
+void TickMeltPatches(fx dt);
+int GetMeltPatch(int i, fx *x, fx *y, fx *size);
 // Walk-in homes and polygon shop rooms (afkview.c).
 extern int inside_home;
 int HomeInteract(void);
 void LeaveHome(void);
-int InteriorBlocks(float x, float y);
+int InteriorBlocks(fx x, fx y);
 void DrawHomeInterior(HDC hdc);
 void DrawShopRoom(HDC hdc, int stone, int shrine, int floor_y);
 // The player's own house (home.c).
@@ -224,7 +225,7 @@ void DrawShopRoom(HDC hdc, int stone, int shrine, int floor_y);
 #define FURNITURE_KINDS 6
 extern int32_t player_home[8];
 extern const char *furniture_names[FURNITURE_KINDS];
-int PlayerHomeCentre(float *x, float *y);
+int PlayerHomeCentre(fx *x, fx *y);
 COLORREF HomeRoofColor(int front);
 COLORREF HomeWallColor(int front);
 int HomeBuildInteract(void);
@@ -247,7 +248,7 @@ int MountainIsPeak(int cell);
 COLORREF HeroEyeColor(void);
 COLORREF HeroHairColor(void);
 extern ClassType selected_class;
-extern float player_height_m;
+extern fx player_height_m;
 extern const char* race_names[];
 extern const char* class_names[];
 extern InventoryItem player_inventory[MAX_INVENTORY_ITEMS];
@@ -259,24 +260,24 @@ extern int player_xp;
 extern int player_next_level_xp;
 extern int is_poisoned;
 extern char quest_log_text[128];
-extern float opt_xp_mult;
-extern float opt_loot_mult;
-extern float opt_day_night_speed;
+extern fx opt_xp_mult;
+extern fx opt_loot_mult;
+extern fx opt_day_night_speed;
 extern uint8_t visited_biomes[META_GRID_SIZE][META_GRID_SIZE];
 extern uint8_t map_poi[META_GRID_SIZE][META_GRID_SIZE];
-extern float player_x;
-extern float player_y;
+extern fx player_x;
+extern fx player_y;
 extern FacingDirection player_facing;
 extern WeaponType active_weapon;
 extern int bow_equipped; // a Bow equipped as secondary weapon (RT / F fires it)
 extern int is_running;
-extern float run_bob;
-extern float world_tick;
+extern fx run_bob;
+extern fx world_tick;
 extern int world_frame;
 extern int sword_swipe_frame;
 extern uint8_t VISUAL_MAP[MAP_SIZE][MAP_SIZE];
 extern ArrowProjectile player_arrow;
-extern float bow_charge_time;
+extern fx bow_charge_time;
 extern int is_charging_bow;
 extern DWORD bow_charge_started_at;
 extern ArrowProjectile player_spell;
@@ -304,7 +305,7 @@ extern AppleTreeState apple_tree_states[MAX_APPLE_TREES];
 extern int vendor_menu_open;
 extern int fishing_active, fishing_power;
 extern int bedroll_screen_id;
-extern float bedroll_x, bedroll_y;
+extern fx bedroll_x, bedroll_y;
 extern int night_bonus_active;
 extern int wind_dir;
 extern int sleep_fade_frame;
@@ -312,17 +313,17 @@ extern int jailed_tonight;
 #define GUIDE_FLASH_MS 2000
 extern DWORD guide_flash_until;
 extern int enemy_direction;
-extern float weather_next_change;
+extern fx weather_next_change;
 extern int is_menu_open;
 extern int current_menu_tab;
 extern int world_map_zoom; // 1 = whole world; 2/4/8 = closer view around the hero
 extern int selected_creation_field;
 extern int creation_name_letter_cursor;
 extern int gold_count;
-extern float player_stamina;
-extern float max_stamina;
-extern float player_mp, max_player_mp;
-#define CLASS_ABILITY_MP_COST (20.0f - (float)stat_spent[5]) // each INT point spent saves 1 MP
+extern fx player_stamina;
+extern fx max_stamina;
+extern fx player_mp, max_player_mp;
+#define CLASS_ABILITY_MP_COST (FxI(20) - FxI(stat_spent[5])) // each INT point spent saves 1 MP
 #define STAT_COUNT 7            // STR DEX STA MAG LCK INT CHR (Hero tab order)
 #define STAT_CAP 10             // one jewel row
 #define STAT_POINTS_PER_LEVEL 1
@@ -360,19 +361,19 @@ void TryCardDrop(int monster); // monster < 0 for chests and fishing
 #define HUD_LOG_Y 100
 extern int stamina_rest_timer;
 #define STAMINA_REST_FRAMES_REQUIRED 30
-extern float player_hp, max_player_hp;
+extern fx player_hp, max_player_hp;
 extern DWORD hero_held_until;
 extern int hero_hop_frame;
 extern int hero_hop_len, hero_hop_double, melee_combo_step;
-float HeroHopHeight(void);
+fx HeroHopHeight(void);
 void StartHeroHop(int second);
-void HurtHero(float dmg);
+void HurtHero(fx dmg);
 void EnemyAttackHero(int e);
-float RaceVisionTiles(void);
+fx RaceVisionTiles(void);
 void DrawNightDarkness(HDC hdc);
 void DrawBlessingFx(HDC hdc);
-extern float current_payload_weight;
-extern float day_night_cycle_accumulator;
+extern fx current_payload_weight;
+extern fx day_night_cycle_accumulator;
 extern WeatherType current_weather;
 extern int screens_until_town;
 extern int current_screen_index;
@@ -392,9 +393,9 @@ typedef struct { int origin_cell; int valid; int treasure_claimed; } CaveRecord;
 extern CaveRecord cave_records[MAX_CAVE_RECORDS];
 extern int in_cave;
 extern int cave_return_grid_x, cave_return_grid_y;
-extern float cave_return_player_x, cave_return_player_y;
+extern fx cave_return_player_x, cave_return_player_y;
 extern int current_cave_origin_cell;
-extern float cave_treasure_x, cave_treasure_y;
+extern fx cave_treasure_x, cave_treasure_y;
 extern int cave_treasure_hunts_found;
 extern int saturn_save_screen_index;
 extern int saturn_save_steps_remaining;
@@ -403,29 +404,29 @@ extern int saturn_save_gold;
 extern int saturn_save_stone;
 extern int torch_gate_x;
 extern int torch_gate_y;
-extern float enemy_x;
-extern float enemy_y;
-extern float enemy_hearts;
+extern fx enemy_x;
+extern fx enemy_y;
+extern fx enemy_hearts;
 extern MonsterType active_monster;
 #define MAX_ENEMIES 6           // night cap
 #define MAX_ENEMIES_DAY 4
 #define ENEMY_SPAWN_INTERVAL_MS 20000
-typedef struct { float x, y, hearts; MonsterType type; int direction; int angry; int poison; } EnemySlot;
+typedef struct { fx x, y, hearts; MonsterType type; int direction; int angry; int poison; } EnemySlot;
 extern EnemySlot enemies[MAX_ENEMIES];
 extern int current_enemy;
 void SelectEnemy(int i);
 void StoreEnemy(void);
-int EnemyAtPoint(float x, float y, float radius);
-int SelectNearestEnemyTo(float x, float y);
+int EnemyAtPoint(fx x, fx y, fx radius);
+int SelectNearestEnemyTo(fx x, fx y);
 int SelectTargetEnemy(void);
 void SpawnScreenEnemies(void);
 void UpdateEnemySpawns(void);
-extern float gator_x;
-extern float gator_y;
+extern fx gator_x;
+extern fx gator_y;
 extern int gator_active;
-extern float gator_swim_timer;
-extern float merchant_x;
-extern float merchant_y;
+extern fx gator_swim_timer;
+extern fx merchant_x;
+extern fx merchant_y;
 extern int merchant_selection;
 extern int vendor_tab;
 
@@ -516,11 +517,11 @@ void DrawWishingWell(HDC hdc);
 int TryWishingWell(void);
 enum { HOLIDAY_NONE, HOLIDAY_HALLOWEEN, HOLIDAY_WINTER_FEAST, HOLIDAY_NEW_YEAR };
 int HolidayToday(void);
-void SunShadowOffset(float *ox, float *oy);
+void SunShadowOffset(fx *ox, fx *oy);
 void DrawCanopyShadows(HDC hdc);
 int QuickWheelUpdate(WORD buttons);
 void DrawQuickWheel(HDC hdc);
-float DoorwayCamera(void);
+fx DoorwayCamera(void);
 void DrawIronSword(HDC hdc, int x0, int y0, int x1, int y1);
 
 #endif // GAME_H

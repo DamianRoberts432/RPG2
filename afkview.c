@@ -74,48 +74,48 @@ static int Project(float x, float y, float z, int *sx, int *sy, float *depth) {
 }
 
 static void AddThing(float x, float y, float z, int kind, int seed) {
-    float dx = x - player_x, dy = y - player_y;
+    float dx = x - FxToF(player_x), dy = y - FxToF(player_y);
     if (dx * dx + dy * dy < 0.25f || dx * dx + dy * dy > FP_RANGE * FP_RANGE || thing_count >= FP_MAX_THINGS) return;
     things[thing_count++] = (FpThing){ x, y, z, 0.0f, kind, seed };
 }
 
 static void GatherThings(void) {
     thing_count = 0;
-    for (int r = (int)player_y - FP_RANGE; r <= (int)player_y + FP_RANGE; r++)
-        for (int c = (int)player_x - FP_RANGE; c <= (int)player_x + FP_RANGE; c++) {
+    for (int r = (int)FxToF(player_y) - FP_RANGE; r <= (int)FxToF(player_y) + FP_RANGE; r++)
+        for (int c = (int)FxToF(player_x) - FP_RANGE; c <= (int)FxToF(player_x) + FP_RANGE; c++) {
             if (r < 0 || c < 0 || r >= MAP_SIZE || c >= MAP_SIZE) continue;
             if (VISUAL_MAP[r][c] == 11) AddThing(c + 0.5f, r + 0.5f, 0.0f, FP_TREE, r * MAP_SIZE + c);
             else if (VISUAL_MAP[r][c] == 1) AddThing(c + 0.5f, r + 0.5f, 0.0f, FP_ROCK, r * MAP_SIZE + c);
         }
     for (int i = 0; i < 5; i++) { // homes sit where they block the hero
-        float hx, hy;
-        if (VillageHomeCentre(i, &hx, &hy)) AddThing(hx - HOME_FEET_OFFSET, hy - HOME_FEET_OFFSET, 0.0f, FP_HOME, i);
+        fx hx, hy;
+        if (VillageHomeCentre(i, &hx, &hy)) AddThing(FxToF(hx - HOME_FEET_OFFSET), FxToF(hy - HOME_FEET_OFFSET), 0.0f, FP_HOME, i);
     }
     for (int i = 0; i < MAX_CAMPFIRES; i++)
-        if (campfires[i].active && campfires[i].screen_id == current_screen_index) AddThing(campfires[i].x, campfires[i].y, 0.0f, FP_FIRE, i);
+        if (campfires[i].active && campfires[i].screen_id == current_screen_index) AddThing(FxToF(campfires[i].x), FxToF(campfires[i].y), 0.0f, FP_FIRE, i);
     if (!in_cave && !IsAdverseWeather())
         for (int i = 0; i < MAX_BUTTERFLIES; i++)
-            if (butterflies[i].active) AddThing(butterflies[i].x, butterflies[i].y, 0.35f + butterflies[i].z / 40.0f, FP_BUTTERFLY, i);
+            if (butterflies[i].active) AddThing(FxToF(butterflies[i].x), FxToF(butterflies[i].y), 0.35f + FxToF(butterflies[i].z) / 40.0f, FP_BUTTERFLY, i);
     for (int i = 0; i < MAX_CRITTERS; i++)
-        if (critters[i].active && !critters[i].hidden) AddThing(critters[i].x, critters[i].y, 0.0f, FP_CRITTER, i * 8 + (critters[i].type & 7));
-    if (familiar_visible) AddThing(familiar_world_x, familiar_world_y, 0.0f, FP_FAMILIAR, familiar_visible - 1);
-    for (int i = 0; i < MAX_ENEMIES; i++) { // the live one is held in enemy_x/enemy_y
+        if (critters[i].active && !critters[i].hidden) AddThing(FxToF(critters[i].x), FxToF(critters[i].y), 0.0f, FP_CRITTER, i * 8 + (critters[i].type & 7));
+    if (familiar_visible) AddThing(FxToF(familiar_world_x), FxToF(familiar_world_y), 0.0f, FP_FAMILIAR, familiar_visible - 1);
+    for (int i = 0; i < MAX_ENEMIES; i++) { // the live one is held in FxToF(enemy_x)/FxToF(enemy_y)
         int cur = i == current_enemy;
-        float hp = cur ? enemy_hearts : enemies[i].hearts;
-        if (hp > 0.0f) AddThing(cur ? enemy_x : enemies[i].x, cur ? enemy_y : enemies[i].y, 0.0f, FP_ENEMY, i * 32 + ((cur ? active_monster : enemies[i].type) & 31));
+        float hp = cur ? FxToF(enemy_hearts) : FxToF(enemies[i].hearts);
+        if (hp > 0.0f) AddThing(cur ? FxToF(enemy_x) : FxToF(enemies[i].x), cur ? FxToF(enemy_y) : FxToF(enemies[i].y), 0.0f, FP_ENEMY, i * 32 + ((cur ? active_monster : enemies[i].type) & 31));
     }
     for (int i = 0; i < village_npc_count; i++)
-        if (village_npcs[i].type != 8) AddThing(village_npcs[i].x, village_npcs[i].y, 0.0f, FP_NPC, i * 16 + (village_npcs[i].type & 15));
-        else AddThing(village_npcs[i].x, village_npcs[i].y, 0.0f, FP_ALTAR, TownDeity());
+        if (village_npcs[i].type != 8) AddThing(FxToF(village_npcs[i].x), FxToF(village_npcs[i].y), 0.0f, FP_NPC, i * 16 + (village_npcs[i].type & 15));
+        else AddThing(FxToF(village_npcs[i].x), FxToF(village_npcs[i].y), 0.0f, FP_ALTAR, TownDeity());
     { // the same town details as in play: barrels, torches and fire pits, the castle stall and tent
-        float qx, qy; int intact;
-        for (int i = 0; BarrelInfo(i, &qx, &qy, &intact); i++) AddThing(qx + 0.5f, qy + 0.5f, 0.0f, FP_BARREL, i * 2 + intact);
+        fx qx, qy; int intact;
+        for (int i = 0; BarrelInfo(i, &qx, &qy, &intact); i++) AddThing(FxToF(qx) + 0.5f, FxToF(qy) + 0.5f, 0.0f, FP_BARREL, i * 2 + intact);
         for (int i = 0; i < village_light_count && i < MAX_VILLAGE_LIGHTS; i++)
-            AddThing(village_lights[i].x, village_lights[i].y, 0.0f, FP_LIGHT, i * 2 + (village_lights[i].torch != 0));
-        if (current_biome == BIOME_CASTLE) { AddThing(11.0f, 14.0f, 0.0f, FP_STALL, 0); AddThing(merchant_x, merchant_y, 0.0f, FP_TENT, 0); }
+            AddThing(FxToF(village_lights[i].x), FxToF(village_lights[i].y), 0.0f, FP_LIGHT, i * 2 + (village_lights[i].torch != 0));
+        if (current_biome == BIOME_CASTLE) { AddThing(11.0f, 14.0f, 0.0f, FP_STALL, 0); AddThing(FxToF(merchant_x), FxToF(merchant_y), 0.0f, FP_TENT, 0); }
     }
-    float bx, by; int nibble;
-    if (FishingBobberPos(&bx, &by, &nibble)) AddThing(bx, by, 0.0f, FP_BOBBER, nibble);
+    fx bx, by; int nibble;
+    if (FishingBobberPos(&bx, &by, &nibble)) AddThing(FxToF(bx), FxToF(by), 0.0f, FP_BOBBER, nibble);
 }
 
 static void SkyPoint(float az, float el, int *x, int *y) {
@@ -233,7 +233,7 @@ static void DrawSky(HDC hdc, float light) {
 
 static COLORREF GroundColor(void) {
     if (in_cave || current_biome == BIOME_CAVE) return RGB(70, 62, 55);
-    if (snow_cover > 0.5f || current_biome == BIOME_TUNDRA) return RGB(225, 230, 238);
+    if (FxToF(snow_cover) > 0.5f || current_biome == BIOME_TUNDRA) return RGB(225, 230, 238);
     if (current_biome == BIOME_DESERT) return RGB(225, 195, 95);
     if (current_biome == BIOME_SWAMP) return RGB(75, 100, 60);
     if (current_season == SEASON_FALL) return RGB(125, 140, 60);
@@ -253,7 +253,7 @@ static void DrawThing(HDC hdc, const FpThing *t, float lit) {
         if (t->seed % 3 == 0) {
             POINT p[3] = { { sx, sy - (int)(2.9f * u) }, { sx + (int)(0.75f * u), sy - (int)(0.7f * u) }, { sx - (int)(0.75f * u), sy - (int)(0.7f * u) } };
             Shape(hdc, p, 3, Dim(RGB(35, 105, 60), lit));
-            if (snow_cover > 0.3f) { POINT s[3] = { p[0], { sx + (int)(0.3f * u), sy - (int)(2.0f * u) }, { sx - (int)(0.3f * u), sy - (int)(2.0f * u) } }; Shape(hdc, s, 3, Dim(RGB(235, 240, 245), lit)); }
+            if (FxToF(snow_cover) > 0.3f) { POINT s[3] = { p[0], { sx + (int)(0.3f * u), sy - (int)(2.0f * u) }, { sx - (int)(0.3f * u), sy - (int)(2.0f * u) } }; Shape(hdc, s, 3, Dim(RGB(235, 240, 245), lit)); }
         } else if (current_season == SEASON_WINTER) {
             for (int b = -1; b <= 1; b++) Stroke(hdc, sx, sy - (int)(0.9f * u), sx + b * (int)(0.5f * u), sy - (int)((1.8f + (b == 0) * 0.5f) * u), U / 12 + 1, Dim(RGB(95, 70, 50), lit));
         } else {
@@ -574,7 +574,7 @@ static float HeadingFor(int key, float x, float y) {
     static float lx[128], ly[128], hd[128];
     key &= 127;
     float dx = x - lx[key], dy = y - ly[key], d2 = dx * dx + dy * dy;
-    if (d2 >= 4.0f) hd[key] = atan2f(player_y - y, player_x - x); // just appeared: facing the hero
+    if (d2 >= 4.0f) hd[key] = atan2f(FxToF(player_y) - y, FxToF(player_x) - x); // just appeared: facing the hero
     else if (d2 > 0.00002f) hd[key] = Wrap(hd[key] + Wrap(atan2f(dy, dx) - hd[key]) * 0.2f);
     lx[key] = x; ly[key] = y;
     return hd[key];
@@ -595,8 +595,8 @@ static void AnimalMesh(const FpThing *t) {
         // Its attention: a butterfly close by (the cat paws at it, the dog sniffs the air) or nothing (the cat pounces on leaves).
         float bd = 4.0f, bx = 0.0f, by = 0.0f;
         for (int i = 0; i < MAX_BUTTERFLIES; i++) if (butterflies[i].active) {
-            float dx = butterflies[i].x - x, dy = butterflies[i].y - y;
-            if (dx * dx + dy * dy < bd) { bd = dx * dx + dy * dy; bx = butterflies[i].x; by = butterflies[i].y; }
+            float dx = FxToF(butterflies[i].x) - x, dy = FxToF(butterflies[i].y) - y;
+            if (dx * dx + dy * dy < bd) { bd = dx * dx + dy * dy; bx = FxToF(butterflies[i].x); by = FxToF(butterflies[i].y); }
         }
         int near_fly = bd < 2.6f;
         if (near_fly) { float fa = atan2f(by - y, bx - x); hcos = cosf(fa); hsin = sinf(fa); }
@@ -692,8 +692,8 @@ static void FireShadows(float x, float y, float tall) {
     if (scene_lit > 0.65f || in_cave) return;
     float lx[MAX_CAMPFIRES + MAX_VILLAGE_LIGHTS], ly[MAX_CAMPFIRES + MAX_VILLAGE_LIGHTS]; int n = 0;
     for (int i = 0; i < MAX_CAMPFIRES; i++)
-        if (campfires[i].active && campfires[i].screen_id == current_screen_index) { lx[n] = campfires[i].x; ly[n++] = campfires[i].y; }
-    for (int i = 0; i < village_light_count && i < MAX_VILLAGE_LIGHTS; i++) { lx[n] = village_lights[i].x; ly[n++] = village_lights[i].y; }
+        if (campfires[i].active && campfires[i].screen_id == current_screen_index) { lx[n] = FxToF(campfires[i].x); ly[n++] = FxToF(campfires[i].y); }
+    for (int i = 0; i < village_light_count && i < MAX_VILLAGE_LIGHTS; i++) { lx[n] = FxToF(village_lights[i].x); ly[n++] = FxToF(village_lights[i].y); }
     float saved = face_bias; face_bias = 0.02f; face_glow = 1;
     for (int i = 0; i < n; i++) {
         float dx = x - lx[i], dy = y - ly[i], d = sqrtf(dx * dx + dy * dy);
@@ -787,7 +787,7 @@ static void HumanMesh(const FpThing *t) {
             cloth = cc != CLOTH_UNKNOWN ? cc : HeroClothColor(RGB(60, 80, 150)); eye = HeroEyeColor(); hero = 1; crown = 0;
         }
     }
-    float dx = player_x - x, dy = player_y - y, swing = 0.0f;
+    float dx = FxToF(player_x) - x, dy = FxToF(player_y) - y, swing = 0.0f;
     if (enemy && dx * dx + dy * dy < 2.6f) { float ph = fmodf(now / 455.0f, 1.0f); if (ph < 0.45f) swing = sinf(ph / 0.45f * 3.14159f); }
     if (enemy && IS_MYTHIC_MONSTER(type)) { BeastMesh(x, y, type, idx, swing); return; }
     int vamp = enemy && type == MONSTER_DRACULA;
@@ -827,7 +827,7 @@ static void HumanMesh(const FpThing *t) {
 }
 
 static void TreeMesh(const FpThing *t) {
-    int s = t->seed, snow = snow_cover > 0.5f;
+    int s = t->seed, snow = FxToF(snow_cover) > 0.5f;
     float x = t->x + ((s * 37) % 21 - 10) / 100.0f, y = t->y + ((s * 53) % 21 - 10) / 100.0f;
     float h = 0.85f + (s * 29 % 30) / 100.0f, rot = (s % 7) * 0.4f, W = 1.0f;
     if (IsBigTree(s)) { h *= 1.9f; W = 1.6f; } // old giants: their crowns close over part of the sky
@@ -916,7 +916,7 @@ static void DetailMesh(const FpThing *t) {
 }
 
 static void HomeMesh(const FpThing *t, int night) {
-    float x0 = t->x - HOME_HALF_X, x1 = t->x + HOME_HALF_X, y0 = t->y - HOME_HALF_Y, y1 = t->y + HOME_HALF_Y, wh = 0.95f, rz = 1.6f, o = 0.12f;
+    float x0 = t->x - FxToF(HOME_HALF_X), x1 = t->x + FxToF(HOME_HALF_X), y0 = t->y - FxToF(HOME_HALF_Y), y1 = t->y + FxToF(HOME_HALF_Y), wh = 0.95f, rz = 1.6f, o = 0.12f;
     float c[3] = { t->x, t->y, 0.7f };
     COLORREF wall = RGB(225, 205, 160), roof = RGB(165, 60, 45);
     float w1[4][3] = { { x0, y1, 0 }, { x1, y1, 0 }, { x1, y1, wh }, { x0, y1, wh } };
@@ -941,8 +941,8 @@ static void HomeMesh(const FpThing *t, int night) {
 
 static void GroundMesh(void) {
     COLORREF g = GroundColor();
-    for (int r = (int)player_y - FP_RANGE; r <= (int)player_y + FP_RANGE; r++)
-        for (int c = (int)player_x - FP_RANGE; c <= (int)player_x + FP_RANGE; c++) {
+    for (int r = (int)FxToF(player_y) - FP_RANGE; r <= (int)FxToF(player_y) + FP_RANGE; r++)
+        for (int c = (int)FxToF(player_x) - FP_RANGE; c <= (int)FxToF(player_x) + FP_RANGE; c++) {
             if (r < 0 || c < 0 || r >= MAP_SIZE || c >= MAP_SIZE) continue;
             int t = VISUAL_MAP[r][c];
             COLORREF col = t == 12 ? RGB(50, 120, 210) : (t == 10 && !in_cave) ? GetTileColor(10, 0) : g;
@@ -953,8 +953,8 @@ static void GroundMesh(void) {
             else col = Dim(col, 0.96f + (abs(RainHash(r * 977 + c * 131)) % 5) * 0.01f);
             float v[4][3] = { { (float)c, (float)r, 0 }, { c + 1.0f, (float)r, 0 }, { c + 1.0f, r + 1.0f, 0 }, { (float)c, r + 1.0f, 0 } };
             AddFace(v, 4, col, NULL, 1);
-            float fdx = c + 0.5f - player_x, fdy = r + 0.5f - player_y;
-            if (t != 1 && t != 10 && t != 11 && t != 12 && !in_cave && snow_cover < 0.5f && fdx * fdx + fdy * fdy < 64.0f &&
+            float fdx = c + 0.5f - FxToF(player_x), fdy = r + 0.5f - FxToF(player_y);
+            if (t != 1 && t != 10 && t != 11 && t != 12 && !in_cave && FxToF(snow_cover) < 0.5f && fdx * fdx + fdy * fdy < 64.0f &&
                 (current_biome == BIOME_GRASSLANDS || current_biome == BIOME_FOREST || current_biome == BIOME_PRAIRIE || current_biome == BIOME_OASIS) &&
                 abs(RainHash(r * 613 + c * 37)) % 7 == 0) { // a flower nodding in the breeze
                 static const COLORREF petal[4] = { RGB(240, 90, 120), RGB(250, 215, 70), RGB(170, 120, 240), RGB(250, 250, 245) };
@@ -986,14 +986,14 @@ static void UpdateGaze(int fresh) {
     static const int interest[10] = { 10, 6, 18, 50, 40, 32, 45, 95, 60, 30 };
     DWORD now = GetTickCount();
     if (fresh) {
-        yaw = (float)atan2(facing_y, facing_x); // look the way the hero faces, diagonals included
+        yaw = (float)atan2(FxToF(facing_y), FxToF(facing_x)); // look the way the hero faces, diagonals included
         pitch = 0.0f; target_yaw = yaw; target_pitch = 0.0f; gaze_until = now + 2500;
     }
     if (now >= gaze_until) {
         gaze_until = now + GAZE_MS; gaze_n++;
         int pick = -1, best = -1000;
         for (int i = 0; i < thing_count; i++) {
-            float dx = things[i].x - player_x, dy = things[i].y - player_y;
+            float dx = things[i].x - FxToF(player_x), dy = things[i].y - FxToF(player_y);
             int s = interest[things[i].kind] + RainHash(i * 17 + gaze_n * 101) % 25 - (int)(sqrtf(dx * dx + dy * dy) * 1.5f);
             if (s > best) { best = s; pick = i; }
         }
@@ -1001,7 +1001,7 @@ static void UpdateGaze(int fresh) {
         float nod = (RainHash(gaze_n * 7 + 3) % 100 - 50) / 350.0f; // look a little up or down, never rigidly level
         if (!fishing && !in_cave && (gaze_n % 4 == 0 || pick < 0)) { target_pitch = 0.6f; target_yaw = yaw + 0.5f; }
         else if (pick >= 0) {
-            target_yaw = atan2f(things[pick].y - player_y, things[pick].x - player_x);
+            target_yaw = atan2f(things[pick].y - FxToF(player_y), things[pick].x - FxToF(player_x));
             target_pitch = fishing ? -0.15f : (things[pick].kind == FP_TREE || things[pick].kind == FP_HOME ? 0.12f : -0.05f) + nod;
             if (!fishing && gaze_n % 5 == 2) target_pitch = -0.32f; // down at the ground now and then
         }
@@ -1010,7 +1010,7 @@ static void UpdateGaze(int fresh) {
     static DWORD heard_at[64], fast_until;
     for (int i = 0; i < thing_count; i++) {
         if (things[i].kind != FP_CRITTER && things[i].kind != FP_BUTTERFLY) continue;
-        float dx = things[i].x - player_x, dy = things[i].y - player_y;
+        float dx = things[i].x - FxToF(player_x), dy = things[i].y - FxToF(player_y);
         int key = (things[i].kind == FP_CRITTER ? things[i].seed >> 3 : 32 + things[i].seed) & 63;
         if (dx * dx + dy * dy > 25.0f) continue;
         if (now - heard_at[key] > 15000) {
@@ -1087,7 +1087,7 @@ static void DrawClouds(HDC hdc, float light) {
     if (in_cave || current_biome == BIOME_CAVE) return;
     float wx, wy; WindAcross(&wx, &wy);
     float t = GetTickCount() / 1000.0f, k = light < 0.25f ? 0.25f : light;
-    int n = IsAdverseWeather() ? 12 : 3 + (int)(weather_intensity * 6.0f);
+    int n = IsAdverseWeather() ? 12 : 3 + (int)(FxToF(weather_intensity) * 6.0f);
     for (int i = 0; i < n; i++) {
         int hs = RainHash(i * 977 + 31);
         // Pinned to bearings like the stars, drifting slowly with the wind, so a
@@ -1111,7 +1111,7 @@ static void DrawWeather(HDC hdc) {
     // across the screen instead of dragging them along with the camera.
     int pan = (int)(yaw / FP_FOV * WINDOW_WIDTH), tilt = WINDOW_HEIGHT / 2 - horizon;
     if (IsAdverseWeather()) {
-        int snow = current_season == SEASON_WINTER || current_biome == BIOME_TUNDRA, n = 80 + (int)(weather_intensity * 120.0f);
+        int snow = current_season == SEASON_WINTER || current_biome == BIOME_TUNDRA, n = 80 + (int)(FxToF(weather_intensity) * 120.0f);
         for (int i = 0; i < n; i++) {
             int hsh = RainHash(i * 613 + 9), z = i % 3; // z: 0 far and small .. 2 near and big
             int x = (int)(((hsh % WINDOW_WIDTH) + (int)(now * across * (1 + z) / (snow ? 80.0f : 24.0f)) - pan + 100 * WINDOW_WIDTH) % WINDOW_WIDTH);
@@ -1122,7 +1122,7 @@ static void DrawWeather(HDC hdc) {
     }
     int trees = 0;
     for (int i = 0; i < thing_count; i++) trees += things[i].kind == FP_TREE;
-    if (!trees || (current_season != SEASON_FALL && abs(wind_dir) < 4) || snow_cover > 0.5f) return;
+    if (!trees || (current_season != SEASON_FALL && abs(wind_dir) < 4) || FxToF(snow_cover) > 0.5f) return;
     COLORREF lc[3] = { RGB(210, 120, 40), RGB(220, 175, 50), RGB(90, 150, 55) };
     for (int i = 0; i < 26; i++) {
         int hsh = RainHash(i * 311 + 77), z = i % 3, s = 2 + z * 2;
@@ -1140,12 +1140,12 @@ void DrawAfkView(HDC hdc) {
     int ms = AfkViewMs();
     if (ms < FP_ZOOM_MS) { was_on = 0; return; }
     if (ms < FP_ZOOM_MS + FP_DIP_MS) { FillWindowAlpha(hdc, RGB(0, 0, 0), (ms - FP_ZOOM_MS) * 255 / FP_DIP_MS); was_on = 0; return; }
-    eye_x = player_x; eye_y = player_y; eye_z = FP_EYE;
+    eye_x = FxToF(player_x); eye_y = FxToF(player_y); eye_z = FP_EYE;
     GatherThings();
     UpdateGaze(!was_on); was_on = 1;
     focal = (WINDOW_WIDTH / 2) / tanf(FP_FOV / 2);
     horizon = (int)(WINDOW_HEIGHT * 0.55f + pitch * WINDOW_HEIGHT * 0.7f);
-    float light = (float)fabs(sin(day_night_cycle_accumulator));
+    float light = (float)fabs(sin(FxToF(day_night_cycle_accumulator)));
     if (NightVisionActive() && light < 0.6f) light = 0.6f;
     if (in_cave) light = 0.35f;
     float lit = 0.3f + 0.7f * light;
@@ -1192,17 +1192,17 @@ void DrawAfkView(HDC hdc) {
 // with the same flat-shaded faces as the AFK view, from a fixed camera by the
 // doorway. Inside, everything is a menu (TM_HOME): sleep, set out furniture,
 // or Leave; B / ESC always steps back outside, so nobody gets stuck indoors.
-#define ROOM_HX 2.6f
-#define ROOM_HY 2.0f
+#define ROOM_HX FX(2.6)
+#define ROOM_HY FxI(2)
 int inside_home = -1;
-static float out_x, out_y, room_cx, room_cy;
+static fx out_x, out_y, room_cx, room_cy;
 
 static int HomeDoorNear(void) {
     for (int i = 0; i < 5; i++) {
-        float hx, hy;
+        fx hx, hy;
         if (!VillageHomeCentre(i, &hx, &hy)) continue;
-        float dx = player_x + HOME_FEET_OFFSET - hx, dy = player_y + HOME_FEET_OFFSET - (hy + HOME_HALF_Y);
-        if (dx * dx + dy * dy < 0.8f) return i;
+        fx dx = player_x + HOME_FEET_OFFSET - hx, dy = player_y + HOME_FEET_OFFSET - (hy + HOME_HALF_Y);
+        if (FxMul(dx, dx) + FxMul(dy, dy) < FX(0.8)) return i;
     }
     return -1;
 }
@@ -1214,16 +1214,16 @@ void LeaveHome(void) {
     strcpy(arpg_action_log, "HOME: You step back outside.");
 }
 
-int InteriorBlocks(float x, float y) {
-    if (x < room_cx - ROOM_HX + 0.25f || x > room_cx + ROOM_HX - 0.25f || y < room_cy - ROOM_HY + 0.3f || y > room_cy + ROOM_HY - 0.15f) return 1;
-    if (x < room_cx - ROOM_HX + 1.25f && y < room_cy - ROOM_HY + 2.1f) return 1;                    // bed
-    if (fabsf(x - (room_cx + 1.0f)) < 0.6f && fabsf(y - (room_cy + 0.2f)) < 0.45f) return 1;       // table
-    if (x > room_cx + ROOM_HX - 1.0f && y < room_cy - ROOM_HY + 0.9f) return 1;                    // hearth
+int InteriorBlocks(fx x, fx y) {
+    if (x < room_cx - ROOM_HX + FX(0.25) || x > room_cx + ROOM_HX - FX(0.25) || y < room_cy - ROOM_HY + FX(0.3) || y > room_cy + ROOM_HY - FX(0.15)) return 1;
+    if (x < room_cx - ROOM_HX + FX(1.25) && y < room_cy - ROOM_HY + FX(2.1)) return 1;                    // bed
+    if (FxAbs(x - (room_cx + FxI(1))) < FX(0.6) && FxAbs(y - (room_cy + FX(0.2))) < FX(0.45)) return 1;       // table
+    if (x > room_cx + ROOM_HX - FxI(1) && y < room_cy - ROOM_HY + FX(0.9)) return 1;                    // hearth
     if (inside_home == 4) {
         int f = player_home[5];
-        if ((f & 1) && x > room_cx + ROOM_HX - 0.75f && fabsf(y - (room_cy + 1.0f)) < 0.6f) return 1;
-        if ((f & 2) && x < room_cx - ROOM_HX + 1.1f && fabsf(y - (room_cy + 1.2f)) < 0.45f) return 1;
-        if ((f & 16) && fabsf(x - (room_cx + 0.9f)) < 0.5f && y < room_cy - ROOM_HY + 0.75f) return 1;
+        if ((f & 1) && x > room_cx + ROOM_HX - FX(0.75) && FxAbs(y - (room_cy + FxI(1))) < FX(0.6)) return 1;
+        if ((f & 2) && x < room_cx - ROOM_HX + FX(1.1) && FxAbs(y - (room_cy + FX(1.2))) < FX(0.45)) return 1;
+        if ((f & 16) && FxAbs(x - (room_cx + FX(0.9))) < FX(0.5) && y < room_cy - ROOM_HY + FX(0.75)) return 1;
     }
     return 0;
 }
@@ -1234,12 +1234,12 @@ int HomeInteract(void) {
     if (i < 0 || (i == 4 && player_home[0] != 2)) return 0;
     StoreEnemy();
     for (int k = 0; k < MAX_ENEMIES; k++) {
-        float dx = enemies[k].x - player_x, dy = enemies[k].y - player_y;
-        if (enemies[k].hearts > 0.0f && enemies[k].angry && dx * dx + dy * dy < 36.0f) { strcpy(arpg_action_log, "HOME: Not with monsters on your heels!"); return 1; }
+        fx dx = enemies[k].x - player_x, dy = enemies[k].y - player_y;
+        if (enemies[k].hearts > FxI(0) && enemies[k].angry && FxMul(dx, dx) + FxMul(dy, dy) < FxI(36)) { strcpy(arpg_action_log, "HOME: Not with monsters on your heels!"); return 1; }
     }
-    float hx, hy; VillageHomeCentre(i, &hx, &hy);
+    fx hx, hy; VillageHomeCentre(i, &hx, &hy);
     inside_home = i; out_x = player_x; out_y = player_y; room_cx = hx; room_cy = hy;
-    player_x = room_cx - 0.3f; player_y = room_cy + 0.9f;
+    player_x = room_cx - FX(0.3); player_y = room_cy + FX(0.9);
     OpenTownMenu(TM_HOME);
     if (i == 4) { if (!PlaceFurniture()) strcpy(arpg_action_log, "HOME: Welcome home. Furniture you buy goes in when you come inside."); }
     return 1;
@@ -1390,8 +1390,8 @@ static void DrawHomeFurniture(float x0, float x1, float y0, float y1, float cx, 
 void DrawHomeInterior(HDC hdc) {
     if (inside_home < 0) return;
     if (town_menu != TM_HOME) { LeaveHome(); return; }
-    float x0 = room_cx - ROOM_HX, x1 = room_cx + ROOM_HX, y0 = room_cy - ROOM_HY, y1 = room_cy + ROOM_HY, cx = room_cx, cy = room_cy;
-    int night = (fabs(sin(day_night_cycle_accumulator)) < 0.35f); DWORD now = GetTickCount();
+    float x0 = FxToF(room_cx - ROOM_HX), x1 = FxToF(room_cx + ROOM_HX), y0 = FxToF(room_cy - ROOM_HY), y1 = FxToF(room_cy + ROOM_HY), cx = FxToF(room_cx), cy = FxToF(room_cy);
+    int night = (fabs(sin(FxToF(day_night_cycle_accumulator))) < 0.35f); DWORD now = GetTickCount();
     COLORREF wood = RGB(120, 80, 45), dark = RGB(85, 55, 32), stone = RGB(130, 125, 120), wall = RGB(222, 200, 158);
     if (inside_home == 4) wall = HomeWallColor(player_home[4]);
     static const COLORREF blankets[4] = { RGB(170, 50, 45), RGB(60, 100, 160), RGB(70, 130, 70), RGB(150, 110, 50) };
@@ -1430,7 +1430,7 @@ void DrawHomeInterior(HDC hdc) {
     // the villager who lives here, and the hero
     if (inside_home < 4) { FpThing r = { x0 + 1.7f, y0 + 1.6f, 0.0f, 0.0f, FP_NPC, (13 << 4) | (inside_home & 3) }; HumanMesh(&r); }
     else DrawHomeFurniture(x0, x1, y0, y1, cx, cy);
-    FpThing h = { player_x, player_y, 0.0f, 0.0f, FP_NPC, (14 << 4) | 15 };
+    FpThing h = { FxToF(player_x), FxToF(player_y), 0.0f, 0.0f, FP_NPC, (14 << 4) | 15 };
     HumanMesh(&h);
     DrawFaces(hdc, scene_lit);
 }
@@ -1447,7 +1447,7 @@ void DrawShopRoom(HDC hdc, int stone, int shrine, int floor_y) {
     RoomCamera(0.0f, ey, ez, fov, hz);
     scene_lit = 1.0f; haze = Dim(wall, 0.5f);
     RoomShell(x0, y0, x1, y1, 3.6f, fa, Dim(fa, 0.85f), wall, stone || shrine);
-    if (!shrine) RoomWindow(y0, -1.0f, 0.6f, 0.9f, 1.9f, (fabs(sin(day_night_cycle_accumulator)) < 0.35f));
+    if (!shrine) RoomWindow(y0, -1.0f, 0.6f, 0.9f, 1.9f, (fabs(sin(FxToF(day_night_cycle_accumulator))) < 0.35f));
     for (int k = 0; k < 4; k++) OBox(x0 + 1.4f + k * 2.75f, 0.0f, 0, 0, 3.4f, 3.6f, 0.12f, 3.0f, Dim(wall, 0.55f));
     DrawFaces(hdc, 1.0f);
 }

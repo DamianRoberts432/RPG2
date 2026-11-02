@@ -1,9 +1,10 @@
 #ifndef RENDER_WORLD_H
 #define RENDER_WORLD_H
+#include "fixed.h"
 
 // Isometric helpers and environment drawing (tiles, trees, fires, weather, loot)
 
-void GetIsoCoords(float cx, float cy, int *sx, int *sy);
+void GetIsoCoords(fx cx, fx cy, int *sx, int *sy);
 COLORREF GetTileColor(uint8_t id, int side);
 void DrawFlowingRiver(HDC hdc, int sx, int sy, int tile_seed);
 void InjectDynamicGlowPass(HDC hdc, int hx, int hy, int radius, COLORREF light_color);
@@ -17,9 +18,9 @@ void DrawSolitaireSunMoonBeam(HDC hdc);
 void DrawNightEyes(HDC hdc);
 int RainHash(int value);
 void FillWindowAlpha(HDC hdc, COLORREF color, int alpha);
-void ApplyCameraZoom(HDC hdc, float zoom);
+void ApplyCameraZoom(HDC hdc, fx zoom);
 void DrawShoreFoam(HDC hdc, int c, int r, int sx, int sy);
-float UpdateAfkCamera(int input_active);
+fx UpdateAfkCamera(int input_active);
 void CycleCameraZoom(void);
 int AfkViewMs(void);
 void FillRectAlpha(HDC hdc, int x, int y, int w, int h, COLORREF color, int alpha);
@@ -29,6 +30,6 @@ void DrawBedroll(HDC hdc);
 void DrawGroundLoot(HDC hdc);
 void DrawDroppedItems(HDC hdc);
 
-float WaveAt(float x, float y, float t);
+fx WaveAt(fx x, fx y, fx t);
 
 #endif // RENDER_WORLD_H

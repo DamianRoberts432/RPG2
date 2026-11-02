@@ -21,9 +21,11 @@ void DrawDroppedItems(HDC hdc) {
     }
 }
 
-void GetIsoCoords(float cx, float cy, int *sx, int *sy) {
-    int raw_x = (int)((cx - cy) * (TILE_WIDTH / 2));
-    int raw_y = (int)((cx + cy) * (TILE_HEIGHT / 2));
+static int FloorDiv(int a, int b) { return a >= 0 ? a / b : -((-a + b - 1) / b); }
+
+void GetIsoCoords(fx cx, fx cy, int *sx, int *sy) {
+    int raw_x = FxTrunc((cx - cy) * (TILE_WIDTH / 2));
+    int raw_y = FxTrunc((cx + cy) * (TILE_HEIGHT / 2));
     *sx = raw_x - cam_x + (WINDOW_WIDTH / 2);
     *sy = raw_y - cam_y + (WINDOW_HEIGHT / 2);
 }
@@ -38,19 +40,21 @@ COLORREF GetTileColor(uint8_t id, int side) {
 // Gentle water: two slow sine swells crossing at different angles and speeds.
 // Each tile is tinted a touch lighter or darker by the swell under it and a
 // faint crest rides the high points. The peyote mirage reuses WaveAt.
-float WaveAt(float x, float y, float t) {
-    return 0.5f * sinf(x * 0.9f + y * 0.4f + t * 1.3f) + 0.5f * sinf(-x * 0.35f + y * 1.1f + t * 0.8f);
+fx WaveAt(fx x, fx y, fx t) {
+    int64_t a = ((int64_t)FxBits(x) * FX(0.9) + (int64_t)FxBits(y) * FX(0.4) + (int64_t)FxBits(t) * FX(1.3)) >> 16;
+    int64_t b = (-(int64_t)FxBits(x) * FX(0.35) + (int64_t)FxBits(y) * FX(1.1) + (int64_t)FxBits(t) * FX(0.8)) >> 16;
+    return FxSinTurn(FxTurn64(a)) / 2 + FxSinTurn(FxTurn64(b)) / 2;
 }
 
 void DrawFlowingRiver(HDC hdc, int sx, int sy, int tile_seed) {
-    float t = GetTickCount() / 1000.0f;
-    int c = tile_seed % MAP_SIZE, r = tile_seed / MAP_SIZE, k = (int)(WaveAt((float)c, (float)r, t) * 10.0f);
+    fx t = (fx)((int64_t)GetTickCount() * FX_ONE / 1000);
+    int c = tile_seed % MAP_SIZE, r = tile_seed / MAP_SIZE, k = FxTrunc(WaveAt(FxI(c), FxI(r), t) * 10);
     HBRUSH b = CreateSolidBrush(RGB(40 + k, 140 + k, 235 + k / 2)); HGDIOBJ old = SelectObject(hdc, b);
     POINT water[] = { {sx, sy}, {sx + TILE_WIDTH / 2, sy + TILE_HEIGHT / 2}, {sx, sy + TILE_HEIGHT}, {sx - TILE_WIDTH / 2, sy + TILE_HEIGHT / 2} };
     Polygon(hdc, water, 4);
     SelectObject(hdc, old); DeleteObject(b);
     if (k >= 6) { // soft crest, just a shade lighter than the water
-        int dy = (int)(sinf(t * 1.1f + c * 0.7f) * 3.0f);
+        int dy = FxTrunc(FxSinTurn(FxTurn64((((int64_t)FxBits(t) * FX(1.1)) >> 16) + c * FX(0.7))) * 3);
         HPEN crest = CreatePen(PS_SOLID, 1, RGB(85, 175, 245)); HGDIOBJ prev = SelectObject(hdc, crest);
         POINT arc[3] = { { sx - 10, sy + 17 + dy }, { sx, sy + 14 + dy }, { sx + 10, sy + 17 + dy } };
         Polyline(hdc, arc, 3);
@@ -65,7 +69,7 @@ void DrawFlowingRiver(HDC hdc, int sx, int sy, int tile_seed) {
 
 // Soft foam along every edge where water meets land, easing in and out with the swell.
 void DrawShoreFoam(HDC hdc, int c, int r, int sx, int sy) {
-    int in = 3 + (int)(1.5f * sinf(GetTickCount() / 700.0f + c * 0.8f + r * 0.5f));
+    int in = 3 + FxTrunc(FxMul(FX(1.5), FxSinTurn(FxTurn64((int64_t)GetTickCount() * FX_ONE / 700 + c * FX(0.8) + r * FX(0.5)))));
     POINT top = { sx, sy + in }, right = { sx + TILE_WIDTH / 2 - in * 2, sy + TILE_HEIGHT / 2 };
     POINT bottom = { sx, sy + TILE_HEIGHT - in }, left = { sx - TILE_WIDTH / 2 + in * 2, sy + TILE_HEIGHT / 2 };
     struct { int dc, dr; POINT a, b; } edge[4] = { { 0, -1, top, right }, { -1, 0, left, top }, { 0, 1, bottom, left }, { 1, 0, right, bottom } };
@@ -90,7 +94,7 @@ void DrawInteractiveTorches(HDC hdc, int sx, int sy) {
         int tsx = sx + (side * 28); int tsy = sy + 4;
         RECT iron_bracket = { tsx - 3, tsy + 2, tsx + 3, tsy + 16 };
         HBRUSH iron_b = CreateSolidBrush(RGB(45, 48, 55)); FillRect(hdc, &iron_bracket, iron_b); DeleteObject(iron_b);
-        int flicker = (int)(sin(world_tick * 14.0f + side) * 3.0f);
+        int flicker = FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 14 + FxI(side))) * 3);
         HBRUSH fire_b = CreateSolidBrush(RGB(255, 130 + flicker * 20, 20));
         RECT fire_core = { tsx - 4, tsy - 6 + flicker, tsx + 4, tsy + 4 };
         FillRect(hdc, &fire_core, fire_b); DeleteObject(fire_b);
@@ -109,14 +113,14 @@ void DrawCampfires(HDC hdc) {
         FillRect(hdc, &log1, log_b); FillRect(hdc, &log2, log_b);
         SelectObject(hdc, old); DeleteObject(log_b);
 
-        int flick = (int)(sin(world_tick * 16.0f + i) * 4.0f);
+        int flick = FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 16 + FxI(i))) * 4);
         HBRUSH fire_b = CreateSolidBrush(RGB(255, 140 + flick * 15, 30)); HGDIOBJ prev_fire = SelectObject(hdc, fire_b);
         POINT flame[] = {{csx, csy - 14 + flick}, {csx + 6, csy + 2}, {csx - 6, csy + 2}};
         Polygon(hdc, flame, 3);
         SelectObject(hdc, prev_fire); DeleteObject(fire_b);
 
         InjectDynamicGlowPass(hdc, csx, csy, 50 + flick * 2, RGB(255, 180, 50));
-        if (IsNearPoint(campfires[i].x, campfires[i].y, 2.0f)) {
+        if (IsNearPoint(campfires[i].x, campfires[i].y, FxI(2))) {
             char label[40];
             sprintf(label, "Wood %d/%d  [X] add", CampfireWoodCount(i), CAMPFIRE_MAX_WOOD);
             SetTextColor(hdc, RGB(255, 225, 150)); SetBkMode(hdc, TRANSPARENT);
@@ -148,7 +152,7 @@ static void DrawDeciduousCanopy(HDC hdc, int sx, int sy, int tile_seed) {
         MoveToEx(hdc, sx, sy - 2, NULL); LineTo(hdc, sx + 11, sy - 12);
         MoveToEx(hdc, sx, sy - 6, NULL); LineTo(hdc, sx - 5, sy - 17);
         SelectObject(hdc, old_p); DeleteObject(branch);
-        if (snow_cover > 0.25f) {
+        if (snow_cover > FX(0.25)) {
             HPEN snow = CreatePen(PS_SOLID, 2, RGB(240, 244, 250)); old_p = SelectObject(hdc, snow);
             MoveToEx(hdc, sx - 9, sy - 8, NULL); LineTo(hdc, sx - 4, sy - 4);
             MoveToEx(hdc, sx + 4, sy - 7, NULL); LineTo(hdc, sx + 10, sy - 12);
@@ -175,14 +179,14 @@ int IsBigTree(int tile_seed) {
 
 void DrawBigCrown(HDC hdc, int sx, int sy, int tile_seed) {
     int r = tile_seed / MAP_SIZE, c = tile_seed % MAP_SIZE, broad = IsDeciduousTree(tile_seed);
-    int sway = (int)(sin(world_tick * 0.9f + tile_seed) * (2 + abs(wind_dir)));
-    COLORREF leaf = snow_cover > 0.5f ? RGB(200, 210, 222) : !broad ? RGB(30, 95, 45) : current_season == SEASON_FALL ? RGB(190, 105, 40) : RGB(55, 120, 45);
+    int sway = FxTrunc(FxSinTurn(FxTurn64((((int64_t)FxBits(world_tick) * FX(0.9)) >> 16) + (int64_t)tile_seed * FX_ONE)) * (2 + abs(wind_dir)));
+    COLORREF leaf = snow_cover > FX(0.5) ? RGB(200, 210, 222) : !broad ? RGB(30, 95, 45) : current_season == SEASON_FALL ? RGB(190, 105, 40) : RGB(55, 120, 45);
     COLORREF dark = RGB(GetRValue(leaf) * 3 / 4, GetGValue(leaf) * 3 / 4, GetBValue(leaf) * 3 / 4);
     HBRUSH bark = CreateSolidBrush(RGB(115, 82, 60)); HGDIOBJ ob = SelectObject(hdc, bark), op = SelectObject(hdc, GetStockObject(NULL_PEN));
     POINT trunk[] = { {sx - 2 + sway / 2, sy - 30}, {sx + 2 + sway / 2, sy - 30}, {sx + 3, sy - 8}, {sx - 3, sy - 8} };
     Polygon(hdc, trunk, 4);
-    float depth = (c + r) - (player_x + player_y), across = (c - r) - (player_x - player_y);
-    int lacy = depth > 0.3f && depth < 5.0f && across > -2.5f && across < 2.5f;
+    fx depth = FxI(c + r) - (player_x + player_y), across = FxI(c - r) - (player_x - player_y);
+    int lacy = depth > FX(0.3) && depth < FxI(5) && across > -FX(2.5) && across < FX(2.5);
     HBRUSH lb = lacy ? CreateHatchBrush(HS_DIAGCROSS, leaf) : CreateSolidBrush(leaf), db = lacy ? CreateHatchBrush(HS_DIAGCROSS, dark) : CreateSolidBrush(dark);
     int old_mode = SetBkMode(hdc, TRANSPARENT);
     SelectObject(hdc, db);
@@ -196,11 +200,11 @@ void DrawBigCrown(HDC hdc, int sx, int sy, int tile_seed) {
 void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
     static int sway_lut[32], sway_initialized = 0;
     if (!sway_initialized) {
-        for (int i = 0; i < 32; i++) sway_lut[i] = (int)(sin(i * 6.2831853f / 32.0f) * 2.0f);
+        for (int i = 0; i < 32; i++) sway_lut[i] = FxTrunc(FxSinTurn((uint32_t)i << 27) * 2);
         sway_initialized = 1;
     }
     int wind_strength = abs(wind_dir);
-    int sway_phase = ((int)(world_tick * 2.0f) + tile_seed) & 31;
+    int sway_phase = (FxMulI(world_tick, FxI(2)) + tile_seed) & 31;
     int root_x = sx; // the trunk stays rooted; only the canopy sways
     sx += sway_lut[sway_phase] * (3 + wind_strength) / 3;
     int lean = (sx - root_x) / 2;
@@ -221,7 +225,7 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
         // "Virtua Racing" style saplings start out noticeably smaller than
         // the full 3-polygon trees, then gradually grow into that full-size
         // 3-polygon shape once enough world time has passed on this tile.
-        float growth_threshold = 180.0f + (float)(tile_seed % 90);
+        fx growth_threshold = FxI(180) + FxI(tile_seed % 90);
         if (world_tick >= growth_threshold) {
             int heights[] = {12, 4, -4}, widths[] = {20, 16, 12};
             COLORREF shades[] = {RGB(55, 125, 45), RGB(75, 150, 60), RGB(95, 180, 75)};
@@ -230,16 +234,16 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
                 b = CreateSolidBrush(shades[i]); HGDIOBJ prev = SelectObject(hdc, b); Polygon(hdc, cap, 4); SelectObject(hdc, prev); DeleteObject(b);
             }
         } else {
-            float grow_scale = 0.5f + 0.4f * (world_tick / growth_threshold);
+            fx grow_scale = FX(0.5) + FxMul(FX(0.4), FxDiv(world_tick, growth_threshold));
             int ax = sx, ay = sy + 12; // ground-anchor point so growth stretches upward, not downward through the soil
             POINT raw_left[] = {{sx, sy - 18}, {sx - 18, sy + 6}, {sx, sy + 12}};
             POINT raw_right[] = {{sx, sy - 18}, {sx, sy + 12}, {sx + 18, sy + 6}};
             POINT left_facet[3], right_facet[3];
             for (int i = 0; i < 3; i++) {
-                left_facet[i].x = ax + (LONG)((raw_left[i].x - ax) * grow_scale);
-                left_facet[i].y = ay + (LONG)((raw_left[i].y - ay) * grow_scale);
-                right_facet[i].x = ax + (LONG)((raw_right[i].x - ax) * grow_scale);
-                right_facet[i].y = ay + (LONG)((raw_right[i].y - ay) * grow_scale);
+                left_facet[i].x = ax + (LONG)FxTrunc((raw_left[i].x - ax) * grow_scale);
+                left_facet[i].y = ay + (LONG)FxTrunc((raw_left[i].y - ay) * grow_scale);
+                right_facet[i].x = ax + (LONG)FxTrunc((raw_right[i].x - ax) * grow_scale);
+                right_facet[i].y = ay + (LONG)FxTrunc((raw_right[i].y - ay) * grow_scale);
             }
             HBRUSH f1 = CreateSolidBrush(RGB(45, 145, 75)); HGDIOBJ prev1 = SelectObject(hdc, f1);
             Polygon(hdc, left_facet, 3); SelectObject(hdc, prev1); DeleteObject(f1);
@@ -247,7 +251,7 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
             Polygon(hdc, right_facet, 3); SelectObject(hdc, prev2); DeleteObject(f2);
         }
     }
-    if (!deciduous && snow_cover > 0.25f && (tile_seed % 2 == 0 || world_tick >= 180.0f + (float)(tile_seed % 90))) {
+    if (!deciduous && snow_cover > FX(0.25) && (tile_seed % 2 == 0 || world_tick >= FxI(180) + FxI(tile_seed % 90))) {
         HBRUSH snow_b = CreateSolidBrush(RGB(240, 244, 250)); HGDIOBJ prev_snow = SelectObject(hdc, snow_b);
         POINT cap[] = {{sx, sy - 16}, {sx + 8, sy - 5}, {sx, sy - 2}, {sx - 8, sy - 5}};
         Polygon(hdc, cap, 4); SelectObject(hdc, prev_snow); DeleteObject(snow_b);
@@ -331,7 +335,7 @@ void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed) {
             return;
         }
         HPEN blade = CreatePen(PS_SOLID, 1, RGB(150, 210, 90)); HGDIOBJ old = SelectObject(hdc, blade);
-        int lean = (int)(sin(world_tick * 1.5f + sx * 0.1f) * 1.5f);
+        int lean = FxTrunc(FxMul(FxSinTurn(FxTurn64((((int64_t)FxBits(world_tick) * FX(1.5)) >> 16) + sx * FX(0.1))), FX(1.5)));
         int hx, hy; GetIsoCoords(player_x, player_y, &hx, &hy);
         if (abs(sx - hx) < 22 && abs(sy - hy) < 16) lean += sx >= hx ? 4 : -4; // pushed aside as the hero walks through
         static const int base_dx[5] = { -3, -1, 0, 2, 3 }, tip_dx[5] = { -5, -2, 0, 2, 5 }, height[5] = { 6, 9, 10, 8, 6 };
@@ -374,10 +378,10 @@ void DrawEnvironmentalCritters(HDC hdc) {
             continue;
         }
         int sx, sy; GetIsoCoords(critters[i].x, critters[i].y, &sx, &sy);
-        int jump_bob = (critters[i].state == 1) ? (int)(sin(world_tick * (6.0f + 2.0f * (i % 3)) + i * 1.9f) * 4.0f) : 0; // three hop timings
+        int jump_bob = (critters[i].state == 1) ? FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * (6 + 2 * (i % 3)) + i * FX(1.9))) * 4) : 0; // three hop timings
         if (critters[i].type == 0) { // bluebird: hops on the ground, flaps when flying
             int t = critters[i].timer, flying = critters[i].state == 2;
-            int lift = flying ? 22 : (t <= 8 ? (int)(sin(t * 3.14159f / 8.0f) * 6.0f) : 0);
+            int lift = flying ? 22 : (t <= 8 ? FxTrunc(FxSin(t * FX_PI / 8) * 6) : 0);
             int by = sy - 4 - lift;
             int dir = flying ? (critters[i].base_x >= critters[i].x ? 1 : -1) : ((i & 1) ? 1 : -1);
             HGDIOBJ old_p = SelectObject(hdc, GetStockObject(NULL_PEN));
@@ -401,7 +405,7 @@ void DrawEnvironmentalCritters(HDC hdc) {
             HPEN lp = CreatePen(PS_SOLID, flying ? 2 : 1, flying ? RGB(40, 90, 190) : RGB(90, 70, 50));
             old_p = SelectObject(hdc, lp);
             if (flying) {
-                int flap = (int)(sin(world_tick * 12.0f + i) * 6.0f);
+                int flap = FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 12 + FxI(i))) * 6);
                 MoveToEx(hdc, sx - 9, by - 2 - flap, NULL); LineTo(hdc, sx, by - 2); LineTo(hdc, sx + 9, by - 2 - flap);
             } else {
                 MoveToEx(hdc, sx - 1, by + 3, NULL); LineTo(hdc, sx - 1, by + 6);
@@ -433,7 +437,7 @@ void DrawEnvironmentalCritters(HDC hdc) {
             MoveToEx(hdc, sx, sy + 2, NULL); LineTo(hdc, sx + 1, sy + 6); LineTo(hdc, sx + 4, sy + 4); LineTo(hdc, sx + 4, sy + 1);
             SelectObject(hdc, osp); SelectObject(hdc, os); DeleteObject(sp); DeleteObject(sc);
         } else if (critters[i].type == 3) { // bat
-            int flap = (int)(sin(world_tick * 18.0f + i) * 4.0f), by = sy - 14 + (int)(sin(world_tick * 3.0f + i) * 3.0f);
+            int flap = FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 18 + FxI(i))) * 4), by = sy - 14 + FxTrunc(FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 3 + FxI(i))) * 3);
             HBRUSH bat_b = CreateSolidBrush(RGB(45, 35, 50)); HGDIOBJ old = SelectObject(hdc, bat_b);
             HPEN bat_p = CreatePen(PS_SOLID, 1, RGB(30, 22, 34)); HGDIOBJ old_p = SelectObject(hdc, bat_p);
             POINT wing[] = {{sx - 9, by - 2 - flap}, {sx - 5, by + 1}, {sx - 2, by - 1}, {sx, by + 2}, {sx + 2, by - 1}, {sx + 5, by + 1}, {sx + 9, by - 2 - flap}, {sx, by - 3}};
@@ -462,11 +466,11 @@ void DrawEnvironmentalCritters(HDC hdc) {
 // slowly now and then, and never sit right next to the hero.
 void DrawNightEyes(HDC hdc) {
     if (player_level < 5 || current_biome == BIOME_CAVE || current_biome == BIOME_CASTLE) return;
-    if ((float)fabs(sin(day_night_cycle_accumulator)) >= 0.35f) return;
+    if (FxAbs(FxSin(day_night_cycle_accumulator)) >= FX(0.35)) return;
     int trees[256], n = 0;
     for (int r = 0; r < MAP_SIZE && n < 256; r++) for (int c = 0; c < MAP_SIZE && n < 256; c++) {
         if (VISUAL_MAP[r][c] != 11) continue;
-        if (fabs(c - player_x) + fabs(r - player_y) < 5.0f) continue;
+        if (FxAbs(FxI(c) - player_x) + FxAbs(FxI(r) - player_y) < FxI(5)) continue;
         trees[n++] = r * MAP_SIZE + c;
     }
     if (n == 0) return;
@@ -481,7 +485,7 @@ void DrawNightEyes(HDC hdc) {
         if (ph < 900) open = ph < 450 ? 3 - ph * 3 / 450 : (ph - 450) * 3 / 450;
         if (open <= 0) continue;
         int t = trees[h % (unsigned int)n];
-        int sx, sy; GetIsoCoords((float)(t % MAP_SIZE), (float)(t / MAP_SIZE), &sx, &sy);
+        int sx, sy; GetIsoCoords(FxI(t % MAP_SIZE), FxI(t / MAP_SIZE), &sx, &sy);
         int ex = sx - 6 + (int)(h % 13), ey = sy - 4 - (int)((h >> 5) % 6);
         HBRUSH b = CreateSolidBrush((red && k == yellow) ? RGB(235, 30, 25) : RGB(240, 215, 60));
         RECT left = { ex - 4, ey + 1 - (open + 1) / 2, ex - 1, ey + 1 + open / 2 }, right = { ex + 1, ey + 1 - (open + 1) / 2, ex + 4, ey + 1 + open / 2 };
@@ -523,9 +527,9 @@ void DrawSolitaireSunMoonBeam(HDC hdc) {
     if (current_biome == BIOME_CAVE) return;
     if (current_weather != WEATHER_CLEAR) return; // clouds, rain and snow hide the sun and moon
 
-    float ambient_intensity = (float)fabs(sin(day_night_cycle_accumulator));
-    int is_night = (ambient_intensity < 0.35f);
-    if (ambient_intensity > 0.25f && ambient_intensity < 0.45f) return; // dawn and dusk: no beam
+    fx ambient_intensity = FxAbs(FxSin(day_night_cycle_accumulator));
+    int is_night = (ambient_intensity < FX(0.35));
+    if (ambient_intensity > FX(0.25) && ambient_intensity < FX(0.45)) return; // dawn and dusk: no beam
 
     // Rare: only about one screen in five can get a beam, and there only now and
     // then, fading in and out over a few seconds.
@@ -533,26 +537,26 @@ void DrawSolitaireSunMoonBeam(HDC hdc) {
     if ((h >> 13) % 5) return;
     DWORD now = GetTickCount(), cyc = now / 30000, t = now % 30000;
     if (((h >> 7) + cyc * 40503u) % 3 || t > 18000) return;
-    float k = t < 3000 ? t / 3000.0f : t > 15000 ? (18000 - t) / 3000.0f : 1.0f;
+    fx k = t < 3000 ? FxI(t) / 3000 : t > 15000 ? FxI(18000 - t) / 3000 : FxI(1);
 
     // Warm sunlight by day, cool moonlight by night.
     COLORREF beam_color = is_night ? RGB(210, 230, 255) : RGB(255, 235, 175);
 
     // The shaft comes from where the sun or moon is: from the right as it rises,
     // straight down at its highest, from the left as it sets.
-    float s = (float)fmod(day_night_cycle_accumulator, 3.14159265);
-    if (s < 0) s += 3.14159265f;
-    s /= 3.14159265f;
-    float p = is_night ? (float)fmod(s + 0.5f, 1.0f) : s, dir = (p - 0.5f) * 2.0f;
-    if (dir < -1.0f) dir = -1.0f;
-    if (dir > 1.0f) dir = 1.0f;
-    float beam_world_x = 5.0f + (float)((h >> 3) % (MAP_SIZE - 10)), beam_world_y = 5.0f + (float)((h >> 9) % (MAP_SIZE - 10));
-    float dist_dx = player_x - beam_world_x, dist_dy = player_y - beam_world_y;
-    if (dist_dx * dist_dx + dist_dy * dist_dy < 16.0f) return;
+    fx s = FxMod(day_night_cycle_accumulator, FX_PI);
+    if (s < 0) s += FX_PI;
+    s = FxDiv(s, FX_PI);
+    fx p = is_night ? FxFrac(s + FX(0.5)) : s, dir = (p - FX(0.5)) * 2;
+    if (dir < -FxI(1)) dir = -FxI(1);
+    if (dir > FxI(1)) dir = FxI(1);
+    fx beam_world_x = FxI(5) + FxI((h >> 3) % (MAP_SIZE - 10)), beam_world_y = FxI(5) + FxI((h >> 9) % (MAP_SIZE - 10));
+    fx dist_dx = player_x - beam_world_x, dist_dy = player_y - beam_world_y;
+    if (FxMul(dist_dx, dist_dx) + FxMul(dist_dy, dist_dy) < FxI(16)) return;
 
     int ground_x, ground_y;
     GetIsoCoords(beam_world_x, beam_world_y, &ground_x, &ground_y);
-    int top_x = ground_x - (int)(dir * 0.8f * ground_y);
+    int top_x = ground_x - FxTrunc(FxMul(dir, FX(0.8)) * ground_y);
     POINT solitaire_poly[] = {
         {top_x - 25, 0},
         {top_x + 25, 0},
@@ -563,25 +567,25 @@ void DrawSolitaireSunMoonBeam(HDC hdc) {
     // A soft, see-through shaft: three nested trapezoids, each only faintly lit,
     // so the edges fade out instead of ending in a hard "tractor beam" wall.
     for (int layer = 0; layer < 3; layer++) {
-        float w = 1.0f - layer * 0.3f;
-        POINT q[4] = { { top_x - (int)(22 * w), 0 }, { top_x + (int)(22 * w), 0 },
-                       { ground_x + (int)(70 * w), ground_y + 20 }, { ground_x - (int)(70 * w), ground_y + 20 } };
+        fx w = FxI(1) - layer * FX(0.3);
+        POINT q[4] = { { top_x - FxTrunc(22 * w), 0 }, { top_x + FxTrunc(22 * w), 0 },
+                       { ground_x + FxTrunc(70 * w), ground_y + 20 }, { ground_x - FxTrunc(70 * w), ground_y + 20 } };
         HRGN rg = CreatePolygonRgn(q, 4, WINDING);
-        AlphaRegion(hdc, rg, beam_color, (int)(16 * k));
+        AlphaRegion(hdc, rg, beam_color, FxTrunc(16 * k));
         DeleteObject(rg);
     }
     (void)solitaire_poly;
     // Lens flare: little orbs strung along the line from the light through the
     // screen centre, each with a red and a green fringe like light split by a lens.
     int cxs = WINDOW_WIDTH / 2, cys = WINDOW_HEIGHT / 2;
-    static const float at[5] = { 0.35f, 0.6f, 0.9f, 1.25f, 1.55f };
+    static const fx at[5] = { FX(0.35), FX(0.6), FX(0.9), FX(1.25), FX(1.55) };
     static const int rad[5] = { 10, 22, 7, 30, 14 };
     for (int i = 0; i < 5; i++) {
-        int ox = top_x + (int)((cxs - top_x) * at[i]), oy = (int)(cys * at[i]), r = rad[i];
-        OrbAt(hdc, ox - 2, oy, r + 2, RGB(255, 90, 80), (int)(12 * k));
-        OrbAt(hdc, ox + 2, oy, r + 2, RGB(90, 255, 140), (int)(12 * k));
-        OrbAt(hdc, ox, oy, r, is_night ? RGB(200, 220, 255) : RGB(255, 240, 200), (int)(20 * k));
-        OrbAt(hdc, ox, oy, r / 2, RGB(255, 255, 255), (int)(10 * k));
+        int ox = top_x + FxTrunc((cxs - top_x) * at[i]), oy = FxTrunc(cys * at[i]), r = rad[i];
+        OrbAt(hdc, ox - 2, oy, r + 2, RGB(255, 90, 80), FxTrunc(12 * k));
+        OrbAt(hdc, ox + 2, oy, r + 2, RGB(90, 255, 140), FxTrunc(12 * k));
+        OrbAt(hdc, ox, oy, r, is_night ? RGB(200, 220, 255) : RGB(255, 240, 200), FxTrunc(20 * k));
+        OrbAt(hdc, ox, oy, r / 2, RGB(255, 255, 255), FxTrunc(10 * k));
     }
 }
 
@@ -651,12 +655,12 @@ void DrawBedroll(HDC hdc) {
 }
 
 // Very slight zoom-in of the gameplay view (HUD is drawn afterwards, unscaled).
-static const float zoom_levels[3] = { 1.08f, 1.25f, 1.42f }; // far (default), closer, closest
+static const fx zoom_levels[3] = { FX(1.08), FX(1.25), FX(1.42) }; // far (default), closer, closest
 static int zoom_index = 0;
 #define CAMERA_ZOOM zoom_levels[zoom_index]
-static float afk_amount; // 0..1 while the AFK camera has eased in
+static fx afk_amount; // 0..1 while the AFK camera has eased in
 static DWORD afk_idle_ms;
-int AfkViewMs(void) { return afk_amount > 0.0f ? (int)afk_idle_ms : -1; }
+int AfkViewMs(void) { return afk_amount > FxI(0) ? (int)afk_idle_ms : -1; }
 
 // V / right-stick click steps through the three zoom levels.
 void CycleCameraZoom(void) {
@@ -664,12 +668,12 @@ void CycleCameraZoom(void) {
     zoom_index = (zoom_index + 1) % 3;
     sprintf(arpg_action_log, "VIEW: %s zoom.", names[zoom_index]);
 }
-void ApplyCameraZoom(HDC hdc, float zoom) {
+void ApplyCameraZoom(HDC hdc, fx zoom) {
     HDC copy_dc = CreateCompatibleDC(hdc);
     HBITMAP copy_bmp = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT);
     HGDIOBJ old_bmp = SelectObject(copy_dc, copy_bmp);
     BitBlt(copy_dc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, hdc, 0, 0, SRCCOPY);
-    int src_w = (int)(WINDOW_WIDTH / zoom), src_h = (int)(WINDOW_HEIGHT / zoom);
+    int src_w = FxTrunc(FxDiv(FxI(WINDOW_WIDTH), zoom)), src_h = FxTrunc(FxDiv(FxI(WINDOW_HEIGHT), zoom));
     SetStretchBltMode(hdc, COLORONCOLOR);
     StretchBlt(hdc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, copy_dc,
                (WINDOW_WIDTH - src_w) / 2, (WINDOW_HEIGHT - src_h) / 2, src_w, src_h, SRCCOPY);
@@ -682,19 +686,19 @@ void ApplyCameraZoom(HDC hdc, float zoom) {
 // Shifts cam_x/cam_y for this frame and returns the zoom to draw with.
 #define AFK_DELAY_MS 45000
 #define AFK_EASE_MS 4000
-float UpdateAfkCamera(int input_active) {
+fx UpdateAfkCamera(int input_active) {
     static DWORD last_input = 0;
     DWORD now = GetTickCount();
     if (input_active || last_input == 0) last_input = now;
     DWORD idle = now - last_input;
-    if (idle < AFK_DELAY_MS) { afk_amount = 0.0f; return CAMERA_ZOOM; }
-    float t = (float)(idle - AFK_DELAY_MS) / AFK_EASE_MS;
-    if (t > 1.0f) t = 1.0f;
-    t = t * t * (3.0f - 2.0f * t);
-    afk_amount = t > 0.001f ? t : 0.001f;
+    if (idle < AFK_DELAY_MS) { afk_amount = FxI(0); return CAMERA_ZOOM; }
+    fx t = idle - AFK_DELAY_MS >= AFK_EASE_MS ? FxI(1) : FxI(idle - AFK_DELAY_MS) / AFK_EASE_MS;
+    if (t > FxI(1)) t = FxI(1);
+    t = FxMul(FxMul(t, t), FxI(3) - 2 * t);
+    afk_amount = t > FX(0.001) ? t : FX(0.001);
     afk_idle_ms = idle - AFK_DELAY_MS;
-    cam_y -= (int)(24.0f * t); // close in on the hero's head; DrawAfkView takes over from there
-    return CAMERA_ZOOM + 1.6f * t;
+    cam_y -= FxTrunc(24 * t); // close in on the hero's head; DrawAfkView takes over from there
+    return CAMERA_ZOOM + FxMul(FX(1.6), t);
 }
 
 void FillRectAlpha(HDC hdc, int x, int y, int w, int h, COLORREF color, int alpha) {
@@ -731,25 +735,25 @@ void FillWindowAlpha(HDC hdc, COLORREF color, int alpha) {
 }
 
 void DrawRainZones(HDC hdc) {
-    if (current_weather != WEATHER_RAIN || weather_intensity < 0.02f) return;
+    if (current_weather != WEATHER_RAIN || weather_intensity < FX(0.02)) return;
     HPEN rain = CreatePen(PS_SOLID, 1, RGB(155, 190, 220)); HGDIOBJ old = SelectObject(hdc, rain);
-    int fall = (int)(world_tick * 160.0f); // drops fall ~8 px every frame
+    int fall = FxMulI(world_tick, FxI(160)); // drops fall ~8 px every frame
     const int PERIOD_X = 200, PERIOD_Y = 150;
     // Rain cells are keyed off absolute world-space pixel coordinates (offset
     // by the camera, same as GetIsoCoords) instead of raw screen pixels, so
     // the storm stays fixed over the ground and scrolls past as the camera
     // moves, rather than following the character around like a filter glued
     // to the screen.
-    FillWindowAlpha(hdc, RGB(70, 85, 105), (int)(45.0f * weather_intensity));
+    FillWindowAlpha(hdc, RGB(70, 85, 105), FxTrunc(45 * weather_intensity));
     // Start one cell past the window's top-left corner (cam_x/cam_y is the
     // window centre) so the drops cover the whole view.
-    int base_cell_x = (int)floor((double)(cam_x - WINDOW_WIDTH / 2) / PERIOD_X) - 1;
-    int base_cell_y = (int)floor((double)(cam_y - WINDOW_HEIGHT / 2) / PERIOD_Y) - 1;
+    int base_cell_x = FloorDiv(cam_x - WINDOW_WIDTH / 2, PERIOD_X) - 1;
+    int base_cell_y = FloorDiv(cam_y - WINDOW_HEIGHT / 2, PERIOD_Y) - 1;
     int cols = WINDOW_WIDTH / PERIOD_X + 3;
     int rows = WINDOW_HEIGHT / PERIOD_Y + 3;
     // Weather is world-wide: rain covers the whole view, its density set by
     // the global weather_intensity rather than by which screen you are on.
-    int drops = 3 + (int)(11.0f * weather_intensity);
+    int drops = 3 + FxTrunc(11 * weather_intensity);
     for (int zy = 0; zy < rows; zy++) for (int zx = 0; zx < cols; zx++) {
         int cell_x = base_cell_x + zx, cell_y = base_cell_y + zy;
         int seed = cell_x * 31 + cell_y * 67;
@@ -780,7 +784,7 @@ static void DrawFlame(HDC hdc, int cx, int cy, int rx, int ry, COLORREF c) {
 void DrawVillageLights(HDC hdc) {
     for (int v = 0; v < village_light_count; v++) {
         int sx, sy; GetIsoCoords(village_lights[v].x, village_lights[v].y, &sx, &sy);
-        int flick = (int)(world_tick * 10.0f + v * 3) % 3;
+        int flick = (FxMulI(world_tick, FxI(10)) + v * 3) % 3;
         if (village_lights[v].torch) {
             HPEN pole = CreatePen(PS_SOLID, 3, RGB(90, 60, 30)); HGDIOBJ op = SelectObject(hdc, pole);
             MoveToEx(hdc, sx, sy + 10, NULL); LineTo(hdc, sx, sy - 28);
@@ -802,13 +806,13 @@ void DrawVillageLights(HDC hdc) {
 
 // How far the hero sees in the dark, in tiles: elves see further, and
 // dwarves and gnomes (born underground) further still.
-float RaceVisionTiles(void) {
-    if (NightVisionActive()) return 10.0f;
+fx RaceVisionTiles(void) {
+    if (NightVisionActive()) return FxI(10);
     switch (selected_race) {
-    case RACE_ELF: return 7.5f;
-    case RACE_DWARF: case RACE_GNOME: return 8.5f;
-    case RACE_HALFLING: return 6.0f;
-    default: return 5.5f;
+    case RACE_ELF: return FX(7.5);
+    case RACE_DWARF: case RACE_GNOME: return FX(8.5);
+    case RACE_HALFLING: return FxI(6);
+    default: return FX(5.5);
     }
 }
 
@@ -817,10 +821,10 @@ float RaceVisionTiles(void) {
 // fire, so trees, the hero, villagers and monsters all catch the firelight.
 extern int village_light_count;
 void DrawNightDarkness(HDC hdc) {
-    float light = (float)fabs(sin(day_night_cycle_accumulator));
-    float night = current_biome == BIOME_CAVE ? 1.0f : (0.55f - light) / 0.35f;
-    if (night <= 0.0f) return;
-    if (night > 1.0f) night = 1.0f;
+    fx light = FxAbs(FxSin(day_night_cycle_accumulator));
+    fx night = current_biome == BIOME_CAVE ? FxI(1) : FxDiv(FX(0.55) - light, FX(0.35));
+    if (night <= FxI(0)) return;
+    if (night > FxI(1)) night = FxI(1);
     enum { LW = (WINDOW_WIDTH + 3) / 4, LH = (WINDOW_HEIGHT + 3) / 4, NL = 1 + MAX_CAMPFIRES + MAX_VILLAGE_LIGHTS };
     static HDC ldc; static HBITMAP lbmp; static uint32_t *px;
     if (!ldc) {
@@ -831,30 +835,32 @@ void DrawNightDarkness(HDC hdc) {
         if (!lbmp) return;
         ldc = CreateCompatibleDC(hdc); SelectObject(ldc, lbmp);
     }
-    float lx[NL], ly[NL], lr[NL]; int fire[NL], n = 0, sx, sy;
-    float flick = 1.0f + 0.05f * sinf(world_tick * 15.0f);
+    fx lx[NL], ly[NL], lr[NL]; int fire[NL], n = 0, sx, sy;
+    fx flick = FxI(1) + FxMul(FX(0.05), FxSinTurn(FxTurn64((int64_t)FxBits(world_tick) * 15)));
     GetIsoCoords(player_x, player_y, &sx, &sy);
-    lx[n] = (float)sx; ly[n] = (float)(sy + TILE_HEIGHT / 2); lr[n] = RaceVisionTiles(); fire[n++] = 0;
+    lx[n] = FxI(sx); ly[n] = FxI(sy + TILE_HEIGHT / 2); lr[n] = RaceVisionTiles(); fire[n++] = 0;
     for (int i = 0; i < MAX_CAMPFIRES; i++) {
         if (!campfires[i].active || campfires[i].screen_id != current_screen_index) continue;
         GetIsoCoords(campfires[i].x, campfires[i].y, &sx, &sy);
-        lx[n] = (float)sx; ly[n] = (float)(sy + TILE_HEIGHT / 2); lr[n] = 5.5f * flick; fire[n++] = 1;
+        lx[n] = FxI(sx); ly[n] = FxI(sy + TILE_HEIGHT / 2); lr[n] = FxMul(FX(5.5), flick); fire[n++] = 1;
     }
     for (int i = 0; i < village_light_count && i < MAX_VILLAGE_LIGHTS; i++) {
         GetIsoCoords(village_lights[i].x, village_lights[i].y, &sx, &sy);
-        lx[n] = (float)sx; ly[n] = (float)(sy + TILE_HEIGHT / 2); lr[n] = 4.0f * flick; fire[n++] = 1;
+        lx[n] = FxI(sx); ly[n] = FxI(sy + TILE_HEIGHT / 2); lr[n] = 4 * flick; fire[n++] = 1;
     }
-    const float tile_px = TILE_WIDTH * 0.75f;
+    const fx tile_px = TILE_WIDTH * FX(0.75);
+    fx inv[NL]; // 1 / light radius in pixels, so the per-texel loop only multiplies
+    for (int i = 0; i < n; i++) inv[i] = FxDiv(FxI(1), FxMul(lr[i], tile_px));
     for (int y = 0; y < LH; y++) for (int x = 0; x < LW; x++) {
-        float wx = x * 4.0f + 2.0f, wy = y * 4.0f + 2.0f, dark = 1.0f, warm = 0.0f;
+        fx wx = x * FxI(4) + FxI(2), wy = y * FxI(4) + FxI(2), dark = FxI(1), warm = FxI(0);
         for (int i = 0; i < n; i++) {
-            float dx = (wx - lx[i]) / (lr[i] * tile_px), dy = (wy - ly[i]) * 2.0f / (lr[i] * tile_px), d2 = dx * dx + dy * dy;
-            if (d2 >= 1.0f) continue;
-            float d = sqrtf(d2), v = d < 0.4f ? 1.0f : 1.0f - (d - 0.4f) / 0.6f;
-            dark *= 1.0f - v * v * (3.0f - 2.0f * v);
-            if (fire[i]) warm += (1.0f - d) * (1.0f - d);
+            fx dx = FxMul(wx - lx[i], inv[i]), dy = FxMul((wy - ly[i]) * 2, inv[i]), d2 = FxMul(dx, dx) + FxMul(dy, dy);
+            if (d2 >= FxI(1)) continue;
+            fx d = FxSqrt(d2), v = d < FX(0.4) ? FxI(1) : FxI(1) - FxDiv(d - FX(0.4), FX(0.6));
+            dark = FxMul(dark, FxI(1) - FxMul(FxMul(v, v), FxI(3) - 2 * v));
+            if (fire[i]) warm += FxMul(FxI(1) - d, FxI(1) - d);
         }
-        int ad = (int)(dark * night * 165.0f), aw = (int)((warm > 1.0f ? 1.0f : warm) * night * 80.0f), a = ad + aw;
+        int ad = FxTrunc(FxMul(dark, night) * 165), aw = FxTrunc(FxMul(warm > FxI(1) ? FxI(1) : warm, night) * 80), a = ad + aw;
         if (a > 255) a = 255;
         px[y * LW + x] = ((uint32_t)a << 24) | ((uint32_t)(255 * aw / 255) << 16) | ((uint32_t)(150 * aw / 255) << 8) | (uint32_t)(60 * aw / 255);
     }
@@ -865,10 +871,10 @@ void DrawNightDarkness(HDC hdc) {
 // Direction shadows fall, from the sun by day and the moon by night: each light
 // rises on the right and sets on the left, so shadows swing right-to-left and
 // stretch long when it's low. ox is -1..1 (sideways), oy 0..1 (lengthening).
-void SunShadowOffset(float *ox, float *oy) {
-    float a = day_night_cycle_accumulator, elev = fabsf(sinf(a)), side = cosf(a) * (sinf(a) >= 0.0f ? 1.0f : -1.0f);
-    *ox = -side * (1.0f - elev * 0.6f);
-    *oy = 1.0f - elev;
+void SunShadowOffset(fx *ox, fx *oy) {
+    fx a = day_night_cycle_accumulator, elev = FxAbs(FxSin(a)), side = FxSin(a) >= 0 ? FxCos(a) : -FxCos(a);
+    *ox = -FxMul(side, FxI(1) - FxMul(elev, FX(0.6)));
+    *oy = FxI(1) - elev;
 }
 
 // Tunic-style canopy shade: every tree drops a soft, lumpy shadow on the ground,
@@ -877,14 +883,14 @@ void SunShadowOffset(float *ox, float *oy) {
 // the tree count - a Saturn would do the same with one half-transparent pass.
 void DrawCanopyShadows(HDC hdc) {
     if (current_biome == BIOME_CAVE || in_cave) return;
-    float ox, oy; SunShadowOffset(&ox, &oy);
-    float lit = (float)fabs(sin(day_night_cycle_accumulator));
-    int alpha = lit < 0.35f ? 45 : current_weather == WEATHER_CLEAR ? 95 : 55;
+    fx ox, oy; SunShadowOffset(&ox, &oy);
+    fx lit = FxAbs(FxSin(day_night_cycle_accumulator));
+    int alpha = lit < FX(0.35) ? 45 : current_weather == WEATHER_CLEAR ? 95 : 55;
     HDC layer = NULL; HBITMAP bmp = NULL; HGDIOBJ old_bmp = NULL, old_br = NULL, old_pen = NULL;
     HBRUSH shade = NULL;
     for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) {
         if (VISUAL_MAP[r][c] != 11) continue;
-        int sx, sy; GetIsoCoords((float)c, (float)r, &sx, &sy);
+        int sx, sy; GetIsoCoords(FxI(c), FxI(r), &sx, &sy);
         if (sx < -TILE_WIDTH * 2 || sx > WINDOW_WIDTH + TILE_WIDTH * 2 || sy < -TILE_HEIGHT * 4 || sy > WINDOW_HEIGHT + TILE_HEIGHT * 2) continue;
         if (!layer) {
             layer = CreateCompatibleDC(hdc); bmp = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -892,7 +898,7 @@ void DrawCanopyShadows(HDC hdc) {
             shade = CreateSolidBrush(RGB(16, 28, 22)); old_br = SelectObject(layer, shade); old_pen = SelectObject(layer, GetStockObject(NULL_PEN));
         }
         int seed = r * MAP_SIZE + c, big = IsBigTree(seed), rad = TILE_WIDTH * (big ? 9 : 6) / 10;
-        int cx = sx + (int)(ox * TILE_WIDTH * 0.9f), cy = sy + TILE_HEIGHT / 2 + (int)(oy * TILE_HEIGHT * 0.6f);
+        int cx = sx + FxTrunc(FxMul(ox * TILE_WIDTH, FX(0.9))), cy = sy + TILE_HEIGHT / 2 + FxTrunc(FxMul(oy * TILE_HEIGHT, FX(0.6)));
         for (int k = 0; k < 3; k++) { // three overlapping blobs give a leafy, uneven edge
             unsigned h = (unsigned)RainHash(seed * 7 + k);
             int bx = cx + (int)(h % 21) - 10, by = cy + (int)((h >> 5) % 11) - 5, br = rad * (70 + (int)((h >> 9) % 30)) / 100;
@@ -909,25 +915,25 @@ void DrawCanopyShadows(HDC hdc) {
 // Doorways and archways: walking up to a cottage door, the camera eases in and
 // pans ahead along the hero's heading so it sits just behind them, then glides
 // back to the normal isometric view once they're through. Returns extra zoom.
-float DoorwayCamera(void) {
-    static float amt = 0.0f;
-    float target = 0.0f;
+fx DoorwayCamera(void) {
+    static fx amt = FxI(0);
+    fx target = FxI(0);
     if (!AfkViewActive() && !is_menu_open && inside_home < 0 && !in_cave) {
         for (int i = 0; i < 4; i++) {
-            float hx, hy;
+            fx hx, hy;
             if (!VillageHomeCentre(i, &hx, &hy)) continue;
-            float dx = player_x - hx, dy = player_y - (hy + HOME_HALF_Y), d = sqrtf(dx * dx + dy * dy);
-            if (d < 2.4f && 1.0f - d / 2.4f > target) target = 1.0f - d / 2.4f;
+            fx dx = player_x - hx, dy = player_y - (hy + HOME_HALF_Y), d = FxLen(dx, dy);
+            if (d < FX(2.4) && FxI(1) - FxDiv(d, FX(2.4)) > target) target = FxI(1) - FxDiv(d, FX(2.4));
         }
         if (torch_gate_x >= 0) { // cave mouths count as archways too
-            float dx = player_x - (torch_gate_x + 0.5f), dy = player_y - (torch_gate_y + 0.5f), d = sqrtf(dx * dx + dy * dy);
-            if (d < 2.4f && 1.0f - d / 2.4f > target) target = 1.0f - d / 2.4f;
+            fx dx = player_x - (FxI(torch_gate_x) + FX(0.5)), dy = player_y - (FxI(torch_gate_y) + FX(0.5)), d = FxLen(dx, dy);
+            if (d < FX(2.4) && FxI(1) - FxDiv(d, FX(2.4)) > target) target = FxI(1) - FxDiv(d, FX(2.4));
         }
     }
-    amt += (target - amt) * 0.08f;
-    if (amt < 0.002f) { amt = 0.0f; return 0.0f; }
-    float s = amt * amt * (3.0f - 2.0f * amt);
-    cam_x += (int)((facing_x - facing_y) * (TILE_WIDTH / 2) * 1.2f * s);
-    cam_y += (int)((facing_x + facing_y) * (TILE_HEIGHT / 2) * 1.2f * s) - (int)(10 * s);
-    return 0.55f * s;
+    amt += FxMul(target - amt, FX(0.08));
+    if (amt < FX(0.002)) { amt = FxI(0); return FxI(0); }
+    fx s = FxMul(FxMul(amt, amt), FxI(3) - 2 * amt);
+    cam_x += FxTrunc(FxMul(FxMul((facing_x - facing_y) * (TILE_WIDTH / 2), FX(1.2)), s));
+    cam_y += FxTrunc(FxMul(FxMul((facing_x + facing_y) * (TILE_HEIGHT / 2), FX(1.2)), s)) - FxTrunc(10 * s);
+    return FxMul(FX(0.55), s);
 }

@@ -134,7 +134,7 @@ static void DailyGrowth(void) {
 static int AliveEnemies(void) {
     int n = 0;
     StoreEnemy();
-    for (int i = 0; i < MAX_ENEMIES; i++) n += enemies[i].hearts > 0.0f;
+    for (int i = 0; i < MAX_ENEMIES; i++) n += enemies[i].hearts > FxI(0);
     return n;
 }
 
@@ -164,7 +164,7 @@ static void AddSettlersHere(void) {
         char nm[24]; VillageNameAt(vg[p->target].gx, vg[p->target].gy, nm, sizeof(nm));
         snprintf(lines[k], sizeof(lines[k]), "Settler: We're bound for %s to build a new life.", nm);
         for (int j = 0; j < 3 && village_npc_count < MAX_NPCS; j++) {
-            float x = 13.0f + j * 1.5f, y = 16.0f + (j & 1);
+            fx x = FxI(13) + j * FX(1.5), y = FxI(16 + (j & 1));
             village_npcs[village_npc_count++] = (NPCEntity){ x, y, x, y, 0, j * 11, FACE_DOWN, lines[k], 60 };
         }
         snprintf(arpg_action_log, sizeof(arpg_action_log), "SETTLERS: A party of settlers rests here on the road to %s.", nm);
@@ -198,9 +198,9 @@ void DrawVillageGrowth(HDC hdc) {
     HGDIOBJ old_pen = SelectObject(hdc, no_pen);
     HBRUSH soil = CreateSolidBrush(RGB(112, 82, 48)), crop = CreateSolidBrush(RGB(120, 170, 60));
     HGDIOBJ old_br = SelectObject(hdc, soil);
-    static const int fx[2] = { 6, 22 };
-    for (int f = 0; f < 2; f++) for (int y = 16; y <= 17; y++) for (int x = fx[f]; x < fx[f] + 3; x++) {
-        int sx, sy; GetIsoCoords((float)x, (float)y, &sx, &sy);
+    static const int fxs[2] = { 6, 22 };
+    for (int f = 0; f < 2; f++) for (int y = 16; y <= 17; y++) for (int x = fxs[f]; x < fxs[f] + 3; x++) {
+        int sx, sy; GetIsoCoords(FxI(x), FxI(y), &sx, &sy);
         int cy = sy + TILE_HEIGHT / 2;
         POINT p[4] = { { sx, sy }, { sx + TILE_WIDTH / 2, cy }, { sx, sy + TILE_HEIGHT }, { sx - TILE_WIDTH / 2, cy } };
         SelectObject(hdc, soil); Polygon(hdc, p, 4);
@@ -208,7 +208,7 @@ void DrawVillageGrowth(HDC hdc) {
         for (int r = -1; r <= 1; r++) Ellipse(hdc, sx + r * 8 - 3, cy + r * 4 - 6, sx + r * 8 + 3, cy + r * 4);
     }
     SelectObject(hdc, old_br); DeleteObject(soil); DeleteObject(crop);
-    int sx, sy; GetIsoCoords(23.0f, 8.0f, &sx, &sy);
+    int sx, sy; GetIsoCoords(FxI(23), FxI(8), &sx, &sy);
     int base = sy + TILE_HEIGHT / 2, hub_y = base - 40;
     HBRUSH stone = CreateSolidBrush(RGB(205, 195, 172)), roof = CreateSolidBrush(RGB(150, 70, 50)), sail = CreateSolidBrush(RGB(235, 228, 205));
     POINT tower[4] = { { sx - 10, base }, { sx + 10, base }, { sx + 6, hub_y }, { sx - 6, hub_y } };
@@ -216,11 +216,11 @@ void DrawVillageGrowth(HDC hdc) {
     SelectObject(hdc, stone); Polygon(hdc, tower, 4);
     SelectObject(hdc, roof); Polygon(hdc, cap, 3);
     SelectObject(hdc, sail);
-    float a0 = world_tick * 1.2f;
+    fx a0 = FxMul(world_tick, FX(1.2));
     for (int b = 0; b < 4; b++) {
-        float a = a0 + b * 1.5708f, ca = cosf(a), sa = sinf(a);
-        POINT bl[4] = { { sx, hub_y }, { sx + (int)(ca * 26 - sa * 4), hub_y + (int)(sa * 26 + ca * 4) },
-                        { sx + (int)(ca * 26 + sa * 4), hub_y + (int)(sa * 26 - ca * 4) }, { sx, hub_y } };
+        fx a = a0 + b * FX(1.5708), ca = FxCos(a), sa = FxSin(a);
+        POINT bl[4] = { { sx, hub_y }, { sx + FxTrunc(ca * 26 - sa * 4), hub_y + FxTrunc(sa * 26 + ca * 4) },
+                        { sx + FxTrunc(ca * 26 + sa * 4), hub_y + FxTrunc(sa * 26 - ca * 4) }, { sx, hub_y } };
         Polygon(hdc, bl, 4);
     }
     SelectObject(hdc, old_br); DeleteObject(stone); DeleteObject(roof); DeleteObject(sail);
@@ -229,7 +229,7 @@ void DrawVillageGrowth(HDC hdc) {
         SelectObject(hdc, wood);
         for (int y = 6; y <= 24; y++) for (int x = 5; x <= 25; x++) {
             if (!VillageBlocksAt(x, y) || (x == 23 && y == 8)) continue;
-            GetIsoCoords((float)x, (float)y, &sx, &sy);
+            GetIsoCoords(FxI(x), FxI(y), &sx, &sy);
             int by = sy + TILE_HEIGHT / 2;
             POINT post[5] = { { sx - 4, by }, { sx + 4, by }, { sx + 4, by - 20 }, { sx, by - 25 }, { sx - 4, by - 20 } };
             Polygon(hdc, post, 5);

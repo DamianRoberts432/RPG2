@@ -12,13 +12,13 @@
 #define ROCK_REGROW_MIN (10 * 1440)
 #define ENEMY_RETURN_MIN 360      // 6 game hours before a screen fills up again
 #define ENEMY_BACK_EVERY_MIN 90   // meanwhile one monster wanders back every 1.5 game hours
-#define MELT_REFILL_SECONDS 240.0f // seconds of steady snowfall to fill a melted patch
+#define MELT_REFILL_SECONDS FxI(240) // seconds of steady snowfall to fill a melted patch
 
 ScreenEdit screen_edits[MAX_SCREEN_EDITS];
 ScreenMemory screen_memory[MAX_SCREEN_MEMORY];
 MeltPatch melt_patches[MAX_MELT_PATCHES];
 static int screen_live;
-static struct { MonsterType type; float hearts, dx, dy; } followers[2];
+static struct { MonsterType type; fx hearts, dx, dy; } followers[2];
 static int follower_count;
 
 static int NowMinute(void) { int h, m; GetGameClock(&h, &m); return GameDayOfYear() * 1440 + h * 60 + m; }
@@ -64,36 +64,36 @@ void RememberLeavingScreen(int new_index) {
     int old = current_screen_index;
     StoreEnemy();
     int alive = 0;
-    for (int i = 0; i < MAX_ENEMIES; i++) if (enemies[i].hearts > 0.0f) alive++;
+    for (int i = 0; i < MAX_ENEMIES; i++) if (enemies[i].hearts > FxI(0)) alive++;
     ScreenMemory *m = MemoryFor(old, 1);
     m->screen_id = old; m->left_minute = NowMinute(); m->alive = alive; m->active = 1;
 
-    int at_edge = player_x <= 0.5f || player_x >= MAP_SIZE - 1.5f || player_y <= 0.5f || player_y >= MAP_SIZE - 1.5f;
+    int at_edge = player_x <= FX(0.5) || player_x >= FxI(MAP_SIZE) - FX(1.5) || player_y <= FX(0.5) || player_y >= FxI(MAP_SIZE) - FX(1.5);
     if (at_edge && old < 20000 && new_index < 20000) {
         for (int i = 0; i < MAX_ENEMIES && follower_count < 2; i++) {
             EnemySlot *e = &enemies[i];
-            if (e->hearts <= 0.0f || !e->angry || IS_BOSS_MONSTER(e->type)) continue;
-            float dx = e->x - player_x, dy = e->y - player_y;
-            if (dx * dx + dy * dy > 25.0f) continue;
+            if (e->hearts <= FxI(0) || !e->angry || IS_BOSS_MONSTER(e->type)) continue;
+            fx dx = e->x - player_x, dy = e->y - player_y;
+            if (FxMul(dx, dx) + FxMul(dy, dy) > FxI(25)) continue;
             followers[follower_count].type = e->type; followers[follower_count].hearts = e->hearts;
             followers[follower_count].dx = dx; followers[follower_count].dy = dy; follower_count++;
         }
     }
 
-    if (snow_cover > 0.05f) {
+    if (snow_cover > FX(0.05)) {
         for (int i = 0; i < MAX_CAMPFIRES; i++) {
             if (!campfires[i].active || campfires[i].screen_id != old) continue;
             MeltPatch *p = NULL;
             for (int k = 0; k < MAX_MELT_PATCHES && !p; k++)
-                if (melt_patches[k].active && melt_patches[k].screen_id == old && fabsf(melt_patches[k].x - campfires[i].x) < 1.0f && fabsf(melt_patches[k].y - campfires[i].y) < 1.0f) p = &melt_patches[k];
+                if (melt_patches[k].active && melt_patches[k].screen_id == old && FxAbs(melt_patches[k].x - campfires[i].x) < FxI(1) && FxAbs(melt_patches[k].y - campfires[i].y) < FxI(1)) p = &melt_patches[k];
             for (int k = 0; k < MAX_MELT_PATCHES && !p; k++) if (!melt_patches[k].active) p = &melt_patches[k];
             if (!p) p = &melt_patches[i % MAX_MELT_PATCHES];
-            p->screen_id = old; p->active = 1; p->x = campfires[i].x; p->y = campfires[i].y; p->fill = 0.0f;
+            p->screen_id = old; p->active = 1; p->x = campfires[i].x; p->y = campfires[i].y; p->fill = FxI(0);
         }
     }
 }
 
-static float ClampInside(float v) { return v < 1.0f ? 1.0f : v > MAP_SIZE - 2.0f ? (float)(MAP_SIZE - 2) : v; }
+static fx ClampInside(fx v) { return v < FxI(1) ? FxI(1) : v > FxI(MAP_SIZE - 2) ? FxI(MAP_SIZE - 2) : v; }
 
 // Called once the new screen's tiles and monsters are rolled.
 void ApplyScreenMemory(int index) {
@@ -116,19 +116,19 @@ void ApplyScreenMemory(int index) {
         if (since < ENEMY_RETURN_MIN) {
             int allowed = m->alive + since / ENEMY_BACK_EVERY_MIN, alive = 0;
             for (int i = 0; i < MAX_ENEMIES; i++) {
-                if (enemies[i].hearts <= 0.0f) continue;
-                if (alive >= allowed && !IS_BOSS_MONSTER(enemies[i].type)) enemies[i].hearts = 0.0f;
+                if (enemies[i].hearts <= FxI(0)) continue;
+                if (alive >= allowed && !IS_BOSS_MONSTER(enemies[i].type)) enemies[i].hearts = FxI(0);
                 else alive++;
             }
         } else m->active = 0;
     }
 
     if (follower_count) {
-        float nx = player_x <= 0.5f ? (float)(MAP_SIZE - 3) : player_x >= MAP_SIZE - 1.5f ? 2.0f : player_x;
-        float ny = player_y <= 0.5f ? (float)(MAP_SIZE - 3) : player_y >= MAP_SIZE - 1.5f ? 2.0f : player_y;
+        fx nx = player_x <= FX(0.5) ? FxI(MAP_SIZE - 3) : player_x >= FxI(MAP_SIZE) - FX(1.5) ? FxI(2) : player_x;
+        fx ny = player_y <= FX(0.5) ? FxI(MAP_SIZE - 3) : player_y >= FxI(MAP_SIZE) - FX(1.5) ? FxI(2) : player_y;
         for (int f = 0; f < follower_count; f++) {
             int s = MAX_ENEMIES - 1 - f;
-            for (int i = 0; i < MAX_ENEMIES; i++) if (enemies[i].hearts <= 0.0f) { s = i; break; }
+            for (int i = 0; i < MAX_ENEMIES; i++) if (enemies[i].hearts <= FxI(0)) { s = i; break; }
             EnemySlot *e = &enemies[s];
             e->type = followers[f].type; e->hearts = followers[f].hearts;
             e->x = ClampInside(nx + followers[f].dx); e->y = ClampInside(ny + followers[f].dy);
@@ -138,7 +138,7 @@ void ApplyScreenMemory(int index) {
         follower_count = 0;
     }
     int first = 0;
-    for (int i = 0; i < MAX_ENEMIES; i++) if (enemies[i].hearts > 0.0f) { first = i; break; }
+    for (int i = 0; i < MAX_ENEMIES; i++) if (enemies[i].hearts > FxI(0)) { first = i; break; }
     SelectEnemy(first);
     screen_live = 1;
 }
@@ -148,19 +148,19 @@ int ScreenStillQuiet(void) {
     return m && MinutesSince(m->left_minute) < ENEMY_RETURN_MIN;
 }
 
-void TickMeltPatches(float dt) {
+void TickMeltPatches(fx dt) {
     for (int i = 0; i < MAX_MELT_PATCHES; i++) {
         MeltPatch *p = &melt_patches[i];
         if (!p->active) continue;
-        if (snow_cover < 0.02f) { p->active = 0; continue; }
-        if (current_weather == WEATHER_SNOW) p->fill += dt * weather_intensity / MELT_REFILL_SECONDS;
-        if (p->fill >= 1.0f) p->active = 0;
+        if (snow_cover < FX(0.02)) { p->active = 0; continue; }
+        if (current_weather == WEATHER_SNOW) p->fill += FxDiv(FxMul(dt, weather_intensity), MELT_REFILL_SECONDS);
+        if (p->fill >= FxI(1)) p->active = 0;
     }
 }
 
-int GetMeltPatch(int i, float *x, float *y, float *size) {
+int GetMeltPatch(int i, fx *x, fx *y, fx *size) {
     MeltPatch *p = &melt_patches[i];
     if (!p->active || p->screen_id != current_screen_index) return 0;
-    *x = p->x; *y = p->y; *size = 1.0f - p->fill;
+    *x = p->x; *y = p->y; *size = FxI(1) - p->fill;
     return 1;
 }

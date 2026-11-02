@@ -3,7 +3,7 @@
 static DWORD cast_at = 0; // the bobber flies out in an arc for CAST_MS
 #define CAST_MS 450
 static int fish_state = 0; // 0 idle, 1 bobber floating, 2 fish nibbling (bobber dips)
-static float bobber_x, bobber_y, cast_x, cast_y;
+static fx bobber_x, bobber_y, cast_x, cast_y;
 static DWORD next_event = 0, dip_until = 0, rumble_until = 0;
 static int dips_left = 0, fishy = 0, told_quiet = 0;
 
@@ -15,7 +15,7 @@ static void Rumble(int on) {
 
 int FishingActive(void) { return fish_state != 0; }
 
-int FishingBobberPos(float *x, float *y, int *nibble) {
+int FishingBobberPos(fx *x, fx *y, int *nibble) {
     if (!fish_state) return 0;
     *x = bobber_x; *y = bobber_y; *nibble = fish_state == 2;
     return 1;
@@ -28,12 +28,12 @@ static void EndFishing(const char *msg) {
 }
 
 void CastFishingLine(void) {
-    int x = (int)player_x, y = (int)player_y;
+    int x = FxTrunc(player_x), y = FxTrunc(player_y);
     if (player_facing == FACE_UP) y--;
     else if (player_facing == FACE_DOWN) y++;
     else if (player_facing == FACE_LEFT) x--;
     else x++;
-    bobber_x = x + 0.5f; bobber_y = y + 0.5f;
+    bobber_x = FxI(x) + FX(0.5); bobber_y = FxI(y) + FX(0.5);
     cast_x = player_x; cast_y = player_y;
     fishy = IsFacingFishWater();
     dips_left = fishy ? 2 + rand() % 3 : 0; told_quiet = 0;
@@ -59,8 +59,8 @@ static void UpdateFishing(void) {
     if (!fish_state) return;
     DWORD now = GetTickCount();
     if (rumble_until && now > rumble_until) { Rumble(0); rumble_until = 0; }
-    float dx = player_x - cast_x, dy = player_y - cast_y;
-    if (dx * dx + dy * dy > 0.25f) { EndFishing("FISHING: You walk off and reel in."); return; }
+    fx dx = player_x - cast_x, dy = player_y - cast_y;
+    if (FxMul(dx, dx) + FxMul(dy, dy) > FX(0.25)) { EndFishing("FISHING: You walk off and reel in."); return; }
     if (fish_state == 2 && now > dip_until) {
         fish_state = 1;
         next_event = now + 1200 + rand() % 2200;
@@ -84,24 +84,24 @@ void DrawFishing(HDC hdc) {
     int px, py, bx, by;
     GetIsoCoords(player_x, player_y, &px, &py);
     GetIsoCoords(bobber_x, bobber_y, &bx, &by);
-    int bob = fish_state == 2 ? 4 : (int)(sin(GetTickCount() / 300.0) * 1.5);
+    int bob = fish_state == 2 ? 4 : FxTrunc(FxMul(FxSinTurn(GetTickCount() * (uint32_t)(4294967296.0 / (6.283185307 * 300))), FX(1.5)));
     // Rod held in the hand, tipped out toward the water; it bends when a fish nibbles.
     int dir = bx >= px ? 1 : -1;
     int hx = px + dir * 5, hy = py - 16;
-    float t = (GetTickCount() - cast_at) / (float)CAST_MS; if (t > 1.0f) t = 1.0f;
-    int tipx = hx + dir * (t < 1.0f ? (int)(6 + 16 * t) : 22), tipy = hy - (t < 1.0f ? (int)(32 - 12 * t) : 20) + (fish_state == 2 ? 6 : 0);
+    fx t = GetTickCount() - cast_at >= CAST_MS ? FxI(1) : FxI(GetTickCount() - cast_at) / CAST_MS; if (t > FxI(1)) t = FxI(1);
+    int tipx = hx + dir * (t < FxI(1) ? FxTrunc(FxI(6) + 16 * t) : 22), tipy = hy - (t < FxI(1) ? FxTrunc(FxI(32) - 12 * t) : 20) + (fish_state == 2 ? 6 : 0);
     HPEN rod = CreatePen(PS_SOLID, 2, RGB(120, 80, 40)); HGDIOBJ op = SelectObject(hdc, rod);
     MoveToEx(hdc, hx, hy, NULL); LineTo(hdc, tipx, tipy);
     SelectObject(hdc, op); DeleteObject(rod);
-    if (t < 1.0f) { // still flying: arc from the rod tip to where it lands
-        bx = (int)(tipx + (bx - tipx) * t); by = (int)(tipy + (by - tipy) * t - sin(t * 3.14159f) * 30.0f); bob = 0;
+    if (t < FxI(1)) { // still flying: arc from the rod tip to where it lands
+        bx = FxTrunc(FxI(tipx) + (bx - tipx) * t); by = FxTrunc(FxI(tipy) + (by - tipy) * t - FxSin(FxMul(t, FX_PI)) * 30); bob = 0;
     }
     HPEN line = CreatePen(PS_SOLID, 1, RGB(225, 225, 225)); op = SelectObject(hdc, line);
-    POINT sag[4] = { { tipx, tipy }, { tipx + (bx - tipx) / 3, tipy + (by - tipy) / 3 + (t < 1.0f ? 0 : 10) },
-                     { tipx + 2 * (bx - tipx) / 3, tipy + 2 * (by - tipy) / 3 + (t < 1.0f ? 0 : 8) }, { bx, by - 3 + bob } };
+    POINT sag[4] = { { tipx, tipy }, { tipx + (bx - tipx) / 3, tipy + (by - tipy) / 3 + (t < FxI(1) ? 0 : 10) },
+                     { tipx + 2 * (bx - tipx) / 3, tipy + 2 * (by - tipy) / 3 + (t < FxI(1) ? 0 : 8) }, { bx, by - 3 + bob } };
     PolyBezier(hdc, sag, 4);
     SelectObject(hdc, op); DeleteObject(line);
-    if (fish_state == 2 && t >= 1.0f) {
+    if (fish_state == 2 && t >= FxI(1)) {
         HPEN ring = CreatePen(PS_SOLID, 1, RGB(200, 230, 255)); op = SelectObject(hdc, ring);
         HGDIOBJ ob = SelectObject(hdc, GetStockObject(NULL_BRUSH));
         Ellipse(hdc, bx - 9, by - 2, bx + 9, by + 5);
