@@ -2,6 +2,7 @@
 
 VillageLight village_lights[MAX_VILLAGE_LIGHTS];
 int village_light_count = 0;
+int cave_is_hold = 0; // this cave chamber is a dwarf hold (entered from a dwarf-hold mountain)
 
 static void PlaceVillageLights(int shift) {
     static const int lx[5] = { 15, 9, 21, 12, 18 }, ly[5] = { 14, 13, 13, 21, 21 };
@@ -22,9 +23,16 @@ void GenerateVillageNPCs(void) {
     int is_market = current_biome == BIOME_CASTLE;
     // Fewer settlements: only about one Prairie screen in three holds a village.
     static const char *dwarf_greetings[3] = { "Dwarf: Mind your head, the hold was cut for us.", "Dwarf: Good stone in these hills. Good ale too.", "Dwarf: Elves? Hmph. Welcome anyway, traveler." };
-    int site = in_cave || current_screen_index >= 20000 ? SITE_NONE : WorldSiteAt(screen_grid_x, screen_grid_y);
+    int site = in_cave || current_screen_index >= 20000 ? (in_cave && cave_is_hold ? SITE_DWARF : SITE_NONE) : WorldSiteAt(screen_grid_x, screen_grid_y);
+    if (site == SITE_DWARF && !in_cave) site = SITE_NONE; // dwarf holds lie in the cave below, not on the slopes
     village_dwarves = site == SITE_DWARF;
     if (!is_market && site != SITE_VILLAGE && site != SITE_DWARF) return;
+    if (in_cave) { // a great hall cut into the rock, with four pillars
+        static const int pr[4] = { 9, 9, 21, 21 }, pc[4] = { 7, 23, 7, 23 };
+        for (int r = 8; r <= 22; r++) for (int c = 6; c <= 24; c++) VISUAL_MAP[r][c] = 0;
+        for (int k = 0; k < 4; k++)
+            if (abs(pc[k] - (int)cave_treasure_x) > 1 || abs(pr[k] - (int)cave_treasure_y) > 1) VISUAL_MAP[pr[k]][pc[k]] = 1;
+    }
     int shift = (current_screen_index % 3) - 1;
     const float village_x[4] = { 11.0f, 15.0f, 19.0f, 15.0f };
     const float village_y[4] = { 11.0f, 10.0f, 11.0f, 18.0f };
@@ -58,6 +66,10 @@ void GenerateVillageNPCs(void) {
                 village_dwarves ? dwarf_greetings[(current_screen_index + i) % 3] : villager_greetings[(current_screen_index + i) % 3], 100 + (i * 17) % 80 };
         }
         village_npc_count = 4;
+        if (in_cave) { // every hold has its forge
+            float sx = village_x[3] + shift + 1.0f, sy = village_y[3] + 2.0f;
+            village_npcs[3] = (NPCEntity){ sx, sy, sx, sy, 3, 0, FACE_DOWN, "Dwarf smith: X to step into the forge.", 130 };
+        }
         float shrine_x = 13.5f + shift, beggar_x = 20.5f + shift; // in front of the homes, not inside them
         village_npcs[village_npc_count++] = (NPCEntity){ shrine_x, 13.0f, shrine_x, 13.0f, 8, 0, FACE_DOWN, "A wayside altar hums with power. X to kneel.", 999 };
         if (RainHash(current_screen_index * 31 + SeasonDay()) % 2)
@@ -93,6 +105,7 @@ void EnterCave(void) {
     cave_return_player_y = player_y;
     in_cave = 1;
     pending_forced_biome = BIOME_CAVE;
+    cave_is_hold = WorldSiteAt(screen_grid_x, screen_grid_y) == SITE_DWARF;
     GenerateProceduralScreen(20000 + CaveRoom(current_cave_origin_cell));
     CaveRecord *rec = FindOrCreateCaveRecord(current_cave_origin_cell);
     player_x = 15.0f; player_y = 15.0f;
@@ -101,13 +114,14 @@ void EnterCave(void) {
     } else {
         strcpy(arpg_action_log, "CAVE: Entered the great cavern network. Each of its 8 chambers hides one chest; find this one to leave.");
     }
+    if (cave_is_hold) strcpy(arpg_action_log, "DWARF HOLD: Torches light a great hall cut into the rock. The smith is in; the chest deeper in marks the way back up.");
 }
 
 // Only about one Mountain screen in four hides a treasure cave. Decided by
 // the cell id alone, so the world map and the screen always agree.
 int MountainHasCave(int cell) {
     unsigned int h = (unsigned int)cell * 2654435761u;
-    return ((h >> 13) % 4) == 0;
+    return ((h >> 13) % 4) == 0 || WorldSiteAt(cell % META_GRID_SIZE, cell / META_GRID_SIZE) == SITE_DWARF;
 }
 
 // Only way out of a Cave: the treasure must be found first (per-cave, so a
@@ -123,11 +137,13 @@ void ClaimCaveTreasureAndExit(void) {
         int loot = LOOT_SHORT_SWORD + rand() % (LOOT_RUSTY_SWORD - LOOT_SHORT_SWORD + 1);
         int gold = 40 + rand() % 81;
         gold_count += gold;
+        AddLegend("found a %s in a cavern hoard", weapon_catalog[loot - 1].name);
         DropGroundLoot(cave_treasure_x, cave_treasure_y, loot, 1);
         sprintf(arpg_action_log, "TREASURE: %d gold and a %s! The way out opens behind you.", gold, weapon_catalog[loot - 1].name);
         TryCardDrop(-1);
     }
     in_cave = 0;
+    cave_is_hold = 0;
     pending_forced_biome = -1;
     screen_grid_x = cave_return_grid_x;
     screen_grid_y = cave_return_grid_y;
@@ -500,6 +516,7 @@ void GenerateProceduralScreen(int index) {
     GenerateVillageNPCs();
     if (current_biome == BIOME_SWAMP) { gator_x = 12.0f; gator_y = 12.0f; gator_active = 1; } else { gator_active = 0; }
     SpawnScreenEnemies();
+    if (in_cave && cave_is_hold) { for (int i = 0; i < MAX_ENEMIES; i++) enemies[i].hearts = 0.0f; enemy_hearts = 0.0f; } // the dwarves keep their hall clear
     ApplyScreenMemory(index);
     // Musashi's Blade only washes up on a beach at the world's eastern edge,
     // and only on summer day 13 (Musashi died on June 13, 1645).
