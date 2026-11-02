@@ -919,6 +919,10 @@ float DoorwayCamera(void) {
             float dx = player_x - hx, dy = player_y - (hy + HOME_HALF_Y), d = sqrtf(dx * dx + dy * dy);
             if (d < 2.4f && 1.0f - d / 2.4f > target) target = 1.0f - d / 2.4f;
         }
+        if (torch_gate_x >= 0) { // cave mouths count as archways too
+            float dx = player_x - (torch_gate_x + 0.5f), dy = player_y - (torch_gate_y + 0.5f), d = sqrtf(dx * dx + dy * dy);
+            if (d < 2.4f && 1.0f - d / 2.4f > target) target = 1.0f - d / 2.4f;
+        }
     }
     amt += (target - amt) * 0.08f;
     if (amt < 0.002f) { amt = 0.0f; return 0.0f; }
