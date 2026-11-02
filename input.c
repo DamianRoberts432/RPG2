@@ -1,6 +1,7 @@
 #include "game.h"
 
-static int gp_run_held = 0, gp_hop_down = 0; // left trigger runs, left bumper hops
+static int gp_run_held = 0, gp_hop_down = 0; // left trigger runs, B hops
+static int gp_b_for_menu = 0; // B pressed while a menu was open: it closes the menu, not a hop
 #include "worldmap.h"
 
 // 1 while any key, mouse button, gamepad button, trigger or stick is in use.
@@ -129,6 +130,8 @@ void ProcessGamepadInput(void) {
         }
 
         static DWORD last_menu_gp = 0;
+        if (!(buttons & XINPUT_GAMEPAD_B)) gp_b_for_menu = 0;
+        else if (is_menu_open || vendor_menu_open || town_menu || is_character_creation) gp_b_for_menu = 1;
         if ((buttons & XINPUT_GAMEPAD_START) && (GetTickCount() - last_menu_gp > 300)) { // START backs out of talk/shop menus first
             if (town_menu) TownMenuBack();
             else if (vendor_menu_open) { vendor_menu_open = 0; shop_action_menu = 0; }
@@ -213,16 +216,13 @@ void ProcessGamepadInput(void) {
                     PerformMeleeAttack();
                 }
                 last_attack_gp = GetTickCount();
-            } else if ((buttons & XINPUT_GAMEPAD_B) && !shopping && !town_busy_gp && (GetTickCount() - last_attack_gp > attack_delay_gp)) {
-                if (active_weapon != WEAPON_BOW) PerformMeleeAttack();
-                last_attack_gp = GetTickCount();
             }
         }
 
         static DWORD bow_charge_start_gp = 0;
         BYTE rt = state.Gamepad.bRightTrigger;
         gp_run_held = !is_menu_open && state.Gamepad.bLeftTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
-        gp_hop_down = !is_menu_open && (state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER) != 0;
+        gp_hop_down = !is_menu_open && !vendor_menu_open && !town_menu && !gp_b_for_menu && (state.Gamepad.wButtons & XINPUT_GAMEPAD_B) != 0;
         if (bow_equipped && !is_menu_open && rt > XINPUT_GAMEPAD_TRIGGER_THRESHOLD) {
             if (!is_charging_bow) {
                 is_charging_bow = 1;
