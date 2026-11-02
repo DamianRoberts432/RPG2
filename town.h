@@ -13,6 +13,15 @@ enum { TM_NONE, TM_SMITH, TM_CARDS, TM_PETS, TM_KING, TM_BANK, TM_BEGGAR, TM_ALT
 #define CHEST_SLOTS 16
 typedef struct { int32_t active, screen_id, last_day, count; fx x, y; InventoryItem items[CHEST_SLOTS]; } StashChest;
 extern StashChest chests[MAX_CHESTS];
+#define CHEST_BURIED 2
+#define CACHE_TAG_MAX 4095
+int ChestBuried(const StashChest *c);
+int CacheMapHeld(int slot);
+int ChestNearRoad(const StashChest *c);
+int RoadFriend(void);
+void CacheDiggersOnEnter(void);
+void UpdateCacheDiggers(void);
+void DrawCacheDiggers(HDC hdc);
 extern int open_chest;
 void BuildChest(void);
 int OpenNearbyChest(void);

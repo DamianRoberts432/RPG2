@@ -534,6 +534,7 @@ void GenerateProceduralScreen(int index) {
     if (AtSea()) { for (int i = 0; i < MAX_ENEMIES; i++) enemies[i].hearts = FxI(0); enemy_hearts = FxI(0); }
     ApplyScreenMemory(index);
     TownGrowthOnEnter();
+    CacheDiggersOnEnter();
     OceanOnEnter();
     // Musashi's Blade only washes up on a beach at the world's eastern edge,
     // and only on summer day 13 (Musashi died on June 13, 1645).
