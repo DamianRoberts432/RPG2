@@ -90,6 +90,7 @@ void UpdateGamePhysics(void) {
     UpdateCritters();
     UpdateFootpaths();
     UpdateTownGrowth();
+    UpdateCacheDiggers();
     ExpireDroppedItems();
     UpdateIceSlide();
     UpdateDebrisTwigs();

@@ -139,6 +139,7 @@ static const char *ItemBlurb(const char *name) {
     if (strcmp(name, "Silver Dagger") == 0) return "Silver: double damage to Vampires and Werewolves.";
     if (strcmp(name, "Canoe") == 0 || strcmp(name, "Raft") == 0 || strcmp(name, "Boat") == 0) return "Carry it to paddle across water.";
     if (strcmp(name, "Treasure Map") == 0) return "Red X's on the World Map mark where your chests are.";
+    if (strncmp(name, "Cache Map", 9) == 0) return "Marks one buried cache on the World Map. Dig it up with X. Keep it or give it away.";
     return "";
 }
 
@@ -398,6 +399,7 @@ void DrawTabbedMenuOverlay(HDC hdc) {
         SelectObject(hdc, prev_font);
         SetTextColor(hdc, RGB(220, 220, 220));
         sprintf(buf, "Soul %+d   Miasma %d   Town Heat %d   Grapevine %d", karma.soul, karma.miasma, karma.town_heat, karma.grapevine);
+        if (RoadFriend()) strcat(buf, "   (Friend of the road)");
         TextOut(hdc, lore_x, 110, buf, (int)strlen(buf));
         strcpy(buf, "Life marks:");
         for (int m = 0; m < 16; m++) if (IS_BOSS_MONSTER(m) && (karma.life_marks & (1u << m))) { strcat(buf, " "); strcat(buf, MonsterName((MonsterType)m)); }

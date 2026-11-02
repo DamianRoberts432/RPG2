@@ -145,7 +145,10 @@ Talking to a shopkeeper takes you inside their building (merchant included).
 - **QUESTS tab** (menu): filters ACTIVE / READY / HERE / HUNTS / ERRANDS / DONE, sorted so the tracked quest and the ones ready to hand in come first. LEFT/RIGHT filter, UP/DOWN pick, **A or T** tracks a quest on the HUD, **Y or DEL twice** abandons it, which puts it back in the world for someone to offer again.
 - **Sister and rival towns:** towns of the same god are sisters, and Light/Dark and Voodoo/Eldritch towns are rivals. Quests done for a town's sisters make its shop cheaper; quests done for its rivals make it dearer.
 - **Werewolves** hunt open land on full-moon nights (every 8th day of a season). Only silver cuts through their hide.
-- **Treasure Map:** building a chest gives you one, and a red X on the World Map marks each of your chests.
+- **Treasure Map:** older saves keep it; a red X on the World Map marks each chest you haven't buried.
+- **Buried caches:** open your chest with X and pick "Bury it here as a cache". The chest and its items go into the ground (they never despawn) and you get a **Cache Map #n** for that one cache. Only the map's holder sees the spot (turned earth with a red X, and a red X on the World Map). Press X on the spot with the map to dig it up; the map is used up. A map can be kept, dropped or stored like any item, so it can be handed to another player once networking is in.
+- **Caches near roads:** a cache buried within 3 tiles of a worn road may be spotted. When you enter that screen, a band of highwaymen may leave the road, ring the spot and dig for about 15 seconds; walk within 3 tiles to scare them off, or they take half the items and leave the chest dug up. Sometimes it was found while you were away.
+- **Friend of the road:** with town heat 30+ (WANTED) or Soul -25 or lower, thieves and highwaymen treat you as one of their own: they leave your chests and caches alone, and diggers who find your cache walk away. The KARMA panel shows "(Friend of the road)". Guards and bounty hunters still come for you.
 - **CARDS tab:** owning the Strategy Guide opens it for good. It lists every card with its set, power, ability and whether you own it.
 
 ## Asking for work
@@ -159,7 +162,7 @@ Talking to a shopkeeper takes you inside their building (merchant included).
 ## Outlaws, legacy and caves
 
 - **Outlaws:** crimes such as smashing barrels raise town heat. At 30 or more you are **WANTED** (shown on the HUD), and bounty hunters may track you down outside town. A town guard takes a fine (press X twice) to clear your name, and each night's sleep also cools the heat.
-- **Highwaymen:** a chest within 3 tiles of a worn road gets raided about every other day, even when trees hide it.
+- **Highwaymen:** an unburied chest within 3 tiles of a worn road gets raided about every other day, even when trees hide it (not if you are a friend of the road).
 - **Ancestral legacy:** deleting a save leaves a legacy for your next hero: 1 attribute point per 10 levels and per 25 quests done (5 at most), plus a tenth of your gold (500 at most).
 - **Cave network:** every cave entrance opens into one of 8 shared chambers, each with one chest. Once a chamber's chest is found, it stays found from every entrance.
 

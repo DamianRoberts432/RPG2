@@ -19,6 +19,8 @@ int ChestNearRoad(const StashChest *c) {
 #define OUTLAW_HEAT 30
 int bounty_hunter_active = 0;
 int IsOutlaw(void) { return karma.town_heat >= OUTLAW_HEAT; }
+// Thieves and highwaymen treat outlaws and dark souls as one of their own.
+int RoadFriend(void) { return IsOutlaw() || karma.soul <= -25; }
 static int OutlawFine(void) { return 50 + karma.town_heat * 10; }
 
 // A town guard offers to take the fine; X again pays it and calls off the hunters.

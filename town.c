@@ -13,7 +13,7 @@ static char town_note[160] = "";
 
 typedef struct { char text[96]; int action, arg; } TownRow;
 enum { A_LEAVE, A_REPAIR, A_FORGE, A_RECYCLE, A_SMITH_BUY, A_CARD, A_PACK, A_KID, A_PET, A_KING,
-       A_CARAVAN, A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE, A_GUIDE, A_PET_SIZE, A_PET_COLOR, A_SLEEP, A_FURNISH, A_BINDER, A_BINDER_CARD, A_BINDER_PAGE, A_TALK_CHAT, A_ASK_WORK, A_CRAFT };
+       A_CARAVAN, A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE, A_GUIDE, A_PET_SIZE, A_PET_COLOR, A_SLEEP, A_FURNISH, A_BINDER, A_BINDER_CARD, A_BINDER_PAGE, A_TALK_CHAT, A_ASK_WORK, A_CRAFT, A_BURY };
 #define TOWN_ROWS 64
 static TownRow rows[TOWN_ROWS];
 static int row_count = 0;
@@ -240,6 +240,7 @@ static const char *kid_lines[] = {
 #define KID_LINE_COUNT ((int)(sizeof(kid_lines) / sizeof(kid_lines[0])))
 
 static void Say(const char *fmt, ...);
+static int ChestDay(void);
 
 // Practice hands with the card kid: no ante, ten rounds per visit. Matches are
 // 3v3, King of Fighters style: the third card laid is the team Leader and
@@ -511,6 +512,7 @@ static void BuildRows(void) {
             if (player_inventory[i].is_equipped) continue;
             snprintf(t, sizeof(t), "Store %s x%d", player_inventory[i].name, player_inventory[i].quantity); AddRow(A_STORE, i, t);
         }
+        AddRow(A_BURY, 0, "Bury it here as a cache (you get a Cache Map)");
     } else if (town_menu == TM_ALTAR) {
         AddRow(A_ASK_WORK, 0, "Ask for work");
         static const char *offer[4] = { "Offer Incense", "Offer a Chaos Relic", "Offer Tarot Card, Rum Bottle and Cigar", "Offer a Fish from the deep" };
@@ -914,6 +916,21 @@ void TownMenuConfirm(void) {
         char nm[32]; snprintf(nm, sizeof(nm), "%s", player_inventory[r.arg].name);
         RemoveItemAt(r.arg);
         Say("CHEST: Stored %s.", nm);
+        return; }
+    case A_BURY: {
+        StashChest *c = &chests[open_chest];
+        if (player_item_count >= MAX_INVENTORY_ITEMS) { Say("CACHE: No room in your pack for the map."); return; }
+        int tag = 1 + rand() % CACHE_TAG_MAX;
+        c->active = CHEST_BURIED | (tag << 4); c->last_day = ChestDay();
+        InventoryItem m; memset(&m, 0, sizeof(m));
+        snprintf(m.name, sizeof(m.name), "Cache Map #%d", open_chest + 1);
+        strcpy(m.slot, "Tool"); m.quantity = 1; m.damage = (tag << 3) | open_chest;
+        player_inventory[player_item_count++] = m;
+        RecalculateCarriedWeight();
+        town_menu = TM_NONE;
+        snprintf(arpg_action_log, sizeof(arpg_action_log), ChestNearRoad(c)
+                 ? "CACHE: Buried, with %d item(s). It's close to a road, so travellers may sniff it out."
+                 : "CACHE: Buried, with %d item(s). Cache Map #%d shows the spot on the World Map.", c->count, open_chest + 1);
         return; }
     default: return;
     }
@@ -1379,13 +1396,34 @@ void BuildChest(void) {
     chests[slot].last_day = ChestDay();
     if (!HasInventoryItem("Treasure Map")) AddStackableItem("Treasure Map", "Tool", 1);
     RecalculateCarriedWeight();
-    strcpy(arpg_action_log, "CHEST: Built a chest. A red X on your Treasure Map (World Map tab) marks it. Hide it among trees, away from paths.");
+    strcpy(arpg_action_log, "CHEST: Built a chest. Open it with X to store items, or bury it as a cache. Keep caches away from roads.");
 }
+
+// A buried cache is chests[i] with active = CHEST_BURIED | tag << 4. Its map is
+// an ordinary inventory item whose damage field holds tag << 3 | slot, so it can
+// be kept, dropped, stored or (later) handed to another player like any item.
+int ChestBuried(const StashChest *c) { return c->active >= CHEST_BURIED; }
+static int CacheMapMatches(const InventoryItem *it, int slot) {
+    return strncmp(it->name, "Cache Map", 9) == 0 && ChestBuried(&chests[slot]) &&
+           it->damage == (((chests[slot].active >> 4) << 3) | slot);
+}
+static int CacheMapIndex(int slot) {
+    for (int i = 0; i < player_item_count; i++) if (CacheMapMatches(&player_inventory[i], slot)) return i;
+    return -1;
+}
+int CacheMapHeld(int slot) { return slot >= 0 && slot < MAX_CHESTS && CacheMapIndex(slot) >= 0; }
 
 int OpenNearbyChest(void) {
     CheckChestBreakIns();
     for (int i = 0; i < MAX_CHESTS; i++) {
         if (!chests[i].active || chests[i].screen_id != current_screen_index || !IsNearPoint(chests[i].x, chests[i].y, FX(1.3))) continue;
+        if (ChestBuried(&chests[i])) {
+            int m = CacheMapIndex(i);
+            if (m < 0) continue;
+            RemoveItemAt(m);
+            chests[i].active = 1;
+            snprintf(arpg_action_log, sizeof(arpg_action_log), "CACHE: You follow the map and dig up your cache (%d item(s)).", chests[i].count);
+        }
         open_chest = i; OpenTownMenu(TM_CHEST);
         return 1;
     }
@@ -1394,12 +1432,12 @@ int OpenNearbyChest(void) {
 
 // A chest with few trees around it is in the open; each day there is a 1 in 4
 // chance someone breaks in and takes half of what's inside.
-int ChestNearRoad(const StashChest *c);
 void CheckChestBreakIns(void) {
     for (int i = 0; i < MAX_CHESTS; i++) {
         StashChest *c = &chests[i];
-        if (!c->active || c->screen_id != current_screen_index || c->last_day == ChestDay()) continue;
+        if (!c->active || ChestBuried(c) || c->screen_id != current_screen_index || c->last_day == ChestDay()) continue;
         c->last_day = ChestDay();
+        if (RoadFriend()) continue; // thieves and highwaymen leave a friend's chest alone
         int trees = 0;
         for (int dy = -2; dy <= 2; dy++) for (int dx = -2; dx <= 2; dx++) {
             int tx = FxTrunc(c->x) + dx, ty = FxTrunc(c->y) + dy;
@@ -1418,9 +1456,118 @@ void DrawChests(HDC hdc) {
     for (int i = 0; i < MAX_CHESTS; i++) {
         if (!chests[i].active || chests[i].screen_id != current_screen_index) continue;
         int sx, sy; GetIsoCoords(chests[i].x, chests[i].y, &sx, &sy);
+        if (ChestBuried(&chests[i])) { // only the map's holder sees the turned earth
+            if (!CacheMapHeld(i)) continue;
+            TwBox(hdc, sx - 10, sy + 2, sx + 10, sy + 8, RGB(92, 64, 38));
+            TwBox(hdc, sx - 6, sy - 1, sx + 6, sy + 3, RGB(110, 78, 46));
+            HPEN xp = CreatePen(PS_SOLID, 2, RGB(210, 40, 30)); HGDIOBJ op = SelectObject(hdc, xp);
+            MoveToEx(hdc, sx - 4, sy, NULL); LineTo(hdc, sx + 5, sy + 6);
+            MoveToEx(hdc, sx + 4, sy, NULL); LineTo(hdc, sx - 5, sy + 6);
+            SelectObject(hdc, op); DeleteObject(xp);
+            continue;
+        }
         TwBox(hdc, sx - 11, sy - 4, sx + 11, sy + 10, RGB(120, 78, 40));
         TwBox(hdc, sx - 12, sy - 9, sx + 12, sy - 3, RGB(150, 100, 52));
         TwBox(hdc, sx - 2, sy - 4, sx + 2, sy + 2, RGB(220, 190, 70));
+    }
+}
+
+// Travellers on a road spot a cache buried within 3 tiles of it, leave the road,
+// ring the spot and dig. Fixed pool of 3, one party per screen visit.
+#define MAX_DIGGERS 3
+#define DIG_FRAMES 900
+typedef struct { fx x, y; int state; } CacheDigger; // 0 gone, 1 walking in, 2 digging, 3 leaving
+static CacheDigger diggers[MAX_DIGGERS];
+static int dig_chest = -1, dig_timer = 0, dig_friend = 0;
+static const fx ring_dx[MAX_DIGGERS] = { FX(0.9), FX(-0.45), FX(-0.45) };
+static const fx ring_dy[MAX_DIGGERS] = { 0, FX(0.78), FX(-0.78) };
+
+static void RobCache(StashChest *c) {
+    int lose = (c->count + 1) / 2;
+    for (int k = 0; k < lose && c->count > 0; k++) { int j = rand() % c->count; c->items[j] = c->items[--c->count]; }
+    c->active = 1; // left dug up and open
+}
+
+void CacheDiggersOnEnter(void) {
+    dig_chest = -1; memset(diggers, 0, sizeof(diggers));
+    if (in_cave || current_screen_index >= 20000) return;
+    for (int i = 0; i < MAX_CHESTS; i++) {
+        StashChest *c = &chests[i];
+        if (!ChestBuried(c) || c->screen_id != current_screen_index || c->count == 0 || c->last_day == ChestDay() || !ChestNearRoad(c)) continue;
+        c->last_day = ChestDay();
+        int roll = rand() % 4;
+        if (roll == 0 && !RoadFriend()) { // found while you were away
+            RobCache(c);
+            strcpy(arpg_action_log, "CACHE: Someone dug up your cache by the road while you were away. Some items are gone.");
+            return;
+        }
+        if (roll > 1) continue;
+        fx sx = 0, sy = 0, best = FxI(-1); // start from the road tile furthest from the cache
+        for (int w = 0; w < MAX_WORN_TILES; w++) {
+            const WornTile *t = &worn_tiles[w];
+            if (!t->active || t->screen_id != current_screen_index) continue;
+            fx d = FxAbs(FxI(t->x) - c->x) + FxAbs(FxI(t->y) - c->y);
+            if (d > best && d < FxI(9)) { best = d; sx = FxI(t->x); sy = FxI(t->y); }
+        }
+        if (best < 0) { sx = c->x - FxI(5); sy = c->y; }
+        for (int k = 0; k < MAX_DIGGERS; k++) diggers[k] = (CacheDigger){ sx + FX(0.7) * k, sy + FX(0.4) * (k & 1), 1 };
+        dig_chest = i; dig_timer = 0; dig_friend = RoadFriend();
+        strcpy(arpg_action_log, "ROAD: A band of highwaymen stops on the road... they've spotted something in the ground.");
+        return;
+    }
+}
+
+static int StepToward(CacheDigger *d, fx tx, fx ty, fx speed) {
+    fx dx = tx - d->x, dy = ty - d->y;
+    d->x += FxClamp(dx, -speed, speed); d->y += FxClamp(dy, -speed, speed);
+    return FxAbs(dx) <= speed && FxAbs(dy) <= speed;
+}
+
+void UpdateCacheDiggers(void) {
+    if (dig_chest < 0) return;
+    StashChest *c = &chests[dig_chest];
+    if (!c->active || c->screen_id != current_screen_index || in_cave) { dig_chest = -1; return; }
+    int gone = 0, digging = 0;
+    for (int k = 0; k < MAX_DIGGERS; k++) {
+        CacheDigger *d = &diggers[k];
+        if (d->state == 1 && StepToward(d, c->x + ring_dx[k], c->y + ring_dy[k], FX(0.05))) d->state = 2;
+        if (d->state == 3 && StepToward(d, c->x + FxI(12) + FX(0.6) * k, c->y, FX(0.07))) d->state = 0;
+        gone += d->state == 0; digging += d->state == 2;
+    }
+    if (gone == MAX_DIGGERS) { dig_chest = -1; return; }
+    if (digging < MAX_DIGGERS) return;
+    if (dig_timer == 0 && dig_friend)
+        strcpy(arpg_action_log, "HIGHWAYMAN: 'Hold - this cache bears the mark of a friend of the road. Leave it be.'");
+    dig_timer++;
+    int leave = 0;
+    if (dig_friend) leave = dig_timer > 180;
+    else if (IsNearPoint(c->x, c->y, FxI(3))) {
+        strcpy(arpg_action_log, "ROAD: The highwaymen scatter as you come near. Your cache is safe, for now.");
+        leave = 1;
+    } else if (dig_timer > DIG_FRAMES) {
+        RobCache(c);
+        strcpy(arpg_action_log, "ROAD: The highwaymen dug up your cache and made off with some of it!");
+        leave = 1;
+    }
+    if (leave) for (int k = 0; k < MAX_DIGGERS; k++) if (diggers[k].state) diggers[k].state = 3;
+}
+
+void DrawCacheDiggers(HDC hdc) {
+    if (dig_chest < 0) return;
+    const StashChest *c = &chests[dig_chest];
+    for (int k = 0; k < MAX_DIGGERS; k++) {
+        const CacheDigger *d = &diggers[k];
+        if (!d->state) continue;
+        int sx, sy; GetIsoCoords(d->x, d->y, &sx, &sy);
+        int face = d->state == 3 ? FACE_RIGHT : (c->x < d->x ? FACE_LEFT : FACE_RIGHT);
+        DrawBountyHunter(hdc, sx, sy, face);
+        if (d->state == 2 && !dig_friend) { // shovel bobbing into the dirt
+            int bob = ((dig_timer + k * 7) / 6) & 1 ? 6 : 0, dir = face == FACE_LEFT ? -1 : 1;
+            HPEN sp = CreatePen(PS_SOLID, 2, RGB(150, 150, 160)); HGDIOBJ op = SelectObject(hdc, sp);
+            MoveToEx(hdc, sx + dir * 6, sy - 14 + bob, NULL); LineTo(hdc, sx + dir * 14, sy + 2 + bob);
+            SelectObject(hdc, op); DeleteObject(sp);
+            if (bob) TwBox(hdc, sx + dir * 14 - 2, sy - 2, sx + dir * 14 + 2, sy + 2, RGB(100, 70, 40));
+        }
     }
 }
 
