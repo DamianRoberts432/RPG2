@@ -26,6 +26,10 @@ constexpr fx operator/(fx a, int b) { return fx(a.v / b); }
 inline fx &operator*=(fx &a, int b) { a.v *= b; return a; }
 inline fx &operator/=(fx &a, int b) { a.v /= b; return a; }
 fx operator*(fx, fx) = delete;
+fx operator+(int, fx) = delete; // whole numbers need FxI()
+fx operator+(fx, int) = delete;
+fx operator-(int, fx) = delete;
+fx operator-(fx, int) = delete;
 fx operator/(fx, fx) = delete;
 fx operator*(fx, double) = delete;
 fx operator*(double, fx) = delete;
@@ -53,6 +57,7 @@ static inline int FxFloor(fx a) { return a.v >> FX_SHIFT; }
 static inline int FxRound(fx a) { return (a.v + FX_HALF) >> FX_SHIFT; }
 static inline int FxCeil(fx a) { return (a.v + FX_ONE - 1) >> FX_SHIFT; }
 #define FX_MAX FxRaw(INT32_MAX)
+#define FX_EPS FxRaw(1)
 // Raw-bit maths inside 64-bit expressions (angles for FxTurn64) keeps C meaning.
 constexpr int64_t operator*(int64_t a, fx b) { return a * b.v; }
 constexpr int64_t operator+(int64_t a, fx b) { return a + b.v; }
