@@ -477,6 +477,7 @@ extern int cam_y;
 #include "afkview.h"
 #include "quests.h"
 #include "update.h"
+#include "sound.h"
 #include "worldgen.h"
 
 extern char town_banner[48];

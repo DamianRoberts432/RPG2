@@ -13,7 +13,7 @@ static char town_note[160] = "";
 
 typedef struct { char text[96]; int action, arg; } TownRow;
 enum { A_LEAVE, A_REPAIR, A_FORGE, A_RECYCLE, A_SMITH_BUY, A_CARD, A_PACK, A_KID, A_PET, A_KING,
-       A_CARAVAN, A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE, A_GUIDE, A_PET_SIZE, A_PET_COLOR, A_SLEEP, A_FURNISH, A_BINDER, A_BINDER_CARD, A_BINDER_PAGE, A_TALK_CHAT, A_ASK_WORK };
+       A_CARAVAN, A_DEPOSIT, A_WITHDRAW, A_ALMS_GOLD, A_ALMS_FOOD, A_REFUSE, A_PRAY, A_OFFER, A_TAKE, A_STORE, A_PRACTICE, A_GUIDE, A_PET_SIZE, A_PET_COLOR, A_SLEEP, A_FURNISH, A_BINDER, A_BINDER_CARD, A_BINDER_PAGE, A_TALK_CHAT, A_ASK_WORK, A_CRAFT };
 #define TOWN_ROWS 64
 static TownRow rows[TOWN_ROWS];
 static int row_count = 0;
@@ -360,6 +360,7 @@ static void BuildRows(void) {
     }
     if (town_menu == TM_SMITH) {
         AddRow(A_ASK_WORK, 0, "Ask for work");
+        for (int k = 0; k < RecipeCount(); k++) { RecipeLabel(k, t, sizeof(t)); AddRow(A_CRAFT, k, t); }
         for (int i = 0; i < player_item_count; i++) {
             InventoryItem *it = &player_inventory[i];
             if (it->durability_max <= 0 || it->durability_max >= 99999 || it->durability_current >= it->durability_max) continue;
@@ -491,6 +492,7 @@ static void RowInfo(const TownRow *r, char *out, size_t n) {
     out[0] = 0;
     switch (r->action) {
     case A_REPAIR: snprintf(out, n, "Mends %s back to full durability. Cost is 1 gold per missing point, less with charisma.", player_inventory[r->arg].name); break;
+    case A_CRAFT: snprintf(out, n, "A recipe from the Update folder: the smith works your materials into something new."); break;
     case A_FORGE: snprintf(out, n, "Each forge adds +1 damage, up to +%d, but the metal grows brittle: max durability drops 10%% every time.", MAX_FORGE_BONUS); break;
     case A_SMITH_BUY: { WeaponStats *w = &weapon_catalog[smith_wares[r->arg] - 1];
         snprintf(out, n, "%s  |  DMG %d  |  Durability %d  |  Weight %.1f  |  Rare smith work you won't find at the merchant.", w->name, w->damage, w->durability_max, w->weight); break; }
@@ -732,6 +734,7 @@ void TownMenuConfirm(void) {
     }
     case A_SLEEP: sleep_fade_frame = 1; Say("HOME: You sleep soundly in the %s bed.", inside_home == 4 ? "warm" : "cottage"); return;
     case A_FURNISH: if (PlaceFurniture()) Say("%s", arpg_action_log); else Say("HOME: Nothing new to set out. The merchant sells furniture."); return;
+    case A_CRAFT: { char m[128]; CraftRecipe(r.arg, m, sizeof(m)); Say("BLACKSMITH: %s", m); return; }
     case A_REPAIR: {
         InventoryItem *it = &player_inventory[r.arg];
         int cost = ShopPrice(it->durability_max - it->durability_current);

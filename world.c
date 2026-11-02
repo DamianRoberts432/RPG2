@@ -439,6 +439,12 @@ void GenerateProceduralScreen(int index) {
             }
         }
     }
+    const char *variant = ApplyBiomeVariant((int)current_biome);
+    if (variant) {
+        size_t n = strlen(arpg_action_log);
+        snprintf(arpg_action_log + n, sizeof(arpg_action_log) - n, n ? "  |  The land here is %s." : "The land here is %s.", variant);
+    }
+    ApplySetPieces((int)current_biome);
 
     for (int i = 0; i < MAX_APPLE_TREES; i++) {
         AppleTreeState *tree = &apple_tree_states[i];

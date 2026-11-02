@@ -58,4 +58,38 @@ grow with your level on top of these numbers.
 `NewQuest` names quest slot 9-16 and sets its reward (queststory, questgeneric or questking);
 villagers start offering it once `EditQuest` gives it a target and count.
 
-Not supported yet (these lines go to `errors.txt`): `NewNPC`, `NewRecipe`, `NewBiome`.
+## Spawners
+
+    NewSpawner,1,Forest,Goblin,40
+    NewSpawner,2,Any,Vampire,5,1
+
+On that biome (or `Any`), the monster turns up that often (percent) instead of the usual pick.
+A last `1` means nights only. Monsters: Skeleton, Zombie, Vampire (or Dracula), Goblin, Satyr,
+Yeti, Sphinx, Bigfoot, Bunyip. Up to 16 spawners.
+
+## Set pieces
+
+    NewSetPiece,1,Prairie,30,www/w.w/www
+
+Stamps a small hand-made patch (up to 7x7) onto that percent of the biome's screens.
+Rows are split by `/`. Letters: `g` ground, `w` rock wall, `s` sand, `n` snow, `c` cactus,
+`t` tree, `~` water, `.` leave as it is. Up to 12 set pieces.
+
+## Biomes
+
+    NewBiome,1,Dark Woods,Forest,25,60,5,5
+
+A named variant of a base biome: that percent of its screens are laid out again with the given
+percent of trees, rock walls and water (the rest is open ground). Rock is capped at 30 and the
+three together at 90, so you never get boxed in. Caves and castles can't be varied. Up to 8.
+
+## Recipes
+
+    NewRecipe,1,Rope,2,Wood,3
+    NewRecipe,2,Lantern,1,Wood,2,Stone,1
+
+The blacksmith gets a "Craft" row: hand over the materials (up to 3 kinds), get the result.
+Up to 16 recipes.
+
+Biome names: Prairie, Swamp, Beach, Mountain, Desert, Tundra, Grasslands, Oasis, Forest,
+Island, Ocean, Lake, River, Cave, Castle.

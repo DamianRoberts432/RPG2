@@ -220,6 +220,13 @@ One real second is one game minute, so a day lasts 24 real minutes and each 30-d
 - **Update folder:** see `Update/README.md` to change items, villager lines and quests with a text file, no recompiling.
 - **Sound:** the game runs with no sound files yet; Saturn-style synth voices and samples come later.
 
+## Sounds
+
+Footsteps change with the ground (grass, stone, sand, snow, wood floors, shallow water) and every
+melee swing makes a short "kwhep". The sounds are plain WAV files in the `sounds` folder, so you
+can record your own and drop them in with the same names. They must be 8-bit mono 11025 Hz,
+8 KB at most each, which the Sega Saturn's sound chip can play as-is (see `sounds/README.txt`).
+
 ## Layout
 
 | File | Contents |
@@ -246,6 +253,7 @@ One real second is one game minute, so a day lasts 24 real minutes and each 30-d
 | paths.c | Worn footpaths that grow back |
 | quests.c | Everyday villager kill/fetch quests |
 | update.c | Reads the Update folder's text files at launch |
+| sound.c | Footstep and sword sounds from the sounds folder |
 
 Each module has a matching .h with its function prototypes.
 
@@ -282,7 +290,7 @@ Each module has a matching .h with its function prototypes.
 - **Town banner:** entering a town shows its name and your Town Heat.
 - **Worn gear:** a belt slot flashes red when the item is under 15% durability.
 - **Cacti and peyote:** any weapon breaks them. One swing or arrow fells a cactus; a swing splits peyote open (X to gather).
-- **Doorway camera:** near a cottage door the camera eases in and pans to just behind you, then glides back to isometric.
+- **Doorway camera:** near a cottage door or a cave mouth the camera eases in and pans to just behind you, then glides back to isometric.
 - **World Map:** highways are drawn through places you've visited.
 - **Town menus** scroll (up to 64 rows), so the card shop has room for more sets.
 - **Hall of Records:** the Options tab lists your heroes' falls and retirements (`hall.dat`, last 16).

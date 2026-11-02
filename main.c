@@ -48,6 +48,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
     screens_until_town = WorldIsTown(screen_grid_x, screen_grid_y) ? 0 : 1;
     InitCardSets();
     IngestUpdates();
+    SoundInit();
     InitSeasonAndWeather();
     ApplyClassAndRaceStats(); GenerateProceduralScreen((screens_until_town == 0 ? 30000 : 0) + screen_grid_y * META_GRID_SIZE + screen_grid_x);
 
@@ -111,6 +112,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
             float view_zoom = UpdateAfkCamera(AnyPlayerInput() || MouseBusy() || is_menu_open || vendor_menu_open || town_menu ||
                                               is_character_creation || sleep_fade_frame > 0 || inside_home >= 0);
                 view_zoom += DoorwayCamera();
+        SoundUpdate();
             HDC hdc = GetDC(hwnd); HDC memHDC = CreateCompatibleDC(hdc); HBITMAP memBitmap = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT); SelectObject(memHDC, memBitmap);
             
             if (is_character_creation) {

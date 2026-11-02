@@ -137,6 +137,188 @@ static int NewItemLine(char *cur) {
     return 1;
 }
 
+// Biome and monster names used by NewSpawner, NewSetPiece and NewBiome.
+static int BiomeByName(const char *s) {
+    static const char *names[] = { "Prairie", "Swamp", "Beach", "Mountain", "Desert", "Tundra", "Grasslands", "Oasis",
+                                   "Forest", "Island", "Ocean", "Lake", "River", "Cave", "Castle" };
+    if (_stricmp(s, "Any") == 0) return -2;
+    for (int i = 0; i < (int)(sizeof(names) / sizeof(names[0])); i++) if (_stricmp(s, names[i]) == 0) return i;
+    return -1;
+}
+
+static int MonsterByName(const char *s) {
+    if (_stricmp(s, "Dracula") == 0) return MONSTER_DRACULA;
+    for (int i = 0; i <= MONSTER_BUNYIP; i++) if (_stricmp(s, MonsterName((MonsterType)i)) == 0) return i;
+    return -1;
+}
+
+// NewSpawner,SpawnerID,Biome,Monster,Percent[,NightOnly]: on that biome (or Any), the monster
+// replaces the usual pick that often. Checked after the mythic and Dracula rolls.
+#define MAX_SPAWNERS 16
+static struct { int8_t biome, monster, night_only; uint8_t pct; } spawners[MAX_SPAWNERS];
+static int spawner_count;
+
+static int NewSpawnerLine(char *cur) {
+    char *f[4] = { 0 };
+    for (int i = 0; i < 4 && cur; i++) f[i] = NextField(&cur);
+    if (!f[2] || cur || spawner_count == MAX_SPAWNERS) return 0;
+    int b = BiomeByName(f[0]), m = MonsterByName(f[1]), pct = atoi(f[2]);
+    if (b == -1 || m < 0 || pct < 1 || pct > 100) return 0;
+    spawners[spawner_count].biome = (int8_t)b;
+    spawners[spawner_count].monster = (int8_t)m;
+    spawners[spawner_count].night_only = (int8_t)(f[3] && atoi(f[3]) != 0);
+    spawners[spawner_count++].pct = (uint8_t)pct;
+    return 1;
+}
+
+int CustomSpawnPick(int biome, int is_night) {
+    for (int i = 0; i < spawner_count; i++) {
+        if (spawners[i].biome != -2 && spawners[i].biome != biome) continue;
+        if (spawners[i].night_only && !is_night) continue;
+        if (rand() % 100 < spawners[i].pct) return spawners[i].monster;
+    }
+    return -1;
+}
+
+// Tile letters for NewSetPiece: g ground, w rock wall, s sand, n snow, c cactus, t tree, ~ water, . leave as is.
+static int SetPieceTile(char ch) {
+    switch (ch) {
+    case 'g': return 0; case 'w': return 1; case 's': return 4; case 'n': return 5;
+    case 'c': return 7; case 't': return 11; case '~': return 12; case '.': return 255;
+    }
+    return -1;
+}
+
+// NewSetPiece,SetPieceID,Biome,Percent,Rows: a small hand-made patch (up to 7x7) stamped onto
+// that share of the biome's screens. Rows are split by '/', e.g. "www/w.w/www".
+#define MAX_SET_PIECES 12
+#define SET_PIECE_MAX 7
+static struct { int8_t biome; uint8_t pct, w, h; uint8_t tiles[SET_PIECE_MAX][SET_PIECE_MAX]; } set_pieces[MAX_SET_PIECES];
+static int set_piece_count;
+
+static int NewSetPieceLine(char *cur) {
+    char *f[3] = { 0 };
+    for (int i = 0; i < 3 && cur; i++) f[i] = NextField(&cur);
+    if (!f[2] || cur || set_piece_count == MAX_SET_PIECES) return 0;
+    int b = BiomeByName(f[0]), pct = atoi(f[1]);
+    if (b == -1 || pct < 1 || pct > 100) return 0;
+    int w = 0, h = 0, col = 0;
+    memset(set_pieces[set_piece_count].tiles, 255, sizeof(set_pieces[0].tiles));
+    for (const char *p = f[2]; ; p++) {
+        if (*p == '/' || *p == 0) {
+            if (col == 0 || h == SET_PIECE_MAX) return 0;
+            if (col > w) w = col;
+            h++; col = 0;
+            if (*p == 0) break;
+            continue;
+        }
+        int t = SetPieceTile(*p);
+        if (t < 0 || col == SET_PIECE_MAX) return 0;
+        set_pieces[set_piece_count].tiles[h][col++] = (uint8_t)t;
+    }
+    set_pieces[set_piece_count].biome = (int8_t)b;
+    set_pieces[set_piece_count].pct = (uint8_t)pct;
+    set_pieces[set_piece_count].w = (uint8_t)w;
+    set_pieces[set_piece_count++].h = (uint8_t)h;
+    return 1;
+}
+
+void ApplySetPieces(int biome) {
+    for (int i = 0; i < set_piece_count; i++) {
+        if (set_pieces[i].biome != -2 && set_pieces[i].biome != biome) continue;
+        if (rand() % 100 >= set_pieces[i].pct) continue;
+        int w = set_pieces[i].w, h = set_pieces[i].h, span_x = MAP_SIZE - 8 - w, span_y = MAP_SIZE - 8 - h;
+        int ox = 4 + (span_x > 0 ? rand() % span_x : 0), oy = 4 + (span_y > 0 ? rand() % span_y : 0);
+        if (ox <= 14 && ox + w >= 10 && oy <= 14 && oy + h >= 10) continue; // keep clear of the cave mouth
+        for (int r = 0; r < h; r++) for (int c = 0; c < w; c++)
+            if (set_pieces[i].tiles[r][c] != 255) VISUAL_MAP[oy + r][ox + c] = set_pieces[i].tiles[r][c];
+    }
+}
+
+// NewBiome,BiomeID,Name,BaseBiome,Percent,Trees,Rocks,Water: that share of the base biome's
+// screens are re-laid as a named variant with those percentages of trees, rock and water.
+#define MAX_BIOME_VARIANTS 8
+static struct { char name[32]; int8_t base; uint8_t pct, trees, rocks, water; } variants[MAX_BIOME_VARIANTS];
+static int variant_count;
+
+static int NewBiomeLine(char *cur) {
+    char *f[6] = { 0 };
+    for (int i = 0; i < 6 && cur; i++) f[i] = NextField(&cur);
+    if (!f[5] || cur || !f[0][0] || variant_count == MAX_BIOME_VARIANTS) return 0;
+    int b = BiomeByName(f[1]), pct = atoi(f[2]), tr = atoi(f[3]), ro = atoi(f[4]), wa = atoi(f[5]);
+    if (b < 0 || b == BIOME_CAVE || b == BIOME_CASTLE || pct < 1 || pct > 100) return 0;
+    if (tr < 0 || ro < 0 || wa < 0 || ro > 30 || tr + ro + wa > 90) return 0; // rock walls past 30% box the hero in
+    snprintf(variants[variant_count].name, sizeof(variants[0].name), "%s", f[0]);
+    variants[variant_count].base = (int8_t)b;
+    variants[variant_count].pct = (uint8_t)pct;
+    variants[variant_count].trees = (uint8_t)tr;
+    variants[variant_count].rocks = (uint8_t)ro;
+    variants[variant_count++].water = (uint8_t)wa;
+    return 1;
+}
+
+const char *ApplyBiomeVariant(int biome) {
+    for (int i = 0; i < variant_count; i++) {
+        if (variants[i].base != biome || rand() % 100 >= variants[i].pct) continue;
+        int ground = biome == BIOME_DESERT || biome == BIOME_BEACH || biome == BIOME_OASIS ? 4 : biome == BIOME_TUNDRA ? 5 : 0;
+        for (int r = 1; r < MAP_SIZE - 1; r++) for (int c = 1; c < MAP_SIZE - 1; c++) {
+            int n = rand() % 100;
+            VISUAL_MAP[r][c] = (uint8_t)(n < variants[i].trees ? 11 : n < variants[i].trees + variants[i].rocks ? 1 :
+                                         n < variants[i].trees + variants[i].rocks + variants[i].water ? 12 : ground);
+        }
+        return variants[i].name;
+    }
+    return NULL;
+}
+
+// NewRecipe,RecipeID,Result,Quantity,Material,Count[,Material,Count[,Material,Count]]:
+// the blacksmith lists "Craft" rows that turn carried materials into the result.
+#define MAX_RECIPES 16
+static struct { char result[32]; uint8_t qty, n; char mat[3][32]; uint8_t count[3]; } recipes[MAX_RECIPES];
+static int recipe_count;
+
+static int NewRecipeLine(char *cur) {
+    char *f[8] = { 0 };
+    int got = 0;
+    for (; got < 8 && cur; got++) f[got] = NextField(&cur);
+    if (cur || got < 4 || got % 2 || recipe_count == MAX_RECIPES || !f[0][0]) return 0;
+    int qty = atoi(f[1]);
+    if (qty < 1 || qty > 99) return 0;
+    snprintf(recipes[recipe_count].result, sizeof(recipes[0].result), "%s", f[0]);
+    recipes[recipe_count].qty = (uint8_t)qty;
+    recipes[recipe_count].n = (uint8_t)((got - 2) / 2);
+    for (int k = 0; k < recipes[recipe_count].n; k++) {
+        int c = atoi(f[3 + k * 2]);
+        if (!f[2 + k * 2][0] || c < 1 || c > 99) return 0;
+        snprintf(recipes[recipe_count].mat[k], sizeof(recipes[0].mat[0]), "%s", f[2 + k * 2]);
+        recipes[recipe_count].count[k] = (uint8_t)c;
+    }
+    recipe_count++;
+    return 1;
+}
+
+int RecipeCount(void) { return recipe_count; }
+
+void RecipeLabel(int i, char *out, size_t n) {
+    int len = snprintf(out, n, "Craft %d %s (", recipes[i].qty, recipes[i].result);
+    for (int k = 0; k < recipes[i].n && len > 0 && (size_t)len < n; k++)
+        len += snprintf(out + len, n - len, "%s%d %s", k ? ", " : "", recipes[i].count[k], recipes[i].mat[k]);
+    if (len > 0 && (size_t)len < n) snprintf(out + len, n - len, ")");
+}
+
+int CraftRecipe(int i, char *msg, size_t n) {
+    if (i < 0 || i >= recipe_count) return 0;
+    for (int k = 0; k < recipes[i].n; k++)
+        if (GetMaterialCount(recipes[i].mat[k]) < recipes[i].count[k]) {
+            snprintf(msg, n, "You need %d %s for that.", recipes[i].count[k], recipes[i].mat[k]);
+            return 0;
+        }
+    for (int k = 0; k < recipes[i].n; k++) ConsumeMaterialFromInventory(recipes[i].mat[k], recipes[i].count[k]);
+    AddMaterialToInventory(recipes[i].result, recipes[i].qty);
+    snprintf(msg, n, "Here you go: %d %s.", recipes[i].qty, recipes[i].result);
+    return 1;
+}
+
 // NewDecor,DecorID,Name,Price,Light(0/1),Comfort: a home decoration the merchant sells.
 static int NewDecorLine(char *cur) {
     char *f[4] = { 0 };
@@ -201,6 +383,10 @@ static int ApplyUpdateLine(char *line) {
     if (_stricmp(cmd, "NewCard") == 0) return NewCardLine(cur);
     if (_stricmp(cmd, "NewItem") == 0) return NewItemLine(cur);
     if (_stricmp(cmd, "NewDecor") == 0) return NewDecorLine(cur);
+    if (_stricmp(cmd, "NewSpawner") == 0) return NewSpawnerLine(cur);
+    if (_stricmp(cmd, "NewSetPiece") == 0) return NewSetPieceLine(cur);
+    if (_stricmp(cmd, "NewBiome") == 0) return NewBiomeLine(cur);
+    if (_stricmp(cmd, "NewRecipe") == 0) return NewRecipeLine(cur);
     if (_stricmp(cmd, "NewDialogue") == 0) return NewDialogueLine(cur);
     if (_stricmp(cmd, "NewQuest") == 0) return NewQuestLine(atoi(_strnicmp(id, "quest_id_", 9) == 0 ? id + 9 : id), cur);
     int quest = 0;
