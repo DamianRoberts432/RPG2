@@ -546,6 +546,7 @@ static void Bone(fx cx, fx cy, fx a0, fx s0, fx z0, fx a1, fx s1, fx z1, fx r0, 
 
 // Two-part limb from a hip or shoulder: th swings it forward from straight down,
 // bend folds the lower part at the knee (negative) or elbow (positive).
+static fx limb_ea, limb_ez; // where the last limb ended (hand or ankle)
 static void Limb(fx x, fx y, fx a, fx s, fx z, fx l1, fx l2, fx th, fx bend, fx r, COLORREF upper, COLORREF lower) {
     fx ka = a + FxMul(FxSin(th), l1), kz = z - FxMul(FxCos(th), l1), t2 = th + bend, fa = ka + FxMul(FxSin(t2), l2), fz = kz - FxMul(FxCos(t2), l2);
     if (fz < FX(0.0)) fz = FX(0.0);
@@ -553,6 +554,13 @@ static void Limb(fx x, fx y, fx a, fx s, fx z, fx l1, fx l2, fx th, fx bend, fx 
     Bone(x, y, ka, s, kz, fa, s, fz, FxMul(r, FX(0.85)), FxMul(r, FX(0.7)), lower);
     fx jr = FxMul(r, FX(0.95)), jz[3] = { kz - jr, kz, kz + jr }, jw[3] = { FX(0.0), jr, FX(0.0) }; // a rounded knee or elbow
     Lathe(x + FxMul(hcos, ka) - FxMul(hsin, s), y + FxMul(hsin, ka) + FxMul(hcos, s), jz, jw, 3, 6, FX(0.0), 0, 0, lower);
+    limb_ea = fa; limb_ez = fz;
+}
+
+// A small ball (hand, skull) at a point given along/side of the current heading.
+static void Ball(fx x, fx y, fx a, fx s, fx z, fx r, COLORREF col) {
+    fx jz[4] = { z - r, z - FxMul(r, FX(0.55)), z + FxMul(r, FX(0.55)), z + r }, jw[4] = { FxMul(r, FX(0.5)), r, r, FxMul(r, FX(0.5)) };
+    Lathe(x + FxMul(hcos, a) - FxMul(hsin, s), y + FxMul(hsin, a) + FxMul(hcos, s), jz, jw, 4, 6, FX(0.0), 1, 1, col);
 }
 
 // A curved band around the figure from angle th0 to th1 (0 = straight ahead), with an
@@ -593,10 +601,14 @@ static void Wing(fx cx, fx cy, fx z, fx len, fx span, fx f, int sidek, COLORREF 
     AddFace(v, 4, col, above, 0); AddFace(v, 4, col, below, 0);
 }
 
+static int heading_moving; // set by HeadingFor: whether that thing moved in the last 0.3 s
 static fx HeadingFor(int key, fx x, fx y) {
-    static fx lx[128], ly[128], hd[128];
+    static fx lx[128], ly[128], hd[128]; static DWORD moved[128];
     key &= 127;
     fx dx = x - lx[key], dy = y - ly[key], d2 = FxMul(dx, dx) + FxMul(dy, dy);
+    DWORD now = GetTickCount();
+    if (d2 >= FX(4.0)) moved[key] = 0; else if (d2 > FX(0.00002)) moved[key] = now;
+    heading_moving = moved[key] && now - moved[key] < 300;
     if (d2 >= FX(4.0)) hd[key] = FxAtan2((player_y) - y, (player_x) - x); // just appeared: facing the hero
     else if (d2 > FX(0.00002)) hd[key] = Wrap(hd[key] + FxMul(Wrap(FxAtan2(dy, dx) - hd[key]), FX(0.2)));
     lx[key] = x; ly[key] = y;
@@ -820,22 +832,86 @@ static void HumanMesh(const FpThing *t) {
         CapeBand(x, y, FX(1.75), FX(4.53), 7, FxMul(FX(0.66), S), FxMul(FX(0.11), S), FxMul(FX(0.14), S), FxMul(FX(0.21), S), FxMul(FX(0.012), S), RGB(25, 12, 18), RGB(150, 20, 35));
         CapeBand(x, y, FX(1.4), FX(4.88), 7, FxMul(FX(0.6), S), FxMul(FX(0.085), S), FxMul(FX(0.8), S), FxMul(FX(0.13), S), FX(0.0), RGB(25, 12, 18), RGB(150, 20, 35));
     }
-    int zomb = enemy && type == MONSTER_ZOMBIE; // zombies lurch slowly with arms out
-    fx ph = Tk(now, zomb ? 260 : 140) + FxI(idx), bob = FxMul(FxMul(FxAbs(FxSin(ph)), FX(0.012)), S);
-    for (int k = -1; k <= 1; k += 2) { // legs: the thigh swings and the knee folds as the foot comes through
-        fx p = ph + (k > 0 ? FX(0.0) : FX(3.14159)), th = FxMul(FxSin(p), FX(0.42)), bend = -(FX(0.15) + FxMul(FX(0.75), FxMax(FX(0.0), FxSin(p + FX(1.3)))));
-        Limb(x, y, FX(0.0), FxMul(k * FX(0.05), S), FxMul(FX(0.33), S) + bob, FxMul(FX(0.17), S), FxMul(FX(0.17), S), th, bend, FxMul(FX(0.034), S), legs, legs);
+    int zomb = enemy && type == MONSTER_ZOMBIE, skel = enemy && type == MONSTER_SKELLY; // zombies lurch slowly with arms out
+    int moving = heading_moving, act = NPC_IDLE; // walk only when really moving; otherwise show the job they're at
+    if (!enemy && !hero && idx != 13 && idx < village_npc_count && !moving && NpcAtWork(idx)) act = NpcActivity(idx);
+    fx ph = Tk(now, zomb ? 260 : 140) + FxI(idx), wk = Tk(now, 190) + FxI(idx * 2); // stride and work rhythm
+    fx lift = (moving ? FxMul(FxMul(FxAbs(FxSin(ph)), FX(0.012)), S) : FX(0.0)) - (act == NPC_NATURE ? FxMul(FX(0.15), S) : FX(0.0));
+    COLORREF shoe = skel ? skin : RGB(58, 40, 28);
+    fx lr = FxMul(skel ? FX(0.016) : FX(0.034), S), ar = FxMul(skel ? FX(0.014) : FX(0.028), S);
+    for (int k = -1; k <= 1; k += 2) { // legs: stride when walking, planted when standing, folded when kneeling to gather
+        fx p = ph + (k > 0 ? FX(0.0) : FX(3.14159)), th = FX(0.03), bend = -FX(0.06);
+        if (moving) { th = FxMul(FxSin(p), FX(0.42)); bend = -(FX(0.15) + FxMul(FX(0.75), FxMax(FX(0.0), FxSin(p + FX(1.3))))); }
+        else if (act == NPC_NATURE) { th = FX(1.1); bend = -FX(2.2); }
+        Limb(x, y, FX(0.0), FxMul(k * FX(0.05), S), FxMul(FX(0.33), S) + lift, FxMul(FX(0.17), S), FxMul(FX(0.17), S), th, bend, lr, legs, legs);
+        OBox(x, y, limb_ea + FxMul(FX(0.03), S), FxMul(k * FX(0.05), S), limb_ez, limb_ez + FxMul(FX(0.04), S), FxMul(FX(0.06), S), FxMul(FX(0.033), S), shoe); // foot
     }
-    Prism(x, y, FxMul(FX(0.31), S) + bob, FxMul(FX(0.6), S) + bob, FxMul(FX(0.085), S), FxMul(FX(0.1), S), 6, h, cloth); // rounded torso, broader at the shoulders
-    for (int k = -1; k <= 1; k += 2) { // arms swing against the legs with a soft elbow; the lead arm raises the weapon
-        fx p = ph + (k > 0 ? FX(3.14159) : FX(0.0)), lead = k > 0 ? swing : FX(0.0);
-        fx th = FxMul(FxSin(p), (zomb ? FX(0.1) : FX(0.35))) + (zomb ? FX(1.35) : FX(0.0)) + FxMul(lead, FX(1.9)), bend = FX(0.25) + FxMul(FX(0.25), FxMax(FX(0.0), FxSin(p))) + FxMul(lead, FX(0.4));
-        Limb(x, y, FX(0.0), FxMul(k * FX(0.12), S), FxMul(FX(0.57), S) + bob, FxMul(FX(0.13), S), FxMul(FX(0.12), S), th, zomb ? FX(0.1) : bend, FxMul(FX(0.028), S), cloth, skin);
+    if (skel) { // the in-game skeleton: spine, three ribs, pelvis and shoulder bar, all bare bone
+        Bone(x, y, FX(0.0), FX(0.0), FxMul(FX(0.32), S) + lift, FX(0.0), FX(0.0), FxMul(FX(0.62), S) + lift, FxMul(FX(0.016), S), FxMul(FX(0.014), S), skin);
+        OBox(x, y, FX(0.0), FX(0.0), FxMul(FX(0.3), S) + lift, FxMul(FX(0.35), S) + lift, FxMul(FX(0.04), S), FxMul(FX(0.075), S), skin);
+        for (int r = 0; r < 3; r++) { fx rz = FxMul(FX(0.45) + r * FX(0.045), S) + lift; OBox(x, y, FxMul(FX(0.02), S), FX(0.0), rz, rz + FxMul(FX(0.014), S), FxMul(FX(0.03), S), FxMul(FX(0.085), S), skin); }
+        OBox(x, y, FX(0.0), FX(0.0), FxMul(FX(0.58), S) + lift, FxMul(FX(0.6), S) + lift, FxMul(FX(0.03), S), FxMul(FX(0.12), S), skin);
+    } else Prism(x, y, FxMul(FX(0.31), S) + lift, FxMul(FX(0.6), S) + lift, FxMul(FX(0.085), S), FxMul(FX(0.1), S), 6, h, cloth); // rounded torso, broader at the shoulders
+    fx ha = FX(0.0), hz = FX(0.0), ht = FX(0.0), la = FX(0.0), lz = FX(0.0);
+    for (int k = -1; k <= 1; k += 2) { // arms: swing when walking, otherwise whatever the job needs; the lead (k > 0) arm holds the tool
+        fx p = ph + (k > 0 ? FX(3.14159) : FX(0.0)), lead = k > 0 ? swing : FX(0.0), th, bend, wv = FxSin(wk);
+        if (act == NPC_SWEEP) { th = FX(0.55) + FxMul(wv, FX(0.18)); bend = FX(0.5); }
+        else if (act == NPC_FARM) { th = FX(0.6) + FxMul(FxMax(FX(0.0), wv), FX(1.7)); bend = FX(0.3); }
+        else if (act == NPC_WATER) { th = FX(1.05) + FxMul(FxMax(FX(0.0), FxSin(wk / 3)), FX(0.12)); bend = FX(0.25); }
+        else if (act == NPC_NATURE) { th = k > 0 ? FX(0.75) + FxMul(wv, FX(0.2)) : FX(0.35); bend = k > 0 ? FX(0.2) : FX(0.9); }
+        else if (act == NPC_HAMMER) { th = k > 0 ? FX(0.9) + FxMul(FxMax(FX(0.0), FxSin(wk * 2)), FX(1.4)) : FX(0.9); bend = FX(0.35); }
+        else if (act == NPC_INSPECT) { th = k > 0 ? FX(0.45) : -FX(0.35); bend = k > 0 ? FX(2.1) : -FX(0.4); }
+        else { // walking swing, or at ease and breathing; zombies reach out and the lead arm raises a weapon
+            fx amp = moving ? (zomb ? FX(0.1) : FX(0.35)) : FX(0.04);
+            th = FxMul(FxSin(moving ? p : Tk(now, 900) + FxI(idx)), amp) + (zomb ? FX(1.35) : FX(0.0)) + FxMul(lead, FX(1.9));
+            bend = zomb ? FX(0.1) : FX(0.25) + (moving ? FxMul(FX(0.25), FxMax(FX(0.0), FxSin(p))) : FX(0.0)) + FxMul(lead, FX(0.4));
+        }
+        Limb(x, y, FX(0.0), FxMul(k * FX(0.12), S), FxMul(FX(0.57), S) + lift, FxMul(FX(0.13), S), FxMul(FX(0.12), S), th, bend, ar, skel ? skin : cloth, skin);
+        Ball(x, y, limb_ea, FxMul(k * FX(0.12), S), limb_ez, FxMul(skel ? FX(0.024) : FX(0.032), S), skin); // hand
+        if (k > 0) { ha = limb_ea; hz = limb_ez; ht = th + bend; } else { la = limb_ea; lz = limb_ez; }
     }
-    if (swing > FX(0.0)) OBox(x, y, FxMul((FX(0.1) + FxMul(swing, FX(0.2))), S), FxMul(FX(0.13), S), FxMul((FX(0.5) + FxMul(swing, FX(0.1))), S), FxMul((FX(0.54) + FxMul(swing, FX(0.1))), S), FxMul(FX(0.12), S), FxMul(FX(0.015), S), RGB(200, 205, 215));
-    Prism(x, y, FxMul(FX(0.6), S), FxMul(FX(0.75), S), FxMul(FX(0.058), S), FxMul(FX(0.05), S), 6, h, skin); // head
+    { // the tool in hand for the job, carried on along the forearm
+        fx sr = FxMul(FX(0.12), S), dA = FxSin(ht), dZ = -FxCos(ht);
+        COLORREF wood = RGB(120, 85, 50), iron = RGB(70, 70, 78);
+        if (act == NPC_SWEEP) { // broom swishing side to side
+            fx bs = FxMul(FxSin(wk), FX(0.12)), ba = ha + FX(0.32);
+            Bone(x, y, ha, sr, hz + FX(0.1), ba, bs, FX(0.05), FX(0.012), FX(0.012), wood);
+            OBox(x, y, ba, bs, FX(0.0), FX(0.06), FX(0.04), FX(0.1), RGB(205, 175, 90));
+        } else if (act == NPC_FARM) { // hoe raised and chopped into the soil
+            fx ea = ha + FxMul(dA, FX(0.45)), ez = FxMax(FX(0.03), hz + FxMul(dZ, FX(0.45)));
+            Bone(x, y, ha - FxMul(dA, FX(0.08)), sr, hz - FxMul(dZ, FX(0.08)), ea, sr, ez, FX(0.012), FX(0.012), wood);
+            OBox(x, y, ea + FX(0.03), sr, ez - FX(0.03), ez + FX(0.02), FX(0.035), FX(0.05), RGB(150, 150, 155));
+        } else if (act == NPC_WATER) { // fishing: rod up and out over the water, line down to a bobbing red float
+            fx ta = ha + FX(0.75), tz = hz + FX(0.55), fa = ha + FX(1.25), bob = FxMul(FxMax(FX(0.0), FxSin(wk / 2)), FX(0.02));
+            Bone(x, y, ha, FX(0.0), hz, ta, FX(0.0), tz, FX(0.012), FX(0.006), wood);
+            Bone(x, y, ta, FX(0.0), tz, fa, FX(0.0), FX(0.03) + bob, FX(0.003), FX(0.003), RGB(220, 220, 225));
+            OBox(x, y, fa, FX(0.0), bob, FX(0.04) + bob, FX(0.02), FX(0.02), RGB(220, 40, 30));
+        } else if (act == NPC_NATURE) { // kneeling to pick herbs into a basket
+            OBox(x, y, la, -sr, FxMax(FX(0.0), lz - FX(0.08)), lz, FX(0.06), FX(0.05), RGB(170, 130, 70));
+            Prism(x + FxMul(hcos, ha + FX(0.05)), y + FxMul(hsin, ha + FX(0.05)), FX(0.0), FX(0.07), FX(0.03), FX(0.0), 4, FX(0.0), RGB(70, 150, 60));
+        } else if (act == NPC_HAMMER) { // blacksmith at the anvil with a glowing bar; sparks on each strike
+            fx aa = FX(0.42), ea = ha + FxMul(dA, FX(0.2)), ez = hz + FxMul(dZ, FX(0.2));
+            OBox(x, y, aa, FX(0.0), FX(0.0), FX(0.2), FX(0.06), FX(0.06), iron);
+            OBox(x, y, aa, FX(0.0), FX(0.2), FX(0.27), FX(0.15), FX(0.08), iron);
+            face_glow = 1; OBox(x, y, aa, FX(0.0), FX(0.27), FX(0.29), FX(0.08), FX(0.02), RGB(255, 140, 40));
+            if (FxSin(wk * 2) < -FX(0.6))
+                for (int s = 0; s < 3; s++) OBox(x, y, aa + (s - 1) * FX(0.06), (s - 1) * FX(0.05), FX(0.31) + s * FX(0.03), FX(0.33) + s * FX(0.03), FX(0.01), FX(0.01), RGB(255, 215, 90));
+            face_glow = 0;
+            Bone(x, y, ha, sr, hz, ea, sr, ez, FX(0.012), FX(0.012), wood);
+            OBox(x, y, ea, sr, ez - FX(0.035), ez + FX(0.035), FX(0.05), FX(0.035), iron);
+        } else if (skel) // the skeleton's notched grey sword, as in play
+            Bone(x, y, ha, sr, hz, ha + FxMul(dA, FxMul(FX(0.32), S)), sr, hz + FxMul(dZ, FxMul(FX(0.32), S)), FxMul(FX(0.014), S), FxMul(FX(0.008), S), RGB(170, 175, 185));
+    }
+    if (swing > FX(0.0) && !skel) OBox(x, y, FxMul((FX(0.1) + FxMul(swing, FX(0.2))), S), FxMul(FX(0.13), S), FxMul((FX(0.5) + FxMul(swing, FX(0.1))), S), FxMul((FX(0.54) + FxMul(swing, FX(0.1))), S), FxMul(FX(0.12), S), FxMul(FX(0.015), S), RGB(200, 205, 215));
+    if (skel) { // round skull with dark sockets and a jaw
+        Ball(x, y, FX(0.0), FX(0.0), FxMul(FX(0.69), S) + lift, FxMul(FX(0.07), S), skin);
+        OBox(x, y, FxMul(FX(0.03), S), FX(0.0), FxMul(FX(0.61), S) + lift, FxMul(FX(0.64), S) + lift, FxMul(FX(0.035), S), FxMul(FX(0.04), S), skin);
+        Eyes(x, y, FxMul(FX(0.066), S), FxMul(FX(0.028), S), FxMul(FX(0.7), S) + lift, FxMul(FX(0.012), S), RGB(30, 25, 35));
+        return;
+    }
+    Prism(x, y, FxMul(FX(0.6), S) + lift, FxMul(FX(0.75), S) + lift, FxMul(FX(0.058), S), FxMul(FX(0.05), S), 6, h, skin); // head
     if (horns) { Cone(x, y, FX(0.0), FxMul(FX(0.04), S), FxMul(FX(0.74), S), FxMul(FX(0.82), S), FxMul(FX(0.015), S), RGB(230, 220, 190)); Cone(x, y, FX(0.0), -FxMul(FX(0.04), S), FxMul(FX(0.74), S), FxMul(FX(0.82), S), FxMul(FX(0.015), S), RGB(230, 220, 190)); }
-    if (crown) OBox(x, y, FX(0.0), FX(0.0), FxMul(FX(0.74), S), FxMul(FX(0.79), S), FxMul(FX(0.055), S), FxMul(FX(0.055), S), RGB(235, 195, 60));
+    if (crown) OBox(x, y, FX(0.0), FX(0.0), FxMul(FX(0.74), S) + lift, FxMul(FX(0.79), S) + lift, FxMul(FX(0.055), S), FxMul(FX(0.055), S), RGB(235, 195, 60));
     if (hero) {
         const char *hd = WornItem("Head"); COLORREF hc = hd ? ClothingColor(hd) : CLOTH_UNKNOWN;
         OBox(x, y, -FxMul(FX(0.01), S), FX(0.0), FxMul(FX(0.72), S), FxMul(FX(0.78), S), FxMul(FX(0.066), S), FxMul(FX(0.066), S), hc != CLOTH_UNKNOWN ? hc : HeroHairColor());
@@ -846,7 +922,7 @@ static void HumanMesh(const FpThing *t) {
         OBox(x, y, FX(0.0), FX(0.0), FxMul(FX(0.57), S), FxMul(FX(0.6), S), FxMul(FX(0.065), S), FxMul(FX(0.105), S), HeroTrimColor());
         face_bias = FX(0.0);
     }
-    Eyes(x, y, FxMul(FX(0.063), S), FxMul(FX(0.025), S), FxMul(FX(0.69), S), FxMul(FX(0.01), S), eye);
+    Eyes(x, y, FxMul(FX(0.063), S), FxMul(FX(0.025), S), FxMul(FX(0.69), S) + lift, FxMul(FX(0.01), S), eye);
 }
 
 static void TreeMesh(const FpThing *t) {
