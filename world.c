@@ -609,7 +609,7 @@ static int NpcRoutine(int i) {
         fx hx = npc->home_x, hy = npc->home_y, gx = hx, gy = hy;
         if (act == NPC_SWEEP) gx = hx + (npc_leg[i] ? FX(0.7) : -FX(0.7));
         else if (act == NPC_FARM && OpenTile(FxTrunc(hx + FX(1.3)), FxTrunc(hy + FX(1.3)))) { gx = hx + FX(1.3); gy = hy + (npc_leg[i] ? FX(1.3) : FX(2.2)); }
-        else if (act == NPC_WATER && npc_leg[i] && !SpotBeside(12, hx, hy, FxI(10), &gx, &gy)) npc_act[i] = NPC_NATURE;
+        else if (act == NPC_WATER && npc_leg[i] && !SpotBeside(12, hx, hy, FxI(30), &gx, &gy)) npc_act[i] = NPC_NATURE;
         else if (act == NPC_NATURE && npc_leg[i]) SpotBeside(11, hx, hy, FxI(8), &gx, &gy);
         else if (act == NPC_INSPECT && npc_leg[i]) {
             fx bx, by; int intact, n = 0, pick = abs(RainHash(i + FxTrunc(world_tick))) % 6;
@@ -628,7 +628,7 @@ static int NpcRoutine(int i) {
     if (VISUAL_MAP[FxTrunc(ny)][FxTrunc(nx)] != 1 && VISUAL_MAP[FxTrunc(ny)][FxTrunc(nx)] != 12) { npc->x = nx; npc->y = ny; }
     else if (VISUAL_MAP[FxTrunc(npc->y)][FxTrunc(nx)] != 1 && VISUAL_MAP[FxTrunc(npc->y)][FxTrunc(nx)] != 12) npc->x = nx;
     else if (VISUAL_MAP[FxTrunc(ny)][FxTrunc(npc->x)] != 1 && VISUAL_MAP[FxTrunc(ny)][FxTrunc(npc->x)] != 12) npc->y = ny;
-    else npc_until[i] = FxI(0);
+    else { npc_gx[i] = npc->x; npc_gy[i] = npc->y; } // blocked: get on with the job right here instead of walking into the wall
     npc->direction = DirectionOf(dx, dy);
     return 1;
 }

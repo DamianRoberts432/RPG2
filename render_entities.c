@@ -795,7 +795,13 @@ static void DrawNpcProp(HDC hdc, int sx, int sy, int i) {
     } else if (act == NPC_WATER) {
         HBRUSH pail = CreateSolidBrush(RGB(140, 140, 150)); RECT r = { sx + 7, sy + 3, sx + 14, sy + 10 }; FillRect(hdc, &r, pail); DeleteObject(pail);
         PenLine(hdc, 1, RGB(70, 70, 75), sx + 7, sy + 3, sx + 10, sy - 1); PenLine(hdc, 1, RGB(70, 70, 75), sx + 10, sy - 1, sx + 13, sy + 3);
-        if (NpcAtWork(i)) { HBRUSH w = CreateSolidBrush(RGB(70, 140, 220)); RECT wr = { sx + 8, sy + 3, sx + 13, sy + 5 }; FillRect(hdc, &wr, w); DeleteObject(w); }
+        if (NpcAtWork(i)) { // fishing at the water's edge, the pail beside them for the catch
+            HBRUSH w = CreateSolidBrush(RGB(70, 140, 220)); RECT wr = { sx + 8, sy + 3, sx + 13, sy + 5 }; FillRect(hdc, &wr, w); DeleteObject(w);
+            int bob = FxTrunc(FxAbs(FxSinTurn(FxTurn64((int64_t)FxBits(t) + FxI(i)))) * 2);
+            PenLine(hdc, 2, wood, sx - 2, sy - 2, sx - 14, sy - 16);
+            PenLine(hdc, 1, RGB(225, 225, 230), sx - 14, sy - 16, sx - 18, sy + 10 + bob);
+            HBRUSH fl = CreateSolidBrush(RGB(220, 40, 30)); RECT fr = { sx - 20, sy + 9 + bob, sx - 16, sy + 12 + bob }; FillRect(hdc, &fr, fl); DeleteObject(fl);
+        }
     } else if (act == NPC_HAMMER) {
         HBRUSH iron = CreateSolidBrush(RGB(55, 55, 62)), tub = CreateSolidBrush(RGB(60, 110, 170));
         RECT top = { sx + 10, sy + 4, sx + 24, sy + 9 }, base = { sx + 14, sy + 9, sx + 20, sy + 15 }, water = { sx + 24, sy + 8, sx + 33, sy + 15 };
