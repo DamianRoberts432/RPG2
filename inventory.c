@@ -169,6 +169,7 @@ fx GetNamedItemWeight(const char *name) {
     if (strcmp(name, "Raft") == 0) return FxI(8);
     if (strcmp(name, "Canoe") == 0) return FxI(6);
     if (strcmp(name, "Boat") == 0) return FxI(4);
+    if (strcmp(name, "Horse") == 0) return FxI(0); // it carries itself
     if (strcmp(name, "Night Vision Ring") == 0) return FX(0.1);
     if (strcmp(name, "Strategy Guide") == 0) return FX(0.5);
     if (strcmp(name, "Rusty Sword") == 0) return FxI(2);

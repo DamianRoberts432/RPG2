@@ -797,6 +797,13 @@ static void BeastMesh(fx x, fx y, int type, int idx, fx swing) {
 
 // Monsters and villagers as low-poly people: legs that stride, a body,
 // arms (the leading one swings a weapon up close), a head and eye dots.
+// A four-beat tool swing: key poses for each quarter of the work rhythm, eased between.
+static fx ToolArc(const fx *key, fx wk) {
+    fx u = FxMul(FxMod(wk, FX(6.2831853)), FX(0.63662)); // 0..4
+    int f = FxTrunc(u);
+    return key[f & 3] + FxMul(key[(f + 1) & 3] - key[f & 3], u - FxI(f));
+}
+
 static void HumanMesh(const FpThing *t) {
     DWORD now = GetTickCount();
     int enemy = t->kind == FP_ENEMY, idx = enemy ? t->seed >> 5 : t->seed >> 4, type = enemy ? t->seed & 31 : t->seed & 15;
@@ -836,6 +843,11 @@ static void HumanMesh(const FpThing *t) {
     int moving = heading_moving, act = NPC_IDLE; // walk only when really moving; otherwise show the job they're at
     if (!enemy && !hero && idx != 13 && idx < village_npc_count && !moving && NpcAtWork(idx)) act = NpcActivity(idx);
     fx ph = Tk(now, zomb ? 260 : 140) + FxI(idx), wk = Tk(now, 190) + FxI(idx * 2); // stride and work rhythm
+    if (zomb && moving) { // shamble: a quick step, a long drag, and the body yawing side to side
+        fx u = FxMod(ph, FX(6.2831853)), wob = FxMul(FxSin(Tk(now, 520) + FxI(idx)), FX(0.14)), c = hcos, s = hsin;
+        ph = u + FxMul(FX(0.8), FxSin(u));
+        hcos = FxMul(c, FxCos(wob)) - FxMul(s, FxSin(wob)); hsin = FxMul(s, FxCos(wob)) + FxMul(c, FxSin(wob));
+    }
     fx lift = (moving ? FxMul(FxMul(FxAbs(FxSin(ph)), FX(0.012)), S) : FX(0.0)) - (act == NPC_NATURE ? FxMul(FX(0.15), S) : FX(0.0));
     COLORREF shoe = skel ? skin : RGB(58, 40, 28);
     fx lr = FxMul(skel ? FX(0.016) : FX(0.034), S), ar = FxMul(skel ? FX(0.014) : FX(0.028), S);
@@ -843,6 +855,7 @@ static void HumanMesh(const FpThing *t) {
         fx p = ph + (k > 0 ? FX(0.0) : FX(3.14159)), th = FX(0.03), bend = -FX(0.06);
         if (moving) { th = FxMul(FxSin(p), FX(0.42)); bend = -(FX(0.15) + FxMul(FX(0.75), FxMax(FX(0.0), FxSin(p + FX(1.3))))); }
         else if (act == NPC_NATURE) { th = FX(1.1); bend = -FX(2.2); }
+        if (zomb && moving && k < 0) { th = FxMul(th, FX(0.5)); bend = -FX(0.08); } // the stiff leg drags behind
         Limb(x, y, FX(0.0), FxMul(k * FX(0.05), S), FxMul(FX(0.33), S) + lift, FxMul(FX(0.17), S), FxMul(FX(0.17), S), th, bend, lr, legs, legs);
         fx fa = limb_ea + FxMul(FX(0.03), S), fs = FxMul(k * FX(0.05), S), ta = fa + FxMul(FX(0.03), S);
         OBox(x, y, fa - FxMul(FX(0.015), S), fs, limb_ez, limb_ez + FxMul(FX(0.04), S), FxMul(FX(0.045), S), FxMul(FX(0.033), S), shoe); // foot
@@ -858,7 +871,12 @@ static void HumanMesh(const FpThing *t) {
     for (int k = -1; k <= 1; k += 2) { // arms: swing when walking, otherwise whatever the job needs; the lead (k > 0) arm holds the tool
         fx p = ph + (k > 0 ? FX(3.14159) : FX(0.0)), lead = k > 0 ? swing : FX(0.0), th, bend, wv = FxSin(wk);
         if (act == NPC_SWEEP) { th = FX(0.55) + FxMul(wv, FX(0.18)); bend = FX(0.5); }
-        else if (act == NPC_FARM) { th = FX(0.6) + FxMul(FxMax(FX(0.0), wv), FX(1.7)); bend = FX(0.3); }
+        else if (act == NPC_FARM) { // hoe: lift, overhead, chop, rest in the soil; shovel: dig, push, lift, toss
+            static const fx hoe_th[4] = { FX(0.5), FX(1.6), FX(2.4), FX(1.2) }, hoe_bend[4] = { FX(0.3), FX(0.5), FX(0.2), FX(0.1) };
+            static const fx sho_th[4] = { FX(0.25), FX(0.15), FX(0.9), FX(1.3) }, sho_bend[4] = { FX(0.5), FX(0.6), FX(0.4), FX(0.2) };
+            int shovel = idx & 1;
+            th = ToolArc(shovel ? sho_th : hoe_th, wk); bend = ToolArc(shovel ? sho_bend : hoe_bend, wk);
+        }
         else if (act == NPC_WATER) { th = FX(1.05) + FxMul(FxMax(FX(0.0), FxSin(wk / 3)), FX(0.12)); bend = FX(0.25); }
         else if (act == NPC_NATURE) { th = k > 0 ? FX(0.75) + FxMul(wv, FX(0.2)) : FX(0.35); bend = k > 0 ? FX(0.2) : FX(0.9); }
         else if (act == NPC_HAMMER) { th = k > 0 ? FX(0.9) + FxMul(FxMax(FX(0.0), FxSin(wk * 2)), FX(1.4)) : FX(0.9); bend = FX(0.35); }
@@ -882,7 +900,10 @@ static void HumanMesh(const FpThing *t) {
         } else if (act == NPC_FARM) { // hoe raised and chopped into the soil
             fx ea = ha + FxMul(dA, FX(0.45)), ez = FxMax(FX(0.03), hz + FxMul(dZ, FX(0.45)));
             Bone(x, y, ha - FxMul(dA, FX(0.08)), sr, hz - FxMul(dZ, FX(0.08)), ea, sr, ez, FX(0.012), FX(0.012), wood);
-            OBox(x, y, ea + FX(0.03), sr, ez - FX(0.03), ez + FX(0.02), FX(0.035), FX(0.05), RGB(150, 150, 155));
+            if (idx & 1) { // shovel: a broad blade, with a clod of earth on it while it lifts
+                OBox(x, y, ea, sr, ez - FX(0.01), ez + FX(0.01), FX(0.05), FX(0.045), RGB(150, 150, 155));
+                if (ht > FX(1.0)) OBox(x, y, ea, sr, ez + FX(0.01), ez + FX(0.04), FX(0.035), FX(0.03), RGB(95, 70, 45));
+            } else OBox(x, y, ea + FX(0.03), sr, ez - FX(0.03), ez + FX(0.02), FX(0.035), FX(0.05), RGB(150, 150, 155));
         } else if (act == NPC_WATER) { // fishing: rod up and out over the water, line down to a bobbing red float
             fx ta = ha + FX(0.75), tz = hz + FX(0.55), fa = ha + FX(1.25), bob = FxMul(FxMax(FX(0.0), FxSin(wk / 2)), FX(0.02));
             Bone(x, y, ha, FX(0.0), hz, ta, FX(0.0), tz, FX(0.012), FX(0.006), wood);
@@ -1188,12 +1209,12 @@ static void DrawClouds(HDC hdc, fx light) {
     if (in_cave || current_biome == BIOME_CAVE) return;
     fx wx, wy; WindAcross(&wx, &wy);
     fx t = Tk(GetTickCount(), 1000), k = light < FX(0.25) ? FX(0.25) : light;
-    int n = IsAdverseWeather() ? 12 : 3 + FxTrunc(FxMul((weather_intensity), FX(6.0)));
+    int n = IsAdverseWeather() ? 18 : 6 + FxTrunc(FxMul((weather_intensity), FX(8.0)));
     for (int i = 0; i < n; i++) {
         int hs = RainHash(i * 977 + 31);
         // Pinned to bearings like the stars, drifting slowly with the wind, so a
         // turning gaze slides them smoothly and they never jump or vanish.
-        fx az = FxI(hs % 6283) / 1000 + FxMul(FxMul(t, FX(0.004)), (wx - wy)), el = FX(0.10) + FxI(hs / 6283 % 300) / 1000;
+        fx az = FxI(hs % 6283) / 1000 + FxMul(FxMul(t, FX(0.012)), (wx - wy)), el = FX(0.10) + FxI(hs / 6283 % 300) / 1000;
         int x, y; SkyPoint(az, el, &x, &y);
         if (x < -400) continue;
         int solid = i % 3 != 0, w = FxTrunc(FxMul(FxMul(focal, (FX(0.10) + (hs % 5) * FX(0.04))), (FX(0.7) + el)));

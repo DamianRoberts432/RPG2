@@ -366,7 +366,7 @@ void UpdateSeasonAndWeather(void) {
     UpdateGusts(dt);
     // The original gentle breeze is unchanged (just no longer re-phased per
     // screen); gusts are layered on top of it.
-    fx breeze = FxSin(FxMul(world_tick, FX(0.01)));
+    fx breeze = FxSin(FxMul(world_tick, FX(0.004))); // slow swing, so the wind holds its direction longer
     wind_dir = FxTrunc(breeze * 3) + FxTrunc(wind_gust * 6) + FxTrunc(storm_wind * (breeze >= 0 ? 4 : -4));
     if (current_weather == WEATHER_RAIN && weather_intensity > FX(0.2)) since_rain = FxI(0); else if (since_rain < FxI(30000)) since_rain += dt;
 }

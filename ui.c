@@ -137,6 +137,7 @@ static const char *ItemBlurb(const char *name) {
     if (strcmp(name, "Peyote") == 0) return "Eat it and the colours melt for 30 seconds.";
     if (strcmp(name, "Garlic") == 0) return "Carried: Vampires won't come for you.";
     if (strcmp(name, "Silver Dagger") == 0) return "Silver: double damage to Vampires and Werewolves.";
+    if (strcmp(name, "Horse") == 0) return "Ride anywhere on dry land at 2.2x speed, with no stamina spent.";
     if (strcmp(name, "Canoe") == 0 || strcmp(name, "Raft") == 0 || strcmp(name, "Boat") == 0) return "Carry it to paddle across water.";
     if (strcmp(name, "Treasure Map") == 0) return "Red X's on the World Map mark where your chests are.";
     if (strncmp(name, "Cache Map", 9) == 0) return "Marks one buried cache on the World Map. Dig it up with X. Keep it or give it away.";
