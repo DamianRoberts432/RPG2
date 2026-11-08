@@ -69,8 +69,13 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, fx override_scale) {
     
     HBRUSH shadow_b = CreateSolidBrush(RGB(15, 20, 26)); HGDIOBJ old = SelectObject(hdc, shadow_b); 
     { fx ox, oy; SunShadowOffset(&ox, &oy); // the shadow stretches away from the sun or moon
-      int lx = FxTrunc(FxMul(ox * 12, scale)), ly = FxTrunc(FxMul(oy * 4, scale));
-      Ellipse(hdc, sx - FxTrunc(10 * scale) + (lx < 0 ? lx : 0), sy + FxTrunc(14 * scale), sx + FxTrunc(10 * scale) + (lx > 0 ? lx : 0), sy + FxTrunc(22 * scale) + ly); } SelectObject(hdc, old); DeleteObject(shadow_b);
+      // a silhouette, not a blob: feet, a body tapering away from the light, and a round head at the far end
+      int vx = FxTrunc(FxMul(ox * 30, scale)), vy = FxTrunc(FxMul(FxI(5) + oy * 14, scale)), fy = sy + FxTrunc(18 * scale);
+      int w0 = FxTrunc(7 * scale), w1 = FxTrunc(4 * scale), hr = FxTrunc(5 * scale) + 1;
+      Ellipse(hdc, sx - FxTrunc(9 * scale), fy - FxTrunc(3 * scale), sx + FxTrunc(9 * scale), fy + FxTrunc(3 * scale));
+      POINT body[4] = { { sx - w0, fy }, { sx + w0, fy }, { sx + vx * 7 / 10 + w1, fy + vy * 7 / 10 }, { sx + vx * 7 / 10 - w1, fy + vy * 7 / 10 } };
+      HGDIOBJ op = SelectObject(hdc, GetStockObject(NULL_PEN)); Polygon(hdc, body, 4);
+      Ellipse(hdc, sx + vx - hr, fy + vy - hr, sx + vx + hr, fy + vy + hr); SelectObject(hdc, op); } SelectObject(hdc, old); DeleteObject(shadow_b);
 
     // Menus and portraits show the hero facing you; in play the 8-way facing.
     int dir = override_scale == FxI(1) ? HeroDir8() : 0;

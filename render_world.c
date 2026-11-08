@@ -208,11 +208,33 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
     int root_x = sx; // the trunk stays rooted; only the canopy sways
     sx += sway_lut[sway_phase] * (3 + wind_strength) / 3;
     int lean = (sx - root_x) / 2;
-    POINT trunk[] = {{root_x - 4 + lean, sy + 10}, {root_x + 4 + lean, sy + 10}, {root_x + 4, sy + 24}, {root_x - 4, sy + 24}};
+    int tall = current_biome == BIOME_FOREST && tile_seed % 3 == 0 ? 16 : 0; // forest giants: a long bare trunk lifts the crown high
+    POINT trunk[] = {{root_x - 4 + lean, sy + 10 - tall}, {root_x + 4 + lean, sy + 10 - tall}, {root_x + 4, sy + 24}, {root_x - 4, sy + 24}};
     HBRUSH b = CreateSolidBrush(RGB(130, 95, 70)); HGDIOBJ old = SelectObject(hdc, b); Polygon(hdc, trunk, 4); SelectObject(hdc, old); DeleteObject(b);
-    
+    sy -= tall;
+
     int deciduous = IsDeciduousTree(tile_seed);
-    if (deciduous) {
+    int willow = 0; // weeping willows grow by water
+    if (deciduous && tile_seed % 3 == 0 && current_biome != BIOME_TUNDRA) {
+        int tr = tile_seed / MAP_SIZE, tc = tile_seed % MAP_SIZE;
+        for (int r = tr - 2; r <= tr + 2 && !willow; r++) for (int c = tc - 2; c <= tc + 2; c++)
+            if (r >= 0 && c >= 0 && r < MAP_SIZE && c < MAP_SIZE && VISUAL_MAP[r][c] == 12) { willow = 1; break; }
+    }
+    if (willow) { // a low dome with long strands hanging to the ground, swinging with the wind
+        int leafy = current_season != SEASON_WINTER;
+        HBRUSH wb = CreateSolidBrush(leafy ? RGB(85, 135, 55) : RGB(110, 95, 70)); HGDIOBJ prev = SelectObject(hdc, wb);
+        HGDIOBJ prev_pen = SelectObject(hdc, GetStockObject(NULL_PEN));
+        Ellipse(hdc, sx - 19, sy - 14, sx + 19, sy + 8);
+        SelectObject(hdc, prev_pen); SelectObject(hdc, prev); DeleteObject(wb);
+        HPEN sp = CreatePen(PS_SOLID, 2, leafy ? RGB(115, 170, 75) : RGB(130, 115, 85)); prev_pen = SelectObject(hdc, sp);
+        int blow = wind_dir * 2;
+        for (int i = 0; i < 9; i++) {
+            int x0 = sx - 16 + i * 4, len = 14 + (tile_seed + i * 7) % 8;
+            int swing = blow + sway_lut[(sway_phase + i * 3) & 31] * (2 + abs(wind_dir)) / 2;
+            MoveToEx(hdc, x0, sy, NULL); LineTo(hdc, x0 + swing / 2, sy + len / 2); LineTo(hdc, x0 + swing, sy + len);
+        }
+        SelectObject(hdc, prev_pen); DeleteObject(sp);
+    } else if (deciduous) {
         DrawDeciduousCanopy(hdc, sx, sy, tile_seed);
     } else if (tile_seed % 2 == 0) {
         int heights[] = {12, 4, -4}, widths[] = {20, 16, 12};
