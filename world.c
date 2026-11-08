@@ -84,7 +84,7 @@ void GenerateVillageNPCs(void) {
         if (stage >= 3) for (int g = 0; g < 2 && village_npc_count < MAX_NPCS; g++) { // gate guards
             fx gy = g ? FxI(23) : FxI(7);
             VISUAL_MAP[FxTrunc(gy)][17] = 0;
-            village_npcs[village_npc_count++] = (NPCEntity){ FxI(17), gy, FxI(17), gy, 2, 0, FACE_DOWN, "Guard: The palisade keeps the bandits out.", 150 };
+            village_npcs[village_npc_count++] = (NPCEntity){ FxI(17), gy, FxI(17), gy, 2, 0, FACE_DOWN, stage >= 5 ? "Guard: No army has ever taken these walls." : stage == 4 ? "Guard: Stone walls now. Let the bandits try." : "Guard: The palisade keeps the bandits out.", 150 };
         }
     }
 }
