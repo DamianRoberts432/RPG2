@@ -69,11 +69,13 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                     // which remembered/rolled biome) comes next, so left/right/
                     // up/down can each lead somewhere different.
                     int dgx = 0, dgy = 0;
-                    fx reenter_x = FxI(15), reenter_y = FxI(15);
+                    fx reenter_x = player_x, reenter_y = player_y; // keep the hero's place along the edge they crossed
                     if (player_x <= FX(0.5)) { dgx = -1; reenter_x = FxI(MAP_SIZE - 3); }
                     else if (player_x >= (FxI(MAP_SIZE) - FX(1.5))) { dgx = 1; reenter_x = FxI(2); }
                     if (player_y <= FX(0.5)) { dgy = -1; reenter_y = FxI(MAP_SIZE - 3); }
                     else if (player_y >= (FxI(MAP_SIZE) - FX(1.5))) { dgy = 1; reenter_y = FxI(2); }
+                    if (reenter_x < FxI(2)) reenter_x = FxI(2); else if (reenter_x > FxI(MAP_SIZE - 3)) reenter_x = FxI(MAP_SIZE - 3);
+                    if (reenter_y < FxI(2)) reenter_y = FxI(2); else if (reenter_y > FxI(MAP_SIZE - 3)) reenter_y = FxI(MAP_SIZE - 3);
 
                     int new_gx = screen_grid_x + dgx;
                     int new_gy = screen_grid_y + dgy;

@@ -147,8 +147,8 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, fx override_scale) {
 
     if (selected_race == RACE_ELF) {
         HPEN ear_p = CreatePen(PS_SOLID, 1, RGB(245, 210, 170)); HGDIOBJ prev_ear_p = SelectObject(hdc, ear_p);
-        MoveToEx(hdc, sx - FxTrunc(8 * scale), sy, NULL); LineTo(hdc, sx - FxTrunc(13 * scale), sy - FxTrunc(4 * scale));
-        MoveToEx(hdc, sx + FxTrunc(8 * scale), sy, NULL); LineTo(hdc, sx + FxTrunc(13 * scale), sy - FxTrunc(4 * scale));
+        MoveToEx(hdc, sx - FxTrunc(8 * scale), sy, NULL); LineTo(hdc, sx - FxTrunc(10 * scale), sy - FxTrunc(4 * scale));
+        MoveToEx(hdc, sx + FxTrunc(8 * scale), sy, NULL); LineTo(hdc, sx + FxTrunc(10 * scale), sy - FxTrunc(4 * scale));
         SelectObject(hdc, prev_ear_p); DeleteObject(ear_p);
     }
 
@@ -250,8 +250,8 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, fx override_scale) {
         SelectObject(hdc, prev_fold); SelectObject(hdc, prev_hood); DeleteObject(fold); DeleteObject(hood); DeleteObject(shade);
         if (selected_race == RACE_ELF) {
             HPEN ear_p = CreatePen(PS_SOLID, 2, RGB(245, 210, 170)); HGDIOBJ prev_ear_p = SelectObject(hdc, ear_p);
-            MoveToEx(hdc, sx - HS(9), sy, NULL); LineTo(hdc, sx - HS(14), sy - HS(5));
-            MoveToEx(hdc, sx + HS(9), sy, NULL); LineTo(hdc, sx + HS(14), sy - HS(5));
+            MoveToEx(hdc, sx - HS(9), sy, NULL); LineTo(hdc, sx - HS(12), sy - HS(5));
+            MoveToEx(hdc, sx + HS(9), sy, NULL); LineTo(hdc, sx + HS(12), sy - HS(5));
             SelectObject(hdc, prev_ear_p); DeleteObject(ear_p);
         }
         if (hero_beard > 0 && !back) {

@@ -13,6 +13,7 @@ void SpawnDirtClods(fx cx, fx cy);
 void UpdateDebrisTwigs(void);
 void HandleEnemyDamage(fx dmg);
 extern int village_kill;
+extern int minion_kill;
 extern DWORD bow_stamina_lock_until;
 fx DistanceToEnemy(void);
 int IsFacingEnemyWithin(fx dot_threshold);

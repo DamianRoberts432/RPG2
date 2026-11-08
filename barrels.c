@@ -88,6 +88,7 @@ void DrawBarrels(HDC hdc) {
         if (barrels[i].intact) {
             RoundRect(hdc, sx - 6, sy - 16, sx + 6, sy, 5, 5);
             MoveToEx(hdc, sx - 6, sy - 12, NULL); LineTo(hdc, sx + 6, sy - 12);
+            MoveToEx(hdc, sx - 6, sy - 7, NULL); LineTo(hdc, sx + 6, sy - 7);
             MoveToEx(hdc, sx - 6, sy - 4, NULL); LineTo(hdc, sx + 6, sy - 4);
         } else {
             Rectangle(hdc, sx - 8, sy - 3, sx - 1, sy - 1); Rectangle(hdc, sx + 1, sy - 5, sx + 7, sy - 3); Rectangle(hdc, sx - 3, sy - 1, sx + 4, sy + 1);

@@ -101,7 +101,7 @@ void DrawPlayerStatusHUD(HDC hdc) {
             CalendarMonthName(), (hour + 11) % 12 + 1, minute, hour < 12 ? "AM" : "PM");
     TextOut(hdc, 20, HUD_DATE_Y, line, (int)strlen(line));
     sprintf(line, "Weather: %s%s", underground ? "Underground" : weather_names[current_weather],
-            (!underground && FxAbs(wind_gust) > FX(0.3)) ? "  |  Windy" : "");
+            (!underground && (FxAbs(wind_gust) > FX(0.3) || abs(wind_dir) > 4)) ? "  |  Windy" : "");
     TextOut(hdc, 20, HUD_DATE_Y + 20, line, (int)strlen(line));
     sprintf(line, "Region: %s%s%s", biome_names[current_biome], stat_points > 0 ? "  |  Attribute points to spend!" : "", IsOutlaw() ? "  |  WANTED" : "");
     TextOut(hdc, 20, HUD_DATE_Y + 40, line, (int)strlen(line));
@@ -492,8 +492,8 @@ void DrawTabbedMenuOverlay(HDC hdc) {
         SetTextColor(hdc, RGB(200, 210, 220));
         sprintf(buf, "Season: %s (day %d of %d)   Weather: %s%s   Start: %s", season_names[current_season],
                 SeasonDay(), DAYS_PER_SEASON, weather_names[current_weather],
-                FxAbs(wind_gust) > FX(0.3) ? ", windy" : "", weather_source_label);
-        TextOut(hdc, 90, WINDOW_HEIGHT - 95, buf, (int)strlen(buf));
+                (FxAbs(wind_gust) > FX(0.3) || abs(wind_dir) > 4) ? ", windy" : "", weather_source_label);
+        TextOut(hdc, 135, WINDOW_HEIGHT - 95, buf, (int)strlen(buf));
     } else if (current_menu_tab == MENU_TAB_QUESTS) {
         int mid = 90 + (WINDOW_WIDTH - 240) / 2;
         DrawPanel(hdc, 80, 150, mid - 14, WINDOW_HEIGHT - 112);
@@ -583,7 +583,7 @@ int MenuTabStep(int cur, int dir) {
 #define MSG_LOG_MAX 40
 #define LOG_SHOW_MS 9000
 #define LOG_FADE_MS 3000
-typedef struct { char text[256]; DWORD t; } LogLine;
+typedef struct { char text[256]; DWORD t; uint16_t base, count; } LogLine; // base: length before any " (xN)"
 static LogLine msg_log[MSG_LOG_MAX];
 static int msg_log_count = 0, msg_log_head = 0;
 static char msg_last_seen[256];
@@ -592,9 +592,18 @@ static void PushLog(const char *s, size_t len) {
     while (len > 0 && *s == ' ') { s++; len--; }
     while (len > 0 && s[len - 1] == ' ') len--;
     if (len == 0) return;
-    if (len > 255) len = 255;
+    if (len > 240) len = 240;
+    DWORD now = GetTickCount();
+    for (int b = 0; b < msg_log_count && b < 5; b++) { // the same message again while it is still on screen is counted, not repeated
+        LogLine *o = &msg_log[(msg_log_head - 1 - b + 2 * MSG_LOG_MAX) % MSG_LOG_MAX];
+        if (now - o->t > LOG_SHOW_MS || o->base != len || memcmp(o->text, s, len) != 0) continue;
+        if (o->count < 999) o->count++;
+        snprintf(o->text + len, sizeof(o->text) - len, " (x%d)", o->count);
+        o->t = now;
+        return;
+    }
     LogLine *l = &msg_log[msg_log_head];
-    memcpy(l->text, s, len); l->text[len] = 0; l->t = GetTickCount();
+    memcpy(l->text, s, len); l->text[len] = 0; l->t = now; l->base = (uint16_t)len; l->count = 1;
     msg_log_head = (msg_log_head + 1) % MSG_LOG_MAX;
     if (msg_log_count < MSG_LOG_MAX) msg_log_count++;
 }
