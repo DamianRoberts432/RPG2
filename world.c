@@ -516,6 +516,22 @@ void GenerateProceduralScreen(int index) {
         critters[i].active = 1;
         critters[i].hidden = CritterAsleep(&critters[i]);
     }
+    { // butterflies over open ground by day in spring and summer; none in fall and winter
+        unsigned bs = (unsigned)current_screen_index * 2654435761u + 977u; // own hash: the screen's rand() sequence is unchanged
+        int bf_ok = (current_season == SEASON_SPRING || current_season == SEASON_SUMMER) && !spawn_night && current_biome != BIOME_CAVE && current_biome != BIOME_TUNDRA;
+        int bf_n = 3 + (int)((bs >> 16) % 4);
+        for (int i = 0; i < MAX_BUTTERFLIES; i++) {
+            int bx = 0, by = 0, open = 0;
+            for (int t = 0; t < 12 && !open; t++) { // a few tries for a patch of open ground
+                bs = bs * 1103515245u + 12345u; bx = 3 + (int)((bs >> 16) % (MAP_SIZE - 6));
+                bs = bs * 1103515245u + 12345u; by = 3 + (int)((bs >> 16) % (MAP_SIZE - 6));
+                open = VISUAL_MAP[by][bx] == 0;
+            }
+            butterflies[i].active = bf_ok && i < bf_n && open;
+            butterflies[i].x = FxI(bx); butterflies[i].y = FxI(by); butterflies[i].z = FxI(10);
+            butterflies[i].timer = FxI((int)((bs >> 8) % 60)); butterflies[i].color_profile = (int)((bs >> 20) % 3);
+        }
+    }
 
     for(int i = 13; i <= 17; i++) { for(int j = 13; j <= 17; j++) { VISUAL_MAP[i][j] = 0; } }
     if (current_biome == BIOME_CAVE) {
@@ -802,8 +818,31 @@ static void NestBabies(void) {
     }
 }
 
+// Butterflies flutter in loose loops and lift away from the hero; they leave at
+// nightfall and when fall arrives.
+static void UpdateButterflies(void) {
+    int h, m; GetGameClock(&h, &m);
+    int gone = current_season == SEASON_FALL || current_season == SEASON_WINTER || h >= 21 || h < 6;
+    for (int i = 0; i < MAX_BUTTERFLIES; i++) {
+        ButterflyParticle *b = &butterflies[i];
+        if (!b->active) continue;
+        if (gone) { b->active = 0; continue; }
+        b->timer += FX(0.1);
+        if (b->timer > FxI(6000)) b->timer -= FxI(6000);
+        fx a = FxMul(b->timer, FX(0.11)) + FxI(i * 2);
+        b->x += FxMul(FxCos(a), FX(0.012)) + FxMul(FxSin(FxMul(b->timer, FX(0.9))), FX(0.004));
+        b->y += FxMul(FxSin(FxMul(a, FX(1.3))), FX(0.012));
+        b->z = FxI(10) + FxMul(FxSin(FxMul(b->timer, FX(0.35))), FxI(4));
+        fx dx = b->x - player_x, dy = b->y - player_y, d = FxLen(dx, dy);
+        if (d < FX(1.5) && d > FX(0.01)) { b->x += FxMul(FxDiv(dx, d), FX(0.05)); b->y += FxMul(FxDiv(dy, d), FX(0.05)); b->z += FxI(6); }
+        if (b->x < FxI(2)) b->x = FxI(2); else if (b->x > FxI(MAP_SIZE - 3)) b->x = FxI(MAP_SIZE - 3);
+        if (b->y < FxI(2)) b->y = FxI(2); else if (b->y > FxI(MAP_SIZE - 3)) b->y = FxI(MAP_SIZE - 3);
+    }
+}
+
 void UpdateCritters(void) {
     UpdateBirds();
+    UpdateButterflies();
     if (world_frame % 30 != 0) return;
     NestBabies();
     for (int i = 0; i < MAX_CRITTERS; i++) {

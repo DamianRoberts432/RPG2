@@ -89,6 +89,7 @@ void TriggerMonsterRespawn(void) {
 }
 
 uint32_t hit_splash_color = 0;
+int minion_kill = 0; // set while a raised minion lands the blow: no loot from it during AFK
 int village_kill = 0; // set while villagers land the blow: their kills drop no loot or gold
 
 void SpawnBloodMist(fx x, fx y) {
@@ -241,7 +242,8 @@ void HandleEnemyDamage(fx dmg) {
         // Ordinary (junk) drops are 60% rarer than they used to be, to cut ground clutter.
         int loot_chance = FxTrunc(FxMul(70 * JUNK_DROP_RATE, loot_multiplier)) + 3 * stat_spent[4];
         if (loot_chance > 100) loot_chance = 100;
-        if (!village_kill && rand() % 100 < loot_chance) {
+        int no_drop = village_kill || (minion_kill && AfkViewActive());
+        if (!no_drop && rand() % 100 < loot_chance) {
             int loot_id = LOOT_SHORT_SWORD + rand() % 5;
             int loot_quantity = FxTrunc(loot_multiplier);
             if (loot_quantity < 1) loot_quantity = 1;
@@ -250,7 +252,7 @@ void HandleEnemyDamage(fx dmg) {
         }
         // A little gold, more with level and luck, never more than GOLD_DROP_CAP.
         int coins = 0;
-        if (!village_kill && rand() % 100 < 35 + 2 * stat_spent[4]) {
+        if (!no_drop && rand() % 100 < 35 + 2 * stat_spent[4]) {
             coins = 1 + rand() % (3 + player_level + 2 * stat_spent[4]);
             if (coins > GOLD_DROP_CAP) coins = GOLD_DROP_CAP;
             DropGroundLoot(enemy_x + FX(0.4), enemy_y, LOOT_GOLD, coins);
@@ -711,7 +713,7 @@ fx HeroHopHeight(void) {
 }
 void StartHeroHop(int second) {
     hero_hop_start = second ? HeroHopHeight() : FxI(0);
-    hero_hop_double = second; hero_hop_len = second ? 24 : 18; hero_hop_peak = second ? FxI(18) : FxI(14);
+    hero_hop_double = second; hero_hop_len = second ? 20 : 18; hero_hop_peak = second ? FxI(15) : FxI(14);
     hero_hop_frame = hero_hop_len;
 }
 

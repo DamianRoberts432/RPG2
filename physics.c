@@ -165,7 +165,9 @@ void UpdateGamePhysics(void) {
                 // Bigger races raise bigger dead: damage follows hero height, +-15%.
                 fx race_k = FxDiv(player_height_m, FX(1.82));
                 hit_splash_color = st == SUMMON_ZOMBIE ? RGB(90, 200, 60) : st == SUMMON_GHOST ? RGB(170, 240, 255) : RGB(235, 230, 210);
+                minion_kill = 1;
                 HandleEnemyDamage(FxMul(FxMul(summon_dmg[st], FX(0.75) + FxMul(FX(0.25), race_k)), FX(0.85) + FxI(rand() % 31) / 100));
+                minion_kill = 0;
                 if (st == SUMMON_ZOMBIE) enemies[current_enemy].poison = 3;
                 else if (rand() % 100 < 15) enemies[current_enemy].poison = 2;
             }

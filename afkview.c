@@ -844,7 +844,9 @@ static void HumanMesh(const FpThing *t) {
         if (moving) { th = FxMul(FxSin(p), FX(0.42)); bend = -(FX(0.15) + FxMul(FX(0.75), FxMax(FX(0.0), FxSin(p + FX(1.3))))); }
         else if (act == NPC_NATURE) { th = FX(1.1); bend = -FX(2.2); }
         Limb(x, y, FX(0.0), FxMul(k * FX(0.05), S), FxMul(FX(0.33), S) + lift, FxMul(FX(0.17), S), FxMul(FX(0.17), S), th, bend, lr, legs, legs);
-        OBox(x, y, limb_ea + FxMul(FX(0.03), S), FxMul(k * FX(0.05), S), limb_ez, limb_ez + FxMul(FX(0.04), S), FxMul(FX(0.06), S), FxMul(FX(0.033), S), shoe); // foot
+        fx fa = limb_ea + FxMul(FX(0.03), S), fs = FxMul(k * FX(0.05), S), ta = fa + FxMul(FX(0.03), S);
+        OBox(x, y, fa - FxMul(FX(0.015), S), fs, limb_ez, limb_ez + FxMul(FX(0.04), S), FxMul(FX(0.045), S), FxMul(FX(0.033), S), shoe); // foot
+        Prism(x + FxMul(hcos, ta) - FxMul(hsin, fs), y + FxMul(hsin, ta) + FxMul(hcos, fs), limb_ez, limb_ez + FxMul(FX(0.04), S), FxMul(FX(0.033), S), FxMul(FX(0.028), S), 6, FX(0.0), shoe); // rounded toe
     }
     if (skel) { // the in-game skeleton: spine, three ribs, pelvis and shoulder bar, all bare bone
         Bone(x, y, FX(0.0), FX(0.0), FxMul(FX(0.32), S) + lift, FX(0.0), FX(0.0), FxMul(FX(0.62), S) + lift, FxMul(FX(0.016), S), FxMul(FX(0.014), S), skin);
@@ -980,7 +982,7 @@ static void DetailMesh(const FpThing *t) {
         if (t->seed & 1) {
             Prism(x, y, FX(0.0), FX(0.42), FX(0.16), FX(0.16), 8, FX(0.0), wood);
             face_bias = FX(0.01);
-            Prism(x, y, FX(0.07), FX(0.1), FX(0.165), FX(0.165), 8, FX(0.0), hoop); Prism(x, y, FX(0.32), FX(0.35), FX(0.165), FX(0.165), 8, FX(0.0), hoop);
+            Prism(x, y, FX(0.07), FX(0.1), FX(0.165), FX(0.165), 8, FX(0.0), hoop); Prism(x, y, FX(0.14), FX(0.17), FX(0.165), FX(0.165), 8, FX(0.0), hoop); Prism(x, y, FX(0.32), FX(0.35), FX(0.165), FX(0.165), 8, FX(0.0), hoop);
             face_bias = FX(0.0);
         } else { // smashed: staves on the ground
             OBox(x - FX(0.1), y, FX(0.0), FX(0.0), FX(0.0), FX(0.03), FX(0.14), FX(0.03), wood); OBox(x + FX(0.08), y + FX(0.1), FX(0.0), FX(0.0), FX(0.0), FX(0.03), FX(0.03), FX(0.12), wood);

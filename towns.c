@@ -119,7 +119,7 @@ static void DailyGrowth(void) {
         if (v->raid) {
             v->raid = 0; v->growth = 0;
             if (v->stage > 0) v->stage--;
-            if (sacked < 0) sacked = i;
+            if (sacked < 0 && (map_poi[v->gy][v->gx] & POI_VILLAGE)) sacked = i; // only news of villages you have found
             continue;
         }
         Grow(v, 6);
