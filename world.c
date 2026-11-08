@@ -559,6 +559,7 @@ void GenerateProceduralScreen(int index) {
         fx mx, my; FindDropSpot(FxI(16), FxI(16), 1, &mx, &my);
         DropGroundLoot(mx, my, LOOT_MUSASHI_BLADE, 1);
     }
+    BuildHills();
     RecordCurrentScreenOnMap();
     SaveSaveFileToDisk();
 }
@@ -912,3 +913,75 @@ void UpdateCritters(void) {
 
 char town_banner[48];
 DWORD town_banner_until;
+
+// Gentle hills: a height in pixels at every tile corner, from smooth value
+// noise over world tile coordinates. Flat at the screen edges, so screens
+// join without a step, and flat beside water. Prairies and grasslands only
+// roll a little. 33x33 bytes, rebuilt on each screen; nothing is saved.
+static int8_t hill_px[MAP_SIZE + 1][MAP_SIZE + 1];
+static int hills_on = 0;
+
+static int HillHash(int x, int y) {
+    unsigned int h = (unsigned int)x * 374761393u + (unsigned int)y * 668265263u;
+    h = (h ^ (h >> 13)) * 1274126177u;
+    return (int)((h ^ (h >> 16)) & 255) - 128;
+}
+
+static int HillNoise(int wx, int wy, int step) {
+    int ix = wx / step, iy = wy / step;
+    int tx = (wx - ix * step) * 256 / step, ty = (wy - iy * step) * 256 / step;
+    tx = tx * tx * (768 - 2 * tx) / 65536; ty = ty * ty * (768 - 2 * ty) / 65536;
+    int a = HillHash(ix, iy), b = HillHash(ix + 1, iy), c = HillHash(ix, iy + 1), d = HillHash(ix + 1, iy + 1);
+    int top = a + (b - a) * tx / 256, bot = c + (d - c) * tx / 256;
+    return top + (bot - top) * ty / 256;
+}
+
+static int HillAmp(void) {
+    if (in_cave || inside_home >= 0 || AtSea()) return 0;
+    switch (current_biome) {
+    case BIOME_PRAIRIE: case BIOME_GRASSLANDS: return 7;
+    case BIOME_OASIS: return 4;
+    case BIOME_TUNDRA: return 12;
+    case BIOME_FOREST: case BIOME_DESERT: return 14;
+    case BIOME_MOUNTAIN: return 20;
+    default: return 0;
+    }
+}
+
+void BuildHills(void) {
+    int amp = HillAmp();
+    hills_on = amp > 0;
+    for (int r = 0; r <= MAP_SIZE; r++) for (int c = 0; c <= MAP_SIZE; c++) {
+        hill_px[r][c] = 0;
+        if (!hills_on) continue;
+        int wx = screen_grid_x * MAP_SIZE + c, wy = screen_grid_y * MAP_SIZE + r;
+        int n = HillNoise(wx, wy, 8) * 2 + HillNoise(wx + 977, wy + 31, 4);
+        int h = (n + 384) * amp / 768;
+        int e = c < r ? c : r;
+        if (MAP_SIZE - c < e) e = MAP_SIZE - c;
+        if (MAP_SIZE - r < e) e = MAP_SIZE - r;
+        int wd = 3; // corners within 3 tiles of water sink to the water's level
+        for (int dr = -4; dr <= 3; dr++) for (int dc = -4; dc <= 3; dc++) {
+            int tr = r + dr, tc = c + dc;
+            if (tr < 0 || tc < 0 || tr >= MAP_SIZE || tc >= MAP_SIZE || VISUAL_MAP[tr][tc] != 12) continue;
+            int d = dr < 0 ? -dr - 1 : dr, dx = dc < 0 ? -dc - 1 : dc;
+            if (dx > d) d = dx;
+            if (d < wd) wd = d;
+        }
+        hill_px[r][c] = (int8_t)(h * (e < 4 ? e : 4) / 4 * wd / 3);
+    }
+}
+
+int HillsActive(void) { return hills_on && !in_cave && inside_home < 0; }
+int HillCorner(int c, int r) { return HillsActive() ? hill_px[r][c] : 0; }
+
+fx HillFx(fx x, fx y) {
+    if (!HillsActive() || x <= FxI(0) || y <= FxI(0) || x >= FxI(MAP_SIZE) || y >= FxI(MAP_SIZE)) return FxI(0);
+    int c = FxTrunc(x), r = FxTrunc(y);
+    fx tx = x - FxI(c), ty = y - FxI(r);
+    fx a = FxI(hill_px[r][c]), b = FxI(hill_px[r][c + 1]), d = FxI(hill_px[r + 1][c]), e = FxI(hill_px[r + 1][c + 1]);
+    fx top = a + FxMul(b - a, tx), bot = d + FxMul(e - d, tx);
+    return top + FxMul(bot - top, ty);
+}
+
+int HillAt(fx x, fx y) { return FxTrunc(HillFx(x, y)); }

@@ -113,7 +113,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                 }
             }
             
-            cam_x = FxTrunc((player_x - player_y) * (TILE_WIDTH / 2)); cam_y = FxTrunc((player_x + player_y) * (TILE_HEIGHT / 2));
+            cam_x = FxTrunc((player_x - player_y) * (TILE_WIDTH / 2)); cam_y = FxTrunc((player_x + player_y) * (TILE_HEIGHT / 2)) - HillAt(player_x, player_y);
             fx view_zoom = UpdateAfkCamera(AnyPlayerInput() || MouseBusy() || is_menu_open || vendor_menu_open || town_menu ||
                                               is_character_creation || sleep_fade_frame > 0 || inside_home >= 0);
                 view_zoom += DoorwayCamera();
@@ -209,11 +209,11 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                     meadow_color = RGB(70 + FxTrunc(ambient_intensity * 180), 60 + FxTrunc(ambient_intensity * 150), 15 + FxTrunc(ambient_intensity * 40));
                 HBRUSH live_ground = CreateSolidBrush(meadow_color); HGDIOBJ old_bg = SelectObject(memHDC, live_ground); PatBlt(memHDC, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, PATCOPY); SelectObject(memHDC, old_bg); DeleteObject(live_ground);
                 SelectObject(memHDC, clean_null_pen);
+                DrawHillGround(memHDC, meadow_color);
 
                 for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) {
                     if (VISUAL_MAP[r][c] == 10 && current_biome != BIOME_CAVE) { // sand patches lie flat, drawn with the ground
-                        int sx, sy; GetIsoCoords(FxI(c), FxI(r), &sx, &sy);
-                        POINT top[] = {{sx, sy}, {sx + TILE_WIDTH / 2, sy + TILE_HEIGHT / 2}, {sx, sy + TILE_HEIGHT}, {sx - TILE_WIDTH / 2, sy + TILE_HEIGHT / 2}};
+                        POINT top[4]; TileCorners(c, r, top);
                         HBRUSH b = CreateSolidBrush(GetTileColor(10, 0)); HGDIOBJ ob = SelectObject(memHDC, b); Polygon(memHDC, top, 4); SelectObject(memHDC, ob); DeleteObject(b);
                     }
                     if (VISUAL_MAP[r][c] == 12) {

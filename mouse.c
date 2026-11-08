@@ -25,7 +25,7 @@ int MouseBusy(void) { return walk_active || GetTickCount() - last_mouse_event < 
 // Inverse of GetIsoCoords (tile centre is half a tile below its top corner).
 static void ScreenToWorld(int sx, int sy, fx *wx, fx *wy) {
     fx a = FxI(sx - WINDOW_WIDTH / 2 + cam_x) / (TILE_WIDTH / 2);
-    fx b = FxI(sy - TILE_HEIGHT / 2 - WINDOW_HEIGHT / 2 + cam_y) / (TILE_HEIGHT / 2);
+    fx b = FxI(sy - TILE_HEIGHT / 2 - WINDOW_HEIGHT / 2 + cam_y + HillAt(player_x, player_y)) / (TILE_HEIGHT / 2);
     *wx = (a + b) / 2; *wy = (b - a) / 2;
 }
 

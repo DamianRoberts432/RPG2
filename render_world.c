@@ -27,7 +27,35 @@ void GetIsoCoords(fx cx, fx cy, int *sx, int *sy) {
     int raw_x = FxTrunc((cx - cy) * (TILE_WIDTH / 2));
     int raw_y = FxTrunc((cx + cy) * (TILE_HEIGHT / 2));
     *sx = raw_x - cam_x + (WINDOW_WIDTH / 2);
-    *sy = raw_y - cam_y + (WINDOW_HEIGHT / 2);
+    *sy = raw_y - cam_y + (WINDOW_HEIGHT / 2) - HillAt(cx, cy);
+}
+
+void TileCorners(int c, int r, POINT q[4]) {
+    static const int dc[4] = { 0, 1, 1, 0 }, dr[4] = { 0, 0, 1, 1 };
+    for (int k = 0; k < 4; k++) { int x, y; GetIsoCoords(FxI(c + dc[k]), FxI(r + dr[k]), &x, &y); q[k].x = x; q[k].y = y; }
+}
+
+// Rolling ground: every tile with a raised corner is redrawn lifted, a little
+// brighter on slopes facing the top of the screen and darker on the far side.
+void DrawHillGround(HDC hdc, COLORREF base) {
+    if (!HillsActive()) return;
+    HBRUSH br[9];
+    for (int k = 0; k < 9; k++) {
+        int m = 256 + (k - 4) * 11, rr = GetRValue(base) * m / 256, gg = GetGValue(base) * m / 256, bb = GetBValue(base) * m / 256;
+        br[k] = CreateSolidBrush(RGB(rr > 255 ? 255 : rr, gg > 255 ? 255 : gg, bb > 255 ? 255 : bb));
+    }
+    HGDIOBJ old = SelectObject(hdc, br[4]);
+    for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) {
+        int a = HillCorner(c, r), b = HillCorner(c + 1, r), d = HillCorner(c + 1, r + 1), e = HillCorner(c, r + 1);
+        if ((a | b | d | e) == 0 || VISUAL_MAP[r][c] == 12) continue;
+        POINT q[4]; TileCorners(c, r, q);
+        if (q[1].x < -TILE_WIDTH || q[3].x > WINDOW_WIDTH + TILE_WIDTH || q[2].y < -TILE_HEIGHT || q[0].y > WINDOW_HEIGHT + TILE_HEIGHT) continue;
+        int gx = (b + d) - (a + e), gy = (e + d) - (a + b), lvl = 4 - (2 * gx + gy) / 2;
+        SelectObject(hdc, br[lvl < 0 ? 0 : lvl > 8 ? 8 : lvl]);
+        Polygon(hdc, q, 4);
+    }
+    SelectObject(hdc, old);
+    for (int k = 0; k < 9; k++) DeleteObject(br[k]);
 }
 
 COLORREF GetTileColor(uint8_t id, int side) {
