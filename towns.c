@@ -1,8 +1,11 @@
 // Growing villages and travelling settlers. Every village has a stage:
 // 0 Camp (a market stall), 1 Hamlet (homes), 2 Farmstead (crop fields and a
-// windmill), 3 Walled (a palisade and two guards). Villages grow a little each
-// day and a lot when a settler party arrives. Bandits raid unwalled villages,
-// and a raid nobody answers by the next day knocks the village back a stage.
+// windmill), 3 Walled (a palisade and two guards), 4 Market town (stone walls),
+// 5 Castle (stone walls and corner towers). Villages grow a little each day and
+// a lot when a settler party arrives, up to Walled. Past that, only goods build:
+// the foreman (the village's first villager) takes Wood, Stone, Fish and Apples.
+// Bandits raid unwalled villages, and a raid nobody answers by the next day
+// knocks the village back a stage. Walled villages and up are never raided.
 // Fixed-size state only: 48 x 8 bytes of villages + 4 x 4 bytes of settlers.
 #include "game.h"
 
@@ -13,7 +16,10 @@ typedef struct { uint8_t gx, gy, target, active; } SettlerParty;
 static VillageGrowth vg[MAX_GROW_VILLAGES];
 static SettlerParty parties[MAX_SETTLERS];
 static int vg_n = 0, vg_loaded = 0, here_screen = -1, here_idx = -1;
-static const char *stage_names[4] = { "Camp", "Hamlet", "Farmstead", "Walled village" };
+#define TOP_STAGE 5
+static const char *stage_names[TOP_STAGE + 1] = { "Camp", "Hamlet", "Farmstead", "Walled village", "Market town", "Castle" };
+static const char *goods[4] = { "Wood", "Stone", "Fish", "Apple" };
+static const uint8_t goods_need[2][4] = { { 20, 20, 10, 10 }, { 30, 30, 15, 15 } }; // Walled -> Market town, Market town -> Castle
 char town_banner_sub[64];
 
 static unsigned Hash(unsigned v) { v ^= v >> 16; v *= 0x7feb352dU; v ^= v >> 15; v *= 0x846ca68bU; v ^= v >> 16; return v; }
@@ -80,7 +86,7 @@ int TownGrowthLoad(FILE *f) {
         fread(v, sizeof(v), 1, f) != 1 || fread(p, sizeof(p), 1, f) != 1) return 0;
     memcpy(vg, v, sizeof(v)); memcpy(parties, p, sizeof(p));
     vg_n = n; vg_loaded = 1; here_screen = -1;
-    for (int i = 0; i < vg_n; i++) { if (vg[i].stage > 3) vg[i].stage = 3; if (vg[i].growth > 100) vg[i].growth = 100; }
+    for (int i = 0; i < vg_n; i++) { if (vg[i].stage > TOP_STAGE) vg[i].stage = TOP_STAGE; if (vg[i].growth > 100) vg[i].growth = 100; }
     for (int i = 0; i < MAX_SETTLERS; i++) if (parties[i].target >= vg_n) parties[i].active = 0;
     return 1;
 }
@@ -90,6 +96,37 @@ static int Grow(VillageGrowth *v, int amount) {
     if (g >= 100 && v->stage < 3) { v->stage++; g = 0; up = 1; }
     v->growth = (uint8_t)(g > 100 ? 100 : g);
     return up;
+}
+
+// What the foreman still wants for the next stage; 1 when the hero carries all of it.
+static int ForemanNeeds(int stage, char *out, size_t n) {
+    const uint8_t *q = goods_need[stage - 3];
+    int have[4], ok = 1;
+    for (int k = 0; k < 4; k++) { have[k] = GetMaterialCount(goods[k]); if (have[k] < q[k]) ok = 0; }
+    snprintf(out, n, "%d/%d Wood, %d/%d Stone, %d/%d Fish, %d/%d Apples",
+             have[0] < q[0] ? have[0] : q[0], q[0], have[1] < q[1] ? have[1] : q[1], q[1],
+             have[2] < q[2] ? have[2] : q[2], q[2], have[3] < q[3] ? have[3] : q[3], q[3]);
+    return ok;
+}
+
+// Walk up to the foreman: he takes the goods if you carry them all, or tells you what's missing.
+static void ForemanTurnIn(int i) {
+    static int was_near = 0;
+    VillageGrowth *v = &vg[i];
+    if (v->stage < 3 || v->stage >= TOP_STAGE || v->raid || village_npc_count == 0) { was_near = 0; return; }
+    int by_him = IsNearPoint(village_npcs[0].x, village_npcs[0].y, FxI(2));
+    if (by_him && !was_near) {
+        char need[80], nm[24];
+        VillageNameAt(v->gx, v->gy, nm, sizeof(nm));
+        if (ForemanNeeds(v->stage, need, sizeof(need))) {
+            for (int k = 0; k < 4; k++) ConsumeMaterialFromInventory(goods[k], goods_need[v->stage - 3][k]);
+            v->stage++; v->growth = 0;
+            KarmaAdjust(2, 0, 0, 5);
+            AddLegend("built %s into a %s", nm, stage_names[v->stage]);
+            snprintf(arpg_action_log, sizeof(arpg_action_log), "FOREMAN: The goods are in! %s grows into a %s.", nm, stage_names[v->stage]);
+        } else snprintf(arpg_action_log, sizeof(arpg_action_log), "FOREMAN: To build a %s I need %s.", stage_names[v->stage + 1], need);
+    }
+    was_near = by_him;
 }
 
 static void MoveSettlers(void) {
@@ -146,6 +183,7 @@ void UpdateTownGrowth(void) {
     if (h != last_hour) { last_hour = h; MoveSettlers(); }
     if (day != last_day) { last_day = day; DailyGrowth(); }
     int i = HereIndex();
+    if (i >= 0) ForemanTurnIn(i);
     if (i < 0 || vg[i].raid != 2 || AliveEnemies() > 0) return;
     char nm[24]; VillageNameAt(vg[i].gx, vg[i].gy, nm, sizeof(nm));
     vg[i].raid = 0;
@@ -183,7 +221,8 @@ void TownGrowthOnEnter(void) {
             v->raid = 2;
             snprintf(town_banner_sub, sizeof(town_banner_sub), "%s  -  RAID! Drive off the bandits", stage_names[v->stage]);
             snprintf(arpg_action_log, sizeof(arpg_action_log), "RAID: Bandits are raiding %s! Drive them off, or by tomorrow it will fall back a stage.", town_banner);
-        } else if (v->stage == 3) snprintf(town_banner_sub, sizeof(town_banner_sub), "%s  -  safe behind its palisade", stage_names[v->stage]);
+        } else if (v->stage >= TOP_STAGE) snprintf(town_banner_sub, sizeof(town_banner_sub), "%s  -  no army can take it", stage_names[v->stage]);
+        else if (v->stage >= 3) snprintf(town_banner_sub, sizeof(town_banner_sub), "%s  -  the foreman wants goods to build", stage_names[v->stage]);
         else snprintf(town_banner_sub, sizeof(town_banner_sub), "%s  -  growing %d%%", stage_names[v->stage], v->growth);
         town_banner_until = GetTickCount() + 4000;
     }
@@ -224,17 +263,44 @@ void DrawVillageGrowth(HDC hdc) {
         Polygon(hdc, bl, 4);
     }
     SelectObject(hdc, old_br); DeleteObject(stone); DeleteObject(roof); DeleteObject(sail);
-    if (st >= 3) {
-        HBRUSH wood = CreateSolidBrush(RGB(120, 84, 50));
+    if (st >= 3) { // wooden palisade; stone walls from Market town; corner towers on a Castle
+        HBRUSH wood = CreateSolidBrush(st >= 4 ? RGB(150, 148, 140) : RGB(120, 84, 50));
+        HBRUSH wall_side = CreateSolidBrush(RGB(125, 123, 116)), merlon = CreateSolidBrush(RGB(178, 175, 165));
         SelectObject(hdc, wood);
         for (int y = 6; y <= 24; y++) for (int x = 5; x <= 25; x++) {
             if (!VillageBlocksAt(x, y) || (x == 23 && y == 8)) continue;
             GetIsoCoords(FxI(x), FxI(y), &sx, &sy);
             int by = sy + TILE_HEIGHT / 2;
-            POINT post[5] = { { sx - 4, by }, { sx + 4, by }, { sx + 4, by - 20 }, { sx, by - 25 }, { sx - 4, by - 20 } };
-            Polygon(hdc, post, 5);
+            if (st >= 5 && (x == 5 || x == 25) && (y == 6 || y == 24)) {
+                for (int k = 0; k < 2; k++) { // the walls run on from the tower
+                    int nx = x + (k == 0), ny = y + (k == 1), tx, ty;
+                    if (!VillageBlocksAt(nx, ny)) continue;
+                    GetIsoCoords(FxI(nx), FxI(ny), &tx, &ty);
+                    POINT seg[4] = { { sx, by }, { tx, ty + TILE_HEIGHT / 2 }, { tx, ty + TILE_HEIGHT / 2 - 24 }, { sx, by - 24 } };
+                    SelectObject(hdc, k ? wall_side : wood); Polygon(hdc, seg, 4);
+                }
+                POINT tw[8] = { { sx - 13, by }, { sx + 13, by }, { sx + 13, by - 58 }, { sx + 5, by - 58 }, { sx + 5, by - 52 },
+                                { sx - 5, by - 52 }, { sx - 5, by - 58 }, { sx - 13, by - 58 } };
+                SelectObject(hdc, merlon); Polygon(hdc, tw, 8); SelectObject(hdc, wood);
+            } else if (st >= 4) { // a solid run of wall to each walled neighbour, then a merlon on top
+                for (int k = 0; k < 2; k++) {
+                    int nx = x + (k == 0), ny = y + (k == 1), tx, ty;
+                    if (!VillageBlocksAt(nx, ny) || (nx == 23 && ny == 8)) continue;
+                    GetIsoCoords(FxI(nx), FxI(ny), &tx, &ty);
+                    int tb = ty + TILE_HEIGHT / 2;
+                    POINT seg[4] = { { sx, by }, { tx, tb }, { tx, tb - 24 }, { sx, by - 24 } };
+                    SelectObject(hdc, k ? wall_side : wood); Polygon(hdc, seg, 4);
+                }
+                SelectObject(hdc, merlon);
+                POINT m[4] = { { sx - 4, by - 22 }, { sx + 4, by - 22 }, { sx + 4, by - 30 }, { sx - 4, by - 30 } };
+                Polygon(hdc, m, 4);
+                SelectObject(hdc, wood);
+            } else {
+                POINT post[5] = { { sx - 4, by }, { sx + 4, by }, { sx + 4, by - 20 }, { sx, by - 25 }, { sx - 4, by - 20 } };
+                Polygon(hdc, post, 5);
+            }
         }
-        SelectObject(hdc, old_br); DeleteObject(wood);
+        SelectObject(hdc, old_br); DeleteObject(wood); DeleteObject(wall_side); DeleteObject(merlon);
     }
     SelectObject(hdc, old_pen);
 }
