@@ -23,6 +23,7 @@ static FpThing things[FP_MAX_THINGS];
 static int thing_count, horizon, bobber_sx = -1, bobber_sy;
 static fx yaw, pitch, focal;
 static fx eye_x, eye_y, eye_z = FP_EYE;
+static int hill_view = 0; // the outdoor view follows the rolling ground; rooms stay flat
 
 int AfkViewActive(void) { return AfkViewMs() >= FP_ZOOM_MS + FP_DIP_MS; }
 
@@ -76,7 +77,7 @@ static int Project(fx x, fx y, fx z, int *sx, int *sy, fx *depth) {
     fx f = FxMul(dx, cs) + FxMul(dy, sn), side = -FxMul(dx, sn) + FxMul(dy, cs);
     if (f < FX(0.3)) return 0;
     *sx = WINDOW_WIDTH / 2 + ScreenOf(side, f);
-    *sy = horizon + ScreenOf(eye_z - z, f);
+    *sy = horizon + ScreenOf(eye_z - z - (hill_view ? HillFx(x, y) / 32 : FX(0.0)), f);
     if (depth) *depth = f;
     return 1;
 }
@@ -1241,7 +1242,7 @@ void DrawAfkView(HDC hdc) {
     int ms = AfkViewMs();
     if (ms < FP_ZOOM_MS) { was_on = 0; return; }
     if (ms < FP_ZOOM_MS + FP_DIP_MS) { FillWindowAlpha(hdc, RGB(0, 0, 0), (ms - FP_ZOOM_MS) * 255 / FP_DIP_MS); was_on = 0; return; }
-    eye_x = (player_x); eye_y = (player_y); eye_z = FP_EYE;
+    eye_x = (player_x); eye_y = (player_y); eye_z = FP_EYE + HillFx(player_x, player_y) / 32; hill_view = 1;
     GatherThings();
     UpdateGaze(!was_on); was_on = 1;
     focal = FxDiv(FxI(WINDOW_WIDTH / 2), FxTan(FP_FOV / 2));
@@ -1361,7 +1362,7 @@ static void WallY(fx y, fx x0, fx x1, fx z0, fx z1, COLORREF col, fx off) {
 }
 
 static void RoomCamera(fx ex, fx ey, fx ez, fx fov, int hz) {
-    eye_x = ex; eye_y = ey; eye_z = ez; yaw = -FX(1.5707963);
+    eye_x = ex; eye_y = ey; eye_z = ez; yaw = -FX(1.5707963); hill_view = 0;
     focal = FxDiv(FxI(WINDOW_WIDTH / 2), FxTan(fov / 2)); horizon = hz;
     face_count = 0; face_bias = FX(0.0); face_glow = 0; hcos = FX(1.0); hsin = FX(0.0);
 }

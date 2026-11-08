@@ -32,4 +32,6 @@ void DrawDroppedItems(HDC hdc);
 
 fx WaveAt(fx x, fx y, fx t);
 
+void TileCorners(int c, int r, POINT q[4]);
+void DrawHillGround(HDC hdc, COLORREF base);
 #endif // RENDER_WORLD_H

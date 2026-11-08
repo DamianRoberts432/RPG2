@@ -23,4 +23,9 @@ extern int village_light_count;
 void DrawVillageLights(HDC hdc);
 
 int MountainHasCave(int cell);
+void BuildHills(void);
+int HillsActive(void);
+int HillCorner(int c, int r);
+fx HillFx(fx x, fx y);
+int HillAt(fx x, fx y);
 #endif // WORLD_H
