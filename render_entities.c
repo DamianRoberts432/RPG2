@@ -331,9 +331,35 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, fx override_scale) {
     SelectObject(hdc, old);
 }
 
+// A Horse carries the hero anywhere outdoors on dry land.
+int HeroMounted(void) {
+    return HasInventoryItem("Horse") && !in_cave && inside_home < 0 && VISUAL_MAP[FxTrunc(player_y)][FxTrunc(player_x)] != 12;
+}
+
+// The horse under a mounted hero: legs trotting, body, neck and head toward the side they face, tail behind.
+static void DrawHeroHorse(HDC hdc, int sx, int sy) {
+    int dir = facing_x < FxI(0) ? -1 : 1, trot = is_running ? ((GetTickCount() / 110) % 2 ? 3 : -3) : 0;
+    HBRUSH b = CreateSolidBrush(RGB(120, 78, 45)); HPEN p = CreatePen(PS_SOLID, 3, RGB(85, 55, 32));
+    HGDIOBJ ob = SelectObject(hdc, b), op = SelectObject(hdc, p);
+    int lx[4] = { -17, -12, 12, 17 };
+    for (int i = 0; i < 4; i++) { int t = (i & 1) ? trot : -trot; MoveToEx(hdc, sx + lx[i], sy - 8, NULL); LineTo(hdc, sx + lx[i] + t, sy + 4); }
+    MoveToEx(hdc, sx - dir * 21, sy - 15, NULL); LineTo(hdc, sx - dir * 27, sy - 2); // tail
+    Ellipse(hdc, sx - 23, sy - 19, sx + 23, sy - 5); // body, longer than the rider is wide
+    POINT neck[4] = { { sx + dir * 13, sy - 17 }, { sx + dir * 20, sy - 30 }, { sx + dir * 27, sy - 28 }, { sx + dir * 23, sy - 10 } };
+    Polygon(hdc, neck, 4);
+    POINT head[5] = { { sx + dir * 19, sy - 31 }, { sx + dir * 27, sy - 33 }, { sx + dir * 37, sy - 24 }, { sx + dir * 35, sy - 20 }, { sx + dir * 25, sy - 24 } };
+    Polygon(hdc, head, 5); // long head, muzzle down
+    HPEN mp = CreatePen(PS_SOLID, 3, RGB(45, 28, 18)); SelectObject(hdc, mp);
+    MoveToEx(hdc, sx + dir * 12, sy - 18, NULL); LineTo(hdc, sx + dir * 20, sy - 31); // mane
+    for (int i = 0; i < 4; i++) { int t = (i & 1) ? trot : -trot; MoveToEx(hdc, sx + lx[i] + t, sy + 2, NULL); LineTo(hdc, sx + lx[i] + t, sy + 4); } // hooves
+    SelectObject(hdc, p); DeleteObject(mp);
+    SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(b); DeleteObject(p);
+}
+
 void DrawHeroAsset(HDC hdc) {
     int sx, sy; GetIsoCoords(player_x, player_y, &sx, &sy);
     if (hero_hop_frame > 0) sy -= FxTrunc(HeroHopHeight()); // hop arc (double jump climbs higher)
+    if (HeroMounted()) { DrawHeroHorse(hdc, sx, sy); sy -= 24; } // in the saddle
     DrawHeroAssetEx(hdc, sx, sy, FxI(1));
     if (!in_cave && inside_home < 0 && VISUAL_MAP[FxTrunc(player_y)][FxTrunc(player_x)] == 12) {
         GetIsoCoords(player_x, player_y, &sx, &sy);

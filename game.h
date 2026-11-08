@@ -27,7 +27,7 @@
 #define MAX_BUTTERFLIES 8
 #define DEBRIS_MAX 16
 #define MAX_CRITTERS 6
-#define MERCH_BASE_ITEMS 53
+#define MERCH_BASE_ITEMS 54
 #define MERCH_CAPACITY 72 // room for NewItem lines from the Update folder
 #define MERCH_ITEMS merch_item_count
 extern int merch_item_count;
@@ -498,6 +498,7 @@ int AtSea(void);
 int ShapeSeaTile(int r, int c, int noise);
 int SeaSideDistance(int r, int c, int d);
 void DrawHeroBoat(HDC hdc, int sx, int sy);
+int HeroMounted(void);
 int TreasureIsleHere(void);
 void DrawIsleTreasure(HDC hdc, int c, int r, int sx, int sy);
 int TryIsleTreasure(void);

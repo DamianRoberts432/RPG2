@@ -211,6 +211,7 @@ MerchantItem merchant_catalog[MERCH_CAPACITY] = {
     { "Raft",          "Tool",     0,                 30, 1,  1, RARITY_COMMON, 0 },
     { "Canoe",         "Tool",     0,               1000, 1,  1, RARITY_UNCOMMON, 0 },
     { "Boat",          "Tool",     0,               2400, 1,  1, RARITY_RARE, 0 },
+    { "Horse",         "Tool",     0,               5000, 1,  1, RARITY_RARE, 0 },
     { "Long Sword",    "Weapon",   LOOT_LONG_SWORD,  700, 2,  2, RARITY_UNCOMMON, 0 },
     { "Short Bow",     "Weapon",   LOOT_SHORT_BOW,   500, 2,  2, RARITY_UNCOMMON, 0 },
     { "Dragon Scale Armor", "Armor", 0,              5000, 1,  1, RARITY_RARE, 0 },

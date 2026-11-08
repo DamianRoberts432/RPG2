@@ -478,7 +478,8 @@ void ProcessGamepadInput(void) {
             fx race_mult = GetRaceSpeedMultiplier();
             fx speed = FxMul(FxMul(FxMul(FX(0.15), race_mult), WeightSpeedFactor()), FxI(1) + FX(0.02) * stat_spent[1]); if (speed < FX(0.01)) speed = FxI(0);
             if (speed <= FxI(0)) strcpy(arpg_action_log, "OVERLOADED: Too heavy to move! Drop something.");
-            if (running && !HeroExhausted()) { speed = FxMul(speed, FX(1.6)); player_stamina -= FX(0.15); }
+            if (HeroMounted()) speed = FxMul(speed, FX(2.2)); // the horse does the running: no stamina spent
+            else if (running && !HeroExhausted()) { speed = FxMul(speed, FX(1.6)); player_stamina -= FX(0.15); }
             if (HeroExhausted()) speed = FxMul(speed, FX(0.6));
             if (hero_hop_frame > 0) speed = FxMul(speed, FX(1.3));
             if (player_stamina <= FxI(0)) {

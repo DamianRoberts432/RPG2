@@ -897,6 +897,12 @@ void UpdateCritters(void) {
             fx edx = critter->x - enemies[e].x, edy = critter->y - enemies[e].y;
             if (FxMul(edx, edx) + FxMul(edy, edy) < near_d) { near_d = FxMul(edx, edx) + FxMul(edy, edy); fxv = edx; fy = edy; }
         }
+        for (int j = 0; j < village_npc_count; j++) { // villagers swinging a hoe, hammer or broom scare them off too
+            int a = NpcActivity(j);
+            if (!NpcAtWork(j) || (a != NPC_FARM && a != NPC_HAMMER && a != NPC_SWEEP)) continue;
+            fx vdx = critter->x - village_npcs[j].x, vdy = critter->y - village_npcs[j].y;
+            if (FxMul(vdx, vdx) + FxMul(vdy, vdy) < near_d) { near_d = FxMul(vdx, vdx) + FxMul(vdy, vdy); fxv = vdx; fy = vdy; }
+        }
         if (near_d < FxI(9)) {
             fx d = FxLen(fxv, fy); if (d < FX(0.01)) { fxv = FxI(1); d = FxI(1); }
             critter->x += FxMul(FxDiv(fxv, d), FX(0.6)); critter->y += FxMul(FxDiv(fy, d), FX(0.6));

@@ -79,7 +79,7 @@ void TriggerMonsterRespawn(void) {
         strcpy(arpg_action_log, "A BOUNTY HUNTER has tracked you down! Pay your fine to a town guard to call them off.");
     }
     if (active_monster == MONSTER_ZOMBIE && !in_cave) ZombieRisesFromWater();
-    static const fx base_hearts[] = { FxI(3), FxI(3), FxI(6), FxI(2), FX(3.5), FxI(9), FxI(9), FxI(8), FxI(8) };
+    static const fx base_hearts[] = { FxI(7), FxI(7), FxI(10), FxI(6), FxI(8), FxI(9), FxI(9), FxI(8), FxI(8) }; // early monsters take 3-5 Short Sword hits
     enemy_hearts = base_hearts[active_monster] + (is_night ? FX(0.5) : FxI(0));
     if (bounty_hunter_active) enemy_hearts = FxI(6);
     if (IS_MYTHIC_MONSTER(active_monster)) {
