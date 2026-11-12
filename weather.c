@@ -1,4 +1,5 @@
 #include "game.h"
+#include "render_world.h"
 #include <wininet.h>
 
 // Seasons and world-wide weather. One global weather state covers every
@@ -520,21 +521,20 @@ static int NearActiveCampfire(fx x, fx y, fx radius) {
     return 0;
 }
 
-// A lumpy drift: a shaded base with 3-5 stacked, shrinking mounds on top.
-static void DrawSnowClump(HDC hdc, int x, int y, int h, HBRUSH lit, HBRUSH shade, fx depth) {
-    int size = 6 + FxTrunc(depth * 8) + h % 5;
-    int lumps = 3 + (h >> 5) % 3;
-    SelectObject(hdc, shade);
-    Ellipse(hdc, x - size - 2, y - size / 3, x + size + 2, y + size / 2 + 2);
-    SelectObject(hdc, lit);
-    for (int k = 0; k < lumps; k++) {
-        int hk = RainHash(h + k * 977) & 0x7fffffff;
-        int r = size / 2 + hk % (size / 2 + 1) - k * 2;
-        if (r < 3) r = 3;
-        int lx = x + (hk >> 4) % (size + 1) - size / 2;
-        int ly = y - (k * size) / (lumps + 1) - (hk >> 9) % 3;
-        Ellipse(hdc, lx - r, ly - r * 2 / 3, lx + r, ly + r / 3);
+// Snow lies flat on the ground: a drift is a tile-wide patch, a little larger
+// than the tile so neighbouring patches run together into one even cover.
+static void DrawSnowDrift(HDC hdc, int c, int r, HBRUSH lit, HBRUSH shade) {
+    POINT q[4]; TileCorners(c, r, q);
+    int mx = (q[0].x + q[1].x + q[2].x + q[3].x) / 4, my = (q[0].y + q[1].y + q[2].y + q[3].y) / 4;
+    POINT p[4], s2[4];
+    static const int cc[4] = { 0, 1, 1, 0 }, cr2[4] = { 0, 0, 1, 1 }; // which grid corner each point is
+    for (int k = 0; k < 4; k++) {
+        int h = RainHash(current_screen_index * 131 + (r + cr2[k]) * 257 + c + cc[k]) & 0x7fffffff; // shared by the tiles meeting there
+        p[k].x = mx + (q[k].x - mx) * 5 / 4 + h % 13 - 6; p[k].y = my + (q[k].y - my) * 5 / 4 + (h >> 5) % 7 - 3;
+        s2[k].x = p[k].x; s2[k].y = p[k].y + 1;
     }
+    SelectObject(hdc, shade); Polygon(hdc, s2, 4);
+    SelectObject(hdc, lit); Polygon(hdc, p, 4);
 }
 
 // Snow melts in a ring around burning campfires: repaint the plain grass there.
@@ -580,7 +580,7 @@ void DrawSeasonalGroundCover(HDC hdc) {
     HBRUSH leaf_b[4];
     for (int i = 0; i < 4; i++) leaf_b[i] = CreateSolidBrush(leaf_colors[i]);
     HGDIOBJ old_b = SelectObject(hdc, snow_b), old_p = SelectObject(hdc, GetStockObject(NULL_PEN));
-    int snow_pct = FxTrunc(snow_cover * 22), leaf_pct = FxTrunc(leaf_cover * 25);
+    int snow_pct = FxTrunc(snow_cover * 125), leaf_pct = FxTrunc(leaf_cover * 25);
 
     for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) {
         uint8_t t = VISUAL_MAP[r][c];
@@ -590,9 +590,9 @@ void DrawSeasonalGroundCover(HDC hdc) {
         if (NearActiveCampfire(FxI(c), FxI(r), FX(2.2))) continue;
         int cy = sy + TILE_HEIGHT / 2;
         int h = RainHash(current_screen_index * 4099 + r * MAP_SIZE + c) & 0x7fffffff;
-        if (h % 100 < snow_pct) {
-            int ox = (h >> 4) % 17 - 8, oy = (h >> 9) % 7 - 3;
-            DrawSnowClump(hdc, sx + ox, cy + oy, h, snow_b, shade_b, snow_cover);
+        int patch = (RainHash(current_screen_index * 7919 + (r / 3) * 97 + c / 3) & 0x7fffffff) % 100 + h % 30 - 15; // big soft patches, not specks
+        if (patch < snow_pct) {
+            DrawSnowDrift(hdc, c, r, snow_b, shade_b);
         } else if ((h >> 3) % 100 < leaf_pct) {
             int leaves = 5 + (h >> 11) % 3;
             for (int k = 0; k < leaves; k++) {

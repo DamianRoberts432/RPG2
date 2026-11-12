@@ -79,7 +79,7 @@ typedef enum { WEATHER_CLEAR, WEATHER_RAIN, WEATHER_SNOW, WEATHER_CLOUDY } Weath
 typedef enum { RACE_ELF, RACE_HUMAN, RACE_DWARF, RACE_HALFLING, RACE_GNOME } RaceType;
 typedef enum { CLASS_NECROMANCER, CLASS_WIZARD, CLASS_KNIGHT, CLASS_WARRIOR, CLASS_ROGUE } ClassType;
 
-typedef struct { fx x, y, z; fx vx, vy, vz; int active; fx damage; int origin_tx, origin_ty; } ArrowProjectile;
+typedef struct { fx x, y, z; fx vx, vy, vz; int active; fx damage; int origin_tx, origin_ty; int life; } ArrowProjectile;
 typedef struct { fx x, y, z; fx timer; int active; int color_profile; } ButterflyParticle;
 typedef struct { fx x, y; fx vx, vy; int life; int screen_id; int active; } DebrisParticle;
 typedef struct { fx x, y; fx vx, vy; int life; int max_life; int active; uint32_t color; } BloodParticle;
@@ -519,6 +519,7 @@ int TryWishingWell(void);
 enum { HOLIDAY_NONE, HOLIDAY_HALLOWEEN, HOLIDAY_WINTER_FEAST, HOLIDAY_NEW_YEAR };
 int HolidayToday(void);
 void SunShadowOffset(fx *ox, fx *oy);
+void DrawSoftShadow(HDC hdc, int cx, int cy, int rx, int ry, int alpha);
 void DrawCanopyShadows(HDC hdc);
 int QuickWheelUpdate(WORD buttons);
 void DrawQuickWheel(HDC hdc);

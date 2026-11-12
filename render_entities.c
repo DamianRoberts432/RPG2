@@ -67,15 +67,10 @@ void DrawHeroAssetEx(HDC hdc, int render_x, int render_y, fx override_scale) {
 
     int bob = (is_running && override_scale == FxI(1)) ? FxTrunc(FxMul(FxSinTurn(FxTurn64(((int64_t)FxBits(run_bob) * FX(1.2)) >> 16)), FX(1.5))) : 0; sy += bob;
     
-    HBRUSH shadow_b = CreateSolidBrush(RGB(15, 20, 26)); HGDIOBJ old = SelectObject(hdc, shadow_b); 
-    { fx ox, oy; SunShadowOffset(&ox, &oy); // the shadow stretches away from the sun or moon
-      // a silhouette, not a blob: feet, a body tapering away from the light, and a round head at the far end
-      int vx = FxTrunc(FxMul(ox * 30, scale)), vy = FxTrunc(FxMul(FxI(5) + oy * 14, scale)), fy = sy + FxTrunc(18 * scale);
-      int w0 = FxTrunc(7 * scale), w1 = FxTrunc(4 * scale), hr = FxTrunc(5 * scale) + 1;
-      Ellipse(hdc, sx - FxTrunc(9 * scale), fy - FxTrunc(3 * scale), sx + FxTrunc(9 * scale), fy + FxTrunc(3 * scale));
-      POINT body[4] = { { sx - w0, fy }, { sx + w0, fy }, { sx + vx * 7 / 10 + w1, fy + vy * 7 / 10 }, { sx + vx * 7 / 10 - w1, fy + vy * 7 / 10 } };
-      HGDIOBJ op = SelectObject(hdc, GetStockObject(NULL_PEN)); Polygon(hdc, body, 4);
-      Ellipse(hdc, sx + vx - hr, fy + vy - hr, sx + vx + hr, fy + vy + hr); SelectObject(hdc, op); } SelectObject(hdc, old); DeleteObject(shadow_b);
+    HGDIOBJ old = GetCurrentObject(hdc, OBJ_BRUSH);
+    { fx ox, oy; SunShadowOffset(&ox, &oy); // a soft pool under the feet, leaning a little away from the sun or moon
+      int fy = sy + FxTrunc(18 * scale), rx = FxTrunc(10 * scale) + FxTrunc(FxAbs(ox) * 5), ry = FxTrunc(4 * scale) + 1;
+      DrawSoftShadow(hdc, sx + FxTrunc(ox * 4), fy + FxTrunc(oy * 2), rx, ry, 160); }
 
     // Menus and portraits show the hero facing you; in play the 8-way facing.
     int dir = override_scale == FxI(1) ? HeroDir8() : 0;
@@ -371,17 +366,18 @@ void DrawFlyingArrow(HDC hdc) {
     // Projectile arrow is only drawn in flight post-release while player_arrow.active is 1
     if (!player_arrow.active) return;
     int sx, sy; GetIsoCoords(player_arrow.x, player_arrow.y, &sx, &sy); sy -= FxTrunc(player_arrow.z);
-    fx angle = FxAtan2(player_arrow.vy, player_arrow.vx);
-    fx cos_a = FxCos(angle), sin_a = FxSin(angle);
-    POINT tip = { sx + FxTrunc(8 * cos_a), sy + FxTrunc(8 * sin_a) };
-    POINT base_l = { sx - FxTrunc(4 * cos_a - 3 * sin_a), sy - FxTrunc(4 * sin_a + 3 * cos_a) };
-    POINT base_r = { sx - FxTrunc(4 * cos_a + 3 * sin_a), sy - FxTrunc(4 * sin_a - 3 * cos_a) };
-    HBRUSH arrow_b = CreateSolidBrush(RGB(220, 225, 235)); HGDIOBJ old_b = SelectObject(hdc, arrow_b);
-    POINT wedge[] = { tip, base_l, base_r }; Polygon(hdc, wedge, 3);
-    SelectObject(hdc, old_b); DeleteObject(arrow_b);
-    HPEN fletcher_p = CreatePen(PS_SOLID, 1, RGB(190, 65, 35)); HGDIOBJ old_p = SelectObject(hdc, fletcher_p);
-    MoveToEx(hdc, sx, sy, NULL); LineTo(hdc, sx - FxTrunc(12 * cos_a), sy - FxTrunc(12 * sin_a));
-    SelectObject(hdc, old_p); DeleteObject(fletcher_p);
+    // Point it along its real path on screen: world x runs down-right, world y down-left.
+    fx ux = (player_arrow.vx - player_arrow.vy) * (TILE_WIDTH / 2), uy = (player_arrow.vx + player_arrow.vy) * (TILE_HEIGHT / 2);
+    fx len = FxLen(ux, uy);
+    if (len < FX(0.001)) return;
+    fx ca = FxDiv(ux, len), sa = FxDiv(uy, len);
+    int tx = sx + FxTrunc(9 * ca), ty = sy + FxTrunc(9 * sa), bx = sx - FxTrunc(11 * ca), by = sy - FxTrunc(11 * sa);
+    PenLine(hdc, 2, RGB(150, 110, 70), bx, by, tx, ty);
+    POINT head[] = { { sx + FxTrunc(14 * ca), sy + FxTrunc(14 * sa) }, { tx - FxTrunc(3 * sa), ty + FxTrunc(3 * ca) }, { tx + FxTrunc(3 * sa), ty - FxTrunc(3 * ca) } };
+    HBRUSH hb = CreateSolidBrush(RGB(220, 225, 235)); HGDIOBJ ob = SelectObject(hdc, hb), op = SelectObject(hdc, GetStockObject(NULL_PEN));
+    Polygon(hdc, head, 3); SelectObject(hdc, op); SelectObject(hdc, ob); DeleteObject(hb);
+    for (int k = -1; k <= 1; k += 2) // fletching at the tail
+        PenLine(hdc, 1, RGB(200, 60, 35), bx + FxTrunc(3 * ca), by + FxTrunc(3 * sa), bx - FxTrunc(2 * ca) - k * FxTrunc(3 * sa), by - FxTrunc(2 * sa) + k * FxTrunc(3 * ca));
 }
 
 void DrawFlyingSpear(HDC hdc) {
@@ -738,7 +734,7 @@ void DrawDynamicEnemy(HDC hdc) {
         if (ph < FX(0.45)) attack_swing = FxDiv(ph, FX(0.45));
     }
     int sw = IS_MYTHIC_MONSTER(active_monster) ? 20 : 9;
-    HBRUSH b1 = CreateSolidBrush(RGB(15, 20, 26)); HGDIOBJ old = SelectObject(hdc, b1); Ellipse(hdc, sx - sw, sy + 16, sx + sw, sy + 22); SelectObject(hdc, old); DeleteObject(b1);
+    HGDIOBJ old = GetCurrentObject(hdc, OBJ_BRUSH); DrawSoftShadow(hdc, sx, sy + 19, sw + 2, 4, 160);
     if (active_monster == MONSTER_ZOMBIE) {
         int seed = FxTrunc(enemy_x * 13 + enemy_y * 7);
         int arms_out = ((FxMulI(world_tick, FX(0.3)) + seed) % 40) < 22; // reaches out some of the time

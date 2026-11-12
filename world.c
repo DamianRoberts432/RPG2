@@ -42,6 +42,7 @@ void GenerateVillageNPCs(void) {
     }
     PlaceVillageLights(shift);
     if (is_market) {
+        for (int i = 0; i < 4; i++) { fx hx, hy; if (VillageHomeCentre(i, &hx, &hy)) for (int oy = -1; oy <= 1; oy++) for (int ox = -1; ox <= 1; ox++) VISUAL_MAP[FxTrunc(hy) + oy][FxTrunc(hx) + ox] = 0; }
         RestockMerchant();
         village_npcs[0] = (NPCEntity){ FxI(15), FxI(17), FxI(15), FxI(17), 1, 0, FACE_DOWN, "Welcome, adventurer!", 90 };
         // Merchant and blacksmith are always here; the pet shop and card shop
