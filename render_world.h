@@ -33,5 +33,6 @@ void DrawDroppedItems(HDC hdc);
 fx WaveAt(fx x, fx y, fx t);
 
 void TileCorners(int c, int r, POINT q[4]);
+void DrawBoulderTile(HDC hdc, int sx, int sy, int seed);
 void DrawHillGround(HDC hdc, COLORREF base);
 #endif // RENDER_WORLD_H

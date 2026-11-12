@@ -229,7 +229,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                     for (int c = 0; c < MAP_SIZE; c++) {
                         int sx, sy; GetIsoCoords(FxI(c), FxI(r), &sx, &sy); if (sx < -TILE_WIDTH * 2 || sx > WINDOW_WIDTH + TILE_WIDTH * 2) continue;
                         uint8_t t_id = VISUAL_MAP[r][c];
-                        if (t_id == 1 || (t_id == 10 && current_biome == BIOME_CAVE)) {
+                        if (t_id == 1 && current_biome != BIOME_CAVE) DrawBoulderTile(memHDC, sx, sy, r * MAP_SIZE + c);
+                        else if (t_id == 1 || (t_id == 10 && current_biome == BIOME_CAVE)) {
                             if (current_biome == BIOME_CAVE) { DrawSubterraneanGeology(memHDC, sx, sy, (r * MAP_SIZE + c)); }
                             else {
                                 int thick = (t_id == 1) ? 24 : 0; int drawing_sy = sy - thick;
