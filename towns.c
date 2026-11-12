@@ -45,6 +45,7 @@ int VillageStageHere(void) { int i = HereIndex(); return i < 0 ? -1 : vg[i].stag
 int VillageBlocksAt(int x, int y) {
     int st = VillageStageHere();
     if (st < 2) return 0;
+    x -= MAP_MID; y -= MAP_MID; // the layout is drawn for a 32-tile screen
     if (x == 23 && y == 8) return 1;
     if (st < 3 || abs(x - 15) <= 1 || abs(y - 15) <= 1) return 0;
     return ((y == 6 || y == 24) && x >= 5 && x <= 25) || ((x == 5 || x == 25) && y >= 6 && y <= 24);
@@ -202,7 +203,7 @@ static void AddSettlersHere(void) {
         char nm[24]; VillageNameAt(vg[p->target].gx, vg[p->target].gy, nm, sizeof(nm));
         snprintf(lines[k], sizeof(lines[k]), "Settler: We're bound for %s to build a new life.", nm);
         for (int j = 0; j < 3 && village_npc_count < MAX_NPCS; j++) {
-            fx x = FxI(13) + j * FX(1.5), y = FxI(16 + (j & 1));
+            fx x = FxI(13 + MAP_MID) + j * FX(1.5), y = FxI(16 + MAP_MID + (j & 1));
             village_npcs[village_npc_count++] = (NPCEntity){ x, y, x, y, 0, j * 11, FACE_DOWN, lines[k], 60 };
         }
         snprintf(arpg_action_log, sizeof(arpg_action_log), "SETTLERS: A party of settlers rests here on the road to %s.", nm);
@@ -239,7 +240,7 @@ void DrawVillageGrowth(HDC hdc) {
     HGDIOBJ old_br = SelectObject(hdc, soil);
     static const int fxs[2] = { 6, 22 };
     for (int f = 0; f < 2; f++) for (int y = 16; y <= 17; y++) for (int x = fxs[f]; x < fxs[f] + 3; x++) {
-        int sx, sy; GetIsoCoords(FxI(x), FxI(y), &sx, &sy);
+        int sx, sy; GetIsoCoords(FxI(x + MAP_MID), FxI(y + MAP_MID), &sx, &sy);
         int cy = sy + TILE_HEIGHT / 2;
         POINT p[4] = { { sx, sy }, { sx + TILE_WIDTH / 2, cy }, { sx, sy + TILE_HEIGHT }, { sx - TILE_WIDTH / 2, cy } };
         SelectObject(hdc, soil); Polygon(hdc, p, 4);
@@ -247,7 +248,7 @@ void DrawVillageGrowth(HDC hdc) {
         for (int r = -1; r <= 1; r++) Ellipse(hdc, sx + r * 8 - 3, cy + r * 4 - 6, sx + r * 8 + 3, cy + r * 4);
     }
     SelectObject(hdc, old_br); DeleteObject(soil); DeleteObject(crop);
-    int sx, sy; GetIsoCoords(FxI(23), FxI(8), &sx, &sy);
+    int sx, sy; GetIsoCoords(FxI(23 + MAP_MID), FxI(8 + MAP_MID), &sx, &sy);
     int base = sy + TILE_HEIGHT / 2, hub_y = base - 40;
     HBRUSH stone = CreateSolidBrush(RGB(205, 195, 172)), roof = CreateSolidBrush(RGB(150, 70, 50)), sail = CreateSolidBrush(RGB(235, 228, 205));
     POINT tower[4] = { { sx - 10, base }, { sx + 10, base }, { sx + 6, hub_y }, { sx - 6, hub_y } };

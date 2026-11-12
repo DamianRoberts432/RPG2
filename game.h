@@ -21,7 +21,8 @@
 #define TILE_HEIGHT 32
 #define WINDOW_WIDTH 1824
 #define WINDOW_HEIGHT 986
-#define MAP_SIZE 32
+#define MAP_SIZE 64
+#define MAP_MID ((MAP_SIZE - 32) / 2) // villages, towns and caves are laid out for 32 tiles and sit centred on the bigger screen
 #define META_GRID_SIZE 64
 #define WORLD_GRID_SIZE (META_GRID_SIZE * META_GRID_SIZE)
 #define MAX_BUTTERFLIES 8

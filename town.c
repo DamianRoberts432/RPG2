@@ -1627,7 +1627,7 @@ int WellSpot(int *tx, int *ty) {
     if (well_screen != current_screen_index) {
         well_screen = current_screen_index; well_tx = -1;
         for (int k = 0; k < 24 && well_tx < 0; k++) {
-            int x = 13 + (k % 6), y = 20 + k / 6, clear = VISUAL_MAP[y][x] == 0 && VISUAL_MAP[y][x + 1] == 0;
+            int x = 13 + MAP_MID + (k % 6), y = 20 + MAP_MID + k / 6, clear = VISUAL_MAP[y][x] == 0 && VISUAL_MAP[y][x + 1] == 0;
             for (int n = 0; n < village_npc_count && clear; n++) {
                 fx dx = village_npcs[n].home_x - FxI(x), dy = village_npcs[n].home_y - FxI(y);
                 clear = FxMul(dx, dx) + FxMul(dy, dy) >= FxI(9);

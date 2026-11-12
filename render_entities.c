@@ -969,7 +969,7 @@ void DrawVillage(HDC hdc) {
         for (int i = 0; i < 4; i++)
             if (VillageHomeCentre(i, &hcx, &hcy) && hfx + fy > hcx + hcy + FX(0.3) && FxAbs((hfx - fy) - (hcx - hcy)) < HOME_HALF_X + HOME_HALF_Y + FX(0.7)) { DrawHeroAsset(hdc); break; }
     } else if (current_biome == BIOME_CASTLE || VillageStageHere() == 0) {
-        int sx, sy; GetIsoCoords(FxI(11), FxI(14), &sx, &sy);
+        int sx, sy; GetIsoCoords(FxI(11 + MAP_MID), FxI(14 + MAP_MID), &sx, &sy);
         HBRUSH stall = CreateSolidBrush(RGB(170, 115, 65));
         RECT stall_body = { sx - 18, sy - 8, sx + 18, sy + 5 }; FillRect(hdc, &stall_body, stall); DeleteObject(stall);
         HBRUSH canopy = CreateSolidBrush(RGB(70, 115, 155)); HGDIOBJ old = SelectObject(hdc, canopy);
