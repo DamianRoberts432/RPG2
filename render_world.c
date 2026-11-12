@@ -37,8 +37,10 @@ void TileCorners(int c, int r, POINT q[4]) {
 
 // Rolling ground: every tile with a raised corner is redrawn lifted, a little
 // brighter on slopes facing the top of the screen and darker on the far side.
+// Low-poly ground: every tile is two flat-shaded triangles, lit by its slope,
+// the left half catching a little more sun, with a small per-tile tone change.
 void DrawHillGround(HDC hdc, COLORREF base) {
-    if (!HillsActive()) return;
+    if (current_biome == BIOME_CAVE || in_cave) return;
     HBRUSH br[9];
     for (int k = 0; k < 9; k++) {
         int m = 256 + (k - 4) * 11, rr = GetRValue(base) * m / 256, gg = GetGValue(base) * m / 256, bb = GetBValue(base) * m / 256;
@@ -47,12 +49,14 @@ void DrawHillGround(HDC hdc, COLORREF base) {
     HGDIOBJ old = SelectObject(hdc, br[4]);
     for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) {
         int a = HillCorner(c, r), b = HillCorner(c + 1, r), d = HillCorner(c + 1, r + 1), e = HillCorner(c, r + 1);
-        if ((a | b | d | e) == 0 || VISUAL_MAP[r][c] == 12) continue;
+        if (VISUAL_MAP[r][c] == 12) continue;
         POINT q[4]; TileCorners(c, r, q);
         if (q[1].x < -TILE_WIDTH || q[3].x > WINDOW_WIDTH + TILE_WIDTH || q[2].y < -TILE_HEIGHT || q[0].y > WINDOW_HEIGHT + TILE_HEIGHT) continue;
         int gx = (b + d) - (a + e), gy = (e + d) - (a + b), lvl = 4 - (2 * gx + gy) / 2;
-        SelectObject(hdc, br[lvl < 0 ? 0 : lvl > 8 ? 8 : lvl]);
-        Polygon(hdc, q, 4);
+        int v = (int)((unsigned)RainHash(current_screen_index * 131 + r * MAP_SIZE + c) % 3u) - 1, lt = lvl + v + 1, rt = lvl + v - 1;
+        POINT L[3] = { q[0], q[2], q[3] }, Rt[3] = { q[0], q[1], q[2] };
+        SelectObject(hdc, br[lt < 0 ? 0 : lt > 8 ? 8 : lt]); Polygon(hdc, L, 3);
+        SelectObject(hdc, br[rt < 0 ? 0 : rt > 8 ? 8 : rt]); Polygon(hdc, Rt, 3);
     }
     SelectObject(hdc, old);
     for (int k = 0; k < 9; k++) DeleteObject(br[k]);
