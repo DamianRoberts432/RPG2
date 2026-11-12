@@ -36,7 +36,7 @@ static void RefreshBarrels(void) {
         // Barrels stand against the sides of houses, never next to a shopkeeper or villager.
         static const int ox[4] = { -3, 3, -3, 3 }, oy[4] = { -1, -1, 1, 1 };
         for (int i = 0; i < 4; i++) for (int k = 0; k < 4; k++) {
-            int x = hx[i] + shift + ox[(k + i) % 4], y = hy[i] + oy[(k + i) % 4], near_npc = 0;
+            int x = hx[i] + MAP_MID + shift + ox[(k + i) % 4], y = hy[i] + MAP_MID + oy[(k + i) % 4], near_npc = 0;
             if (x < 1 || y < 1 || x >= MAP_SIZE - 1 || y >= MAP_SIZE - 1 || VISUAL_MAP[y][x] != 0) continue;
             for (int n = 0; n < village_npc_count && !near_npc; n++) {
                 fx ndx = village_npcs[n].home_x - FxI(x), ndy = village_npcs[n].home_y - FxI(y);

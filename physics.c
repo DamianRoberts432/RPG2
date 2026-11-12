@@ -11,11 +11,11 @@ int VillageHomeCentre(int i, fx *x, fx *y) {
     static const int hx[4] = { 11, 15, 19, 15 }, hy[4] = { 11, 10, 11, 18 };
     if (i >= 0 && i < 4 && !in_cave && current_biome == BIOME_CASTLE) { // town: the king's hall, the bank, the forge and the pet shop
         static const int tx[4] = { 15, 19, 11, 19 }, ty[4] = { 8, 9, 14, 14 }, shifted[4] = { 1, 1, 0, 0 };
-        *x = FxI(tx[i] + shifted[i] * ((current_screen_index % 3) - 1)) + FX(0.5); *y = FxI(ty[i]) + FX(0.5);
+        *x = FxI(tx[i] + MAP_MID + shifted[i] * ((current_screen_index % 3) - 1)) + FX(0.5); *y = FxI(ty[i] + MAP_MID) + FX(0.5);
         return 1;
     }
     if (i < 0 || i >= 4 || in_cave || current_biome != BIOME_PRAIRIE || village_npc_count == 0 || VillageStageHere() < 1) return 0;
-    *x = FxI(hx[i] + (current_screen_index % 3) - 1) + FX(0.5); *y = FxI(hy[i]) + FX(0.5);
+    *x = FxI(hx[i] + MAP_MID + (current_screen_index % 3) - 1) + FX(0.5); *y = FxI(hy[i] + MAP_MID) + FX(0.5);
     return 1;
 }
 

@@ -48,7 +48,7 @@ fx opt_day_night_speed = FX(1.0);
 uint8_t visited_biomes[META_GRID_SIZE][META_GRID_SIZE] = {0};
 
 // Live Sandbox Tracking State Vectors
-fx player_x = FX(15.0); fx player_y = FX(15.0);
+fx player_x = FxI(15 + MAP_MID); fx player_y = FxI(15 + MAP_MID);
 FacingDirection player_facing = FACE_DOWN;
 WeaponType active_weapon = WEAPON_AXE;
 int bow_equipped = 0;
@@ -134,9 +134,9 @@ int pending_forced_biome = -1;
 CaveRecord cave_records[MAX_CAVE_RECORDS] = {0};
 int in_cave = 0;
 int cave_return_grid_x = 4, cave_return_grid_y = 4;
-fx cave_return_player_x = FX(15.0), cave_return_player_y = FX(15.0);
+fx cave_return_player_x = FxI(15 + MAP_MID), cave_return_player_y = FxI(15 + MAP_MID);
 int current_cave_origin_cell = -1;
-fx cave_treasure_x = FX(20.0), cave_treasure_y = FX(20.0);
+fx cave_treasure_x = FxI(20 + MAP_MID), cave_treasure_y = FxI(20 + MAP_MID);
 int cave_treasure_hunts_found = 0; // how many cave treasures the player has ever found (unlocks rare merchant stock)
 
 // Save Storage Fallbacks
@@ -156,7 +156,7 @@ int current_enemy = 0;
 fx gator_x = FX(0.0); fx gator_y = FX(0.0); int gator_active = 0; fx gator_swim_timer = FX(0.0);
 
 // Storefront Objects
-fx merchant_x = FX(10.0); fx merchant_y = FX(18.0);
+fx merchant_x = FxI(10 + MAP_MID); fx merchant_y = FxI(18 + MAP_MID);
 int merchant_selection = 0;
 int vendor_tab = 0; // 0 = Buy (merchant's items), 1 = Sell (player's inventory)
 // Weight values follow the player's assigned reference scale: Wood 1, Stone 1,

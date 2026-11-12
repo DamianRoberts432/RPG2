@@ -49,10 +49,10 @@ static void ZombieRisesFromWater(void) {
 void TriggerMonsterRespawn(void) {
     int is_night = FxAbs(FxSin(day_night_cycle_accumulator)) < FX(0.35);
     int spawn_side = rand() % 4;
-    if (spawn_side == 0) { enemy_x = FxI(2); enemy_y = FxI(rand() % 24 + 4); }
-    else if (spawn_side == 1) { enemy_x = FxI(29); enemy_y = FxI(rand() % 24 + 4); }
-    else if (spawn_side == 2) { enemy_x = FxI(rand() % 24 + 4); enemy_y = FxI(2); }
-    else { enemy_x = FxI(rand() % 24 + 4); enemy_y = FxI(29); }
+    if (spawn_side == 0) { enemy_x = FxI(2); enemy_y = FxI(rand() % (MAP_SIZE - 8) + 4); }
+    else if (spawn_side == 1) { enemy_x = FxI(MAP_SIZE - 3); enemy_y = FxI(rand() % (MAP_SIZE - 8) + 4); }
+    else if (spawn_side == 2) { enemy_x = FxI(rand() % (MAP_SIZE - 8) + 4); enemy_y = FxI(2); }
+    else { enemy_x = FxI(rand() % (MAP_SIZE - 8) + 4); enemy_y = FxI(MAP_SIZE - 3); }
     int mythic = MythicForCurrentLand();
     int custom;
     int peak = current_biome == BIOME_MOUNTAIN && MountainIsPeak(current_screen_index); // Yeti haunt the summits

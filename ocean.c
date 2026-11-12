@@ -18,12 +18,12 @@ int ShapeSeaTile(int r, int c, int noise) {
     if (in_cave) return 0;
     if (OpenSeaCell()) { VISUAL_MAP[r][c] = 12; return 1; }
     if (current_biome != BIOME_ISLAND) return 0;
-    fx dx = FxI(c) - FX(15.5), dy = FxI(r) - FX(15.5);
+    fx dx = FxI(c - MAP_MID) - FX(15.5), dy = FxI(r - MAP_MID) - FX(15.5);
     int land = FxMul(dx, dx) + FxMul(dy, dy) < FxI(36);
     for (int s = 0; s < 4 && !land; s++) {
         int nx = screen_grid_x + ox[s], ny = screen_grid_y + oy[s];
         if (nx < 0 || ny < 0 || nx >= META_GRID_SIZE || ny >= META_GRID_SIZE || WorldBiomeAt(nx, ny) == BIOME_OCEAN) continue;
-        int along = ox[s] ? c : r, across = ox[s] ? r : c;
+        int along = (ox[s] ? c : r) - MAP_MID, across = (ox[s] ? r : c) - MAP_MID; // a land bridge out to each shore
         if (across >= 13 && across <= 18 && (ox[s] + oy[s] > 0 ? along >= 16 : along <= 15)) land = 1;
     }
     VISUAL_MAP[r][c] = land ? (noise < 12 ? 11 : 4) : 12;
@@ -59,12 +59,12 @@ int TreasureIsleHere(void) {
 
 void DrawIsleTreasure(HDC hdc, int c, int r, int sx, int sy) {
     int i = TreasureIsleHere();
-    if (i < 0 || c != 15 || r != 15) return;
+    if (i < 0 || c != 15 + MAP_MID || r != 15 + MAP_MID) return;
     int claimed = (isle_treasure_bits >> i) & 1;
     HBRUSH b = CreateSolidBrush(claimed ? RGB(90, 70, 40) : RGB(230, 190, 40));
     RECT chest = { sx - 8, sy - 6, sx + 8, sy + 6 };
     FillRect(hdc, &chest, b); DeleteObject(b);
-    if (!claimed && IsNearPoint(FxI(15), FxI(15), FxI(3))) {
+    if (!claimed && IsNearPoint(FxI(15 + MAP_MID), FxI(15 + MAP_MID), FxI(3))) {
         SetTextColor(hdc, RGB(255, 255, 255)); SetBkMode(hdc, TRANSPARENT);
         TextOut(hdc, sx - 26, sy - 24, "TREASURE", 8);
     }
@@ -72,7 +72,7 @@ void DrawIsleTreasure(HDC hdc, int c, int r, int sx, int sy) {
 
 int TryIsleTreasure(void) {
     int i = TreasureIsleHere();
-    if (i < 0 || !IsNearPoint(FxI(15), FxI(15), FX(1.3))) return 0;
+    if (i < 0 || !IsNearPoint(FxI(15 + MAP_MID), FxI(15 + MAP_MID), FX(1.3))) return 0;
     if ((isle_treasure_bits >> i) & 1) { strcpy(arpg_action_log, "TREASURE ISLE: The chest is empty. Someone got here first... you."); return 1; }
     int gold = 500 + 100 * (i % 4);
     isle_treasure_bits |= 1 << i;

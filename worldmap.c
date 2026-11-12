@@ -8,7 +8,7 @@
 #define SAVE_FILE_NAME "rpg2_save.dat"
 #define SAVE_TEMP_NAME "rpg2_save.tmp"
 #define SAVE_MAGIC   0x32475052u /* "RPG2" */
-#define SAVE_VERSION 2u // 2: positions, weights and the clock are whole numbers (fixed point)
+#define SAVE_VERSION 3u // 2: positions, weights and the clock are whole numbers (fixed point); 3: 64-tile screens
 
 uint8_t map_poi[META_GRID_SIZE][META_GRID_SIZE] = {0};
 
@@ -167,7 +167,7 @@ int LoadWorldMapState(void) {
     if (!f) return 0;
     SaveHeader hdr;
     int ok = fread(&hdr, sizeof(hdr), 1, f) == 1 && hdr.magic == SAVE_MAGIC &&
-             (hdr.version == SAVE_VERSION || hdr.version == 1u) && hdr.grid_size == META_GRID_SIZE &&
+             (hdr.version >= 1u && hdr.version <= SAVE_VERSION) && hdr.grid_size == META_GRID_SIZE &&
              fread(biomes, sizeof(biomes), 1, f) == 1 && fread(pois, sizeof(pois), 1, f) == 1;
     // The hero's grid cell was appended later; older saves simply lack it.
     int32_t pos[2];
@@ -217,6 +217,14 @@ int LoadWorldMapState(void) {
     fclose(f);
     if (!ok) return 0;
     if (hdr.version == 1u) ConvertVersion1(cal, has_cal, items, has_pack ? pack[1] : 0, saved_chests, has_chests, saved_melt, has_world);
+    if (hdr.version < 3u) { // saved on 32-tile screens: move everything placed there to the same spot in the centred layout
+        for (int i = 0; i < MAX_CHESTS; i++) { saved_chests[i].x += FxI(MAP_MID); saved_chests[i].y += FxI(MAP_MID); }
+        for (int i = 0; i < MAX_FARM_PLOTS; i++) { saved_plots[i].x += MAP_MID; saved_plots[i].y += MAP_MID; }
+        for (int i = 0; i < MAX_WORN_TILES; i++) { saved_worn[i].x += MAP_MID; saved_worn[i].y += MAP_MID; }
+        for (int i = 0; i < MAX_SCREEN_EDITS; i++) { saved_edits[i].x += MAP_MID; saved_edits[i].y += MAP_MID; }
+        for (int i = 0; i < MAX_MELT_PATCHES; i++) { saved_melt[i].x += FxI(MAP_MID); saved_melt[i].y += FxI(MAP_MID); }
+        saved_home[2] += MAP_MID * 100; saved_home[3] += MAP_MID * 100;
+    }
     memcpy(visited_biomes, biomes, sizeof(biomes));
     memcpy(map_poi, pois, sizeof(pois));
     if (has_pos && CellInWorld(pos[0], pos[1])) { screen_grid_x = pos[0]; screen_grid_y = pos[1]; }

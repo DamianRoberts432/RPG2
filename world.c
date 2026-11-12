@@ -7,7 +7,7 @@ int cave_is_hold = 0; // this cave chamber is a dwarf hold (entered from a dwarf
 static void PlaceVillageLights(int shift) {
     static const int lx[5] = { 15, 9, 21, 12, 18 }, ly[5] = { 14, 13, 13, 21, 21 };
     for (int k = 0; k < 5; k++) {
-        int x = lx[k] + shift, y = ly[k];
+        int x = lx[k] + shift + MAP_MID, y = ly[k] + MAP_MID;
         for (int oy = -1; oy <= 1; oy++) for (int ox = -1; ox <= 1; ox++) if (k == 0 || (ox == 0 && oy == 0)) VISUAL_MAP[y + oy][x + ox] = 0;
         village_lights[village_light_count++] = (VillageLight){ FxI(x), FxI(y), k != 0 };
     }
@@ -29,13 +29,13 @@ void GenerateVillageNPCs(void) {
     if (!is_market && site != SITE_VILLAGE && site != SITE_DWARF) return;
     if (in_cave) { // a great hall cut into the rock, with four pillars
         static const int pr[4] = { 9, 9, 21, 21 }, pc[4] = { 7, 23, 7, 23 };
-        for (int r = 8; r <= 22; r++) for (int c = 6; c <= 24; c++) VISUAL_MAP[r][c] = 0;
+        for (int r = 8 + MAP_MID; r <= 22 + MAP_MID; r++) for (int c = 6 + MAP_MID; c <= 24 + MAP_MID; c++) VISUAL_MAP[r][c] = 0;
         for (int k = 0; k < 4; k++)
-            if (abs(pc[k] - FxTrunc(cave_treasure_x)) > 1 || abs(pr[k] - FxTrunc(cave_treasure_y)) > 1) VISUAL_MAP[pr[k]][pc[k]] = 1;
+            if (abs(pc[k] + MAP_MID - FxTrunc(cave_treasure_x)) > 1 || abs(pr[k] + MAP_MID - FxTrunc(cave_treasure_y)) > 1) VISUAL_MAP[pr[k] + MAP_MID][pc[k] + MAP_MID] = 1;
     }
     int shift = (current_screen_index % 3) - 1;
-    const fx village_x[4] = { FxI(11), FxI(15), FxI(19), FxI(15) };
-    const fx village_y[4] = { FxI(11), FxI(10), FxI(11), FxI(18) };
+    const fx village_x[4] = { FxI(11 + MAP_MID), FxI(15 + MAP_MID), FxI(19 + MAP_MID), FxI(15 + MAP_MID) };
+    const fx village_y[4] = { FxI(11 + MAP_MID), FxI(10 + MAP_MID), FxI(11 + MAP_MID), FxI(18 + MAP_MID) };
     for (int i = 0; i < 4; i++) {
         int x = FxTrunc(village_x[i]) + shift, y = FxTrunc(village_y[i]);
         for (int oy = -1; oy <= 1; oy++) for (int ox = -1; ox <= 1; ox++) VISUAL_MAP[y + oy][x + ox] = 0;
@@ -44,22 +44,22 @@ void GenerateVillageNPCs(void) {
     if (is_market) {
         for (int i = 0; i < 4; i++) { fx hx, hy; if (VillageHomeCentre(i, &hx, &hy)) for (int oy = -1; oy <= 1; oy++) for (int ox = -1; ox <= 1; ox++) VISUAL_MAP[FxTrunc(hy) + oy][FxTrunc(hx) + ox] = 0; }
         RestockMerchant();
-        village_npcs[0] = (NPCEntity){ FxI(15), FxI(17), FxI(15), FxI(17), 1, 0, FACE_DOWN, "Welcome, adventurer!", 90 };
+        village_npcs[0] = (NPCEntity){ FxI(15 + MAP_MID), FxI(17 + MAP_MID), FxI(15 + MAP_MID), FxI(17 + MAP_MID), 1, 0, FACE_DOWN, "Welcome, adventurer!", 90 };
         // Merchant and blacksmith are always here; the pet shop and card shop
         // keepers only sometimes set up in town.
-        village_npcs[1] = (NPCEntity){ FxI(11), FxI(16), FxI(11), FxI(16), 3, 0, FACE_DOWN, "Blacksmith: X to step into the forge.", 130 };
+        village_npcs[1] = (NPCEntity){ FxI(11 + MAP_MID), FxI(16 + MAP_MID), FxI(11 + MAP_MID), FxI(16 + MAP_MID), 3, 0, FACE_DOWN, "Blacksmith: X to step into the forge.", 130 };
         village_npc_count = 2;
         int shops = TownShopsToday(current_screen_index);
-        if (shops & 1) village_npcs[village_npc_count++] = (NPCEntity){ FxI(19), FxI(16), FxI(19), FxI(16), 4, 0, FACE_DOWN, "Pet shop: X to meet the familiars.", 160 };
-        if (shops & 2) village_npcs[village_npc_count++] = (NPCEntity){ FxI(15), FxI(20), FxI(15), FxI(20), 5, 0, FACE_DOWN, "Card shop: X to see today's ten cards.", 190 };
+        if (shops & 1) village_npcs[village_npc_count++] = (NPCEntity){ FxI(19 + MAP_MID), FxI(16 + MAP_MID), FxI(19 + MAP_MID), FxI(16 + MAP_MID), 4, 0, FACE_DOWN, "Pet shop: X to meet the familiars.", 160 };
+        if (shops & 2) village_npcs[village_npc_count++] = (NPCEntity){ FxI(15 + MAP_MID), FxI(20 + MAP_MID), FxI(15 + MAP_MID), FxI(20 + MAP_MID), 5, 0, FACE_DOWN, "Card shop: X to see today's ten cards.", 190 };
         merchant_x = village_npcs[0].x; merchant_y = village_npcs[0].y;
         // Castle hall, vault and shrine, plus a beggar in the square.
-        fx hall_x = FxI(15 + shift), side_x = FxI(19 + shift), shrine_x = FxI(11 + shift);
-        village_npcs[village_npc_count++] = (NPCEntity){ hall_x, FxI(10), hall_x, FxI(10), 6, 0, FACE_DOWN, "King: Heroes of renown may seek Legendary quests. X to approach the throne.", 210 };
-        village_npcs[village_npc_count++] = (NPCEntity){ side_x, FxI(11), side_x, FxI(11), 9, 0, FACE_DOWN, "Banker: Gold in the vault stays safe. X to bank.", 150 };
-        village_npcs[village_npc_count++] = (NPCEntity){ shrine_x, FxI(11), shrine_x, FxI(11), 8, 0, FACE_DOWN, "An old altar hums with power. X to kneel.", 999 };
-        for (int oy = -1; oy <= 1; oy++) for (int ox = -1; ox <= 1; ox++) VISUAL_MAP[19 + oy][12 + ox] = 0;
-        village_npcs[village_npc_count++] = (NPCEntity){ FxI(12), FxI(19), FxI(12), FxI(19), 7, 0, FACE_DOWN, "Beggar: Spare a coin or a crust, kind traveler?", 140 };
+        fx hall_x = FxI(15 + shift + MAP_MID), side_x = FxI(19 + shift + MAP_MID), shrine_x = FxI(11 + shift + MAP_MID);
+        village_npcs[village_npc_count++] = (NPCEntity){ hall_x, FxI(10 + MAP_MID), hall_x, FxI(10 + MAP_MID), 6, 0, FACE_DOWN, "King: Heroes of renown may seek Legendary quests. X to approach the throne.", 210 };
+        village_npcs[village_npc_count++] = (NPCEntity){ side_x, FxI(11 + MAP_MID), side_x, FxI(11 + MAP_MID), 9, 0, FACE_DOWN, "Banker: Gold in the vault stays safe. X to bank.", 150 };
+        village_npcs[village_npc_count++] = (NPCEntity){ shrine_x, FxI(11 + MAP_MID), shrine_x, FxI(11 + MAP_MID), 8, 0, FACE_DOWN, "An old altar hums with power. X to kneel.", 999 };
+        for (int oy = -1; oy <= 1; oy++) for (int ox = -1; ox <= 1; ox++) VISUAL_MAP[19 + MAP_MID + oy][12 + MAP_MID + ox] = 0;
+        village_npcs[village_npc_count++] = (NPCEntity){ FxI(12 + MAP_MID), FxI(19 + MAP_MID), FxI(12 + MAP_MID), FxI(19 + MAP_MID), 7, 0, FACE_DOWN, "Beggar: Spare a coin or a crust, kind traveler?", 140 };
     } else {
         for (int i = 0; i < 4; i++) {
             fx nx = village_x[i] + FxI(shift) + ((i & 1) ? FxI(1) : -FxI(1)), ny = village_y[i] + FxI(2);
@@ -72,20 +72,20 @@ void GenerateVillageNPCs(void) {
             village_npcs[3] = (NPCEntity){ sx, sy, sx, sy, 3, 0, FACE_DOWN, "Dwarf smith: X to step into the forge.", 130 };
         }
         int stage = VillageStageHere();
-        if (stage == 0) { village_npc_count = 2; VISUAL_MAP[14][11] = 0; } // a camp: two settlers and their stall
+        if (stage == 0) { village_npc_count = 2; VISUAL_MAP[14 + MAP_MID][11 + MAP_MID] = 0; } // a camp: two settlers and their stall
         if (stage >= 2) { // crop fields and the windmill
-            for (int y = 16; y <= 17; y++) for (int x = 6; x <= 8; x++) VISUAL_MAP[y][x] = VISUAL_MAP[y][x + 16] = 0;
-            VISUAL_MAP[8][23] = 0;
+            for (int y = 16 + MAP_MID; y <= 17 + MAP_MID; y++) for (int x = 6 + MAP_MID; x <= 8 + MAP_MID; x++) VISUAL_MAP[y][x] = VISUAL_MAP[y][x + 16] = 0;
+            VISUAL_MAP[8 + MAP_MID][23 + MAP_MID] = 0;
         }
-        if (stage >= 3) for (int y = 6; y <= 24; y++) for (int x = 5; x <= 25; x++) if (VillageBlocksAt(x, y)) VISUAL_MAP[y][x] = 0;
-        fx shrine_x = FX(13.5) + FxI(shift), beggar_x = FX(20.5) + FxI(shift); // in front of the homes, not inside them
-        village_npcs[village_npc_count++] = (NPCEntity){ shrine_x, FxI(13), shrine_x, FxI(13), 8, 0, FACE_DOWN, "A wayside altar hums with power. X to kneel.", 999 };
+        if (stage >= 3) for (int y = 6 + MAP_MID; y <= 24 + MAP_MID; y++) for (int x = 5 + MAP_MID; x <= 25 + MAP_MID; x++) if (VillageBlocksAt(x, y)) VISUAL_MAP[y][x] = 0;
+        fx shrine_x = FX(13.5) + FxI(shift + MAP_MID), beggar_x = FX(20.5) + FxI(shift + MAP_MID); // in front of the homes, not inside them
+        village_npcs[village_npc_count++] = (NPCEntity){ shrine_x, FxI(13 + MAP_MID), shrine_x, FxI(13 + MAP_MID), 8, 0, FACE_DOWN, "A wayside altar hums with power. X to kneel.", 999 };
         if (RainHash(current_screen_index * 31 + SeasonDay()) % 2)
-            village_npcs[village_npc_count++] = (NPCEntity){ beggar_x, FX(13.5), beggar_x, FX(13.5), 7, 0, FACE_DOWN, "Beggar: Spare a coin or a crust, kind traveler?", 140 };
+            village_npcs[village_npc_count++] = (NPCEntity){ beggar_x, FX(13.5) + FxI(MAP_MID), beggar_x, FX(13.5) + FxI(MAP_MID), 7, 0, FACE_DOWN, "Beggar: Spare a coin or a crust, kind traveler?", 140 };
         if (stage >= 3) for (int g = 0; g < 2 && village_npc_count < MAX_NPCS; g++) { // gate guards
-            fx gy = g ? FxI(23) : FxI(7);
-            VISUAL_MAP[FxTrunc(gy)][17] = 0;
-            village_npcs[village_npc_count++] = (NPCEntity){ FxI(17), gy, FxI(17), gy, 2, 0, FACE_DOWN, stage >= 5 ? "Guard: No army has ever taken these walls." : stage == 4 ? "Guard: Stone walls now. Let the bandits try." : "Guard: The palisade keeps the bandits out.", 150 };
+            fx gy = g ? FxI(23 + MAP_MID) : FxI(7 + MAP_MID);
+            VISUAL_MAP[FxTrunc(gy)][17 + MAP_MID] = 0;
+            village_npcs[village_npc_count++] = (NPCEntity){ FxI(17 + MAP_MID), gy, FxI(17 + MAP_MID), gy, 2, 0, FACE_DOWN, stage >= 5 ? "Guard: No army has ever taken these walls." : stage == 4 ? "Guard: Stone walls now. Let the bandits try." : "Guard: The palisade keeps the bandits out.", 150 };
         }
     }
 }
@@ -121,7 +121,7 @@ void EnterCave(void) {
     cave_is_hold = WorldSiteAt(screen_grid_x, screen_grid_y) == SITE_DWARF;
     GenerateProceduralScreen(20000 + CaveRoom(current_cave_origin_cell));
     CaveRecord *rec = FindOrCreateCaveRecord(current_cave_origin_cell);
-    player_x = FxI(15); player_y = FxI(15);
+    player_x = FxI(15 + MAP_MID); player_y = FxI(15 + MAP_MID);
     if (rec->treasure_claimed) {
         strcpy(arpg_action_log, "CAVE: This cavern's treasure has already been found. Find the way out.");
     } else {
@@ -298,7 +298,7 @@ static void ShapeMountains(int gc, int gr) {
         if (VISUAL_MAP[r][c] == 1 && RainHash(r * 41 + c * 7) % 3 != 0) VISUAL_MAP[r][c] = 0;
     if (!MountainIsPeak(cell)) return;
     for (int r = 3; r < MAP_SIZE - 3; r++) for (int c = 3; c < MAP_SIZE - 3; c++) {
-        fx ddx = FxI(c) - FX(15.5), ddy = FxI(r) - FX(15.5), d = FxLen(ddx, ddy), a = FxAtan2(ddy, ddx);
+        fx ddx = FxI(c - MAP_MID) - FX(15.5), ddy = FxI(r - MAP_MID) - FX(15.5), d = FxLen(ddx, ddy), a = FxAtan2(ddy, ddx);
         if (d >= FX(9.5) && d < FX(10.6)) VISUAL_MAP[r][c] = (a < -FX(2.6) || a > FX(2.6)) ? 0 : 1;      // outer crags, path in from the west
         else if (d >= FxI(6) && d < FX(7.2)) VISUAL_MAP[r][c] = (a > FX(0.25) && a < FX(0.85)) ? 0 : 1; // inner crags, path on round to the south-east
         else if (d < FxI(6)) VISUAL_MAP[r][c] = d > FX(2.5) && RainHash(r * 13 + c) % 9 == 0 ? 1 : 5; // the snowy summit
@@ -321,10 +321,10 @@ static void CarveCave(int index) {
         }
         memcpy(a, b, sizeof(a));
     }
-    for (int r = 13; r <= 17; r++) for (int c = 13; c <= 17; c++) a[r][c] = 0;
+    for (int r = 13 + MAP_MID; r <= 17 + MAP_MID; r++) for (int c = 13 + MAP_MID; c <= 17 + MAP_MID; c++) a[r][c] = 0;
     for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) dist[r][c] = -1;
-    int head = 0, tail = 0, far_x = 15, far_y = 15;
-    dist[15][15] = 0; qx[tail] = 15; qy[tail++] = 15;
+    int head = 0, tail = 0, far_x = 15 + MAP_MID, far_y = 15 + MAP_MID;
+    dist[far_y][far_x] = 0; qx[tail] = far_x; qy[tail++] = far_y;
     while (head < tail) {
         int x = qx[head], y = qy[head++];
         if (dist[y][x] > dist[far_y][far_x]) { far_x = x; far_y = y; }
@@ -437,7 +437,7 @@ void GenerateProceduralScreen(int index) {
                 else if (noise < 28) VISUAL_MAP[r][c] = 11;
             } else if (current_biome == BIOME_LAKE) {
                 if (r == 0 || r == MAP_SIZE - 1 || c == 0 || c == MAP_SIZE - 1) VISUAL_MAP[r][c] = 0; // visible shore ring
-                else if (r > 10 && r < 22 && c > 10 && c < 22) VISUAL_MAP[r][c] = 12;
+                else if (r > 10 + MAP_MID && r < 22 + MAP_MID && c > 10 + MAP_MID && c < 22 + MAP_MID) VISUAL_MAP[r][c] = 12;
                 else if (noise < 10) VISUAL_MAP[r][c] = 11;
             } else if (current_biome == BIOME_RIVER) {
                 int band = (MAP_SIZE / 2) + FxTrunc(FxSinTurn(FxTurn64((int64_t)index * FX_ONE + FxBits(FxI(r) * 3 / 10))) * 3);
@@ -464,9 +464,9 @@ void GenerateProceduralScreen(int index) {
                 else if (noise < 14) VISUAL_MAP[r][c] = 6;
             } else if (current_biome == BIOME_ISLAND) {
                 VISUAL_MAP[r][c] = 12;
-                if (r > 13 && r < 19 && c > 13 && c < 19) VISUAL_MAP[r][c] = (noise < 50) ? 4 : 11;
+                if (r > 13 + MAP_MID && r < 19 + MAP_MID && c > 13 + MAP_MID && c < 19 + MAP_MID) VISUAL_MAP[r][c] = (noise < 50) ? 4 : 11;
             } else if (current_biome == BIOME_CASTLE) {
-                if (r == 8 || r == 24) VISUAL_MAP[r][c] = 1;
+                if ((r == 8 + MAP_MID || r == 24 + MAP_MID) && c >= MAP_MID - 4 && c < MAP_SIZE - MAP_MID + 4) VISUAL_MAP[r][c] = 1;
             }
         }
     }
@@ -545,7 +545,7 @@ void GenerateProceduralScreen(int index) {
     }
     ClearHighwayTiles();
     GenerateVillageNPCs();
-    if (current_biome == BIOME_SWAMP) { gator_x = FxI(12); gator_y = FxI(12); gator_active = 1; } else { gator_active = 0; }
+    if (current_biome == BIOME_SWAMP) { gator_x = FxI(12 + MAP_MID); gator_y = FxI(12 + MAP_MID); gator_active = 1; } else { gator_active = 0; }
     SpawnScreenEnemies();
     if (in_cave && cave_is_hold) { for (int i = 0; i < MAX_ENEMIES; i++) enemies[i].hearts = FxI(0); enemy_hearts = FxI(0); } // the dwarves keep their hall clear
     if (AtSea()) { for (int i = 0; i < MAX_ENEMIES; i++) enemies[i].hearts = FxI(0); enemy_hearts = FxI(0); }
@@ -557,7 +557,7 @@ void GenerateProceduralScreen(int index) {
     // and only on summer day 13 (Musashi died on June 13, 1645).
     if (current_biome == BIOME_BEACH && grid_c == META_GRID_SIZE - 1 && current_season == SEASON_SUMMER &&
         SeasonDay() == 13 && !HasInventoryItem("Musashi's Blade")) {
-        fx mx, my; FindDropSpot(FxI(16), FxI(16), 1, &mx, &my);
+        fx mx, my; FindDropSpot(FxI(16 + MAP_MID), FxI(16 + MAP_MID), 1, &mx, &my);
         DropGroundLoot(mx, my, LOOT_MUSASHI_BLADE, 1);
     }
     BuildHills();
@@ -635,7 +635,7 @@ static int NpcRoutine(int i) {
                 if (!intact || FxMul(bx - hx, bx - hx) + FxMul(by - hy, by - hy) > FxI(36)) continue;
                 if (n++ <= pick) { gx = bx + FX(0.8); gy = by; }
             }
-            if (!n && OpenTile(12, 14)) { gx = FxI(12); gy = FX(14.6); } // no barrels: check the stall's goods
+            if (!n && OpenTile(12 + MAP_MID, 14 + MAP_MID)) { gx = FxI(12 + MAP_MID); gy = FX(14.6) + FxI(MAP_MID); } // no barrels: check the stall's goods
         }
         npc_gx[i] = gx; npc_gy[i] = gy;
     }
