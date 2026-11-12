@@ -205,24 +205,72 @@ int IsBigTree(int tile_seed) {
     return (current_biome == BIOME_GRASSLANDS || current_biome == BIOME_SWAMP || current_biome == BIOME_OASIS) && h < 6;
 }
 
+static void AlphaRegion(HDC hdc, HRGN rg, COLORREF col, int alpha);
+// One sway and one height for the whole tree, so the trunk, the canopy and a
+// giant's high crown always move together and never come apart.
+static int TreeSwayPx(int tile_seed) {
+    int phase = (FxMulI(world_tick, FxI(2)) + tile_seed) & 31;
+    return FxTrunc(FxSinTurn((uint32_t)phase << 27) * 2) * (3 + abs(wind_dir)) / 3;
+}
+static int TreeTallPx(int tile_seed) { return current_biome == BIOME_FOREST && tile_seed % 3 == 0 ? 16 : 0; }
+
 void DrawBigCrown(HDC hdc, int sx, int sy, int tile_seed) {
     int r = tile_seed / MAP_SIZE, c = tile_seed % MAP_SIZE, broad = IsDeciduousTree(tile_seed);
-    int sway = FxTrunc(FxSinTurn(FxTurn64((((int64_t)FxBits(world_tick) * FX(0.9)) >> 16) + (int64_t)tile_seed * FX_ONE)) * (2 + abs(wind_dir)));
-    COLORREF leaf = snow_cover > FX(0.5) ? RGB(200, 210, 222) : !broad ? RGB(30, 95, 45) : current_season == SEASON_FALL ? RGB(190, 105, 40) : RGB(55, 120, 45);
-    COLORREF dark = RGB(GetRValue(leaf) * 3 / 4, GetGValue(leaf) * 3 / 4, GetBValue(leaf) * 3 / 4);
-    HBRUSH bark = CreateSolidBrush(RGB(115, 82, 60)); HGDIOBJ ob = SelectObject(hdc, bark), op = SelectObject(hdc, GetStockObject(NULL_PEN));
-    POINT trunk[] = { {sx - 2 + sway / 2, sy - 30}, {sx + 2 + sway / 2, sy - 30}, {sx + 3, sy - 8}, {sx - 3, sy - 8} };
-    Polygon(hdc, trunk, 4);
+    sx += TreeSwayPx(tile_seed); sy -= TreeTallPx(tile_seed); // stacked on the canopy below, swaying with it
     fx depth = FxI(c + r) - (player_x + player_y), across = FxI(c - r) - (player_x - player_y);
-    int lacy = depth > FX(0.3) && depth < FxI(5) && across > -FX(2.5) && across < FX(2.5);
-    HBRUSH lb = lacy ? CreateHatchBrush(HS_DIAGCROSS, leaf) : CreateSolidBrush(leaf), db = lacy ? CreateHatchBrush(HS_DIAGCROSS, dark) : CreateSolidBrush(dark);
-    int old_mode = SetBkMode(hdc, TRANSPARENT);
-    SelectObject(hdc, db);
-    Ellipse(hdc, sx - 26 + sway, sy - 44, sx + 2 + sway, sy - 20); Ellipse(hdc, sx - 2 + sway, sy - 46, sx + 26 + sway, sy - 22);
-    SelectObject(hdc, lb);
-    Ellipse(hdc, sx - 16 + sway, sy - 58, sx + 16 + sway, sy - 32);
-    SetBkMode(hdc, old_mode);
-    SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(bark); DeleteObject(lb); DeleteObject(db);
+    int lacy = depth > FX(0.3) && depth < FxI(5) && across > -FX(2.5) && across < FX(2.5); // hero just behind: see-through leaves
+    HGDIOBJ op = SelectObject(hdc, GetStockObject(NULL_PEN));
+    if (!broad) { // a pine giant: three more tiers of the same pine, tapering to a point
+        int heights[] = { -10, -20, -30 }, widths[] = { 16, 12, 8 };
+        COLORREF shades[] = { RGB(55, 125, 45), RGB(75, 150, 60), RGB(95, 180, 75) };
+        for (int i = 0; i < 3; i++) {
+            POINT cap[] = { {sx, sy + heights[i] - 12}, {sx + widths[i], sy + heights[i] + 4}, {sx, sy + heights[i] + 8}, {sx - widths[i], sy + heights[i] + 4} };
+            if (lacy) { HRGN rg = CreatePolygonRgn(cap, 4, WINDING); AlphaRegion(hdc, rg, shades[i], 120); DeleteObject(rg); }
+            else { HBRUSH b = CreateSolidBrush(shades[i]); HGDIOBJ ob = SelectObject(hdc, b); Polygon(hdc, cap, 4); SelectObject(hdc, ob); DeleteObject(b); }
+        }
+        if (snow_cover > FX(0.25)) {
+            HBRUSH sb = CreateSolidBrush(RGB(240, 244, 250)); HGDIOBJ ob = SelectObject(hdc, sb);
+            POINT cap[] = { {sx, sy - 42}, {sx + 6, sy - 33}, {sx, sy - 31}, {sx - 6, sy - 33} };
+            Polygon(hdc, cap, 4); SelectObject(hdc, ob); DeleteObject(sb);
+        }
+        SelectObject(hdc, op);
+        return;
+    }
+    HBRUSH bark = CreateSolidBrush(RGB(115, 82, 60)); HGDIOBJ ob = SelectObject(hdc, bark);
+    if (current_season == SEASON_WINTER) { // bare like the tree below: the trunk carries on up into high branches
+        POINT trunk[] = { {sx - 2, sy - 40}, {sx + 2, sy - 40}, {sx + 2, sy - 10}, {sx - 2, sy - 10} };
+        Polygon(hdc, trunk, 4);
+        HPEN br = CreatePen(PS_SOLID, 2, RGB(110, 80, 60)); HGDIOBJ opn = SelectObject(hdc, br);
+        MoveToEx(hdc, sx, sy - 22, NULL); LineTo(hdc, sx - 13, sy - 34);
+        MoveToEx(hdc, sx, sy - 28, NULL); LineTo(hdc, sx + 12, sy - 40);
+        MoveToEx(hdc, sx, sy - 38, NULL); LineTo(hdc, sx - 5, sy - 50);
+        MoveToEx(hdc, sx, sy - 36, NULL); LineTo(hdc, sx + 6, sy - 48);
+        if (snow_cover > FX(0.25)) {
+            HPEN sp = CreatePen(PS_SOLID, 2, RGB(240, 244, 250)); SelectObject(hdc, sp);
+            MoveToEx(hdc, sx - 10, sy - 32, NULL); LineTo(hdc, sx - 5, sy - 28);
+            MoveToEx(hdc, sx + 5, sy - 34, NULL); LineTo(hdc, sx + 10, sy - 38);
+            SelectObject(hdc, br); DeleteObject(sp);
+        }
+        SelectObject(hdc, opn); DeleteObject(br);
+    } else {
+        COLORREF leaf = current_season == SEASON_FALL ? RGB(190, 105, 40) : RGB(55, 120, 45);
+        COLORREF dark = RGB(GetRValue(leaf) * 3 / 4, GetGValue(leaf) * 3 / 4, GetBValue(leaf) * 3 / 4);
+        POINT trunk[] = { {sx - 2, sy - 34}, {sx + 2, sy - 34}, {sx + 3, sy - 18}, {sx - 3, sy - 18} };
+        Polygon(hdc, trunk, 4);
+        if (lacy) {
+            HRGN a = CreateEllipticRgn(sx - 26, sy - 44, sx + 2, sy - 20), b = CreateEllipticRgn(sx - 2, sy - 46, sx + 26, sy - 22), t = CreateEllipticRgn(sx - 16, sy - 58, sx + 16, sy - 32);
+            CombineRgn(a, a, b, RGN_OR); AlphaRegion(hdc, a, dark, 120); AlphaRegion(hdc, t, leaf, 140);
+            DeleteObject(a); DeleteObject(b); DeleteObject(t);
+        } else {
+            HBRUSH lb = CreateSolidBrush(leaf), db = CreateSolidBrush(dark);
+            SelectObject(hdc, db);
+            Ellipse(hdc, sx - 26, sy - 44, sx + 2, sy - 20); Ellipse(hdc, sx - 2, sy - 46, sx + 26, sy - 22);
+            SelectObject(hdc, lb);
+            Ellipse(hdc, sx - 16, sy - 58, sx + 16, sy - 32);
+            SelectObject(hdc, bark); DeleteObject(lb); DeleteObject(db);
+        }
+    }
+    SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(bark);
 }
 
 void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
@@ -234,9 +282,9 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
     int wind_strength = abs(wind_dir);
     int sway_phase = (FxMulI(world_tick, FxI(2)) + tile_seed) & 31;
     int root_x = sx; // the trunk stays rooted; only the canopy sways
-    sx += sway_lut[sway_phase] * (3 + wind_strength) / 3;
+    sx += TreeSwayPx(tile_seed);
     int lean = (sx - root_x) / 2;
-    int tall = current_biome == BIOME_FOREST && tile_seed % 3 == 0 ? 16 : 0; // forest giants: a long bare trunk lifts the crown high
+    int tall = TreeTallPx(tile_seed); // forest giants: a long bare trunk lifts the crown high
     POINT trunk[] = {{root_x - 4 + lean, sy + 10 - tall}, {root_x + 4 + lean, sy + 10 - tall}, {root_x + 4, sy + 24}, {root_x - 4, sy + 24}};
     HBRUSH b = CreateSolidBrush(RGB(130, 95, 70)); HGDIOBJ old = SelectObject(hdc, b); Polygon(hdc, trunk, 4); SelectObject(hdc, old); DeleteObject(b);
     sy -= tall;
@@ -306,10 +354,14 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
         POINT cap[] = {{sx, sy - 16}, {sx + 8, sy - 5}, {sx, sy - 2}, {sx - 8, sy - 5}};
         Polygon(hdc, cap, 4); SelectObject(hdc, prev_snow); DeleteObject(snow_b);
     }
-    if (TreeHasApples(tile_seed)) {
-        HBRUSH apple = CreateSolidBrush(RGB(210, 45, 35)); HGDIOBJ old_apple = SelectObject(hdc, apple);
-        Ellipse(hdc, sx - 10, sy - 8, sx - 5, sy - 3); Ellipse(hdc, sx + 5, sy - 4, sx + 10, sy + 1);
-        SelectObject(hdc, old_apple); DeleteObject(apple);
+    if (TreeHasApples(tile_seed) && deciduous && !willow && current_season != SEASON_WINTER) { // apples hang inside the leaf blobs
+        static const int ax[3] = { -11, 7, 2 }, ay[3] = { -3, 1, -15 };
+        HBRUSH apple = CreateSolidBrush(RGB(210, 45, 35)); HGDIOBJ old_apple = SelectObject(hdc, apple), op_apple = SelectObject(hdc, GetStockObject(NULL_PEN));
+        for (int k = 0; k < 3; k++) {
+            Ellipse(hdc, sx + ax[k] - 3, sy + ay[k] - 3, sx + ax[k] + 3, sy + ay[k] + 3);
+            SetPixel(hdc, sx + ax[k] - 1, sy + ay[k] - 1, RGB(255, 170, 150));
+        }
+        SelectObject(hdc, op_apple); SelectObject(hdc, old_apple); DeleteObject(apple);
     }
     SelectObject(hdc, old);
 }
@@ -371,9 +423,15 @@ void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed) {
             MoveToEx(hdc, sx - 10, sy + 6, NULL); LineTo(hdc, sx - 2, sy + 4); LineTo(hdc, sx + 9, sy + 7);
             SelectObject(hdc, op); DeleteObject(p);
         }
-    } else if (type == 5) { // Tundra snow mound
-        HBRUSH snow = CreateSolidBrush(RGB(235, 240, 250)); HGDIOBJ old = SelectObject(hdc, snow);
-        Ellipse(hdc, sx - 6, sy + 1, sx + 6, sy + 9); SelectObject(hdc, old); DeleteObject(snow);
+    } else if (type == 5) { // tundra: faint wind ripples lying flat in the snow
+        unsigned int h = (unsigned int)RainHash(seed * 13 + 5);
+        if (h % 4u == 0) {
+            HPEN p = CreatePen(PS_SOLID, 1, RGB(218, 226, 240)); HGDIOBJ op = SelectObject(hdc, p);
+            int ox = (int)((h >> 3) % 9u) - 4;
+            MoveToEx(hdc, sx - 11 + ox, sy + 6, NULL); LineTo(hdc, sx - 3 + ox, sy + 4); LineTo(hdc, sx + 5 + ox, sy + 7); LineTo(hdc, sx + 11 + ox, sy + 5);
+            MoveToEx(hdc, sx - 5 + ox, sy + 10, NULL); LineTo(hdc, sx + 2 + ox, sy + 9); LineTo(hdc, sx + 7 + ox, sy + 11);
+            SelectObject(hdc, op); DeleteObject(p);
+        }
     } else if (type == 6) { // Grasslands tall grass tuft: single blades that lean a little in the wind
         if ((unsigned int)RainHash(seed * 17 + 9) % 5u == 0) { // wild weeds: broad leaves and a seed head
             HBRUSH leaf = CreateSolidBrush(RGB(90, 135, 50)); HGDIOBJ ol = SelectObject(hdc, leaf);
@@ -936,6 +994,7 @@ void DrawCanopyShadows(HDC hdc) {
     fx ox, oy; SunShadowOffset(&ox, &oy);
     fx lit = FxAbs(FxSin(day_night_cycle_accumulator));
     int alpha = lit < FX(0.35) ? 45 : current_weather == WEATHER_CLEAR ? 95 : 55;
+    if (snow_cover > FX(0.5) || current_biome == BIOME_TUNDRA) alpha = alpha * 2 / 3;
     HDC layer = NULL; HBITMAP bmp = NULL; HGDIOBJ old_bmp = NULL, old_br = NULL, old_pen = NULL;
     HBRUSH shade = NULL;
     for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) {
@@ -945,7 +1004,7 @@ void DrawCanopyShadows(HDC hdc) {
         if (!layer) {
             layer = CreateCompatibleDC(hdc); bmp = CreateCompatibleBitmap(hdc, WINDOW_WIDTH, WINDOW_HEIGHT);
             old_bmp = SelectObject(layer, bmp); BitBlt(layer, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, hdc, 0, 0, SRCCOPY);
-            shade = CreateSolidBrush(RGB(16, 28, 22)); old_br = SelectObject(layer, shade); old_pen = SelectObject(layer, GetStockObject(NULL_PEN));
+            shade = CreateSolidBrush(snow_cover > FX(0.5) || current_biome == BIOME_TUNDRA ? RGB(40, 60, 110) : RGB(16, 28, 22)); old_br = SelectObject(layer, shade); old_pen = SelectObject(layer, GetStockObject(NULL_PEN));
         }
         int seed = r * MAP_SIZE + c, big = IsBigTree(seed), rad = TILE_WIDTH * (big ? 9 : 6) / 10;
         int cx = sx + FxTrunc(FxMul(ox * TILE_WIDTH, FX(0.9))), cy = sy + TILE_HEIGHT / 2 + FxTrunc(FxMul(oy * TILE_HEIGHT, FX(0.6)));
@@ -986,4 +1045,27 @@ fx DoorwayCamera(void) {
     cam_x += FxTrunc(FxMul(FxMul((facing_x - facing_y) * (TILE_WIDTH / 2), FX(1.2)), s));
     cam_y += FxTrunc(FxMul(FxMul((facing_x + facing_y) * (TILE_HEIGHT / 2), FX(1.2)), s)) - FxTrunc(10 * s);
     return FxMul(FX(0.55), s);
+}
+
+// A soft see-through shadow pool: dark in the middle, fading out to the edge.
+// One small cached 64x32 sprite, stretched and drawn half-transparent like a
+// Saturn VDP1 shadow sprite.
+void DrawSoftShadow(HDC hdc, int cx, int cy, int rx, int ry, int alpha) {
+    enum { SW = 64, SH = 32 };
+    static HDC sdc; static HBITMAP sbm;
+    if (rx < 2 || ry < 1 || alpha <= 0) return;
+    if (!sdc) {
+        BITMAPINFO bi = { { sizeof(BITMAPINFOHEADER), SW, -SH, 1, 32, BI_RGB, 0, 0, 0, 0, 0 } };
+        void *bits = NULL; sbm = CreateDIBSection(hdc, &bi, DIB_RGB_COLORS, &bits, NULL, 0);
+        if (!sbm || !bits) return;
+        unsigned char *px = (unsigned char *)bits;
+        for (int j = 0; j < SH; j++) for (int i = 0; i < SW; i++, px += 4) {
+            fx dx = FxI(2 * i - SW + 1) / SW, dy = FxI(2 * j - SH + 1) / SH, d2 = FxMul(dx, dx) + FxMul(dy, dy);
+            fx a = d2 < FX(1.0) ? FX(1.0) - d2 : FX(0.0);
+            px[0] = px[1] = px[2] = 0; px[3] = (unsigned char)FxTrunc(FxMul(a, FX(255.0)));
+        }
+        sdc = CreateCompatibleDC(hdc); SelectObject(sdc, sbm);
+    }
+    BLENDFUNCTION bf = { AC_SRC_OVER, 0, (BYTE)(alpha > 255 ? 255 : alpha), AC_SRC_ALPHA };
+    AlphaBlend(hdc, cx - rx, cy - ry, 2 * rx, 2 * ry, sdc, 0, 0, SW, SH, bf);
 }

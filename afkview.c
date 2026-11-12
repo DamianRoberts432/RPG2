@@ -121,7 +121,7 @@ static void GatherThings(void) {
         for (int i = 0; BarrelInfo(i, &qx, &qy, &intact); i++) AddThing((qx) + FX(0.5), (qy) + FX(0.5), FX(0.0), FP_BARREL, i * 2 + intact);
         for (int i = 0; i < village_light_count && i < MAX_VILLAGE_LIGHTS; i++)
             AddThing((village_lights[i].x), (village_lights[i].y), FX(0.0), FP_LIGHT, i * 2 + (village_lights[i].torch != 0));
-        if (current_biome == BIOME_CASTLE) { AddThing(FX(11.0), FX(14.0), FX(0.0), FP_STALL, 0); AddThing((merchant_x), (merchant_y), FX(0.0), FP_TENT, 0); }
+        if (current_biome == BIOME_CASTLE) AddThing((merchant_x), (merchant_y), FX(0.0), FP_TENT, 0);
     }
     fx bx, by; int nibble;
     if (FishingBobberPos(&bx, &by, &nibble)) AddThing((bx), (by), FX(0.0), FP_BOBBER, nibble);
@@ -361,6 +361,35 @@ static fx face_bias, scene_lit;
 static COLORREF haze;
 static fx fog_near = FX(6.0), fog_far = FxI(FP_RANGE), fog_cap = FX(0.7); // night pulls these in (further for elves/dwarves)
 
+// Campfires, torches and fire pits light what stands near them: a warm,
+// flickering wash that shifts between orange and yellow, going white close in.
+#define FP_MAX_FIRES 8
+static fx fire_lx[FP_MAX_FIRES], fire_ly[FP_MAX_FIRES], fire_lz[FP_MAX_FIRES], fire_dark;
+static int fire_n;
+static fx FireFlicker(int i) {
+    DWORD now = GetTickCount();
+    return FX(0.8) + FxMul(FX(0.12), FxSin(Tk(now, 110) + FxI(i * 3))) + FxMul(FX(0.08), FxSin(Tk(now, 47) + FxI(i)));
+}
+static COLORREF FireLit(COLORREF col, fx cx, fx cy, fx cz) {
+    if (!fire_n || face_glow) return col;
+    fx best = FX(0.0); int bi = 0;
+    for (int i = 0; i < fire_n; i++) {
+        fx dx = cx - fire_lx[i], dy = cy - fire_ly[i], dz = cz - fire_lz[i];
+        if (FxAbs(dx) > FX(3.5) || FxAbs(dy) > FX(3.5)) continue;
+        fx d2 = FxMul(dx, dx) + FxMul(dy, dy) + FxMul(dz, dz);
+        if (d2 >= FX(7.0)) continue;
+        fx k = FX(1.0) - d2 / 7; k = FxMul(FxMul(k, k), FireFlicker(i));
+        if (k > best) { best = k; bi = i; }
+    }
+    if (best <= FX(0.0)) return col;
+    best = FxMul(best, fire_dark);
+    fx sway = FX(0.5) + FxMul(FX(0.5), FxSin(Tk(GetTickCount(), 230) + FxI(bi * 5)));
+    COLORREF warm = Mix(Mix(RGB(255, 110, 30), RGB(255, 185, 70), sway), RGB(255, 235, 200), FxMul(best, best));
+    fx add = FxMul(best, FX(0.42)); // added light, so leaves stay green and just glow warm
+    int r = GetRValue(col) + FxTrunc(GetRValue(warm) * add), g = GetGValue(col) + FxTrunc(GetGValue(warm) * add), b = GetBValue(col) + FxTrunc(GetBValue(warm) * add);
+    return RGB(r > 255 ? 255 : r, g > 255 ? 255 : g, b > 255 ? 255 : b);
+}
+
 static void AddFace(fx v[][3], int n, COLORREF col, const fx *center, int ground) {
     if (face_count >= FP_MAX_FACES || n < 3 || n > 8) return;
     fx ax = v[1][0] - v[0][0], ay = v[1][1] - v[0][1], az = v[1][2] - v[0][2];
@@ -415,7 +444,7 @@ static void AddFace(fx v[][3], int n, COLORREF col, const fx *center, int ground
     fx d = FxSqrt(FxMul(ex, ex) + FxMul(ey, ey) + FxMul(ez, ez)), fog = FxDiv((d - fog_near), (fog_far - fog_near));
     fog = FxClamp(fog, FX(0.0), FX(1.0));
     F->n = m; F->sprite = -1; F->depth = d - face_bias + (ground ? FX(1000.0) : FX(0.0)); // ground always first
-    F->c = Mix(Dim(col, shade), haze, FxMul(fog, fog_cap));
+    F->c = Mix(FireLit(Dim(col, shade), cx, cy, cz), haze, FxMul(fog, fog_cap));
 }
 
 // Animals, butterflies, the familiar and the bobber stay small figures, sorted in with the polygons.
@@ -961,10 +990,11 @@ static void TreeMesh(const FpThing *t) {
         // One rounded crown: every band shares its edges with the next, closed underneath.
         fx cz[6] = { FxMul(FX(0.4), h), FxMul(FX(0.6), h), FxMul(FX(0.88), h), FxMul(FX(1.16), h), FxMul(FX(1.4), h), FxMul(FX(1.53), h) }, cr[6] = { FxMul(FX(0.28), W), FxMul(FX(0.5), W), FxMul(FX(0.61), W), FxMul(FX(0.55), W), FxMul(FX(0.36), W), FxMul(FX(0.12), W) };
         Lathe(x, y, cz, cr, 6, 8, rot, 1, 1, leaf);
-        if (TreeHasApples(s)) // the apples really on this tree
+        if (TreeHasApples(s) && !snow && current_season != SEASON_WINTER) // on the crown's corners, half sunk into the leaves
             for (int a = 0; a < 6; a++) {
-                fx an = rot + a * FX(1.05), rr = FxMul((FX(0.62) - (a % 2) * FX(0.03)), W);
-                Prism(x + FxMul(FxCos(an), rr), y + FxMul(FxSin(an), rr), FxMul((FX(0.85) + (a % 3) * FX(0.18)), h), FxMul((FX(0.93) + (a % 3) * FX(0.18)), h), FX(0.05), FX(0.05), 4, an, RGB(205, 35, 30));
+                int k = 2 + (a % 2), v = (a * 3 + s) % 8;
+                fx an = rot + v * FX(6.2832) / 8;
+                Prism(x + FxMul(FxCos(an), cr[k]), y + FxMul(FxSin(an), cr[k]), cz[k] - FX(0.05), cz[k] + FX(0.05), FX(0.06), FX(0.06), 4, an, RGB(205, 35, 30));
             }
     } else { // two-tier pine
         COLORREF needle = RGB(35, 115, 55);
@@ -1284,7 +1314,12 @@ void DrawAfkView(HDC hdc) {
     DrawSky(hdc, light);
     DrawClouds(hdc, light);
     DrawGround(hdc, lit);
-    face_count = 0;
+    face_count = 0; fire_n = 0;
+    fire_dark = FX(1.0) - FxMul(FX(0.6), light);
+    for (int i = 0; i < thing_count && fire_n < FP_MAX_FIRES; i++)
+        if (things[i].kind == FP_FIRE || things[i].kind == FP_LIGHT) {
+            fire_lx[fire_n] = things[i].x; fire_ly[fire_n] = things[i].y; fire_lz[fire_n] = things[i].kind == FP_FIRE ? FX(0.35) : FX(1.0); fire_n++;
+        }
     GroundMesh();
     for (int i = 0; i < thing_count; i++) {
         int sx, sy, k = things[i].kind;
@@ -1300,6 +1335,13 @@ void DrawAfkView(HDC hdc) {
     }
     bobber_sx = -1;
     DrawFaces(hdc, lit);
+    for (int i = 0, halos = 0; i < fire_n && halos < 3; i++) { // a soft see-through glow around each nearby flame
+        int gx, gy; fx gd;
+        if (!Project(fire_lx[i], fire_ly[i], fire_lz[i], &gx, &gy, &gd) || gd < FX(0.4) || gd > FX(9.0)) continue;
+        int gr = FxTrunc(FxMul(FxDiv(FxI(420), gd + FX(0.5)), FireFlicker(i))); gr = gr < 30 ? 30 : gr > 120 ? 120 : gr; // SoftLight squares distances in 16.16: keep it under 128 px
+        SoftLight(hdc, gx, gy, 0, gr, RGB(255, 240, 210), RGB(255, 170, 70), FxMul(FxMul(FX(0.7), fire_dark), FireFlicker(i)), -FX(1.0), FX(1.0));
+        halos++;
+    }
     fog_near = FX(6.0); fog_far = FxI(FP_RANGE); fog_cap = FX(0.7); // rooms drawn with the same pipeline keep the daytime fog
     DrawWeather(hdc);
     if (bobber_sx >= 0) { // the rod in hand, line out to the bobber
@@ -1385,7 +1427,7 @@ static void WallY(fx y, fx x0, fx x1, fx z0, fx z1, COLORREF col, fx off) {
 static void RoomCamera(fx ex, fx ey, fx ez, fx fov, int hz) {
     eye_x = ex; eye_y = ey; eye_z = ez; yaw = -FX(1.5707963); hill_view = 0;
     focal = FxDiv(FxI(WINDOW_WIDTH / 2), FxTan(fov / 2)); horizon = hz;
-    face_count = 0; face_bias = FX(0.0); face_glow = 0; hcos = FX(1.0); hsin = FX(0.0);
+    face_count = 0; fire_n = 0; face_bias = FX(0.0); face_glow = 0; hcos = FX(1.0); hsin = FX(0.0);
 }
 
 static void RoomShell(fx x0, fx y0, fx x1, fx y1, fx wh, COLORREF fa, COLORREF fb, COLORREF wall, int stone) {

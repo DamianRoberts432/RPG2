@@ -449,10 +449,13 @@ void FirePlayerArrow(int is_tap) {
     if (IsFacingEnemyWithin(BOW_AIM_CONE_DOT)) {
         track_dx = enemy_x - player_x; track_dy = enemy_y - player_y;
     } else {
-        if (player_facing == FACE_UP) track_dy = -FxI(1);
-        else if (player_facing == FACE_DOWN) track_dy = FxI(1);
-        else if (player_facing == FACE_LEFT) track_dx = -FxI(1);
-        else track_dx = FxI(1);
+        track_dx = facing_x; track_dy = facing_y; // straight along the way the hero faces, all 8 directions
+        if (FxAbs(track_dx) + FxAbs(track_dy) < FX(0.01)) {
+            if (player_facing == FACE_UP) track_dy = -FxI(1);
+            else if (player_facing == FACE_DOWN) track_dy = FxI(1);
+            else if (player_facing == FACE_LEFT) track_dx = -FxI(1);
+            else track_dx = FxI(1);
+        }
     }
     fx distance = FxLen(track_dx, track_dy);
     if (distance < FX(0.001)) { track_dx = FxI(1); distance = FxI(1); }
@@ -460,7 +463,8 @@ void FirePlayerArrow(int is_tap) {
     fx spd = FxMul(FX(0.35), distance_mult);
     player_arrow.vx = FxMul(FxDiv(track_dx, distance), spd);
     player_arrow.vy = FxMul(FxDiv(track_dy, distance), spd);
-    player_arrow.vz = is_tap ? FX(0.25) : FX(0.5);
+    player_arrow.vz = FxI(0); // flat and straight, like Diablo: no arc, it flies until its range runs out
+    player_arrow.life = is_tap ? 30 : 67;
     player_arrow.damage = is_tap ? FX(0.4) : (FX(0.5) + FxMul(bow_charge_time, FX(1.5)));
     for (int i = 0; i < player_item_count; i++)
         if (player_inventory[i].is_equipped && strcmp(player_inventory[i].name, "Long Bow") == 0) { player_arrow.damage = FxMul(player_arrow.damage, FX(1.4)); player_arrow.vx = FxMul(player_arrow.vx, FX(1.2)); player_arrow.vy = FxMul(player_arrow.vy, FX(1.2)); break; }
@@ -488,7 +492,7 @@ void UpdatePlayerArrow(void) {
         player_arrow.x += player_arrow.vx / 2; player_arrow.y += player_arrow.vy / 2;
         if (ArrowBlockedAt(player_arrow.x, player_arrow.y)) { player_arrow.active = 0; return; }
     }
-    player_arrow.z += player_arrow.vz; player_arrow.vz -= FX(0.02);
+    if (--player_arrow.life <= 0) { player_arrow.active = 0; return; }
     fx arrow_radius = FX(0.5) + FxAbs(player_arrow.vx) + FxAbs(player_arrow.vy);
     if (EnemyAtPoint(player_arrow.x, player_arrow.y, arrow_radius) >= 0) {
         player_arrow.active = 0;
