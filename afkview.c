@@ -1023,12 +1023,15 @@ static void TreeMesh(const FpThing *t) {
                 fx an = rot + v * FX(6.2832) / 8;
                 Prism(x + FxMul(FxCos(an), cr[k]), y + FxMul(FxSin(an), cr[k]), cz[k] - FX(0.05), cz[k] + FX(0.05), FX(0.06), FX(0.06), 4, an, RGB(205, 35, 30));
             }
-    } else { // layered pine: three cones with the same slope, facets and turn, so the tiers read as one tree
-        COLORREF needle = RGB(35, 115, 55);
-        static const fx tb[3] = { FX(0.3), FX(0.8), FX(1.25) }, tr[3] = { FX(0.66), FX(0.5), FX(0.34) };
-        for (int k = 0; k < 3; k++) {
-            fx z[2] = { FxMul(tb[k], h), FxMul(tb[k] + FxDiv(tr[k], FX(0.6)), h) }, r[2] = { FxMul(tr[k], W), FX(0.0) };
-            Lathe(x, y, z, r, 2, 8, rot, 1, 0, snow && k == 2 ? RGB(225, 232, 240) : needle);
+    } else { // pine like the reference: tall and narrow, five stacked tiers, each with a darker lower lip
+        COLORREF needle = RGB(35, 115, 55), lip = snow ? RGB(30, 105, 52) : RGB(22, 82, 40), body = snow ? RGB(228, 235, 244) : needle;
+        static const fx tb[5] = { FX(0.25), FX(0.6), FX(0.95), FX(1.3), FX(1.62) }, tr[5] = { FX(0.48), FX(0.41), FX(0.34), FX(0.27), FX(0.2) };
+        int seg = t->depth > FX(0.0) && t->depth < FX(7.0) ? 8 : 6; // far pines use fewer facets
+        for (int k = 0; k < 5; k++) {
+            fx z0 = FxMul(tb[k], h), r0 = FxMul(tr[k], W), lh = FxMul(FX(0.12), h);
+            fx z[3] = { z0, z0 + lh, z0 + FxMul(FxDiv(tr[k], FX(0.45)), h) }, r[3] = { r0, r0 - FxMul(FxDiv(r0, z[2] - z0), lh), FX(0.0) };
+            Lathe(x, y, z, r, 2, seg, rot, 1, 0, lip);
+            Lathe(x, y, z + 1, r + 1, 2, seg, rot, 0, 0, body);
         }
     }
 }
