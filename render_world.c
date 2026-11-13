@@ -257,6 +257,11 @@ void DrawBigCrown(HDC hdc, int sx, int sy, int tile_seed) {
             POINT cap[] = { {sx, sy + heights[i] - 12}, {sx + widths[i], sy + heights[i] + 4}, {sx, sy + heights[i] + 8}, {sx - widths[i], sy + heights[i] + 4} };
             if (lacy) { HRGN rg = CreatePolygonRgn(cap, 4, WINDING); AlphaRegion(hdc, rg, shades[i], 120); DeleteObject(rg); }
             else { HBRUSH b = CreateSolidBrush(shades[i]); HGDIOBJ ob = SelectObject(hdc, b); Polygon(hdc, cap, 4); SelectObject(hdc, ob); DeleteObject(b); }
+            if (snow_cover > FX(0.25)) { // the same snow bands as the tiers below
+                int y = sy + heights[i], w = widths[i] * 4 / 5; POINT sn[] = { {sx, y - 12}, {sx + w, y + 1}, {sx, y + 4}, {sx - w, y + 1} };
+                if (lacy) { HRGN rg = CreatePolygonRgn(sn, 4, WINDING); AlphaRegion(hdc, rg, RGB(236, 241, 248), 120); DeleteObject(rg); }
+                else { HBRUSH b = CreateSolidBrush(RGB(236, 241, 248)); HGDIOBJ ob = SelectObject(hdc, b); Polygon(hdc, sn, 4); SelectObject(hdc, ob); DeleteObject(b); }
+            }
         }
         if (snow_cover > FX(0.25)) {
             HBRUSH sb = CreateSolidBrush(RGB(240, 244, 250)); HGDIOBJ ob = SelectObject(hdc, sb);
@@ -343,7 +348,10 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
         COLORREF shades[] = {RGB(55, 125, 45), RGB(75, 150, 60), RGB(95, 180, 75)};
         for (int i = 0; i < 3; i++) {
             POINT cap[] = {{sx, sy + heights[i] - 12}, {sx + widths[i], sy + heights[i] + 4}, {sx, sy + heights[i] + 8}, {sx - widths[i], sy + heights[i] + 4}};
-            b = CreateSolidBrush(shades[i]); HGDIOBJ prev = SelectObject(hdc, b); Polygon(hdc, cap, 4); SelectObject(hdc, prev); DeleteObject(b);
+            b = CreateSolidBrush(shades[i]); HGDIOBJ prev = SelectObject(hdc, b); Polygon(hdc, cap, 4); SelectObject(hdc, prev); DeleteObject(b); if (snow_cover > FX(0.25)) { // snow lies on each tier, leaving its green lower rim showing
+                int y = sy + heights[i], w = widths[i] * 4 / 5; POINT sn[] = {{sx, y - 12}, {sx + w, y + 1}, {sx, y + 4}, {sx - w, y + 1}};
+                b = CreateSolidBrush(RGB(236, 241, 248)); prev = SelectObject(hdc, b); Polygon(hdc, sn, 4); SelectObject(hdc, prev); DeleteObject(b);
+            }
         }
     } else {
         // "Virtua Racing" style saplings start out noticeably smaller than
@@ -354,7 +362,10 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
             COLORREF shades[] = {RGB(55, 125, 45), RGB(75, 150, 60), RGB(95, 180, 75)};
             for (int i = 0; i < 3; i++) {
                 POINT cap[] = {{sx, sy + heights[i] - 12}, {sx + widths[i], sy + heights[i] + 4}, {sx, sy + heights[i] + 8}, {sx - widths[i], sy + heights[i] + 4}};
-                b = CreateSolidBrush(shades[i]); HGDIOBJ prev = SelectObject(hdc, b); Polygon(hdc, cap, 4); SelectObject(hdc, prev); DeleteObject(b);
+                b = CreateSolidBrush(shades[i]); HGDIOBJ prev = SelectObject(hdc, b); Polygon(hdc, cap, 4); SelectObject(hdc, prev); DeleteObject(b); if (snow_cover > FX(0.25)) { // snow lies on each tier, leaving its green lower rim showing
+                int y = sy + heights[i], w = widths[i] * 4 / 5; POINT sn[] = {{sx, y - 12}, {sx + w, y + 1}, {sx, y + 4}, {sx - w, y + 1}};
+                b = CreateSolidBrush(RGB(236, 241, 248)); prev = SelectObject(hdc, b); Polygon(hdc, sn, 4); SelectObject(hdc, prev); DeleteObject(b);
+            }
             }
         } else {
             fx grow_scale = SaplingGrowth(tile_seed);
