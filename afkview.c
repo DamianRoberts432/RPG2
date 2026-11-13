@@ -1023,13 +1023,13 @@ static void TreeMesh(const FpThing *t) {
                 fx an = rot + v * FX(6.2832) / 8;
                 Prism(x + FxMul(FxCos(an), cr[k]), y + FxMul(FxSin(an), cr[k]), cz[k] - FX(0.05), cz[k] + FX(0.05), FX(0.06), FX(0.06), 4, an, RGB(205, 35, 30));
             }
-    } else { // two-tier pine
+    } else { // layered pine: three cones with the same slope, facets and turn, so the tiers read as one tree
         COLORREF needle = RGB(35, 115, 55);
-        // Skirt, then the top tier flaring out over it; both share the ring where they meet.
-        fx lz[2] = { FxMul(FX(0.3), h), FxMul(FX(1.0), h) }, lr[2] = { FxMul(FX(0.62), W), FxMul(FX(0.27), W) };
-        fx uz[3] = { FxMul(FX(1.0), h), FxMul(FX(0.94), h), FxMul(FX(2.0), h) }, ur[3] = { FxMul(FX(0.27), W), FxMul(FX(0.46), W), FX(0.0) };
-        Lathe(x, y, lz, lr, 2, 8, rot, 1, 0, needle);
-        Lathe(x, y, uz, ur, 3, 8, rot, 0, 0, snow ? RGB(225, 232, 240) : needle);
+        static const fx tb[3] = { FX(0.3), FX(0.8), FX(1.25) }, tr[3] = { FX(0.66), FX(0.5), FX(0.34) };
+        for (int k = 0; k < 3; k++) {
+            fx z[2] = { FxMul(tb[k], h), FxMul(tb[k] + FxDiv(tr[k], FX(0.6)), h) }, r[2] = { FxMul(tr[k], W), FX(0.0) };
+            Lathe(x, y, z, r, 2, 8, rot, 1, 0, snow && k == 2 ? RGB(225, 232, 240) : needle);
+        }
     }
 }
 
