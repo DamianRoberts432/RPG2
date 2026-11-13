@@ -995,8 +995,9 @@ void SunShadowOffset(fx *ox, fx *oy) {
     *oy = FxI(1) - elev;
 }
 
-// Tunic-style canopy shade: every tree drops a soft, lumpy shadow on the ground,
-// cast away from the sun or moon. All of it goes on one layer (a copy of the
+// Cast tree shadows: every tree throws a long shadow in its own shape (a pointed
+// one for pines, a trunk and a canopy for leafy trees) away from the sun or moon,
+// short at noon and long at dawn and dusk. All of it goes on one layer (a copy of the
 // frame) blended back at a fixed alpha, so the cost is a single blit whatever
 // the tree count - a Saturn would do the same with one half-transparent pass.
 void DrawCanopyShadows(HDC hdc) {
@@ -1004,7 +1005,6 @@ void DrawCanopyShadows(HDC hdc) {
     fx ox, oy; SunShadowOffset(&ox, &oy);
     fx lit = FxAbs(FxSin(day_night_cycle_accumulator));
     int alpha = lit < FX(0.35) ? 45 : current_weather == WEATHER_CLEAR ? 95 : 55;
-    if (snow_cover > FX(0.5) || current_biome == BIOME_TUNDRA) alpha = alpha * 2 / 3;
     HDC layer = NULL; HBITMAP bmp = NULL; HGDIOBJ old_bmp = NULL, old_br = NULL, old_pen = NULL;
     HBRUSH shade = NULL;
     for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) {
@@ -1016,13 +1016,27 @@ void DrawCanopyShadows(HDC hdc) {
             old_bmp = SelectObject(layer, bmp); BitBlt(layer, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, hdc, 0, 0, SRCCOPY);
             shade = CreateSolidBrush(snow_cover > FX(0.5) || current_biome == BIOME_TUNDRA ? RGB(40, 60, 110) : RGB(16, 28, 22)); old_br = SelectObject(layer, shade); old_pen = SelectObject(layer, GetStockObject(NULL_PEN));
         }
-        int seed = r * MAP_SIZE + c, big = IsBigTree(seed), rad = TILE_WIDTH * (big ? 9 : 6) / 10;
-        int cx = sx + FxTrunc(FxMul(ox * TILE_WIDTH, FX(0.9))), cy = sy + TILE_HEIGHT / 2 + FxTrunc(FxMul(oy * TILE_HEIGHT, FX(0.6)));
-        for (int k = 0; k < 3; k++) { // three overlapping blobs give a leafy, uneven edge
-            unsigned h = (unsigned)RainHash(seed * 7 + k);
-            int bx = cx + (int)(h % 21) - 10, by = cy + (int)((h >> 5) % 11) - 5, br = rad * (70 + (int)((h >> 9) % 30)) / 100;
-            Ellipse(layer, bx - br, by - br / 2, bx + br, by + br / 2);
+        int seed = r * MAP_SIZE + c, big = IsBigTree(seed), tall = TreeTallPx(seed), pine = !IsDeciduousTree(seed);
+        int bx = sx, by = sy + 22, height = 46 + (big ? 30 : 0) + tall; // the trunk's foot and how tall the tree stands
+        fx len = FxMul(FX(1.1) + 2 * oy, FxI(height)); // long even at noon, like a low northern sun
+        int dx = FxTrunc(FxMul(FxMul(ox, FX(0.5)) - FX(0.55), len)), dy = FxTrunc(FxMul(FX(0.45) + FxMul(oy, FX(0.35)), len));
+        int dl = FxTrunc(FxLen(FxI(dx), FxI(dy))); if (dl < 1) dl = 1;
+        int pux = -dy * 100 / dl, puy = dx * 50 / dl, wide = big ? 140 : 100; // ground-flattened sideways direction
+#define SHP(t, w) (POINT){ bx + dx * (t) / 100 + pux * (w) * wide / 1000000, by + dy * (t) / 100 + puy * (w) * wide / 1000000 }
+        if (pine) { // a long pointed shadow with a notch for the tiers
+            POINT p[] = { SHP(0, -300), SHP(22, -1300), SHP(48, -600), SHP(55, -1000), SHP(100, 0), SHP(55, 1000), SHP(48, 600), SHP(22, 1300), SHP(0, 300) };
+            Polygon(layer, p, 9);
+        } else { // a trunk line ending in a leafy, slightly uneven canopy
+            POINT t[] = { SHP(0, -300), SHP(50, -300), SHP(50, 300), SHP(0, 300) }; Polygon(layer, t, 4);
+            static const int cs[8] = { 100, 71, 0, -71, -100, -71, 0, 71 }, sn[8] = { 0, 71, 100, 71, 0, -71, -100, -71 };
+            POINT p[8];
+            for (int k = 0; k < 8; k++) {
+                int j = 85 + (int)((unsigned)RainHash(seed * 7 + k) % 26u);
+                p[k] = SHP(72 + 28 * cs[k] * j / 10000, 1700 * sn[k] * j / 10000);
+            }
+            Polygon(layer, p, 8);
         }
+#undef SHP
     }
     if (!layer) return;
     SelectObject(layer, old_pen); SelectObject(layer, old_br); DeleteObject(shade);
