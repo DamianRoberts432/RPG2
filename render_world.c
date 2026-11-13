@@ -43,7 +43,7 @@ void DrawHillGround(HDC hdc, COLORREF base) {
     if (current_biome == BIOME_CAVE || in_cave) return;
     HBRUSH br[9];
     for (int k = 0; k < 9; k++) {
-        int m = 256 + (k - 4) * 11, rr = GetRValue(base) * m / 256, gg = GetGValue(base) * m / 256, bb = GetBValue(base) * m / 256;
+        int m = 256 + (k - 4) * 7, rr = GetRValue(base) * m / 256, gg = GetGValue(base) * m / 256, bb = GetBValue(base) * m / 256;
         br[k] = CreateSolidBrush(RGB(rr > 255 ? 255 : rr, gg > 255 ? 255 : gg, bb > 255 ? 255 : bb));
     }
     HGDIOBJ old = SelectObject(hdc, br[4]);
@@ -53,7 +53,10 @@ void DrawHillGround(HDC hdc, COLORREF base) {
         POINT q[4]; TileCorners(c, r, q);
         if (q[1].x < -TILE_WIDTH || q[3].x > WINDOW_WIDTH + TILE_WIDTH || q[2].y < -TILE_HEIGHT || q[0].y > WINDOW_HEIGHT + TILE_HEIGHT) continue;
         int gx = (b + d) - (a + e), gy = (e + d) - (a + b), lvl = 4 - (2 * gx + gy) / 2;
-        int v = (int)((unsigned)RainHash(current_screen_index * 131 + r * MAP_SIZE + c) % 3u) - 1, lt = lvl + v + 1, rt = lvl + v - 1;
+        // the tone changes in big patches of 3x3 tiles, shifted per row of patches so they don't line up in a grid;
+        // only sloped tiles split into a lit and a shaded half
+        int pr = r / 3, pc = (c + (pr % 2) * 2) / 3, v = (int)((unsigned)RainHash(current_screen_index * 131 + pr * 97 + pc) % 3u) - 1;
+        int slope = abs(2 * gx + gy) >= 6, lt = lvl + v + slope, rt = lvl + v - slope;
         POINT L[3] = { q[0], q[2], q[3] }, Rt[3] = { q[0], q[1], q[2] };
         SelectObject(hdc, br[lt < 0 ? 0 : lt > 8 ? 8 : lt]); Polygon(hdc, L, 3);
         SelectObject(hdc, br[rt < 0 ? 0 : rt > 8 ? 8 : rt]); Polygon(hdc, Rt, 3);
