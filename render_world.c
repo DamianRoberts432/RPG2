@@ -205,8 +205,29 @@ static void DrawDeciduousCanopy(HDC hdc, int sx, int sy, int tile_seed) {
 // A few trees (many in forests) are tall old giants: a high crown over the
 // normal canopy. When the hero walks just behind one its leaves turn lacy so
 // you can still see yourself and anything attacking you.
+// What each tree tile grows into, shared by the tree, its giant crown and its shadow
+// so they always agree.
+enum { TREE_PINE, TREE_SAPLING, TREE_LEAFY, TREE_BARE, TREE_WILLOW };
+static int IsWillowTree(int tile_seed) { // weeping willows grow by water
+    if (!IsDeciduousTree(tile_seed) || tile_seed % 3 != 0 || current_biome == BIOME_TUNDRA) return 0;
+    int tr = tile_seed / MAP_SIZE, tc = tile_seed % MAP_SIZE;
+    for (int r = tr - 2; r <= tr + 2; r++) for (int c = tc - 2; c <= tc + 2; c++)
+        if (r >= 0 && c >= 0 && r < MAP_SIZE && c < MAP_SIZE && VISUAL_MAP[r][c] == 12) return 1;
+    return 0;
+}
+static fx SaplingGrowth(int tile_seed) { // young pines grow from half size to full size
+    fx full_at = FxI(180) + FxI(tile_seed % 90);
+    return world_tick >= full_at ? FxI(1) : FX(0.5) + FxMul(FX(0.4), FxDiv(world_tick, full_at));
+}
+static int TreeKind(int tile_seed) {
+    if (IsDeciduousTree(tile_seed)) return IsWillowTree(tile_seed) ? TREE_WILLOW : current_season == SEASON_WINTER ? TREE_BARE : TREE_LEAFY;
+    return tile_seed % 2 != 0 && SaplingGrowth(tile_seed) < FxI(1) ? TREE_SAPLING : TREE_PINE;
+}
+
 int IsBigTree(int tile_seed) {
     if (in_cave) return 0;
+    int kind = TreeKind(tile_seed);
+    if (kind == TREE_SAPLING || kind == TREE_WILLOW) return 0; // young trees and willows never carry a giant crown
     int h = abs(RainHash(tile_seed * 7919 + 17)) % 100;
     if (current_biome == BIOME_FOREST) return h < 22;
     return (current_biome == BIOME_GRASSLANDS || current_biome == BIOME_SWAMP || current_biome == BIOME_OASIS) && h < 6;
@@ -219,7 +240,9 @@ static int TreeSwayPx(int tile_seed) {
     int phase = (FxMulI(world_tick, FxI(2)) + tile_seed) & 31;
     return FxTrunc(FxSinTurn((uint32_t)phase << 27) * 2) * (3 + abs(wind_dir)) / 3;
 }
-static int TreeTallPx(int tile_seed) { return current_biome == BIOME_FOREST && tile_seed % 3 == 0 ? 16 : 0; }
+static int TreeTallPx(int tile_seed) {
+    return current_biome == BIOME_FOREST && IsBigTree(tile_seed) ? 16 : 0; // only giants stand on a long trunk
+}
 
 void DrawBigCrown(HDC hdc, int sx, int sy, int tile_seed) {
     int r = tile_seed / MAP_SIZE, c = tile_seed % MAP_SIZE, broad = IsDeciduousTree(tile_seed);
@@ -292,17 +315,13 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
     sx += TreeSwayPx(tile_seed);
     int lean = (sx - root_x) / 2;
     int tall = TreeTallPx(tile_seed); // forest giants: a long bare trunk lifts the crown high
-    POINT trunk[] = {{root_x - 4 + lean, sy + 10 - tall}, {root_x + 4 + lean, sy + 10 - tall}, {root_x + 4, sy + 24}, {root_x - 4, sy + 24}};
+    int kind = TreeKind(tile_seed), tw = kind == TREE_SAPLING ? 2 : 4, top = kind == TREE_SAPLING ? sy + 18 : sy + 10 - tall; // a sapling has a thin, short stem
+    POINT trunk[] = {{root_x - tw + lean, top}, {root_x + tw + lean, top}, {root_x + tw, sy + 24}, {root_x - tw, sy + 24}};
     HBRUSH b = CreateSolidBrush(RGB(130, 95, 70)); HGDIOBJ old = SelectObject(hdc, b); Polygon(hdc, trunk, 4); SelectObject(hdc, old); DeleteObject(b);
     sy -= tall;
 
     int deciduous = IsDeciduousTree(tile_seed);
-    int willow = 0; // weeping willows grow by water
-    if (deciduous && tile_seed % 3 == 0 && current_biome != BIOME_TUNDRA) {
-        int tr = tile_seed / MAP_SIZE, tc = tile_seed % MAP_SIZE;
-        for (int r = tr - 2; r <= tr + 2 && !willow; r++) for (int c = tc - 2; c <= tc + 2; c++)
-            if (r >= 0 && c >= 0 && r < MAP_SIZE && c < MAP_SIZE && VISUAL_MAP[r][c] == 12) { willow = 1; break; }
-    }
+    int willow = kind == TREE_WILLOW;
     if (willow) { // a low dome with long strands hanging to the ground, swinging with the wind
         int leafy = current_season != SEASON_WINTER;
         HBRUSH wb = CreateSolidBrush(leafy ? RGB(85, 135, 55) : RGB(110, 95, 70)); HGDIOBJ prev = SelectObject(hdc, wb);
@@ -330,8 +349,7 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
         // "Virtua Racing" style saplings start out noticeably smaller than
         // the full 3-polygon trees, then gradually grow into that full-size
         // 3-polygon shape once enough world time has passed on this tile.
-        fx growth_threshold = FxI(180) + FxI(tile_seed % 90);
-        if (world_tick >= growth_threshold) {
+        if (kind == TREE_PINE) {
             int heights[] = {12, 4, -4}, widths[] = {20, 16, 12};
             COLORREF shades[] = {RGB(55, 125, 45), RGB(75, 150, 60), RGB(95, 180, 75)};
             for (int i = 0; i < 3; i++) {
@@ -339,10 +357,10 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
                 b = CreateSolidBrush(shades[i]); HGDIOBJ prev = SelectObject(hdc, b); Polygon(hdc, cap, 4); SelectObject(hdc, prev); DeleteObject(b);
             }
         } else {
-            fx grow_scale = FX(0.5) + FxMul(FX(0.4), FxDiv(world_tick, growth_threshold));
-            int ax = sx, ay = sy + 12; // ground-anchor point so growth stretches upward, not downward through the soil
-            POINT raw_left[] = {{sx, sy - 18}, {sx - 18, sy + 6}, {sx, sy + 12}};
-            POINT raw_right[] = {{sx, sy - 18}, {sx, sy + 12}, {sx + 18, sy + 6}};
+            fx grow_scale = SaplingGrowth(tile_seed);
+            int ax = sx, ay = sy + 20; // sits on its short stem, so growth stretches upward, not down through the soil
+            POINT raw_left[] = {{sx, sy - 10}, {sx - 18, sy + 14}, {sx, sy + 20}};
+            POINT raw_right[] = {{sx, sy - 10}, {sx, sy + 20}, {sx + 18, sy + 14}};
             POINT left_facet[3], right_facet[3];
             for (int i = 0; i < 3; i++) {
                 left_facet[i].x = ax + (LONG)FxTrunc((raw_left[i].x - ax) * grow_scale);
@@ -356,7 +374,7 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
             Polygon(hdc, right_facet, 3); SelectObject(hdc, prev2); DeleteObject(f2);
         }
     }
-    if (!deciduous && snow_cover > FX(0.25) && (tile_seed % 2 == 0 || world_tick >= FxI(180) + FxI(tile_seed % 90))) {
+    if (!deciduous && snow_cover > FX(0.25) && kind == TREE_PINE) {
         HBRUSH snow_b = CreateSolidBrush(RGB(240, 244, 250)); HGDIOBJ prev_snow = SelectObject(hdc, snow_b);
         POINT cap[] = {{sx, sy - 16}, {sx + 8, sy - 5}, {sx, sy - 2}, {sx - 8, sy - 5}};
         Polygon(hdc, cap, 4); SelectObject(hdc, prev_snow); DeleteObject(snow_b);
@@ -1016,27 +1034,42 @@ void DrawCanopyShadows(HDC hdc) {
             old_bmp = SelectObject(layer, bmp); BitBlt(layer, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, hdc, 0, 0, SRCCOPY);
             shade = CreateSolidBrush(snow_cover > FX(0.5) || current_biome == BIOME_TUNDRA ? RGB(40, 60, 110) : RGB(16, 28, 22)); old_br = SelectObject(layer, shade); old_pen = SelectObject(layer, GetStockObject(NULL_PEN));
         }
-        int seed = r * MAP_SIZE + c, big = IsBigTree(seed), tall = TreeTallPx(seed), pine = !IsDeciduousTree(seed);
-        int bx = sx, by = sy + 22, height = 46 + (big ? 30 : 0) + tall; // the trunk's foot and how tall the tree stands
-        fx len = FxMul(FX(1.1) + 2 * oy, FxI(height)); // long even at noon, like a low northern sun
+        // Each tree's outline as (height above the trunk's foot, half-width) pairs, matching how it is drawn.
+        static const signed char pine[] = { 0,3, 4,3, 8,20, 14,12, 16,16, 22,8, 24,12, 40,0 };
+        static const signed char pine_big[] = { 0,3, 4,3, 8,20, 14,12, 16,16, 22,8, 24,12, 30,16, 37,10, 40,12, 47,6, 50,8, 66,0 };
+        static const signed char leafy[] = { 0,3, 14,3, 17,14, 24,20, 32,18, 40,12, 46,6, 48,0 };
+        static const signed char leafy_big[] = { 0,3, 14,3, 17,14, 24,20, 32,18, 40,12, 44,22, 56,26, 66,22, 74,15, 80,8, 82,0 };
+        static const signed char bare[] = { 0,2, 14,2, 22,7, 30,9, 36,5, 41,0 };
+        static const signed char bare_big[] = { 0,2, 14,2, 22,7, 30,9, 52,10, 64,12, 70,6, 74,0 };
+        static const signed char willow[] = { 0,4, 6,14, 10,18, 20,19, 30,15, 36,8, 38,0 };
+        static const signed char sapling[] = { 0,2, 4,2, 10,18, 34,0 };
+        int seed = r * MAP_SIZE + c, kind = TreeKind(seed), big = IsBigTree(seed), tall = TreeTallPx(seed);
+        const signed char *o; int n;
+#define OUTLINE(a) (o = a, n = (int)sizeof(a) / 2)
+        if (kind == TREE_PINE) big ? OUTLINE(pine_big) : OUTLINE(pine);
+        else if (kind == TREE_LEAFY) big ? OUTLINE(leafy_big) : OUTLINE(leafy);
+        else if (kind == TREE_BARE) big ? OUTLINE(bare_big) : OUTLINE(bare);
+        else if (kind == TREE_WILLOW) OUTLINE(willow);
+        else OUTLINE(sapling);
+#undef OUTLINE
+        fx grow = kind == TREE_SAPLING ? SaplingGrowth(seed) : FxI(1);
+        int hs[16], ws[16];
+        for (int i = 0; i < n; i++) {
+            int h = o[i * 2], w = o[i * 2 + 1];
+            if (kind == TREE_SAPLING && h > 4) { h = 4 + FxTrunc((h - 4) * grow); w = FxTrunc(w * grow); }
+            if (h > 0) h += tall;
+            if ((kind == TREE_LEAFY || kind == TREE_WILLOW) && i >= 2) w = w * (90 + (int)((unsigned)RainHash(seed * 7 + i) % 21u)) / 100; // uneven leafy edge
+            hs[i] = h; ws[i] = w * 3 / 5; // a low sun narrows the shadow as it stretches it
+        }
+        int height = hs[n - 1], bx = sx, by = sy + 22; // the trunk's foot
+        fx len = FxMul(FX(1.6) + 2 * oy, FxI(height)); // long even at noon, like a low northern sun
         int dx = FxTrunc(FxMul(FxMul(ox, FX(0.5)) - FX(0.55), len)), dy = FxTrunc(FxMul(FX(0.45) + FxMul(oy, FX(0.35)), len));
         int dl = FxTrunc(FxLen(FxI(dx), FxI(dy))); if (dl < 1) dl = 1;
-        int pux = -dy * 100 / dl, puy = dx * 50 / dl, wide = big ? 140 : 100; // ground-flattened sideways direction
-#define SHP(t, w) (POINT){ bx + dx * (t) / 100 + pux * (w) * wide / 1000000, by + dy * (t) / 100 + puy * (w) * wide / 1000000 }
-        if (pine) { // a long pointed shadow with a notch for the tiers
-            POINT p[] = { SHP(0, -300), SHP(22, -1300), SHP(48, -600), SHP(55, -1000), SHP(100, 0), SHP(55, 1000), SHP(48, 600), SHP(22, 1300), SHP(0, 300) };
-            Polygon(layer, p, 9);
-        } else { // a trunk line ending in a leafy, slightly uneven canopy
-            POINT t[] = { SHP(0, -300), SHP(50, -300), SHP(50, 300), SHP(0, 300) }; Polygon(layer, t, 4);
-            static const int cs[8] = { 100, 71, 0, -71, -100, -71, 0, 71 }, sn[8] = { 0, 71, 100, 71, 0, -71, -100, -71 };
-            POINT p[8];
-            for (int k = 0; k < 8; k++) {
-                int j = 85 + (int)((unsigned)RainHash(seed * 7 + k) % 26u);
-                p[k] = SHP(72 + 28 * cs[k] * j / 10000, 1700 * sn[k] * j / 10000);
-            }
-            Polygon(layer, p, 8);
-        }
-#undef SHP
+        int pux = -dy * 100 / dl, puy = dx * 50 / dl; // sideways along the ground, flattened by the view
+        POINT p[32]; int np = 0;
+        for (int i = 0; i < n; i++) p[np++] = (POINT){ bx + dx * hs[i] / height + pux * ws[i] / 100, by + dy * hs[i] / height + puy * ws[i] / 100 };
+        for (int i = n - 2; i >= 0; i--) p[np++] = (POINT){ bx + dx * hs[i] / height - pux * ws[i] / 100, by + dy * hs[i] / height - puy * ws[i] / 100 };
+        Polygon(layer, p, np);
     }
     if (!layer) return;
     SelectObject(layer, old_pen); SelectObject(layer, old_br); DeleteObject(shade);
