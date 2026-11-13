@@ -184,6 +184,33 @@ static void SoftLight(HDC hdc, int cx, int cy, int disc_r, int glow_r, COLORREF 
     SelectObject(m, om); DeleteDC(m); DeleteObject(b);
 }
 
+// Firelight: an oval of light centred on the middle of the fire and big enough to wrap
+// the whole flame and its stones, white-hot in the middle, then yellow, then orange.
+// Built at half size and stretched (one see-through sprite on the Saturn).
+static void FireGlow(HDC hdc, int cx, int cy, int flame_h, fx peak) {
+    int ry = flame_h * 6 / 5 + 10, rx = ry * 9 / 10;
+    ry = ry > 300 ? 300 : ry; rx = rx > 270 ? 270 : rx;
+    int W = rx + 1, H = ry + 1, x0 = cx - rx, y0 = cy - ry;
+    if (peak <= FX(0.0) || x0 + 2 * rx < 0 || x0 > WINDOW_WIDTH || y0 + 2 * ry < 0 || y0 > WINDOW_HEIGHT) return;
+    BITMAPINFO bi = { { sizeof(BITMAPINFOHEADER), W, -H, 1, 32, BI_RGB, 0, 0, 0, 0, 0 } };
+    void *bits = NULL; HBITMAP b = CreateDIBSection(hdc, &bi, DIB_RGB_COLORS, &bits, NULL, 0);
+    if (!b || !bits) { if (b) DeleteObject(b); return; }
+    unsigned char *px = (unsigned char *)bits;
+    for (int j = 0; j < H; j++)
+        for (int i = 0; i < W; i++, px += 4) {
+            fx nx = FxDiv(FxI(2 * i - rx) + FX(1.0), FxI(rx)), ny = FxDiv(FxI(2 * j - ry) + FX(1.0), FxI(ry));
+            fx t2 = FxMul(nx, nx) + FxMul(ny, ny), k = t2 < FX(1.0) ? FX(1.0) - t2 : FX(0.0);
+            fx a = FxMul(FxMul(k, k), peak), hot = FxMul(k, k);
+            int r = 255, g = 120 + FxTrunc(130 * hot), bl = 30 + FxTrunc(200 * FxMul(hot, hot));
+            px[0] = (unsigned char)FxTrunc(bl * a); px[1] = (unsigned char)FxTrunc(g * a); px[2] = (unsigned char)FxTrunc(r * a);
+            px[3] = (unsigned char)FxTrunc(FxMul(a, FX(255.0)));
+        }
+    HDC m = CreateCompatibleDC(hdc); HGDIOBJ om = SelectObject(m, b);
+    BLENDFUNCTION bf = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
+    AlphaBlend(hdc, x0, y0, 2 * rx, 2 * ry, m, 0, 0, W, H, bf);
+    SelectObject(m, om); DeleteDC(m); DeleteObject(b);
+}
+
 static void DrawSky(HDC hdc, fx light) {
     int h = horizon < 0 ? 0 : horizon > WINDOW_HEIGHT ? WINDOW_HEIGHT : horizon;
     if (in_cave || current_biome == BIOME_CAVE) { Box(hdc, 0, 0, WINDOW_WIDTH, h, RGB(28, 24, 22)); return; }
@@ -1318,7 +1345,7 @@ void DrawAfkView(HDC hdc) {
     fire_dark = FX(1.0) - FxMul(FX(0.6), light);
     for (int i = 0; i < thing_count && fire_n < FP_MAX_FIRES; i++)
         if (things[i].kind == FP_FIRE || things[i].kind == FP_LIGHT) {
-            fire_lx[fire_n] = things[i].x; fire_ly[fire_n] = things[i].y; fire_lz[fire_n] = things[i].kind == FP_FIRE ? FX(0.35) : FX(1.0); fire_n++;
+            fire_lx[fire_n] = things[i].x; fire_ly[fire_n] = things[i].y; fire_lz[fire_n] = things[i].kind == FP_LIGHT && (things[i].seed & 1) ? FX(1.0) : FX(0.35); fire_n++; // torch flames sit on a post; fires and fire pits are on the ground
         }
     GroundMesh();
     for (int i = 0; i < thing_count; i++) {
@@ -1335,11 +1362,11 @@ void DrawAfkView(HDC hdc) {
     }
     bobber_sx = -1;
     DrawFaces(hdc, lit);
-    for (int i = 0, halos = 0; i < fire_n && halos < 3; i++) { // a soft see-through glow around each nearby flame
-        int gx, gy; fx gd;
-        if (!Project(fire_lx[i], fire_ly[i], fire_lz[i], &gx, &gy, &gd) || gd < FX(0.4) || gd > FX(9.0)) continue;
-        int gr = FxTrunc(FxMul(FxDiv(FxI(420), gd + FX(0.5)), FireFlicker(i))); gr = gr < 30 ? 30 : gr > 120 ? 120 : gr; // SoftLight squares distances in 16.16: keep it under 128 px
-        SoftLight(hdc, gx, gy, 0, gr, RGB(255, 240, 210), RGB(255, 170, 70), FxMul(FxMul(FX(0.7), fire_dark), FireFlicker(i)), -FX(1.0), FX(1.0));
+    for (int i = 0, halos = 0; i < fire_n && halos < 3; i++) { // a soft see-through glow wrapped around each nearby flame
+        int bx, by, tx, ty; fx bd, td;
+        if (!Project(fire_lx[i], fire_ly[i], fire_lz[i] > FX(0.5) ? fire_lz[i] - FX(0.25) : FX(0.0), &bx, &by, &bd) || !Project(fire_lx[i], fire_ly[i], fire_lz[i] + FX(0.15), &tx, &ty, &td) || bd < FX(0.4) || bd > FX(9.0)) continue;
+        int h = by - ty; h = h < 12 ? 12 : h;
+        FireGlow(hdc, (bx + tx) / 2, (by + ty) / 2, h, FxMul(FxMul(FX(0.6), fire_dark), FireFlicker(i)));
         halos++;
     }
     fog_near = FX(6.0); fog_far = FxI(FP_RANGE); fog_cap = FX(0.7); // rooms drawn with the same pipeline keep the daytime fog
