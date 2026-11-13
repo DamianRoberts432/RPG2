@@ -37,22 +37,29 @@ void TileCorners(int c, int r, POINT q[4]) {
 
 // Rolling ground: every tile with a raised corner is redrawn lifted, a little
 // brighter on slopes facing the top of the screen and darker on the far side.
+// Low-poly ground: every tile is two flat-shaded triangles, lit by its slope,
+// the left half catching a little more sun, with a small per-tile tone change.
 void DrawHillGround(HDC hdc, COLORREF base) {
-    if (!HillsActive()) return;
+    if (current_biome == BIOME_CAVE || in_cave) return;
     HBRUSH br[9];
     for (int k = 0; k < 9; k++) {
-        int m = 256 + (k - 4) * 11, rr = GetRValue(base) * m / 256, gg = GetGValue(base) * m / 256, bb = GetBValue(base) * m / 256;
+        int m = 256 + (k - 4) * 7, rr = GetRValue(base) * m / 256, gg = GetGValue(base) * m / 256, bb = GetBValue(base) * m / 256;
         br[k] = CreateSolidBrush(RGB(rr > 255 ? 255 : rr, gg > 255 ? 255 : gg, bb > 255 ? 255 : bb));
     }
     HGDIOBJ old = SelectObject(hdc, br[4]);
     for (int r = 0; r < MAP_SIZE; r++) for (int c = 0; c < MAP_SIZE; c++) {
         int a = HillCorner(c, r), b = HillCorner(c + 1, r), d = HillCorner(c + 1, r + 1), e = HillCorner(c, r + 1);
-        if ((a | b | d | e) == 0 || VISUAL_MAP[r][c] == 12) continue;
+        if (VISUAL_MAP[r][c] == 12) continue;
         POINT q[4]; TileCorners(c, r, q);
         if (q[1].x < -TILE_WIDTH || q[3].x > WINDOW_WIDTH + TILE_WIDTH || q[2].y < -TILE_HEIGHT || q[0].y > WINDOW_HEIGHT + TILE_HEIGHT) continue;
         int gx = (b + d) - (a + e), gy = (e + d) - (a + b), lvl = 4 - (2 * gx + gy) / 2;
-        SelectObject(hdc, br[lvl < 0 ? 0 : lvl > 8 ? 8 : lvl]);
-        Polygon(hdc, q, 4);
+        // the tone changes in big patches of 3x3 tiles, shifted per row of patches so they don't line up in a grid;
+        // only sloped tiles split into a lit and a shaded half
+        int pr = r / 3, pc = (c + (pr % 2) * 2) / 3, v = (int)((unsigned)RainHash(current_screen_index * 131 + pr * 97 + pc) % 3u) - 1;
+        int slope = abs(2 * gx + gy) >= 6, lt = lvl + v + slope, rt = lvl + v - slope;
+        POINT L[3] = { q[0], q[2], q[3] }, Rt[3] = { q[0], q[1], q[2] };
+        SelectObject(hdc, br[lt < 0 ? 0 : lt > 8 ? 8 : lt]); Polygon(hdc, L, 3);
+        SelectObject(hdc, br[rt < 0 ? 0 : rt > 8 ? 8 : rt]); Polygon(hdc, Rt, 3);
     }
     SelectObject(hdc, old);
     for (int k = 0; k < 9; k++) DeleteObject(br[k]);
@@ -366,23 +373,24 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
     SelectObject(hdc, old);
 }
 
+static void DrawRockCone(HDC hdc, int bx, int by, int w, int h);
+// Rock tiles: a big faceted boulder, sometimes with a smaller one leaning on it.
+void DrawBoulderTile(HDC hdc, int sx, int sy, int seed) {
+    int w = 24 + seed % 7, h = 26 + (seed / 7) % 10;
+    DrawRockCone(hdc, sx, sy + 18, w, h);
+    if (seed % 3 == 0) DrawRockCone(hdc, sx + 14, sy + 24, w / 2, h / 2);
+}
+
+// A faceted low-poly boulder: a sunlit top, a mid-grey left face and a dark right face.
 static void DrawRockCone(HDC hdc, int bx, int by, int w, int h) {
     int base_h = w / 2 > 2 ? w / 2 : 2;
-    HBRUSH dark = CreateSolidBrush(RGB(70, 72, 80)), light = CreateSolidBrush(RGB(110, 114, 125));
-    HGDIOBJ old = SelectObject(hdc, dark);
-    Ellipse(hdc, bx - w, by - base_h, bx + w, by + base_h);
-    SelectObject(hdc, light);
-    Pie(hdc, bx - w, by - base_h, bx + w, by + base_h, bx, by + base_h, bx, by - base_h);
-    SelectObject(hdc, dark);
-    POINT left[] = {{bx, by - h}, {bx - w, by}, {bx, by + base_h}};
-    Polygon(hdc, left, 3);
-    SelectObject(hdc, light);
-    POINT right[] = {{bx, by - h}, {bx, by + base_h}, {bx + w, by}};
-    Polygon(hdc, right, 3);
-    SelectObject(hdc, old); DeleteObject(dark); DeleteObject(light);
-    HPEN shine = CreatePen(PS_SOLID, 1, RGB(160, 165, 178)); HGDIOBJ old_p = SelectObject(hdc, shine);
-    MoveToEx(hdc, bx + 1, by - h + 3, NULL); LineTo(hdc, bx + w / 2, by - 1);
-    SelectObject(hdc, old_p); DeleteObject(shine);
+    POINT top = { bx - w / 5, by - h }, ridge = { bx + w / 3, by - h * 3 / 4 }, l = { bx - w, by - h / 5 }, r = { bx + w, by - h / 4 }, f = { bx + w / 6, by + base_h }, mid = { bx - w / 3, by - h / 2 };
+    HBRUSH lit = CreateSolidBrush(RGB(152, 156, 166)), side = CreateSolidBrush(RGB(112, 116, 128)), dark = CreateSolidBrush(RGB(76, 79, 90));
+    HGDIOBJ old = SelectObject(hdc, side), op = SelectObject(hdc, GetStockObject(NULL_PEN));
+    POINT lf[] = { mid, l, f }; Polygon(hdc, lf, 3);
+    SelectObject(hdc, dark); POINT rf[] = { mid, ridge, r, f }; Polygon(hdc, rf, 4);
+    SelectObject(hdc, lit); POINT tf[] = { l, top, ridge, mid }; Polygon(hdc, tf, 4);
+    SelectObject(hdc, op); SelectObject(hdc, old); DeleteObject(lit); DeleteObject(side); DeleteObject(dark);
 }
 
 // Cave formations: clusters of tall, tapering stalagmite cones.
@@ -404,6 +412,8 @@ void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed) {
         HBRUSH stone = CreateSolidBrush(RGB(100, 105, 115)); HGDIOBJ old = SelectObject(hdc, stone);
         POINT poly[] = {{sx - 6, sy + 2}, {sx + 8, sy}, {sx + 4, sy + 8}, {sx - 4, sy + 6}};
         Polygon(hdc, poly, 4); SelectObject(hdc, old); DeleteObject(stone);
+        HBRUSH facet = CreateSolidBrush(RGB(145, 150, 160)); HGDIOBJ of = SelectObject(hdc, facet); // sunlit top facet
+        POINT lit[] = {{sx - 6, sy + 2}, {sx + 8, sy}, {sx + 1, sy + 4}}; Polygon(hdc, lit, 3); SelectObject(hdc, of); DeleteObject(facet);
         unsigned int v = (unsigned int)RainHash(seed * 13 + 5) % 3u;
         if (v == 0) { // mossy stone
             HBRUSH moss = CreateSolidBrush(RGB(85, 125, 60)); HGDIOBJ om = SelectObject(hdc, moss);
