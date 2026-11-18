@@ -1122,6 +1122,7 @@ static void HomeMesh(const FpThing *t, int night) {
     face_glow = 0; face_bias = FX(0.0);
 }
 
+static void FloorRect(fx x0, fx y0, fx x1, fx y1, fx z, COLORREF col, int ground);
 static void GroundMesh(void) {
     COLORREF g = GroundColor();
     for (int r = FxTrunc(player_y) - FP_RANGE; r <= FxTrunc(player_y) + FP_RANGE; r++)
@@ -1136,6 +1137,23 @@ static void GroundMesh(void) {
             else col = Dim(col, FX(0.96) + (abs(RainHash(r * 977 + c * 131)) % 5) * FX(0.01));
             fx v[4][3] = { { FxI(c), FxI(r), FX(0.0) }, { FxI(c + 1), FxI(r), FX(0.0) }, { FxI(c + 1), FxI(r + 1), FX(0.0) }, { FxI(c), FxI(r + 1), FX(0.0) } };
             AddFace(v, 4, col, NULL, 1);
+            if (t == 12) { // foam on the water's edge wherever it meets land: three white patches per edge, breathing
+                static const int nb[4][2] = { { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } };
+                face_glow = 1;
+                for (int e = 0; e < 4; e++) {
+                    int nr = r + nb[e][1], nc = c + nb[e][0];
+                    if (nr < 0 || nc < 0 || nr >= MAP_SIZE || nc >= MAP_SIZE || VISUAL_MAP[nr][nc] == 12) continue;
+                    for (int k = 0; k < 3; k++) {
+                        fx a0 = FxI(k) / 3, a1 = FxI(k + 1) / 3, fw = FX(0.05) + FxMul(FX(0.035), FX(1.0) + FxSin(Tk(GetTickCount(), 700) + (c + r) * FX(0.8) + k * FX(2.1)));
+                        fx x0 = FxI(c) + a0, x1 = FxI(c) + a1, y0 = FxI(r) + a0, y1 = FxI(r) + a1;
+                        if (e == 0) FloorRect(x0, FxI(r), x1, FxI(r) + fw, FX(0.01), RGB(225, 238, 246), 0);
+                        else if (e == 1) FloorRect(x0, FxI(r + 1) - fw, x1, FxI(r + 1), FX(0.01), RGB(225, 238, 246), 0);
+                        else if (e == 2) FloorRect(FxI(c), y0, FxI(c) + fw, y1, FX(0.01), RGB(225, 238, 246), 0);
+                        else FloorRect(FxI(c + 1) - fw, y0, FxI(c + 1), y1, FX(0.01), RGB(225, 238, 246), 0);
+                    }
+                }
+                face_glow = 0;
+            }
             fx fdx = FxI(c) + FX(0.5) - (player_x), fdy = FxI(r) + FX(0.5) - (player_y);
             if (t != 1 && t != 10 && t != 11 && t != 12 && !in_cave && (snow_cover) < FX(0.5) && FxMul(fdx, fdx) + FxMul(fdy, fdy) < FX(64.0) &&
                 (current_biome == BIOME_GRASSLANDS || current_biome == BIOME_FOREST || current_biome == BIOME_PRAIRIE || current_biome == BIOME_OASIS) &&
