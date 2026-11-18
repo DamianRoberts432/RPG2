@@ -107,7 +107,7 @@ static void BakeCaustics(void) {
                             fx d = FxLen(px[wj][wi] + FxI(i - wi) - X, py[wj][wi] + FxI(j - wj) - Y);
                             if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d;
                         }
-                    if (d2 - d1 < FX(0.11)) caustic_mask[f][t][y][x >> 3] |= (unsigned char)(1 << (x & 7));
+                    if (d2 - d1 < FX(0.075)) caustic_mask[f][t][y][x >> 3] |= (unsigned char)(1 << (x & 7));
                 }
     }
 }
@@ -123,7 +123,7 @@ static void BuildCausticSheet(HDC hdc) { // the PC copy: one sheet of the masks 
         for (int t = 0; t < CAUSTIC_TILES; t++)
             for (int y = 0; y < TILE_HEIGHT; y++)
                 for (int x = 0; x < TILE_WIDTH; x++)
-                    *p++ = (caustic_mask[f][t][y][x >> 3] >> (x & 7)) & 1 ? 0x84CEF8u : 0xFF00FFu;
+                    *p++ = (caustic_mask[f][t][y][x >> 3] >> (x & 7)) & 1 ? 0x5AA6EEu : 0xFF00FFu;
     caustic_dc = CreateCompatibleDC(hdc);
     SelectObject(caustic_dc, b);
 }
