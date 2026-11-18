@@ -41,6 +41,14 @@ void UpdateFootpaths(void) {
     worn_tiles[slot] = (WornTile){ current_screen_index, (uint8_t)tx, (uint8_t)ty, 1, 1 };
 }
 
+int FootpathAt(int x, int y) {
+    for (int i = 0; i < MAX_WORN_TILES; i++) {
+        const WornTile *w = &worn_tiles[i];
+        if (w->active && w->screen_id == current_screen_index && w->x == x && w->y == y && w->wear >= PATH_SHOWS_AT) return 1;
+    }
+    return 0;
+}
+
 void DrawFootpaths(HDC hdc) {
     DrawHighway(hdc);
     fx a = FxAbs(FxSin(day_night_cycle_accumulator));
@@ -50,12 +58,11 @@ void DrawFootpaths(HDC hdc) {
         WornTile *w = &worn_tiles[i];
         if (!w->active || w->screen_id != current_screen_index || w->wear < PATH_SHOWS_AT) continue;
         if (VISUAL_MAP[w->y][w->x] != 0) continue;
-        int sx, sy; GetIsoCoords(FxI(w->x), FxI(w->y), &sx, &sy);
-        // Lightly worn paths are narrow; well-trodden ones fill the tile.
-        fx k = FX(0.55) + FX(0.45) * (w->wear - PATH_SHOWS_AT) / (WEAR_MAX - PATH_SHOWS_AT);
-        int hw = FxTrunc(TILE_WIDTH / 2 * k), hh = FxTrunc(TILE_HEIGHT / 2 * k), cy = sy + TILE_HEIGHT / 2;
-        POINT dirt[] = { { sx, cy - hh }, { sx + hw, cy }, { sx, cy + hh }, { sx - hw, cy } };
-        HBRUSH br = CreateSolidBrush(RGB(FxTrunc(150 * a), FxTrunc(118 * a), FxTrunc(72 * a))); HGDIOBJ old = SelectObject(hdc, br);
+        // Whole tiles on the ground's own (hilly) corners, so neighbouring path tiles
+        // always meet edge to edge; well-trodden ones are a little darker.
+        POINT dirt[4]; TileCorners(w->x, w->y, dirt);
+        fx k = FxI(w->wear - PATH_SHOWS_AT) / (WEAR_MAX - PATH_SHOWS_AT);
+        HBRUSH br = CreateSolidBrush(RGB(FxTrunc(FxMul(FxI(162) - 22 * k, a)), FxTrunc(FxMul(FxI(132) - 24 * k, a)), FxTrunc(FxMul(FxI(86) - 18 * k, a)))); HGDIOBJ old = SelectObject(hdc, br);
         Polygon(hdc, dirt, 4);
         SelectObject(hdc, old); DeleteObject(br);
     }

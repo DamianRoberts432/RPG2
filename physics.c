@@ -66,6 +66,7 @@ void UpdateGamePhysics(void) {
     world_frame++;
     world_tick = FxWrapAdd(world_tick, FX(0.05)); if (sword_swipe_frame > 0) sword_swipe_frame--;
     if (hero_hop_frame > 0) hero_hop_frame--;
+    UpdatePeyote();
     if (ability_visual_frame > 0) ability_visual_frame--;
     if (sleep_fade_frame > 0) {
         sleep_fade_frame++;

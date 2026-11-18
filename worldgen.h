@@ -16,6 +16,7 @@ int TreasureIsleIndex(int gx, int gy);
 int SeaNeedsBoat(int gx, int gy);
 const char *ElysiumThemeName(void);
 void ClearHighwayTiles(void);
+int HighwayAt(int x, int y);
 void DrawHighway(HDC hdc);
 fx EconomyBuyMult(const char *name);
 fx EconomySellMult(const char *name);

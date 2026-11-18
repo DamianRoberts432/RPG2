@@ -245,6 +245,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow) {
                         }
                         if (t_id == 11) { DrawLowPolyTree(memHDC, sx, sy, (r * MAP_SIZE + c)); if (IsBigTree(r * MAP_SIZE + c)) DrawBigCrown(memHDC, sx, sy, r * MAP_SIZE + c); }
                         if (t_id >= 2 && t_id <= 9 && t_id != 1) DrawGroundSceneryDecals(memHDC, sx, sy, t_id, (r * MAP_SIZE + c));
+                        if ((t_id == 0 || t_id == 4 || t_id == 5) && GrassTuftHere(c, r)) DrawGrassTuft(memHDC, sx, sy, r * MAP_SIZE + c); // plain ground, sand and snow
                         if (current_biome == BIOME_MOUNTAIN && c == torch_gate_x && r == torch_gate_y) {
                             DrawInteractiveTorches(memHDC, sx, sy);
                             if (!in_cave && IsNearPoint(FxI(torch_gate_x), FxI(torch_gate_y), FX(2.5))) {

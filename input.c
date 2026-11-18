@@ -481,7 +481,6 @@ void ProcessGamepadInput(void) {
             if (HeroMounted()) speed = FxMul(speed, FX(2.2)); // the horse does the running: no stamina spent
             else if (running && !HeroExhausted()) { speed = FxMul(speed, FX(1.6)); player_stamina -= FX(0.15); }
             if (HeroExhausted()) speed = FxMul(speed, FX(0.6));
-            if (hero_hop_frame > 0) speed = FxMul(speed, FX(1.3));
             if (player_stamina <= FxI(0)) {
                 speed = FxMul(speed, FX(0.6)); // exhausted: can still walk, just slower
                 strcpy(arpg_action_log, "Exhausted! Rest to recover stamina.");

@@ -167,6 +167,7 @@ static int HighwayTile(int x, int y) {
     return ((bits & 1) && down && y <= c) || ((bits & 4) && down && y >= c - 1) ||
            ((bits & 2) && across && x >= c - 1) || ((bits & 8) && across && x <= c);
 }
+int HighwayAt(int x, int y) { return HighwayTile(x, y); }
 void ClearHighwayTiles(void) {
     for (int y = 1; y < MAP_SIZE - 1; y++) for (int x = 1; x < MAP_SIZE - 1; x++) if (HighwayTile(x, y)) VISUAL_MAP[y][x] = 0;
 }
@@ -177,9 +178,7 @@ void DrawHighway(HDC hdc) {
     HGDIOBJ old = SelectObject(hdc, br), old_pen = SelectObject(hdc, GetStockObject(NULL_PEN));
     for (int y = 0; y < MAP_SIZE; y++) for (int x = 0; x < MAP_SIZE; x++) {
         if (!HighwayTile(x, y) || VISUAL_MAP[y][x] != 0) continue;
-        int sx, sy; GetIsoCoords(FxI(x), FxI(y), &sx, &sy);
-        int cy = sy + TILE_HEIGHT / 2;
-        POINT p[] = { { sx, cy - TILE_HEIGHT / 2 }, { sx + TILE_WIDTH / 2, cy }, { sx, cy + TILE_HEIGHT / 2 }, { sx - TILE_WIDTH / 2, cy } };
+        POINT p[4]; TileCorners(x, y, p); // on the ground's own corners, so the road follows the hills
         Polygon(hdc, p, 4);
     }
     SelectObject(hdc, old_pen); SelectObject(hdc, old); DeleteObject(br);

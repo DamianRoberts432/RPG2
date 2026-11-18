@@ -707,7 +707,7 @@ void FireClassAbility(void) {
 // ---- The hero can be hurt (forgiving for now) ----
 DWORD hero_held_until = 0; // a zombie's grab holds the hero in place briefly
 int hero_hop_frame = 0;    // counts down while the hero is mid-hop
-int hero_hop_len = 18, hero_hop_double = 0;
+int hero_hop_len = 14, hero_hop_double = 0;
 static fx hero_hop_start = FxI(0), hero_hop_peak = FxI(14);
 // Height in pixels: the second hop of a double jump starts from wherever the first one was.
 fx HeroHopHeight(void) {
@@ -717,7 +717,7 @@ fx HeroHopHeight(void) {
 }
 void StartHeroHop(int second) {
     hero_hop_start = second ? HeroHopHeight() : FxI(0);
-    hero_hop_double = second; hero_hop_len = second ? 20 : 18; hero_hop_peak = second ? FxI(15) : FxI(14);
+    hero_hop_double = second; hero_hop_len = second ? 16 : 14; hero_hop_peak = second ? FxI(15) : FxI(14);
     hero_hop_frame = hero_hop_len;
 }
 

@@ -11,5 +11,6 @@ int MeleeHitDesertPlant(void);
 int TryGatherPeyote(void);
 void EatPeyote(void);
 void DrawPeyoteMelt(HDC hdc);
+void UpdatePeyote(void); // after an overdose, wakes the hero somewhere random
 
 #endif

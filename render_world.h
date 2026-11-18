@@ -13,6 +13,8 @@ void DrawCampfires(HDC hdc);
 void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed);
 void DrawSubterraneanGeology(HDC hdc, int sx, int sy, int tile_seed);
 void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed);
+int GrassTuftHere(int c, int r);
+void DrawGrassTuft(HDC hdc, int sx, int sy, int seed);
 void DrawEnvironmentalCritters(HDC hdc);
 void DrawSolitaireSunMoonBeam(HDC hdc);
 void DrawNightEyes(HDC hdc);

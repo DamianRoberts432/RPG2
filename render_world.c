@@ -301,7 +301,7 @@ void DrawBigCrown(HDC hdc, int sx, int sy, int tile_seed) {
     sx += TreeSwayPx(tile_seed); sy -= TreeTallPx(tile_seed); // stacked on the canopy below, swaying with it
     fx depth = FxI(c + r) - (player_x + player_y), across = FxI(c - r) - (player_x - player_y);
     int lacy = depth > FX(0.3) && depth < FxI(5) && across > -FX(2.5) && across < FX(2.5); // hero just behind: see-through leaves
-    HGDIOBJ op = SelectObject(hdc, GetStockObject(NULL_PEN));
+    HPEN ink = CreatePen(PS_SOLID, 1, RGB(24, 48, 28)); HGDIOBJ op = SelectObject(hdc, ink); // outlined like the cacti
     if (!broad) { // a pine giant: three more tiers of the same pine, tapering to a point
         int heights[] = { -10, -20, -30 }, widths[] = { 16, 12, 8 };
         COLORREF shades[] = { RGB(55, 125, 45), RGB(75, 150, 60), RGB(95, 180, 75) };
@@ -312,15 +312,15 @@ void DrawBigCrown(HDC hdc, int sx, int sy, int tile_seed) {
             if (snow_cover > FX(0.25)) { // the same snow bands as the tiers below
                 int y = sy + heights[i], w = widths[i] * 4 / 5; POINT sn[] = { {sx, y - 12}, {sx + w, y + 1}, {sx, y + 4}, {sx - w, y + 1} };
                 if (lacy) { HRGN rg = CreatePolygonRgn(sn, 4, WINDING); AlphaRegion(hdc, rg, RGB(236, 241, 248), 120); DeleteObject(rg); }
-                else { HBRUSH b = CreateSolidBrush(RGB(236, 241, 248)); HGDIOBJ ob = SelectObject(hdc, b); Polygon(hdc, sn, 4); SelectObject(hdc, ob); DeleteObject(b); }
+                else { HBRUSH b = CreateSolidBrush(RGB(236, 241, 248)); HGDIOBJ ob = SelectObject(hdc, b); { HGDIOBJ np_ = SelectObject(hdc, GetStockObject(NULL_PEN)); Polygon(hdc, sn, 4); SelectObject(hdc, np_); } SelectObject(hdc, ob); DeleteObject(b); }
             }
         }
         if (snow_cover > FX(0.25)) {
             HBRUSH sb = CreateSolidBrush(RGB(240, 244, 250)); HGDIOBJ ob = SelectObject(hdc, sb);
             POINT cap[] = { {sx, sy - 42}, {sx + 6, sy - 33}, {sx, sy - 31}, {sx - 6, sy - 33} };
-            Polygon(hdc, cap, 4); SelectObject(hdc, ob); DeleteObject(sb);
+            SelectObject(hdc, GetStockObject(NULL_PEN)); Polygon(hdc, cap, 4); SelectObject(hdc, ob); DeleteObject(sb);
         }
-        SelectObject(hdc, op);
+        SelectObject(hdc, op); DeleteObject(ink);
         return;
     }
     HBRUSH bark = CreateSolidBrush(RGB(115, 82, 60)); HGDIOBJ ob = SelectObject(hdc, bark);
@@ -357,7 +357,7 @@ void DrawBigCrown(HDC hdc, int sx, int sy, int tile_seed) {
             SelectObject(hdc, bark); DeleteObject(lb); DeleteObject(db);
         }
     }
-    SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(bark);
+    SelectObject(hdc, ob); SelectObject(hdc, op); DeleteObject(bark); DeleteObject(ink);
 }
 
 void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
@@ -368,6 +368,7 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
     }
     int wind_strength = abs(wind_dir);
     int sway_phase = (FxMulI(world_tick, FxI(2)) + tile_seed) & 31;
+    HPEN ink = CreatePen(PS_SOLID, 1, RGB(24, 48, 28)); HGDIOBJ old_ink = SelectObject(hdc, ink); // outlined like the cacti
     int root_x = sx; // the trunk stays rooted; only the canopy sways
     sx += TreeSwayPx(tile_seed);
     int lean = (sx - root_x) / 2;
@@ -402,7 +403,7 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
             POINT cap[] = {{sx, sy + heights[i] - 12}, {sx + widths[i], sy + heights[i] + 4}, {sx, sy + heights[i] + 8}, {sx - widths[i], sy + heights[i] + 4}};
             b = CreateSolidBrush(shades[i]); HGDIOBJ prev = SelectObject(hdc, b); Polygon(hdc, cap, 4); SelectObject(hdc, prev); DeleteObject(b); if (snow_cover > FX(0.25)) { // snow lies on each tier, leaving its green lower rim showing
                 int y = sy + heights[i], w = widths[i] * 4 / 5; POINT sn[] = {{sx, y - 12}, {sx + w, y + 1}, {sx, y + 4}, {sx - w, y + 1}};
-                b = CreateSolidBrush(RGB(236, 241, 248)); prev = SelectObject(hdc, b); Polygon(hdc, sn, 4); SelectObject(hdc, prev); DeleteObject(b);
+                b = CreateSolidBrush(RGB(236, 241, 248)); prev = SelectObject(hdc, b); { HGDIOBJ np_ = SelectObject(hdc, GetStockObject(NULL_PEN)); Polygon(hdc, sn, 4); SelectObject(hdc, np_); } SelectObject(hdc, prev); DeleteObject(b);
             }
         }
     } else {
@@ -416,7 +417,7 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
                 POINT cap[] = {{sx, sy + heights[i] - 12}, {sx + widths[i], sy + heights[i] + 4}, {sx, sy + heights[i] + 8}, {sx - widths[i], sy + heights[i] + 4}};
                 b = CreateSolidBrush(shades[i]); HGDIOBJ prev = SelectObject(hdc, b); Polygon(hdc, cap, 4); SelectObject(hdc, prev); DeleteObject(b); if (snow_cover > FX(0.25)) { // snow lies on each tier, leaving its green lower rim showing
                 int y = sy + heights[i], w = widths[i] * 4 / 5; POINT sn[] = {{sx, y - 12}, {sx + w, y + 1}, {sx, y + 4}, {sx - w, y + 1}};
-                b = CreateSolidBrush(RGB(236, 241, 248)); prev = SelectObject(hdc, b); Polygon(hdc, sn, 4); SelectObject(hdc, prev); DeleteObject(b);
+                b = CreateSolidBrush(RGB(236, 241, 248)); prev = SelectObject(hdc, b); { HGDIOBJ np_ = SelectObject(hdc, GetStockObject(NULL_PEN)); Polygon(hdc, sn, 4); SelectObject(hdc, np_); } SelectObject(hdc, prev); DeleteObject(b);
             }
             }
         } else {
@@ -440,7 +441,7 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
     if (!deciduous && snow_cover > FX(0.25) && kind == TREE_PINE) {
         HBRUSH snow_b = CreateSolidBrush(RGB(240, 244, 250)); HGDIOBJ prev_snow = SelectObject(hdc, snow_b);
         POINT cap[] = {{sx, sy - 16}, {sx + 8, sy - 5}, {sx, sy - 2}, {sx - 8, sy - 5}};
-        Polygon(hdc, cap, 4); SelectObject(hdc, prev_snow); DeleteObject(snow_b);
+        SelectObject(hdc, GetStockObject(NULL_PEN)); Polygon(hdc, cap, 4); SelectObject(hdc, ink); SelectObject(hdc, prev_snow); DeleteObject(snow_b);
     }
     if (TreeHasApples(tile_seed) && deciduous && !willow && current_season != SEASON_WINTER) { // apples hang inside the leaf blobs
         static const int ax[3] = { -11, 7, 2 }, ay[3] = { -3, 1, -15 };
@@ -451,7 +452,7 @@ void DrawLowPolyTree(HDC hdc, int sx, int sy, int tile_seed) {
         }
         SelectObject(hdc, op_apple); SelectObject(hdc, old_apple); DeleteObject(apple);
     }
-    SelectObject(hdc, old);
+    SelectObject(hdc, old); SelectObject(hdc, old_ink); DeleteObject(ink);
 }
 
 static void DrawRockCone(HDC hdc, int bx, int by, int w, int h);
@@ -480,6 +481,36 @@ void DrawSubterraneanGeology(HDC hdc, int sx, int sy, int tile_seed) {
     if (tile_seed % 4 == 0) DrawRockCone(hdc, sx - 12, sy + 2, w / 2 + 2, h / 2);
     DrawRockCone(hdc, sx, sy + 6, w, h);
     if (tile_seed % 3 != 0) DrawRockCone(hdc, sx + 11, sy + 11, w / 2 + 2, h * 11 / 20);
+}
+
+// Grass tufts grow in almost every biome, palette-swapped to fit: white and pale
+// yellow in the frost, straw on sand, olive in swamps. A couple of very thin dark
+// blades give each tuft some depth.
+int GrassTuftHere(int c, int r) {
+    if (in_cave || current_biome == BIOME_CAVE || current_biome == BIOME_CASTLE || inside_home >= 0) return 0;
+    unsigned h = (unsigned)RainHash((r * MAP_SIZE + c) * 29 + 3);
+    if (h % (current_biome == BIOME_DESERT || current_biome == BIOME_BEACH ? 16u : 6u)) return 0;
+    return !FootpathAt(c, r) && !HighwayAt(c, r);
+}
+void DrawGrassTuft(HDC hdc, int sx, int sy, int seed) {
+    COLORREF a = RGB(150, 210, 90), b = RGB(120, 185, 75);
+    if (snow_cover > FX(0.5) || current_biome == BIOME_TUNDRA) { a = RGB(234, 238, 230); b = RGB(214, 204, 140); }
+    else if (current_biome == BIOME_DESERT || current_biome == BIOME_BEACH || current_biome == BIOME_OASIS) { a = RGB(212, 184, 100); b = RGB(184, 152, 72); }
+    else if (current_season == SEASON_FALL) { a = RGB(186, 176, 84); b = RGB(150, 160, 70); }
+    else if (current_biome == BIOME_SWAMP) { a = RGB(118, 156, 72); b = RGB(96, 132, 60); }
+    else if (current_biome == BIOME_MOUNTAIN) { a = RGB(136, 176, 92); b = RGB(112, 150, 80); }
+    int lean = FxTrunc(FxMul(FxSinTurn(FxTurn64((((int64_t)FxBits(world_tick) * FX(1.5)) >> 16) + sx * FX(0.1))), FX(1.5)));
+    int hx, hy; GetIsoCoords(player_x, player_y, &hx, &hy);
+    if (abs(sx - hx) < 22 && abs(sy - hy) < 16) lean += sx >= hx ? 4 : -4; // pushed aside as the hero walks through
+    static const int base_dx[5] = { -3, -1, 0, 2, 3 }, tip_dx[5] = { -5, -2, 0, 2, 5 }, height[5] = { 6, 9, 10, 8, 6 };
+    int tall = seed % 3; // a little variety in height
+    HPEN pa = CreatePen(PS_SOLID, 1, a), pb = CreatePen(PS_SOLID, 1, b), ink = CreatePen(PS_SOLID, 1, RGB(22, 24, 18));
+    HGDIOBJ old = SelectObject(hdc, pa);
+    for (int k = 0; k < 5; k++) { SelectObject(hdc, k & 1 ? pb : pa); MoveToEx(hdc, sx + base_dx[k], sy + 9, NULL); LineTo(hdc, sx + tip_dx[k] + lean, sy + 9 - height[k] - tall); }
+    SelectObject(hdc, ink);
+    MoveToEx(hdc, sx - 2, sy + 9, NULL); LineTo(hdc, sx - 3 + lean, sy + 3 - tall);
+    MoveToEx(hdc, sx + 1, sy + 9, NULL); LineTo(hdc, sx + 3 + lean, sy + 4 - tall);
+    SelectObject(hdc, old); DeleteObject(pa); DeleteObject(pb); DeleteObject(ink);
 }
 
 void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed) {
@@ -533,13 +564,7 @@ void DrawGroundSceneryDecals(HDC hdc, int sx, int sy, int type, int seed) {
             SetPixel(hdc, sx - 1, sy - 3, RGB(205, 190, 120)); SetPixel(hdc, sx, sy - 4, RGB(205, 190, 120));
             return;
         }
-        HPEN blade = CreatePen(PS_SOLID, 1, RGB(150, 210, 90)); HGDIOBJ old = SelectObject(hdc, blade);
-        int lean = FxTrunc(FxMul(FxSinTurn(FxTurn64((((int64_t)FxBits(world_tick) * FX(1.5)) >> 16) + sx * FX(0.1))), FX(1.5)));
-        int hx, hy; GetIsoCoords(player_x, player_y, &hx, &hy);
-        if (abs(sx - hx) < 22 && abs(sy - hy) < 16) lean += sx >= hx ? 4 : -4; // pushed aside as the hero walks through
-        static const int base_dx[5] = { -3, -1, 0, 2, 3 }, tip_dx[5] = { -5, -2, 0, 2, 5 }, height[5] = { 6, 9, 10, 8, 6 };
-        for (int b = 0; b < 5; b++) { MoveToEx(hdc, sx + base_dx[b], sy + 9, NULL); LineTo(hdc, sx + tip_dx[b] + lean, sy + 9 - height[b]); }
-        SelectObject(hdc, old); DeleteObject(blade);
+        DrawGrassTuft(hdc, sx, sy, seed);
     } else if (type == 7) { // Desert/Oasis saguaro cactus
         if (IsPeyoteSeed(seed)) { // small round peyote button; split in two after two arrows
             HBRUSH g = CreateSolidBrush(RGB(110, 150, 120)); HGDIOBJ og = SelectObject(hdc, g);
@@ -777,9 +802,10 @@ void DrawSolitaireSunMoonBeam(HDC hdc) {
     // Lens flare: little orbs strung along the line from the light through the
     // screen centre, each with a red and a green fringe like light split by a lens.
     int cxs = WINDOW_WIDTH / 2, cys = WINDOW_HEIGHT / 2;
-    static const fx at[5] = { FX(0.35), FX(0.6), FX(0.9), FX(1.25), FX(1.55) };
-    static const int rad[5] = { 10, 22, 7, 30, 14 };
-    for (int i = 0; i < 5; i++) {
+    static const fx at[3] = { FX(0.4), FX(0.9), FX(1.3) };
+    static const int rad[3] = { 8, 5, 14 };
+    k /= 3; // faint: the flare is a hint, not a light show
+    for (int i = 0; i < 3; i++) {
         int ox = top_x + FxTrunc((cxs - top_x) * at[i]), oy = FxTrunc(cys * at[i]), r = rad[i];
         OrbAt(hdc, ox - 2, oy, r + 2, RGB(255, 90, 80), FxTrunc(12 * k));
         OrbAt(hdc, ox + 2, oy, r + 2, RGB(90, 255, 140), FxTrunc(12 * k));
@@ -1098,8 +1124,8 @@ void DrawCanopyShadows(HDC hdc) {
             shade = CreateSolidBrush(snow_cover > FX(0.5) || current_biome == BIOME_TUNDRA ? RGB(40, 60, 110) : RGB(16, 28, 22)); old_br = SelectObject(layer, shade); old_pen = SelectObject(layer, GetStockObject(NULL_PEN));
         }
         // Each tree's outline as (height above the trunk's foot, half-width) pairs, matching how it is drawn.
-        static const signed char pine[] = { 0,3, 4,3, 8,20, 14,12, 16,16, 22,8, 24,12, 40,0 };
-        static const signed char pine_big[] = { 0,3, 4,3, 8,20, 14,12, 16,16, 22,8, 24,12, 30,16, 37,10, 40,12, 47,6, 50,8, 66,0 };
+        static const signed char pine[] = { 0,3, 7,3, 8,20, 14,12, 16,16, 22,8, 24,12, 40,0 };
+        static const signed char pine_big[] = { 0,3, 7,3, 8,20, 14,12, 16,16, 22,8, 24,12, 30,16, 37,10, 40,12, 47,6, 50,8, 66,0 };
         static const signed char leafy[] = { 0,3, 14,3, 17,14, 24,20, 32,18, 40,12, 46,6, 48,0 };
         static const signed char leafy_big[] = { 0,3, 14,3, 17,14, 24,20, 32,18, 40,12, 44,22, 56,26, 66,22, 74,15, 80,8, 82,0 };
         static const signed char bare[] = { 0,2, 14,2, 22,7, 30,9, 36,5, 41,0 };
@@ -1122,7 +1148,7 @@ void DrawCanopyShadows(HDC hdc) {
             if (kind == TREE_SAPLING && h > 4) { h = 4 + FxTrunc((h - 4) * grow); w = FxTrunc(w * grow); }
             if (h > 0) h += tall;
             if ((kind == TREE_LEAFY || kind == TREE_WILLOW) && i >= 2) w = w * (90 + (int)((unsigned)RainHash(seed * 7 + i) % 21u)) / 100; // uneven leafy edge
-            hs[i] = h; ws[i] = w * 3 / 5; // a low sun narrows the shadow as it stretches it
+            hs[i] = h; ws[i] = i < 2 && kind != TREE_SAPLING ? w : w * 3 / 5; // a low sun narrows the canopy's shadow; the trunk keeps its width so it reads
         }
         int height = hs[n - 1], bx = sx, by = sy + 22; // the trunk's foot
         fx len = FxMul(FX(1.6) + 2 * oy, FxI(height)); // long even at noon, like a low northern sun
