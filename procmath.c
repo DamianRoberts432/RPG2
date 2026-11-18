@@ -94,8 +94,10 @@ void DomainWarp2(fx *x, fx *y, fx amount, uint32_t seed) {
 WorleyResult Worley2(fx x, fx y, int metric, uint32_t seed) {
     WorleyResult r = { FX_MAX, FX_MAX, 0, 0 };
     int xi = FxFloor(x), yi = FxFloor(y);
-    for (int dj = -1; dj <= 1; dj++)
-        for (int di = -1; di <= 1; di++) {
+    // 5x5: a point two cells away can be nearer than every point in the 3x3 ring;
+    // points three away are always at least 2 away, so F1 and F2 are exact here.
+    for (int dj = -2; dj <= 2; dj++)
+        for (int di = -2; di <= 2; di++) {
             int cx = xi + di, cy = yi + dj;
             fx d = Dist(metric, FxI(cx) + HashFx(cx, cy, seed) - x, FxI(cy) + HashFx(cx, cy, seed ^ 0x9E3779B9u) - y);
             if (d < r.f1) { r.f2 = r.f1; r.f1 = d; r.cell_x = cx; r.cell_y = cy; }
