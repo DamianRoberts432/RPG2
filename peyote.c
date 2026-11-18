@@ -106,6 +106,7 @@ static void WakeSomewhere(void) {
         gx = x; gy = y; break;
     }
     screen_grid_x = gx; screen_grid_y = gy;
+    screens_until_town = 1; // never a town (otherwise a castle would be built here)
     GenerateProceduralScreen(gy * META_GRID_SIZE + gx);
     player_x = FxI(MAP_SIZE) / 2; player_y = FxI(MAP_SIZE) / 2;
     for (int r = 0; r < MAP_SIZE / 2 && !PlayerCanStandAt(player_x, player_y); r++) player_x = FxI(MAP_SIZE) / 2 + FxI(r * ((r & 1) ? 1 : -1));
