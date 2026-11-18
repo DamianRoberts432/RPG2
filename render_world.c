@@ -72,9 +72,63 @@ COLORREF GetTileColor(uint8_t id, int side) {
     return side ? RGB(85, 155, 70)   : RGB(105, 185, 85);
 }
 
-// Gentle water: two slow sine swells crossing at different angles and speeds.
-// Each tile is tinted a touch lighter or darker by the swell under it and a
-// faint crest rides the high points. The peyote mirage reuses WaveAt.
+// Water: two shades of blue. The light web is Voronoi caustics, light where two
+// cells meet. The pattern repeats every CAUSTIC_PERIOD tiles and loops over
+// CAUSTIC_FRAMES while each cell's point circles slowly. It is baked once into
+// 1-bit tile masks (36 KB, a set of animated VDP2 cells on the Saturn), and each
+// water tile copies the piece that lines up with its map position.
+#define CAUSTIC_PERIOD 3
+#define CAUSTIC_CELLS 2
+#define CAUSTIC_FRAMES 16
+#define CAUSTIC_N (CAUSTIC_PERIOD * CAUSTIC_CELLS)
+#define CAUSTIC_TILES (CAUSTIC_PERIOD * CAUSTIC_PERIOD)
+static unsigned char caustic_mask[CAUSTIC_FRAMES][CAUSTIC_TILES][TILE_HEIGHT][TILE_WIDTH / 8];
+static HDC caustic_dc;
+
+static void BakeCaustics(void) {
+    static fx px[CAUSTIC_N][CAUSTIC_N], py[CAUSTIC_N][CAUSTIC_N];
+    for (int f = 0; f < CAUSTIC_FRAMES; f++) {
+        for (int j = 0; j < CAUSTIC_N; j++)
+            for (int i = 0; i < CAUSTIC_N; i++) {
+                int h = abs(RainHash(j * 71 + i * 13 + 5));
+                uint32_t a = (uint32_t)h * 2654435761u + ((uint32_t)f << 28); // one full circle per loop
+                px[j][i] = FxI(i) + FX(0.5) + FxI(h % 41 - 20) / 100 + FxMul(FX(0.2), FxCosTurn(a));
+                py[j][i] = FxI(j) + FX(0.5) + FxI(h / 41 % 41 - 20) / 100 + FxMul(FX(0.2), FxSinTurn(a));
+            }
+        for (int t = 0; t < CAUSTIC_TILES; t++)
+            for (int y = 0; y < TILE_HEIGHT; y++)
+                for (int x = 0; x < TILE_WIDTH; x++) {
+                    fx u = FxI(x - TILE_WIDTH / 2) / TILE_WIDTH + FxI(y) / TILE_HEIGHT, v = FxI(y) / TILE_HEIGHT - FxI(x - TILE_WIDTH / 2) / TILE_WIDTH;
+                    if (u < FX(0.0) || v < FX(0.0) || u >= FX(1.0) || v >= FX(1.0)) continue; // outside the diamond
+                    fx X = (u + FxI(t % CAUSTIC_PERIOD)) * CAUSTIC_CELLS, Y = (v + FxI(t / CAUSTIC_PERIOD)) * CAUSTIC_CELLS, d1 = FX_MAX, d2 = FX_MAX;
+                    for (int dj = -1; dj <= 1; dj++)
+                        for (int di = -1; di <= 1; di++) {
+                            int i = FxFloor(X) + di, j = FxFloor(Y) + dj, wi = (i + CAUSTIC_N) % CAUSTIC_N, wj = (j + CAUSTIC_N) % CAUSTIC_N;
+                            fx d = FxLen(px[wj][wi] + FxI(i - wi) - X, py[wj][wi] + FxI(j - wj) - Y);
+                            if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d;
+                        }
+                    if (d2 - d1 < FX(0.075)) caustic_mask[f][t][y][x >> 3] |= (unsigned char)(1 << (x & 7));
+                }
+    }
+}
+
+static void BuildCausticSheet(HDC hdc) { // the PC copy: one sheet of the masks in the light shade, magenta elsewhere
+    BakeCaustics();
+    BITMAPINFO bi = { { sizeof(BITMAPINFOHEADER), TILE_WIDTH, -(TILE_HEIGHT * CAUSTIC_FRAMES * CAUSTIC_TILES), 1, 32, BI_RGB, 0, 0, 0, 0, 0 } };
+    void *bits = NULL;
+    HBITMAP b = CreateDIBSection(hdc, &bi, DIB_RGB_COLORS, &bits, NULL, 0);
+    if (!b || !bits) { if (b) DeleteObject(b); return; }
+    uint32_t *p = (uint32_t *)bits;
+    for (int f = 0; f < CAUSTIC_FRAMES; f++)
+        for (int t = 0; t < CAUSTIC_TILES; t++)
+            for (int y = 0; y < TILE_HEIGHT; y++)
+                for (int x = 0; x < TILE_WIDTH; x++)
+                    *p++ = (caustic_mask[f][t][y][x >> 3] >> (x & 7)) & 1 ? 0x5AA6EEu : 0xFF00FFu;
+    caustic_dc = CreateCompatibleDC(hdc);
+    SelectObject(caustic_dc, b);
+}
+
+// Wavy shimmer kept for the peyote mirage.
 fx WaveAt(fx x, fx y, fx t) {
     int64_t a = ((int64_t)FxBits(x) * FX(0.9) + (int64_t)FxBits(y) * FX(0.4) + (int64_t)FxBits(t) * FX(1.3)) >> 16;
     int64_t b = (-(int64_t)FxBits(x) * FX(0.35) + (int64_t)FxBits(y) * FX(1.1) + (int64_t)FxBits(t) * FX(0.8)) >> 16;
@@ -82,18 +136,15 @@ fx WaveAt(fx x, fx y, fx t) {
 }
 
 void DrawFlowingRiver(HDC hdc, int sx, int sy, int tile_seed) {
-    fx t = (fx)((int64_t)GetTickCount() * FX_ONE / 1000);
-    int c = tile_seed % MAP_SIZE, r = tile_seed / MAP_SIZE, k = FxTrunc(WaveAt(FxI(c), FxI(r), t) * 10);
-    HBRUSH b = CreateSolidBrush(RGB(40 + k, 140 + k, 235 + k / 2)); HGDIOBJ old = SelectObject(hdc, b);
+    int c = tile_seed % MAP_SIZE, r = tile_seed / MAP_SIZE;
+    HBRUSH b = CreateSolidBrush(RGB(38, 132, 226)); HGDIOBJ old = SelectObject(hdc, b), op = SelectObject(hdc, GetStockObject(NULL_PEN));
     POINT water[] = { {sx, sy}, {sx + TILE_WIDTH / 2, sy + TILE_HEIGHT / 2}, {sx, sy + TILE_HEIGHT}, {sx - TILE_WIDTH / 2, sy + TILE_HEIGHT / 2} };
     Polygon(hdc, water, 4);
-    SelectObject(hdc, old); DeleteObject(b);
-    if (k >= 6) { // soft crest, just a shade lighter than the water
-        int dy = FxTrunc(FxSinTurn(FxTurn64((((int64_t)FxBits(t) * FX(1.1)) >> 16) + c * FX(0.7))) * 3);
-        HPEN crest = CreatePen(PS_SOLID, 1, RGB(85, 175, 245)); HGDIOBJ prev = SelectObject(hdc, crest);
-        POINT arc[3] = { { sx - 10, sy + 17 + dy }, { sx, sy + 14 + dy }, { sx + 10, sy + 17 + dy } };
-        Polyline(hdc, arc, 3);
-        SelectObject(hdc, prev); DeleteObject(crest);
+    SelectObject(hdc, op); SelectObject(hdc, old); DeleteObject(b);
+    if (!caustic_dc) BuildCausticSheet(hdc);
+    if (caustic_dc) {
+        int f = (int)(GetTickCount() / 220 % CAUSTIC_FRAMES), k = (f * CAUSTIC_PERIOD + r % CAUSTIC_PERIOD) * CAUSTIC_PERIOD + c % CAUSTIC_PERIOD;
+        TransparentBlt(hdc, sx - TILE_WIDTH / 2, sy, TILE_WIDTH, TILE_HEIGHT, caustic_dc, 0, k * TILE_HEIGHT, TILE_WIDTH, TILE_HEIGHT, RGB(255, 0, 255));
     }
     if ((tile_seed + current_screen_index * 17) % 3 == 0) {
         HBRUSH fish = CreateSolidBrush(RGB(230, 220, 150)); HGDIOBJ prev = SelectObject(hdc, fish);
@@ -102,19 +153,20 @@ void DrawFlowingRiver(HDC hdc, int sx, int sy, int tile_seed) {
     }
 }
 
-// Soft foam along every edge where water meets land, easing in and out with the swell.
+// Foam: a white band along every edge where water meets land, breathing in and out with the swell.
 void DrawShoreFoam(HDC hdc, int c, int r, int sx, int sy) {
-    int in = 3 + FxTrunc(FxMul(FX(1.5), FxSinTurn(FxTurn64((int64_t)GetTickCount() * FX_ONE / 700 + c * FX(0.8) + r * FX(0.5)))));
-    POINT top = { sx, sy + in }, right = { sx + TILE_WIDTH / 2 - in * 2, sy + TILE_HEIGHT / 2 };
-    POINT bottom = { sx, sy + TILE_HEIGHT - in }, left = { sx - TILE_WIDTH / 2 + in * 2, sy + TILE_HEIGHT / 2 };
-    struct { int dc, dr; POINT a, b; } edge[4] = { { 0, -1, top, right }, { -1, 0, left, top }, { 0, 1, bottom, left }, { 1, 0, right, bottom } };
-    HPEN pen = CreatePen(PS_SOLID, 1, RGB(150, 205, 245)); HGDIOBJ old = SelectObject(hdc, pen);
+    int w = 5 + FxTrunc(FxMul(FX(2.0), FxSinTurn(FxTurn64((int64_t)GetTickCount() * FX_ONE / 700 + c * FX(0.8) + r * FX(0.5)))));
+    POINT n[4] = { {sx, sy}, {sx + TILE_WIDTH / 2, sy + TILE_HEIGHT / 2}, {sx, sy + TILE_HEIGHT}, {sx - TILE_WIDTH / 2, sy + TILE_HEIGHT / 2} }, in[4];
+    for (int i = 0; i < 4; i++) { in[i].x = n[i].x + (sx - n[i].x) * w / (TILE_HEIGHT / 2); in[i].y = n[i].y + (sy + TILE_HEIGHT / 2 - n[i].y) * w / (TILE_HEIGHT / 2); }
+    static const struct { int dc, dr, a, b; } edge[4] = { { 0, -1, 0, 1 }, { -1, 0, 3, 0 }, { 0, 1, 2, 3 }, { 1, 0, 1, 2 } };
+    HBRUSH foam = CreateSolidBrush(RGB(236, 246, 252)); HGDIOBJ old = SelectObject(hdc, foam), op = SelectObject(hdc, GetStockObject(NULL_PEN));
     for (int i = 0; i < 4; i++) {
         int nc = c + edge[i].dc, nr = r + edge[i].dr;
         if (nc < 0 || nr < 0 || nc >= MAP_SIZE || nr >= MAP_SIZE || VISUAL_MAP[nr][nc] == 12) continue;
-        MoveToEx(hdc, edge[i].a.x, edge[i].a.y, NULL); LineTo(hdc, edge[i].b.x, edge[i].b.y);
+        POINT band[4] = { n[edge[i].a], n[edge[i].b], in[edge[i].b], in[edge[i].a] };
+        Polygon(hdc, band, 4);
     }
-    SelectObject(hdc, old); DeleteObject(pen);
+    SelectObject(hdc, op); SelectObject(hdc, old); DeleteObject(foam);
 }
 
 void InjectDynamicGlowPass(HDC hdc, int hx, int hy, int radius, COLORREF light_color) {
