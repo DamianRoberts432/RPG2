@@ -18,5 +18,6 @@ typedef struct { int32_t screen_id; uint8_t x, y, wear, active; } WornTile;
 extern WornTile worn_tiles[MAX_WORN_TILES];
 void UpdateFootpaths(void);
 void DrawFootpaths(HDC hdc);
+int FootpathAt(int x, int y); // a worn dirt path shows on this tile
 
 #endif

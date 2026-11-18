@@ -190,6 +190,9 @@ int GetVisitedBiomeAt(int gx, int gy) {
 static BiomeType PickBiomeRaw(int gx, int gy);
 // Climate by latitude: tundra crowds the far north and south of the world and
 // desert the middle band (mostly far east and west); PickBiomeRaw's neighbour rules decide the rest.
+static int NextToForest(int gx, int gy) {
+    return GetVisitedBiomeAt(gx, gy - 1) == BIOME_FOREST || GetVisitedBiomeAt(gx, gy + 1) == BIOME_FOREST || GetVisitedBiomeAt(gx - 1, gy) == BIOME_FOREST || GetVisitedBiomeAt(gx + 1, gy) == BIOME_FOREST;
+}
 BiomeType PickBiomeForScreen(int gx, int gy) {
     BiomeType b = PickBiomeRaw(gx, gy);
     fx lat = FxDiv(FxAbs(FxI(gy) + FX(0.5) - FxI(META_GRID_SIZE) / 2), FxI(META_GRID_SIZE) / 2); // 0 equator .. 1 pole
@@ -199,7 +202,7 @@ BiomeType PickBiomeForScreen(int gx, int gy) {
     // Deserts sit in the middle band, mostly toward the far east and far west.
     fx lon = FxDiv(FxAbs(FxI(gx) + FX(0.5) - FxI(META_GRID_SIZE) / 2), FxI(META_GRID_SIZE) / 2); // 0 centre .. 1 east/west edge
     if (b == BIOME_DESERT && lon < FX(0.4) && rand() % 100 < 70) b = BIOME_PRAIRIE;
-    if (lat < FX(0.3) && b == BIOME_PRAIRIE && rand() % 100 < (lon > FX(0.6) ? 45 : 8)) b = BIOME_DESERT;
+    if (lat < FX(0.3) && b == BIOME_PRAIRIE && !NextToForest(gx, gy) && rand() % 100 < (lon > FX(0.6) ? 45 : 8)) b = BIOME_DESERT;
     return b;
 }
 
@@ -222,6 +225,18 @@ static BiomeType PickBiomeRaw(int gx, int gy) {
         // side, then sand, then land); the rest is ordinary land. Either way
         // the hero can't go further out, but always arrives on walkable ground.
         if (rand() % 100 < 55) return BIOME_BEACH;
+    }
+
+    // Biomes come in regions: most new screens carry on a neighbour's land biome.
+    {
+        int nb[4] = { north, south, west, east }, pick[4], n = 0;
+        int by_desert = north == BIOME_DESERT || south == BIOME_DESERT || west == BIOME_DESERT || east == BIOME_DESERT;
+        for (int i = 0; i < 4; i++) {
+            int b = nb[i];
+            if (b == BIOME_FOREST || b == BIOME_PRAIRIE || b == BIOME_GRASSLANDS || b == BIOME_TUNDRA ||
+                (b == BIOME_DESERT && !near_water && !near_mountain && !near_forest) || (b == BIOME_MOUNTAIN && !near_beach && !by_desert && !near_water)) pick[n++] = b;
+        }
+        if (n && rand() % 100 < 70) return (BiomeType)pick[rand() % n];
     }
 
     int roll = rand() % 1000;
@@ -251,7 +266,7 @@ static BiomeType PickBiomeRaw(int gx, int gy) {
     if (roll < 45) return BIOME_RIVER;    // uncommon; flows toward Lake/Ocean
     if (roll < 65) return BIOME_LAKE;     // uncommon
     if (roll < 90) return BIOME_SWAMP;
-    if (roll < 140 && !near_mountain && !near_water) return BIOME_DESERT;
+    if (roll < 140 && !near_mountain && !near_water && !near_forest) return BIOME_DESERT; // forests never jump straight to sand
     if (roll < 400) return BIOME_FOREST;
     if (roll < 650) return BIOME_GRASSLANDS;
     if (roll < 780) return BIOME_MOUNTAIN;
@@ -421,9 +436,9 @@ void GenerateProceduralScreen(int index) {
                 else if (noise < 27) VISUAL_MAP[r][c] = 11;
                 else if (noise < 33) VISUAL_MAP[r][c] = 8;
             } else if (current_biome == BIOME_FOREST) {
-                if (noise < 45) VISUAL_MAP[r][c] = 11;
-                else if (noise < 52) VISUAL_MAP[r][c] = 2;
-                else if (noise < 58) VISUAL_MAP[r][c] = 8;
+                if (noise < 24) VISUAL_MAP[r][c] = 11; // open woodland: room to walk between the trees
+                else if (noise < 31) VISUAL_MAP[r][c] = 2;
+                else if (noise < 37) VISUAL_MAP[r][c] = 8;
             } else if (current_biome == BIOME_DESERT) {
                 VISUAL_MAP[r][c] = 4;
                 if (noise < 6) VISUAL_MAP[r][c] = 7;

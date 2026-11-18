@@ -1011,8 +1011,8 @@ static void TreeMesh(const FpThing *t) {
     fx h = FX(0.85) + FxI(s * 29 % 30) / 100, rot = (s % 7) * FX(0.4), W = FX(1.0);
     if (IsBigTree(s)) { h = FxMul(h, FX(1.9)); W = FX(1.6); } // old giants: their crowns close over part of the sky
     Prism(x, y, FX(0.0), FxMul(FX(0.46), h), FxMul(FX(0.09), W), FxMul(FX(0.075), W), 5, rot, RGB(110, 75, 45));
-    { fx sw = FxMul((FX(0.02) + FX(0.01) * abs(wind_dir)), FxSin(Tk(GetTickCount(), 1300) + s * FX(0.7))); x += sw; y += FxMul(sw, FX(0.4)); } // canopy sways, trunk stays
     if (IsDeciduousTree(s)) { // round broadleaf, the same trees as in play
+        { fx sw = FxMul((FX(0.02) + FX(0.01) * abs(wind_dir)), FxSin(Tk(GetTickCount(), 1300) + s * FX(0.7))); x += sw; y += FxMul(sw, FX(0.4)); } // crown sways, trunk stays
         COLORREF leaf = snow ? RGB(205, 215, 225) : current_season == SEASON_FALL ? (s % 2 ? RGB(210, 120, 40) : RGB(220, 175, 50)) : RGB(80, 160, 60);
         // One rounded crown: every band shares its edges with the next, closed underneath.
         fx cz[6] = { FxMul(FX(0.4), h), FxMul(FX(0.6), h), FxMul(FX(0.88), h), FxMul(FX(1.16), h), FxMul(FX(1.4), h), FxMul(FX(1.53), h) }, cr[6] = { FxMul(FX(0.28), W), FxMul(FX(0.5), W), FxMul(FX(0.61), W), FxMul(FX(0.55), W), FxMul(FX(0.36), W), FxMul(FX(0.12), W) };
@@ -1023,15 +1023,13 @@ static void TreeMesh(const FpThing *t) {
                 fx an = rot + v * FX(6.2832) / 8;
                 Prism(x + FxMul(FxCos(an), cr[k]), y + FxMul(FxSin(an), cr[k]), cz[k] - FX(0.05), cz[k] + FX(0.05), FX(0.06), FX(0.06), 4, an, RGB(205, 35, 30));
             }
-    } else { // pine like the reference: tall and narrow, five stacked tiers, each with a darker lower lip
-        COLORREF needle = RGB(35, 115, 55), lip = snow ? RGB(30, 105, 52) : RGB(22, 82, 40), body = snow ? RGB(228, 235, 244) : needle;
-        static const fx tb[5] = { FX(0.25), FX(0.6), FX(0.95), FX(1.3), FX(1.62) }, tr[5] = { FX(0.48), FX(0.41), FX(0.34), FX(0.27), FX(0.2) };
+    } else { // pine: three cones of the same slope, all on the trunk's axis (no sway, so they never drift apart)
+        COLORREF body = snow ? RGB(228, 235, 244) : RGB(35, 115, 55);
+        static const fx tb[3] = { FX(0.3), FX(0.8), FX(1.25) }, tr[3] = { FX(0.5), FX(0.4), FX(0.3) };
         int seg = t->depth > FX(0.0) && t->depth < FX(7.0) ? 8 : 6; // far pines use fewer facets
-        for (int k = 0; k < 5; k++) {
-            fx z0 = FxMul(tb[k], h), r0 = FxMul(tr[k], W), lh = FxMul(FX(0.12), h);
-            fx z[3] = { z0, z0 + lh, z0 + FxMul(FxDiv(tr[k], FX(0.45)), h) }, r[3] = { r0, r0 - FxMul(FxDiv(r0, z[2] - z0), lh), FX(0.0) };
-            Lathe(x, y, z, r, 2, seg, rot, 1, 0, lip);
-            Lathe(x, y, z + 1, r + 1, 2, seg, rot, 0, 0, body);
+        for (int k = 0; k < 3; k++) {
+            fx z[2] = { FxMul(tb[k], h), FxMul(tb[k], h) + FxMul(FxDiv(tr[k], FX(0.45)), h) }, r[2] = { FxMul(tr[k], W), FX(0.0) };
+            Lathe(x, y, z, r, 2, seg, rot, 1, 0, k == 2 || !snow ? body : RGB(35, 115, 55));
         }
     }
 }
