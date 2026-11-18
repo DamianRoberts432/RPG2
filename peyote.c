@@ -97,6 +97,7 @@ static void DrawWildMelt(HDC hdc, DWORD now, fx t) {
 }
 
 static void WakeSomewhere(void) {
+    LeaveHome(); // out of any interior first (no-op outdoors)
     if (in_cave) { in_cave = 0; cave_is_hold = 0; pending_forced_biome = -1; }
     if (fishing_active) fishing_active = 0;
     int gx = screen_grid_x, gy = screen_grid_y;
