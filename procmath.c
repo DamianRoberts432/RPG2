@@ -74,7 +74,7 @@ static void NextOctave(fx *x, fx *y) {
 fx Fbm2(fx x, fx y, int octaves, uint32_t seed) {
     fx sum = FX(0.0), amp = FX(0.5), total = FX(0.0);
     octaves = octaves < 1 ? 1 : octaves > 8 ? 8 : octaves;
-    for (int o = 0; o < octaves; o++, amp /= 2) { sum += FxMul(amp, Perlin2(x, y, seed + (uint32_t)o * 101u)); total += amp; NextOctave(&x, &y); }
+    for (int o = 0; o < octaves; o++, amp /= 2) { sum += FxMul(amp, Perlin2(x, y, seed + (uint32_t)o * 101u)); total += amp; if (o + 1 < octaves) NextOctave(&x, &y); }
     return FxDiv(sum, total);
 }
 fx Ridged2(fx x, fx y, int octaves, uint32_t seed) {
@@ -82,7 +82,7 @@ fx Ridged2(fx x, fx y, int octaves, uint32_t seed) {
     octaves = octaves < 1 ? 1 : octaves > 8 ? 8 : octaves;
     for (int o = 0; o < octaves; o++, amp /= 2) {
         fx r = FX(1.0) - FxAbs(Perlin2(x, y, seed + (uint32_t)o * 101u));
-        sum += FxMul(amp, FxMul(r, r)); total += amp; NextOctave(&x, &y);
+        sum += FxMul(amp, FxMul(r, r)); total += amp; if (o + 1 < octaves) NextOctave(&x, &y);
     }
     return FxDiv(sum, total);
 }
